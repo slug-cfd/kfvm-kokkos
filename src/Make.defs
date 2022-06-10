@@ -1,0 +1,11 @@
+# Compile time defines
+DEFINES = -DSTENCIL_RADIUS=$(STENRAD) -DNUM_GAUSS_POINTS=$(NUMGAUSS)
+
+# Compiler flags
+CXXFLAGS = -g -Wall -Wextra -Winline -O3 -ffast-math -fPIC -fmax-errors=10
+
+# All external dependencies
+KFVM_LIBS = -lhdf5_hl -lhdf5 -lsz -lz -llapack -lblas -lgsl -lgslcblas -lcerf -lm
+
+# Suffix for executables
+OPT_SUFFIX = .R$(STENRAD).NQ$(NUMGAUSS)

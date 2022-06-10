@@ -1,0 +1,57 @@
+# Compiler, flags, dependencies
+include ${KFVM_KOKKOS_ROOT}/user/Make.defs
+
+# Core sources and defines
+include ${KFVM_KOKKOS_ROOT}/src/Make.package
+include ${KFVM_KOKKOS_ROOT}/src/Make.defs
+
+# set local directories
+OBJDIR = obj
+BINDIR = bin
+
+# Generate object, dependency, and executable names
+INCLUDES = $(patsubst %,-I%,$(INCLUDE_PATH))
+OBJ = $(patsubst %.cpp,$(OBJDIR)/%$(OPT_SUFFIX).o,$(SOURCES))
+DEP = $(patsubst %.cpp,$(OBJDIR)/%$(OPT_SUFFIX).d,$(SOURCES))
+EXEC = $(BINDIR)/kfvm$(OPT_SUFFIX).ex
+
+# Choose correct compiler
+ifneq (,$(findstring Cuda,$(KOKKOS_DEVICES)))
+CXX = ${KFVM_KOKKOS_ROOT}/external/kokkos/bin/nvcc_wrapper
+OPT_SUFFIX := $(OPT_SUFFIX).cuda
+else
+CXX = g++
+OPT_SUFFIX := $(OPT_SUFFIX).host
+endif
+
+.PHONY: kfvm clean
+
+# Default build target
+kfvm: $(EXEC)
+
+# Bring in Kokkos from submodule
+KOKKOS_PATH = ${KFVM_KOKKOS_ROOT}/external/kokkos
+include $(KOKKOS_PATH)/Makefile.kokkos
+
+clean: kokkos-clean
+	$(RM) $(OBJDIR)/*.o $(OBJDIR)/*.d $(BINDIR)/*.ex
+
+-include $(DEP)
+
+# User created sources
+$(OBJDIR)/%$(OPT_SUFFIX).o: %.cpp $(KOKKOS_CPP_DEPENDS)
+	mkdir -p $(OBJDIR)
+	$(CXX) $(KOKKOS_CPPFLAGS) $(KOKKOS_CXXFLAGS) $(CXXFLAGS) -MMD -MP $(INCLUDES) -c $< -o $@
+
+# Core sources
+$(OBJDIR)/%$(OPT_SUFFIX).o: $(KFVM_KOKKOS_ROOT)/src/%.cpp $(KOKKOS_CPP_DEPENDS)
+	mkdir -p $(OBJDIR)
+	$(CXX) $(KOKKOS_CPPFLAGS) $(KOKKOS_CXXFLAGS) $(CXXFLAGS) -MMD -MP $(INCLUDES) -c $< -o $@
+
+$(OBJDIR)/%$(OPT_SUFFIX).o: $(KFVM_KOKKOS_ROOT)/src/stencil/%.cpp $(KOKKOS_CPP_DEPENDS)
+	mkdir -p $(OBJDIR)
+	$(CXX) $(KOKKOS_CPPFLAGS) $(KOKKOS_CXXFLAGS) $(CXXFLAGS) -MMD -MP $(INCLUDES) -c $< -o $@
+
+$(EXEC): $(OBJ) $(KOKKOS_LINK_DEPENDS)
+	mkdir -p $(BINDIR)
+	$(CXX) $(KOKKOS_CPPFLAGS) $(KOKKOS_CXXFLAGS) $(CXXFLAGS) $(KOKKOS_CXXLDFLAGS) $(OBJ) $(KFVM_LIBS) $(KOKKOS_LIBS) -o $@

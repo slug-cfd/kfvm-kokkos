@@ -1,0 +1,2 @@
+KOKKOS_DEVICES="OpenMP,Cuda"
+KOKKOS_ARCH = "Zen2,Turing75"

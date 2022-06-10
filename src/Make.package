@@ -1,0 +1,6 @@
+INCLUDE_PATH += ${KFVM_KOKKOS_ROOT}/Source
+SOURCES += main.cpp Solver.cpp SolutionWriter.cpp
+
+include ${KFVM_KOKKOS_ROOT}/src/numeric/Make.package
+include ${KFVM_KOKKOS_ROOT}/src/stencil/Make.package
+include ${KFVM_KOKKOS_ROOT}/src/hydro/Make.package

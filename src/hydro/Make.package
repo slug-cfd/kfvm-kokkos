@@ -1,0 +1,2 @@
+INCLUDE_PATH += ${KFVM_KOKKOS_ROOT}/src/hydro
+SOURCES +=
