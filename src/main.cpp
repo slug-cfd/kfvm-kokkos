@@ -2,23 +2,23 @@
 #include <cstdio>
 #include <typeinfo>
 
-struct hello_world {
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const int i) const {
-    // FIXME_SYCL needs workaround for printf
-#ifndef __SYCL_DEVICE_ONLY__
-    printf("Hello from i = %i\n", i);
-#else
-    (void)i;
-#endif
-  }
-};
+#include "ProblemSetup.H"
+#include "Solver.H"
 
 int main(int argc, char* argv[]) {
   Kokkos::initialize(argc, argv);
-  
-  printf("Hello World on Kokkos execution space %s\n",typeid(Kokkos::DefaultExecutionSpace).name());
-  Kokkos::parallel_for("HelloWorld", 15, hello_world());
-  
+  {
+    printf("Kokkos initialized with default execution space: %s\n",typeid(Kokkos::DefaultExecutionSpace).name());
+    
+    // Create ProblemSetup object with all settings and configuration
+    KFVM::ProblemSetup ps("data/Sod",
+			  128,16,1,
+			  16,16,1,
+			  0.0,1.0,0.0,0.125,0.0,1.0/128.0,
+			  1.4);
+
+    // Create solver object to store and advance solution
+    KFVM::Solver solver(ps);
+  }
   Kokkos::finalize();
 }

@@ -1,4 +1,4 @@
-INCLUDE_PATH += ${KFVM_KOKKOS_ROOT}/Source
+INCLUDE_PATH += ${KFVM_KOKKOS_ROOT}/src
 SOURCES += main.cpp Solver.cpp SolutionWriter.cpp
 
 include ${KFVM_KOKKOS_ROOT}/src/numeric/Make.package

@@ -1,2 +1,2 @@
 INCLUDE_PATH += ${KFVM_KOKKOS_ROOT}/src/numeric
-SOURCES +=
+SOURCES += Numeric.cpp

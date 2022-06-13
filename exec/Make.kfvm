@@ -5,6 +5,9 @@ include ${KFVM_KOKKOS_ROOT}/user/Make.defs
 include ${KFVM_KOKKOS_ROOT}/src/Make.package
 include ${KFVM_KOKKOS_ROOT}/src/Make.defs
 
+# Use specific problem directory
+SOURCES := $(SOURCES) ProblemSetup.cpp
+
 # set local directories
 OBJDIR = obj
 BINDIR = bin
@@ -49,6 +52,10 @@ $(OBJDIR)/%$(OPT_SUFFIX).o: $(KFVM_KOKKOS_ROOT)/src/%.cpp $(KOKKOS_CPP_DEPENDS)
 	$(CXX) $(KOKKOS_CPPFLAGS) $(KOKKOS_CXXFLAGS) $(CXXFLAGS) -MMD -MP $(INCLUDES) -c $< -o $@
 
 $(OBJDIR)/%$(OPT_SUFFIX).o: $(KFVM_KOKKOS_ROOT)/src/stencil/%.cpp $(KOKKOS_CPP_DEPENDS)
+	mkdir -p $(OBJDIR)
+	$(CXX) $(KOKKOS_CPPFLAGS) $(KOKKOS_CXXFLAGS) $(CXXFLAGS) -MMD -MP $(INCLUDES) -c $< -o $@
+
+$(OBJDIR)/%$(OPT_SUFFIX).o: $(KFVM_KOKKOS_ROOT)/src/numeric/%.cpp $(KOKKOS_CPP_DEPENDS)
 	mkdir -p $(OBJDIR)
 	$(CXX) $(KOKKOS_CPPFLAGS) $(KOKKOS_CXXFLAGS) $(CXXFLAGS) -MMD -MP $(INCLUDES) -c $< -o $@
 
