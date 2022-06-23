@@ -6,22 +6,23 @@
 //          and is responsible for evolving the simulation through
 //          time.
 
+#include <Kokkos_View.hpp>
+
 #include "Dimension.H"
 #include "Geometry.H"
 #include "SimVar.H"
-#include "SolutionWriter.H"
 #include "Types.H"
 #include "ProblemSetup.H"
 #include "Stencil.H"
-#include <Kokkos_View.hpp>
+#include "NetCDFWriter.H"
 
 namespace KFVM {
 
   class Solver 
   {
     const ProblemSetup& ps;
-    // HDF5 wrapper
-    SolutionWriter solWriter;
+    // IO object
+    NetCDFWriter netCDFWriter;
     // Grid geometry data
     Geometry geom;
     // Cell-based data

@@ -1,11 +1,11 @@
-#ifndef SOLUTIONWRITER_H_
-#define SOLUTIONWRITER_H_
+#ifndef NETCDFWRITER_H_
+#define NETCDFWRITER_H_
 
 #include <string>
 #include <array>
 #include <vector>
 
-#include <hdf5.h>
+#include <netcdf>
 
 #include "SimVar.H"
 #include "Types.H"
@@ -13,17 +13,16 @@
 
 namespace KFVM {
 
-  class SolutionWriter
+  class NetCDFWriter
   {
     const ProblemSetup& ps;
-    const std::array<hsize_t,SPACE_DIM> gridSize;
-    const std::array<double,2*SPACE_DIM> extent;
+    const std::array<int,SPACE_DIM> gridSize;
     std::array<std::vector<double>,SPACE_DIM> grid;
     std::vector<double> solTmp;
 
     std::string FileName(int);
   public:
-    SolutionWriter(const ProblemSetup& ps);
+    NetCDFWriter(const ProblemSetup& ps);
     void write(CellDataView,int,double);
   };
 

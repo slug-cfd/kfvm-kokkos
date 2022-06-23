@@ -12,8 +12,8 @@
 #include "Dimension.H"
 #include "ProblemSetup.H"
 #include "SimVar.H"
-#include "SolutionWriter.H"
 #include "Types.H"
+#include "NetCDFWriter.H"
 #include "Numeric.H"
 #include "Numeric_K.H"
 #include "Hydro_K.H"
@@ -24,7 +24,7 @@ namespace KFVM {
   
   Solver::Solver(const ProblemSetup& a_ps):
     ps(a_ps),
-    solWriter(a_ps),
+    netCDFWriter(a_ps),
     geom(ps),
     U_halo("U",KFVM_D_DECL(ps.nX+2*ps.rad,ps.nY+2*ps.rad,ps.nZ+2*ps.rad)),
     U1_halo("U_stage1",KFVM_D_DECL(ps.nX+2*ps.rad,ps.nY+2*ps.rad,ps.nZ+2*ps.rad)),
@@ -39,7 +39,7 @@ namespace KFVM {
     lastTimeStep(false)
   {
     setIC();
-    solWriter.write(U_halo,0,time);
+    netCDFWriter.write(U_halo,0,time);
   }
 
   // Solve system for full time range
@@ -51,7 +51,7 @@ namespace KFVM {
       std::printf("Step %ld: ",nT);
       TakeStep();
       if (nT%ps.plotFreq == 0 || lastTimeStep || nT==ps.maxTimeSteps-1) {
-        solWriter.write(U_halo,nT,time);
+        netCDFWriter.write(U_halo,nT,time);
       }
     }
   }
@@ -68,7 +68,6 @@ namespace KFVM {
     
     // Evaluate RHS and set dt
     Real maxVel = evalRHS(U_halo,K,time);
-    std::printf("MaxVel = %e\n",maxVel);
     dt = std::fmin(ps.cfl*std::fmin(ps.dx,ps.dy)/maxVel,2*dt);
     if (time + dt > ps.finalTime) {
       dt = ps.finalTime - time;
@@ -90,7 +89,6 @@ namespace KFVM {
 			       dt*rk.b_1*K(KFVM_D_DECL(i,j,k),nV);
 			   }
 			 });
-    solWriter.write(U1_halo,-1,time);
 
     // Second stage
     evalRHS(U1_halo,K,time + dt/2.0);
@@ -104,7 +102,6 @@ namespace KFVM {
 			       dt*rk.b_2*K(KFVM_D_DECL(i,j,k),nV);
 			   }
 			 });
-    solWriter.write(U2_halo,-2,time);
 
     // Third stage
     evalRHS(U2_halo,K,time + dt/2.0);
@@ -118,7 +115,6 @@ namespace KFVM {
 			       dt*rk.b_3*K(KFVM_D_DECL(i,j,k),nV);
 			   }
 			 });
-    solWriter.write(U3_halo,-3,time);
 
     // Fourth stage
     evalRHS(U3_halo,K,time + dt/2.0);
@@ -132,7 +128,6 @@ namespace KFVM {
 			       dt*rk.b_4*K(KFVM_D_DECL(i,j,k),nV);
 			   }
 			 });
-    solWriter.write(U4_halo,-4,time);
 
     // Fifth stage
     evalRHS(U4_halo,Ktil,time + dt/2.0);
