@@ -18,9 +18,9 @@
 
 // Set AMReX style dimension dependent declarators
 #if (SPACE_DIM == 2)
-#define KFVM_D_DECL(a,b,c) (a),(b)
+#define KFVM_D_DECL(a,b,c) a,b
 #else
-#define KFVM_D_DECL(a,b,c) (a),(b),(c)
+#define KFVM_D_DECL(a,b,c) a,b,c
 #endif
 
 // Ensure that number of face quadrature points is defined

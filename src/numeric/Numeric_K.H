@@ -36,7 +36,7 @@ namespace KFVM {
 
   namespace Numeric {
 
-    template<class DataViewType,class QRViewType,uint16_t nQuad>
+    template<class DataViewType,class QRViewType,int nQuad>
     struct IntegrateIC_K
     {
       DataViewType v;
@@ -74,7 +74,7 @@ namespace KFVM {
 	Real xCtr = geom.xCoord(i),yCtr = geom.yCoord(j);
 
 	// Zero out state
-	for (uint16_t nV=0; nV<NUM_VARS; nV++) {
+	for (int nV=0; nV<NUM_VARS; nV++) {
 	  v(i,j,nV) = 0.0;
 	}
 
@@ -90,7 +90,7 @@ namespace KFVM {
 	    InitialCondition(abX,abY,geom.zLo,state);
 
 	    // Add each component into IC
-	    for (uint16_t nV=0; nV<NUM_VARS; nV++) {
+	    for (int nV=0; nV<NUM_VARS; nV++) {
 	      v(i,j,nV) += wt(nX)*wt(nY)*state[nV];
 	    }
 	  }

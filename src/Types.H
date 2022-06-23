@@ -24,13 +24,16 @@ namespace KFVM {
   // Array of fluid properties
   typedef std::array<Real,NUM_PROPS> FluidProperties;
 
+  // Enumeration of face names associated to [2*SPACE_DIM] entry in FaceDataView
+  enum FaceLabel {west = 0, east, south, north, bottom, top};
+
   // Kokkos views for various state data
 #if (SPACE_DIM == 2)
   typedef Kokkos::View<Real**[NUM_VARS]> CellDataView;
-  typedef Kokkos::View<Real**[NUM_QUAD_PTS][NUM_VARS]> FaceDataView;
+  typedef Kokkos::View<Real**[2*SPACE_DIM][NUM_QUAD_PTS][NUM_VARS]> FaceDataView;
 #else
   typedef Kokkos::View<Real***[NUM_VARS]> CellDataView;
-  typedef Kokkos::View<Real***[NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_VARS]> FaceDataView;
+  typedef Kokkos::View<Real***[2*SPACE_DIM][NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_VARS]> FaceDataView;
 #endif
 }
 

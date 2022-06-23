@@ -19,6 +19,10 @@ int main(int argc, char* argv[]) {
 
     // Create solver object to store and advance solution
     KFVM::Solver solver(ps);
+
+    // Take one step with the solver for testing
+    //solver.TakeStep();
+    solver.Solve();
   }
   Kokkos::finalize();
 }

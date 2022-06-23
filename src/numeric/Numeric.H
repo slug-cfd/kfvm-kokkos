@@ -21,13 +21,13 @@ namespace KFVM {
   namespace Numeric {
 
     // Lookup tables for specific values in Gaussian quadrature rules
-    template<uint16_t nQuad> struct QuadRuleLUT
+    template<int nQuad> struct QuadRuleLUT
     {
       static std::array<Real,nQuad> ab,wt;
     };
 
     // Quadrature rule with values accessible in non-host space
-    template<uint16_t nQuad> struct QuadRule
+    template<int nQuad> struct QuadRule
     {
       Kokkos::View<Real[nQuad]> ab,wt;
       QuadRule(): ab("QuadRuleAbscissae"),wt("QuadRuleWeights")
@@ -47,29 +47,27 @@ namespace KFVM {
       }
     };
 
-    template<uint16_t nStage> struct SSPCoeff;
+    template<int nStage> struct SSPCoeff;
     
     // See Ruuth-Spiteri 2002
     // https://doi.org/10.1137/S0036142901389025
     // This is scheme SSP(5,4) given in appendix A
     template<> struct SSPCoeff<5>
     {
-      constexpr static std::array<std::array<Real,5>,5> alpha =
-      { std::array<Real,5> {Real(1.0),0.0,0.0,0.0,0.0},
-        std::array<Real,5> {Real(0.44437049406734),Real(0.55562950593266),0.0,0.0,0.0},
-        std::array<Real,5> {Real(0.62010185138540),0.0,Real(0.37989814861460),0.0,0.0},
-        std::array<Real,5> {Real(0.17807995410773),0.0,0.0,Real(0.82192004589227),0.0},
-        std::array<Real,5> {
-          Real(0.00683325884039),0.0,Real(0.51723167208978),
-          Real(0.12759831133288),Real(0.34833675773694)}
-      };
-      constexpr static std::array<std::array<Real,5>,5> beta =
-      { std::array<Real,5> {Real(0.39175222700392),0.0,0.0,0.0,0.0},
-        std::array<Real,5> {0.0,Real(0.36841059262959),0.0,0.0,0.0},
-        std::array<Real,5> {0.0,0.0,Real(0.25189177424738),0.0,0.0},
-        std::array<Real,5> {0.0,0.0,0.0,Real(0.54497475021237),0.0},
-        std::array<Real,5> {0.0,0.0,0.0,Real(0.08460416338212),Real(0.22600748319395)}
-      };
+      // Coefficients on states
+      constexpr static Real a_1_0 = 1.0;
+      constexpr static Real a_2_0 = 0.44437049406734,a_2_1 = 0.55562950593266;
+      constexpr static Real a_3_0 = 0.62010185138540,a_3_2 = 0.37989814861460;
+      constexpr static Real a_4_0 = 0.17807995410773,a_4_3 = 0.82192004589227;
+      constexpr static Real a_5_0 = 0.00683325884039,a_5_2 = 0.51723167208978,a_5_3 = 0.12759831133288,a_5_4 = 0.34833675773694;
+
+      // Coefficients on RHS's
+      constexpr static Real b_1 = 0.39175222700392;
+      constexpr static Real b_2 = 0.36841059262959;
+      constexpr static Real b_3 = 0.25189177424738;
+      constexpr static Real b_4 = 0.54497475021237;
+      constexpr static Real b_5 = 0.08460416338212,b_5til = 0.22600748319395;
+      
     };
     
   } // End Numeric namespace

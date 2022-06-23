@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <string>
 
+#include "Dimension.H"
 #include "Types.H"
 
 #ifndef STENCIL_RADIUS
@@ -20,14 +21,14 @@ namespace KFVM {
     static std::array<std::string,NUM_VARS> varName;
     
     // Stencil settings
-    static constexpr uint16_t rad = STENCIL_RADIUS;
+    static constexpr int rad = STENCIL_RADIUS;
     Real gp_lFac,gp_bpow;
 
     // Solution file settings
     std::string baseName;
     
     // Domain and grid size
-    uint16_t nX,nY,nZ,nX_loc,nY_loc,nZ_loc;
+    int nX,nY,nZ,nX_loc,nY_loc,nZ_loc;
     Real xLo,xUp,yLo,yUp,zLo,zUp,dx,dy,dz;
 
     // Time stepping information
@@ -44,8 +45,8 @@ namespace KFVM {
     // Simple constructor
     // To be replaced by input file reader
     ProblemSetup(std::string a_name,
-                 uint16_t a_nX,uint16_t a_nY,uint16_t a_nZ,
-                 uint16_t a_nX_loc,uint16_t a_nY_loc,uint16_t a_nZ_loc,
+                 int a_nX,int a_nY,int a_nZ,
+                 int a_nX_loc,int a_nY_loc,int a_nZ_loc,
                  Real a_xLo,Real a_xUp,Real a_yLo,Real a_yUp,Real a_zLo,Real a_zUp,
                  Real gam):
       gp_lFac(Real(12.0)),
@@ -53,7 +54,7 @@ namespace KFVM {
       baseName(a_name),
       nX(a_nX),
       nY(a_nY),
-      nZ(a_nZ),
+      nZ(SPACE_DIM==3 ? a_nZ : 1),
       nX_loc(a_nX_loc),
       nY_loc(a_nY_loc),
       nZ_loc(a_nZ_loc),
@@ -66,7 +67,7 @@ namespace KFVM {
       dx((xUp - xLo)/nX),
       dy((yUp - yLo)/nY),
       dz((zUp - zLo)/nZ),
-      maxTimeSteps(2000),
+      maxTimeSteps(100),
       initialTime(Real(0.0)),
       finalTime(Real(0.2)),
       initialDeltaT(Real(1.e-8)),
