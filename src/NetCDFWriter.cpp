@@ -34,7 +34,7 @@ namespace KFVM {
     }
 #if (SPACE_DIM == 3)
     grid[2].resize(ps.nZ,0.0);
-    for (std::size_t n=0; n<ps.nZ; ++n) {
+    for (int n=0; n<ps.nZ; ++n) {
       grid[2][n] = ps.zLo + (static_cast<double>(n) + 0.5)*ps.dz;
     }
 #endif

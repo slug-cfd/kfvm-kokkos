@@ -4,6 +4,8 @@
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Macros.hpp>
+#include <Kokkos_Rank.hpp>
+#include <Kokkos_View.hpp>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -192,30 +194,38 @@ namespace KFVM {
     setFaceBCs(t);
     
     // Call Riemann solver
+    Real vBulk = 0.0,vEast = 0.0,vNorth = 0.0,vTop = 0.0;
     auto fluxRngPolicy_bulk =
       Kokkos::MDRangePolicy<Kokkos::Rank<SPACE_DIM>,Hydro::RiemannSolver_K<decltype(RS)>::BulkTag>({KFVM_D_DECL(0,0,0)},
 												   {KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
-    auto fluxRngPolicy_east = Kokkos::RangePolicy<Hydro::RiemannSolver_K<decltype(RS)>::EastTag>({0,ps.nY});
-    auto fluxRngPolicy_north = Kokkos::RangePolicy<Hydro::RiemannSolver_K<decltype(RS)>::NorthTag>({0,ps.nX});
-    Real vBulk,vEast,vNorth = 0.0;
     Kokkos::parallel_reduce("RiemannSolver::Bulk",fluxRngPolicy_bulk,
 			    Hydro::RiemannSolver_K<decltype(RS)>(RS,ps),
 			    Kokkos::Max<Real>(vBulk));
+#if (SPACE_DIM == 2)
+    auto fluxRngPolicy_east = Kokkos::RangePolicy<Hydro::RiemannSolver_K<decltype(RS)>::EastTag>({0,ps.nY});
+    auto fluxRngPolicy_north = Kokkos::RangePolicy<Hydro::RiemannSolver_K<decltype(RS)>::NorthTag>({0,ps.nX});
+#else
+    auto fluxRngPolicy_east =
+      Kokkos::MDRangePolicy<Kokkos::Rank<2>,Hydro::RiemannSolver_K<decltype(RS)>::EastTag>({0,0},{ps.nY,ps.nZ});
+    auto fluxRngPolicy_north =
+      Kokkos::MDRangePolicy<Kokkos::Rank<2>,Hydro::RiemannSolver_K<decltype(RS)>::NorthTag>({0,0},{ps.nX,ps.nZ});
+    auto fluxRngPolicy_top =
+      Kokkos::MDRangePolicy<Kokkos::Rank<2>,Hydro::RiemannSolver_K<decltype(RS)>::TopTag>({0,0},{ps.nX,ps.nY});
+    Kokkos::parallel_reduce("RiemannSolver::Top",fluxRngPolicy_top,
+			    Hydro::RiemannSolver_K<decltype(RS)>(RS,ps),
+			    Kokkos::Max<Real>(vTop));
+#endif
     Kokkos::parallel_reduce("RiemannSolver::East",fluxRngPolicy_east,
 			    Hydro::RiemannSolver_K<decltype(RS)>(RS,ps),
 			    Kokkos::Max<Real>(vEast));
     Kokkos::parallel_reduce("RiemannSolver::North",fluxRngPolicy_north,
 			    Hydro::RiemannSolver_K<decltype(RS)>(RS,ps),
 			    Kokkos::Max<Real>(vNorth));
-    Real maxVel = std::fmax(vBulk,std::fmax(vEast,vNorth));
-#if (SPACE_DIM == 3)    
-    Kokkos::parallel_reduce("RiemannSolver::Top",fluxRngPolicy_top,
-			    Hydro::RiemannSolver_K<decltype(RS)>(RS,ps),
-			    Kokkos::Max<Real>(maxVel));
-#endif
+    Real maxVel = std::fmax(vBulk,std::fmax(vEast,std::fmax(vNorth,vTop)));
 
     // Integrate fluxes and store into rhs
     Numeric::QuadRule<NUM_QUAD_PTS> qr;
+#if (SPACE_DIM == 2)
     Kokkos::parallel_for("IntegrateFlux",cellRngPolicy,
 			 KOKKOS_LAMBDA (const int i,const int j) {
 			   // Zero out RHS before accumulating fluxes
@@ -233,6 +243,26 @@ namespace KFVM {
 			     }
 			   }
 			 });
+#else
+    Kokkos::parallel_for("IntegrateFlux",cellRngPolicy,
+			 KOKKOS_LAMBDA (const int i,const int j,const int k) {
+			   // Zero out RHS before accumulating fluxes
+			   for (int nV=0; nV<NUM_VARS; nV++) {
+			     rhs(i,j,k,nV) = 0.0;
+			   }
+			   
+			   // Loop over quadrature points and components
+			   for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+			     for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+			       for (int nV=0; nV<NUM_VARS; nV++) {
+				 rhs(i,j,k,nV) += qr.wt(nQ)*qr.wt(nR)*(RS(i,j,k,FaceLabel::west,nQ,nR,nV) - RS(i,j,k,FaceLabel::east,nQ,nR,nV))/ps.dx;
+				 rhs(i,j,k,nV) += qr.wt(nQ)*qr.wt(nR)*(RS(i,j,k,FaceLabel::south,nQ,nR,nV) - RS(i,j,k,FaceLabel::north,nQ,nR,nV))/ps.dy;
+				 rhs(i,j,k,nV) += qr.wt(nQ)*qr.wt(nR)*(RS(i,j,k,FaceLabel::bottom,nQ,nR,nV) - RS(i,j,k,FaceLabel::top,nQ,nR,nV))/ps.dz;
+			       }
+			     }
+			   }
+			 });
+#endif
     
     return maxVel;
   }
@@ -243,57 +273,89 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
     (void) t;
   }
 
-  // Hardcoded to 2D outflow for now
+  // Hardcoded to outflow for now
+#if (SPACE_DIM == 2)
   void Solver::setFaceBCs(Real t)
   {
     (void) t;
     auto faceRngPolicy_ew = Kokkos::RangePolicy<>({1,ps.nY+1});
     auto faceRngPolicy_ns = Kokkos::RangePolicy<>({1,ps.nX+1});
 
-    Kokkos::parallel_for("FaceBCs::East",faceRngPolicy_ew,
+    Kokkos::parallel_for("FaceBCs::EastWest",faceRngPolicy_ew,
 			 KOKKOS_LAMBDA (const int j) {
 			   // Loop over quadrature points
 			   for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 			     // Loop over SimVars
-			       for (int nV=0; nV<NUM_VARS; nV++) {
-				 FaceVals(ps.nX+1,j,FaceLabel::west,nQ,nV) = FaceVals(ps.nX,j,FaceLabel::east,nQ,nV);
-			       }
+			     for (int nV=0; nV<NUM_VARS; nV++) {
+			       FaceVals(0,j,FaceLabel::east,nQ,nV) = FaceVals(1,j,FaceLabel::west,nQ,nV);
+			       FaceVals(ps.nX+1,j,FaceLabel::west,nQ,nV) = FaceVals(ps.nX,j,FaceLabel::east,nQ,nV);
+			     }
 			   }
 			 });
 
-    Kokkos::parallel_for("FaceBCs::West",faceRngPolicy_ew,
-			 KOKKOS_LAMBDA (const int j) {
-			   // Loop over quadrature points
-			   for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-			     // Loop over SimVars
-			       for (int nV=0; nV<NUM_VARS; nV++) {
-				 FaceVals(0,j,FaceLabel::east,nQ,nV) = FaceVals(1,j,FaceLabel::west,nQ,nV);
-			       }
-			   }
-			 });
-
-    Kokkos::parallel_for("FaceBCs::North",faceRngPolicy_ns,
+    Kokkos::parallel_for("FaceBCs::NorthSouth",faceRngPolicy_ns,
 			 KOKKOS_LAMBDA (const int i) {
 			   // Loop over quadrature points
 			   for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 			     // Loop over SimVars
-			       for (int nV=0; nV<NUM_VARS; nV++) {
-				 FaceVals(i,ps.nY+1,FaceLabel::south,nQ,nV) = FaceVals(i,ps.nY,FaceLabel::north,nQ,nV);
-			       }
-			   }
-			 });
-
-    Kokkos::parallel_for("FaceBCs::South",faceRngPolicy_ns,
-			 KOKKOS_LAMBDA (const int i) {
-			   // Loop over quadrature points
-			   for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-			     // Loop over SimVars
-			       for (int nV=0; nV<NUM_VARS; nV++) {
-				 FaceVals(i,0,FaceLabel::north,nQ,nV) = FaceVals(i,1,FaceLabel::south,nQ,nV);
-			       }
+			     for (int nV=0; nV<NUM_VARS; nV++) {
+			       FaceVals(i,0,FaceLabel::north,nQ,nV) = FaceVals(i,1,FaceLabel::south,nQ,nV);
+			       FaceVals(i,ps.nY+1,FaceLabel::south,nQ,nV) = FaceVals(i,ps.nY,FaceLabel::north,nQ,nV);
+			     }
 			   }
 			 });
   }
+#else
+  void Solver::setFaceBCs(Real t)
+  {
+    (void) t;
+    auto faceRngPolicy_ew = Kokkos::MDRangePolicy<Kokkos::Rank<SPACE_DIM - 1>>({1,1},{ps.nY + 1,ps.nZ + 1});
+    auto faceRngPolicy_ns = Kokkos::MDRangePolicy<Kokkos::Rank<SPACE_DIM - 1>>({1,1},{ps.nX + 1,ps.nZ + 1});
+    auto faceRngPolicy_tb = Kokkos::MDRangePolicy<Kokkos::Rank<SPACE_DIM - 1>>({1,1},{ps.nX + 1,ps.nY + 1});
+
+    Kokkos::parallel_for("FaceBCs::EastWest",faceRngPolicy_ew,
+			 KOKKOS_LAMBDA (const int j,const int k) {
+			   // Loop over quadrature points
+			   for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+			     for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+			       // Loop over SimVars
+			       for (int nV=0; nV<NUM_VARS; nV++) {
+				 FaceVals(0,j,k,FaceLabel::east,nQ,nR,nV) = FaceVals(1,j,k,FaceLabel::west,nQ,nR,nV);
+				 FaceVals(ps.nX+1,j,k,FaceLabel::west,nQ,nR,nV) = FaceVals(ps.nX,j,k,FaceLabel::east,nQ,nR,nV);
+			       }
+			     }
+			   }
+			 });
+
+    Kokkos::parallel_for("FaceBCs::NorthSouth",faceRngPolicy_ns,
+			 KOKKOS_LAMBDA (const int i,const int k) {
+			   // Loop over quadrature points
+			   for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+			     for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+			       // Loop over SimVars
+			       for (int nV=0; nV<NUM_VARS; nV++) {
+				 FaceVals(i,0,k,FaceLabel::north,nQ,nR,nV) = FaceVals(i,1,k,FaceLabel::south,nQ,nR,nV);
+				 FaceVals(i,ps.nY+1,k,FaceLabel::south,nQ,nR,nV) = FaceVals(i,ps.nY,k,FaceLabel::north,nQ,nR,nV);
+			       }
+			     }
+			   }
+			 });
+
+    Kokkos::parallel_for("FaceBCs::TopBottom",faceRngPolicy_tb,
+			 KOKKOS_LAMBDA (const int i,const int j) {
+			   // Loop over quadrature points
+			   for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+			     for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+			       // Loop over SimVars
+			       for (int nV=0; nV<NUM_VARS; nV++) {
+				 FaceVals(i,j,0,FaceLabel::top,nQ,nR,nV) = FaceVals(i,j,1,FaceLabel::bottom,nQ,nR,nV);
+				 FaceVals(i,j,ps.nZ+1,FaceLabel::bottom,nQ,nR,nV) = FaceVals(i,j,ps.nZ,FaceLabel::top,nQ,nR,nV);
+			       }
+			     }
+			   }
+			 });
+  }
+#endif
 
   void Solver::setIC()
   {

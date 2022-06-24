@@ -62,14 +62,7 @@ namespace KFVM {
 
       // 2D version
       KOKKOS_INLINE_FUNCTION
-      void operator()(const int i,const int j) const {
-	// Quadrature rule hard coded
-	Real h_ab[] = {0.0,
-		       -0.5384693101056830910363144/2.0,
-		       0.5384693101056830910363144/2.0,
-		       -0.9061798459386639927976268/2.0,
-		       0.9061798459386639927976268/2.0};
-	
+      void operator()(const int i,const int j) const {	
 	// Center of cell (i,j)
 	Real xCtr = geom.xCoord(i),yCtr = geom.yCoord(j);
 
@@ -82,8 +75,8 @@ namespace KFVM {
 	for (int nX=0; nX<nQuad; nX++) {
 	  for (int nY=0; nY<nQuad; nY++) {
 	    // Quadrature point
-	    Real abX = sclAb(xCtr,geom.dx,h_ab[nX]);
-	    Real abY = sclAb(yCtr,geom.dy,h_ab[nY]);
+	    Real abX = sclAb(xCtr,geom.dx,ab(nX));
+	    Real abY = sclAb(yCtr,geom.dy,ab(nY));
 
 	    // IC at quadrature point
 	    Real state[NUM_VARS];
@@ -92,6 +85,39 @@ namespace KFVM {
 	    // Add each component into IC
 	    for (int nV=0; nV<NUM_VARS; nV++) {
 	      v(i,j,nV) += wt(nX)*wt(nY)*state[nV];
+	    }
+	  }
+	}
+      }
+
+      // 3D version
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int j,const int k) const {
+	// Center of cell (i,j,k)
+	Real xCtr = geom.xCoord(i),yCtr = geom.yCoord(j),zCtr = geom.zCoord(k);
+
+	// Zero out state
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  v(i,j,k,nV) = 0.0;
+	}
+
+	// Loop over quadrature points and accumulate integral
+	for (int nX=0; nX<nQuad; nX++) {
+	  for (int nY=0; nY<nQuad; nY++) {
+	    for (int nZ=0; nZ<nQuad; nZ++) {
+	      // Quadrature point
+	      Real abX = sclAb(xCtr,geom.dx,ab(nX));
+	      Real abY = sclAb(yCtr,geom.dy,ab(nY));
+	      Real abZ = sclAb(zCtr,geom.dz,ab(nZ));
+
+	      // IC at quadrature point
+	      Real state[NUM_VARS];
+	      InitialCondition(abX,abY,abZ,state);
+
+	      // Add each component into IC
+	      for (int nV=0; nV<NUM_VARS; nV++) {
+		v(i,j,k,nV) += wt(nX)*wt(nY)*wt(nZ)*state[nV];
+	      }
 	    }
 	  }
 	}

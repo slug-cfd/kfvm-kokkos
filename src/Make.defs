@@ -8,4 +8,4 @@ CXXFLAGS = -g -Wall -Wextra -fmax-errors=2 $(DEFINES)
 KFVM_LIBS = -lnetcdf_c++4 -lnetcdf -lsz -lz -llapack -lblas -lgsl -lgslcblas -lcerf -lm
 
 # Suffix for executables
-OPT_SUFFIX = .R$(STENRAD).NQ$(NUMQUAD)
+OPT_SUFFIX = $(DIM)D.R$(STENRAD).NQ$(NUMQUAD)

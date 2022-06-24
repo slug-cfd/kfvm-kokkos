@@ -12,9 +12,8 @@ int main(int argc, char* argv[]) {
     
     // Create ProblemSetup object with all settings and configuration
     KFVM::ProblemSetup ps("data/Sod",
-			  128,16,1,
-			  16,16,1,
-			  0.0,1.0,0.0,0.125,0.0,1.0/128.0,
+			  128,16,16,
+			  0.0,1.0,0.0,0.125,0.0,0.125,
 			  1.4);
 
     // Create solver object to store and advance solution

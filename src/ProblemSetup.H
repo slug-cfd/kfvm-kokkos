@@ -28,8 +28,9 @@ namespace KFVM {
     std::string baseName;
     
     // Domain and grid size
-    int nX,nY,nZ,nX_loc,nY_loc,nZ_loc;
-    Real xLo,xUp,yLo,yUp,zLo,zUp,dx,dy,dz;
+    int nX,nY,nZ;
+    Real xLo,xUp,yLo,yUp,zLo,zUp;
+    Real dx,dy,dz;
 
     // Time stepping information
     std::size_t maxTimeSteps;
@@ -46,7 +47,6 @@ namespace KFVM {
     // To be replaced by input file reader
     ProblemSetup(std::string a_name,
                  int a_nX,int a_nY,int a_nZ,
-                 int a_nX_loc,int a_nY_loc,int a_nZ_loc,
                  Real a_xLo,Real a_xUp,Real a_yLo,Real a_yUp,Real a_zLo,Real a_zUp,
                  Real gam):
       gp_lFac(Real(12.0)),
@@ -55,9 +55,6 @@ namespace KFVM {
       nX(a_nX),
       nY(a_nY),
       nZ(SPACE_DIM==3 ? a_nZ : 1),
-      nX_loc(a_nX_loc),
-      nY_loc(a_nY_loc),
-      nZ_loc(a_nZ_loc),
       xLo(a_xLo),
       xUp(a_xUp),
       yLo(a_yLo),
