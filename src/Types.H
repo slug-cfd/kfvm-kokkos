@@ -5,11 +5,15 @@
 // Purpose: Define any types needed throughout the code base
 
 #include <Kokkos_Core.hpp>
+#include <cstddef>
 
 #include "Dimension.H"
 #include "SimVar.H"
 
 namespace KFVM {
+
+  // Integer type for indices
+  typedef uint32_t idx_t;
 
   // Set floating point precision for solver
 #ifdef KFVM_SINGLE_PREC
@@ -18,9 +22,6 @@ namespace KFVM {
   typedef double Real;
 #endif
 
-  // Kernel function types
-  typedef std::function<std::complex<double>(std::complex<double>,double,double)> KernelFunc;
-  
   // Array of fluid properties
   typedef std::array<Real,NUM_PROPS> FluidProperties;
 

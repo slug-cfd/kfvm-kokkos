@@ -32,18 +32,18 @@ namespace KFVM {
       Kokkos::View<Real[nQuad]> ab,wt;
       QuadRule(): ab("QuadRuleAbscissae"),wt("QuadRuleWeights")
       {
-	// Create unmanaged views to wrap LUT values above
-	Kokkos::View<Real[nQuad]> h_ab(QuadRuleLUT<nQuad>::ab.data());
-	Kokkos::View<Real[nQuad]> h_wt(QuadRuleLUT<nQuad>::wt.data());
+	// Create host mirror and copy in from LUT
+	auto h_ab = Kokkos::create_mirror_view(ab);
+	auto h_wt = Kokkos::create_mirror_view(wt);
 
-	// Copy to intermediate views on the device
-	// This seems stupid
-	auto ab_tmp = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultExecutionSpace::memory_space(),h_ab);
-	auto wt_tmp = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultExecutionSpace::memory_space(),h_wt);
-
-	// Copy to the actual views
-	Kokkos::deep_copy(ab,ab_tmp);
-	Kokkos::deep_copy(wt,wt_tmp);
+	for (int nQ=0; nQ<nQuad; nQ++) {
+	  h_ab(nQ) = QuadRuleLUT<nQuad>::ab[nQ];
+	  h_wt(nQ) = QuadRuleLUT<nQuad>::wt[nQ];
+	}
+	
+	// Copy to views on the right memory space
+	Kokkos::deep_copy(ab,h_ab);
+	Kokkos::deep_copy(wt,h_wt);
       }
     };
 

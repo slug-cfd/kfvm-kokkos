@@ -15,6 +15,7 @@
 #include "ProblemSetup.H"
 #include "Stencil.H"
 #include "NetCDFWriter.H"
+#include "numeric/Numeric.H"
 
 namespace KFVM {
 
@@ -23,6 +24,8 @@ namespace KFVM {
     const ProblemSetup& ps;
     // IO object
     NetCDFWriter netCDFWriter;
+    // Quadrature rule for face/cell integration
+    Numeric::QuadRule<NUM_QUAD_PTS> qr;
     // Grid geometry data
     Geometry geom;
     // Cell-based data
@@ -36,40 +39,41 @@ namespace KFVM {
     auto trimCellHalo(CellDataView v)
     {
       return Kokkos::subview(v,KFVM_D_DECL(
-					   Kokkos::make_pair(int(ps.rad),int(ps.nX + ps.rad)),
-					   Kokkos::make_pair(int(ps.rad),int(ps.nY + ps.rad)),
-					   Kokkos::make_pair(int(ps.rad),int(ps.nZ + ps.rad))),
+					   Kokkos::make_pair(ps.rad,ps.nX + ps.rad),
+					   Kokkos::make_pair(ps.rad,ps.nY + ps.rad),
+					   Kokkos::make_pair(ps.rad,ps.nZ + ps.rad)),
 			     Kokkos::ALL);
     }
     auto trimFaceHalo(FaceDataView v)
     {
 #if (SPACE_DIM == 2)
       return Kokkos::subview(v,
-			     Kokkos::make_pair(1,int(ps.nX + 1)),
-			     Kokkos::make_pair(1,int(ps.nY + 1)),
+			     Kokkos::make_pair(idx_t(1),ps.nX + 1),
+			     Kokkos::make_pair(idx_t(1),ps.nY + 1),
 			     Kokkos::ALL,
 			     Kokkos::ALL,
 			     Kokkos::ALL);
 #else
       return Kokkos::subview(v,
-			     Kokkos::make_pair(1,int(ps.nX + 1)),
-			     Kokkos::make_pair(1,int(ps.nY + 1)),
-			     Kokkos::make_pair(1,int(ps.nZ + 1)),
+			     Kokkos::make_pair(idx_t(1),ps.nX + 1),
+			     Kokkos::make_pair(idx_t(1),ps.nY + 1),
+			     Kokkos::make_pair(idx_t(1),ps.nZ + 1),
 			     Kokkos::ALL,
 			     Kokkos::ALL,
 			     Kokkos::ALL,
 			     Kokkos::ALL);
 #endif
     }
+    
     void setIC();
-    Real evalRHS(CellDataView,CellDataView,Real);
-    Real findFluxes();
-    void setCellBCs(CellDataView,Real);
-    void setFaceBCs(Real);
   public:
     Solver(const ProblemSetup&);
     void TakeStep();
     void Solve();
+    Real evalRHS(CellDataView,CellDataView,Real);
+    Real findFluxes();
+    void setCellBCs(CellDataView,Real);
+    void setFaceBCs(Real);
   };
 
 }

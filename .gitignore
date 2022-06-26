@@ -8,6 +8,7 @@ user/Make.defs
 *.d
 *.a
 *.tmp
+*.dat
 *~
 vgcore.*
 python/__pycache__

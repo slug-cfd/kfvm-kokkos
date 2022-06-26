@@ -24,30 +24,30 @@ namespace KFVM {
   {
     // Fill coordinate vectors
     grid[0].resize(ps.nX,0.0);
-    for (int n=0; n<ps.nX; ++n) {
+    for (idx_t n=0; n<ps.nX; ++n) {
       grid[0][n] = ps.xLo + (static_cast<double>(n) + 0.5)*ps.dx;
     }
     
     grid[1].resize(ps.nY,0.0);
-    for (int n=0; n<ps.nY; ++n) {
+    for (idx_t n=0; n<ps.nY; ++n) {
       grid[1][n] = ps.yLo + (static_cast<double>(n) + 0.5)*ps.dy;
     }
 #if (SPACE_DIM == 3)
     grid[2].resize(ps.nZ,0.0);
-    for (int n=0; n<ps.nZ; ++n) {
+    for (idx_t n=0; n<ps.nZ; ++n) {
       grid[2][n] = ps.zLo + (static_cast<double>(n) + 0.5)*ps.dz;
     }
 #endif
   }
 
-  std::string NetCDFWriter::FileName(int step)
+  std::string NetCDFWriter::FileName(idx_t step)
   {
     std::ostringstream os;
     os << ps.baseName << std::setw(6) << std::setfill('0') << step << ".nc";
     return os.str();
   }
 
-  void NetCDFWriter::write(CellDataView U,int step,double time)
+  void NetCDFWriter::write(CellDataView U,idx_t step,double time)
   {
     // Create filename and open
     std::string fileName = FileName(step);
@@ -68,9 +68,9 @@ namespace KFVM {
 #if (SPACE_DIM == 3)
       auto zDim = outFile.addDim("z",gridSize[2]);
       auto zVar = outFile.addVar("z",netCDF::ncDouble,zDim);
-      std::vector<netCDF::NcDim> dimVec({tDim,zDim,yDim,xDim});
+      std::vector<netCDF::NcDim> dimVec({zDim,yDim,xDim});
 #else
-      std::vector<netCDF::NcDim> dimVec({tDim,yDim,xDim});
+      std::vector<netCDF::NcDim> dimVec({yDim,xDim});
 #endif
 
       // Write out solution variable info
@@ -80,21 +80,21 @@ namespace KFVM {
       }
 
       // Write out time and domain variables
-      tVar.putVar(&time);
       xVar.putVar(grid[0].data());
       yVar.putVar(grid[1].data());
 #if (SPACE_DIM == 3)
       zVar.putVar(grid[2].data());
 #endif
+      tVar.putVar(&time);
     
       // Write out solution variables, have to make temp copy due to slicing
       auto h_U = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),U);
       for (int nV=0; nV<NUM_VARS; ++nV) {
-	for (int nX=0; nX<ps.nX; ++nX) {
-	  for (int nY=0; nY<ps.nY; ++nY) {
-	    for (int nZ=0; nZ<ps.nZ; ++nZ) {
+	for (idx_t nX=0; nX<ps.nX; ++nX) {
+	  for (idx_t nY=0; nY<ps.nY; ++nY) {
+	    for (idx_t nZ=0; nZ<ps.nZ; ++nZ) {
 	      //std::size_t idx = nZ + ps.nZ*nY + ps.nZ*ps.nY*nX;
-	      std::size_t idx = nX + ps.nX*nY + ps.nX*ps.nY*nZ;
+	      idx_t idx = nX + ps.nX*nY + ps.nX*ps.nY*nZ;
 	      solTmp[idx] = h_U(KFVM_D_DECL(nX + ps.rad,nY + ps.rad,nZ + ps.rad),nV);
 	    }
 	  }

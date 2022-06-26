@@ -21,56 +21,57 @@ namespace KFVM {
     static std::array<std::string,NUM_VARS> varName;
     
     // Stencil settings
-    static constexpr int rad = STENCIL_RADIUS;
+    static constexpr idx_t rad = STENCIL_RADIUS;
     Real gp_lFac,gp_bpow;
 
     // Solution file settings
     std::string baseName;
     
     // Domain and grid size
-    int nX,nY,nZ;
+    idx_t nX,nY,nZ;
     Real xLo,xUp,yLo,yUp,zLo,zUp;
     Real dx,dy,dz;
 
     // Time stepping information
-    std::size_t maxTimeSteps;
+    idx_t maxTimeSteps;
     Real initialTime,finalTime,initialDeltaT;
     Real cfl;
 
     // File output information
-    std::size_t plotFreq;
+    idx_t plotFreq;
 
     // Fluid properties array
     FluidProperties fluidProp;
 
     // Simple constructor
     // To be replaced by input file reader
-    ProblemSetup(std::string a_name,
-                 int a_nX,int a_nY,int a_nZ,
-                 Real a_xLo,Real a_xUp,Real a_yLo,Real a_yUp,Real a_zLo,Real a_zUp,
-                 Real gam):
+    ProblemSetup(std::string name_,
+                 idx_t nX_,idx_t nY_,idx_t nZ_,
+                 Real xLo_,Real xUp_,Real yLo_,Real yUp_,Real zLo_,Real zUp_,
+		 Real finalTime_,
+                 Real gam_):
       gp_lFac(Real(12.0)),
       gp_bpow(Real(STENCIL_RADIUS)),
-      baseName(a_name),
-      nX(a_nX),
-      nY(a_nY),
-      nZ(SPACE_DIM==3 ? a_nZ : 1),
-      xLo(a_xLo),
-      xUp(a_xUp),
-      yLo(a_yLo),
-      yUp(a_yUp),
-      zLo(a_zLo),
-      zUp(a_zUp),
+      baseName(name_),
+      nX(nX_),
+      nY(nY_),
+      nZ(SPACE_DIM==3 ? nZ_ : 1),
+      xLo(xLo_),
+      xUp(xUp_),
+      yLo(yLo_),
+      yUp(yUp_),
+      zLo(zLo_),
+      zUp(zUp_),
       dx((xUp - xLo)/nX),
       dy((yUp - yLo)/nY),
       dz((zUp - zLo)/nZ),
-      maxTimeSteps(100),
+      maxTimeSteps(10000),
       initialTime(Real(0.0)),
-      finalTime(Real(0.2)),
+      finalTime(finalTime_),
       initialDeltaT(Real(1.e-8)),
-      cfl(Real(0.75)),
-      plotFreq(20),
-      fluidProp({gam})
+      cfl(SPACE_DIM==3 ? 0.5 : 0.75),
+      plotFreq(50),
+      fluidProp({gam_})
       {
       }
   };

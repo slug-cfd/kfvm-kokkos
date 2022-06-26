@@ -13,25 +13,15 @@
 #include <cstdint>
 #include <cstdio>
 
-#include "../Types.H"
-#include "../ProblemSetup.H"
-#include "../Geometry.H"
+#include "Types.H"
+#include "ProblemSetup.H"
+#include "Geometry.H"
 #include "Numeric.H"
 
 namespace KFVM {
 
   namespace {
-    KOKKOS_INLINE_FUNCTION
-    void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
-    {
-      (void) y;
-      (void) z;
-      state[SimVar::dens] = x<0.5 ? 1.0 : 0.125;
-      state[SimVar::momx] = 0.0;
-      state[SimVar::momy] = 0.0;
-      state[SimVar::momz] = 0.0;
-      state[SimVar::etot] = (x<0.5 ? 1.0 : 0.1)/0.4;
-    }
+#include "InitialCondition.H"
   }
 
   namespace Numeric {
@@ -122,9 +112,235 @@ namespace KFVM {
 	  }
 	}
       }
-      
+    };
+    
+
+    template<class RhsViewType,class FluxViewType,class QRViewType,int nQuad>
+    struct IntegrateFlux_K
+    {
+      RhsViewType rhs;
+      FluxViewType flux;
+      QRViewType ab,wt;
+      Geometry geom;
+
+      IntegrateFlux_K(const RhsViewType& rhs_,
+		      const FluxViewType& flux_,
+		      const QRViewType& ab_,
+		      const QRViewType& wt_,
+		      const Geometry& geom_):
+	rhs(rhs_),
+	flux(flux_),
+	ab(ab_),
+	wt(wt_),
+	geom(geom_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int j) const {
+	// Zero out RHS before accumulating fluxes
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  rhs(i,j,nV) = 0.0;
+	}
+			   
+	// Loop over quadrature points and components
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    // x-direction
+	    rhs(i,j,nV) += wt(nQ)*(flux(i,j,FaceLabel::west,nQ,nV) -
+				   flux(i,j,FaceLabel::east,nQ,nV))/geom.dx;
+	    // y-direction
+	    rhs(i,j,nV) += wt(nQ)*(flux(i,j,FaceLabel::south,nQ,nV) -
+				   flux(i,j,FaceLabel::north,nQ,nV))/geom.dy;
+	  }
+	}
+      }
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int j,const int k) const {
+	// Zero out RHS before accumulating fluxes
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  rhs(i,j,k,nV) = 0.0;
+	}
+			   
+	// Loop over quadrature points and components
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::west,nQ,nR,nV) -
+					      flux(i,j,k,FaceLabel::east,nQ,nR,nV))/geom.dx;
+	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::south,nQ,nR,nV) -
+					      flux(i,j,k,FaceLabel::north,nQ,nR,nV))/geom.dy;
+	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::bottom,nQ,nR,nV) -
+					      flux(i,j,k,FaceLabel::top,nQ,nR,nV))/geom.dz;
+	    }
+	  }
+	}
+      }
     };
 
+    template<class UViewType,class KViewType,int nStage>
+    struct SSP45_S1_K {
+      UViewType U1,U;
+      KViewType K;
+      SSPCoeff<nStage> rk;
+      Real dt;
+
+      SSP45_S1_K(const UViewType& U1_,
+		 const UViewType& U_,
+		 const KViewType& K_,
+		 const SSPCoeff<nStage>& rk_,
+		 Real dt_):
+	U1(U1_),
+	U(U_),
+	K(K_),
+	rk(rk_),
+	dt(dt_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  U1(KFVM_D_DECL(i,j,k),nV) =
+	    rk.a_1_0*U(KFVM_D_DECL(i,j,k),nV) + dt*rk.b_1*K(KFVM_D_DECL(i,j,k),nV);
+	}
+      }
+    };
+
+    template<class UViewType,class KViewType,int nStage>
+    struct SSP45_S2_K {
+      UViewType U2,U,U1;
+      KViewType K;
+      SSPCoeff<nStage> rk;
+      Real dt;
+
+      SSP45_S2_K(const UViewType& U2_,
+		 const UViewType& U_,
+		 const UViewType& U1_,
+		 const KViewType& K_,
+		 const SSPCoeff<nStage>& rk_,
+		 Real dt_):
+	U2(U2_),
+	U(U_),
+	U1(U1_),
+	K(K_),
+	rk(rk_),
+	dt(dt_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    U2(KFVM_D_DECL(i,j,k),nV) =
+	      rk.a_2_0*U(KFVM_D_DECL(i,j,k),nV) +
+	      rk.a_2_1*U1(KFVM_D_DECL(i,j,k),nV) +
+	      dt*rk.b_2*K(KFVM_D_DECL(i,j,k),nV);
+	  }
+	}
+      }
+    };
+
+    template<class UViewType,class KViewType,int nStage>
+    struct SSP45_S3_K {
+      UViewType U3,U,U2;
+      KViewType K;
+      SSPCoeff<nStage> rk;
+      Real dt;
+
+      SSP45_S3_K(const UViewType& U3_,
+		 const UViewType& U_,
+		 const UViewType& U2_,
+		 const KViewType& K_,
+		 const SSPCoeff<nStage>& rk_,
+		 Real dt_):
+	U3(U3_),
+	U(U_),
+	U2(U2_),
+	K(K_),
+	rk(rk_),
+	dt(dt_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    U3(KFVM_D_DECL(i,j,k),nV) =
+	      rk.a_3_0*U(KFVM_D_DECL(i,j,k),nV) +
+	      rk.a_3_2*U2(KFVM_D_DECL(i,j,k),nV) +
+	      dt*rk.b_3*K(KFVM_D_DECL(i,j,k),nV);
+	  }
+	}
+      }
+    };
+
+    template<class UViewType,class KViewType,int nStage>
+    struct SSP45_S4_K {
+      UViewType U4,U,U3;
+      KViewType K;
+      SSPCoeff<nStage> rk;
+      Real dt;
+
+      SSP45_S4_K(const UViewType& U4_,
+		 const UViewType& U_,
+		 const UViewType& U3_,
+		 const KViewType& K_,
+		 const SSPCoeff<nStage>& rk_,
+		 Real dt_):
+	U4(U4_),
+	U(U_),
+	U3(U3_),
+	K(K_),
+	rk(rk_),
+	dt(dt_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    U4(KFVM_D_DECL(i,j,k),nV) =
+	      rk.a_4_0*U(KFVM_D_DECL(i,j,k),nV) +
+	      rk.a_4_3*U3(KFVM_D_DECL(i,j,k),nV) +
+	      dt*rk.b_4*K(KFVM_D_DECL(i,j,k),nV);
+	  }
+	}
+      }
+    };
+
+    template<class UViewType,class KViewType,int nStage>
+    struct SSP45_S5_K {
+      UViewType U,U2,U3,U4;
+      KViewType K,Ktil;
+      SSPCoeff<nStage> rk;
+      Real dt;
+
+      SSP45_S5_K(const UViewType& U_,
+		 const UViewType& U2_,
+		 const UViewType& U3_,
+		 const UViewType& U4_,
+		 const KViewType& K_,
+		 const KViewType& Ktil_,
+		 const SSPCoeff<nStage>& rk_,
+		 Real dt_):
+	U(U_),
+	U2(U2_),
+	U3(U3_),
+	U4(U4_),
+	K(K_),
+	Ktil(Ktil_),
+	rk(rk_),
+	dt(dt_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  U(KFVM_D_DECL(i,j,k),nV) =
+	    rk.a_5_0*U(KFVM_D_DECL(i,j,k),nV) +
+	    rk.a_5_2*U2(KFVM_D_DECL(i,j,k),nV) +
+	    rk.a_5_3*U3(KFVM_D_DECL(i,j,k),nV) +
+	    rk.a_5_4*U4(KFVM_D_DECL(i,j,k),nV) +
+	    dt*rk.b_5*K(KFVM_D_DECL(i,j,k),nV) +
+	    dt*rk.b_5til*Ktil(KFVM_D_DECL(i,j,k),nV);
+	}
+      }
+    };
+    
   } // End numeric namespace
   
 } // End KFVM namespace
