@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <string>
 
+#include "BoundaryConditions_K.H"
 #include "Dimension.H"
 #include "Types.H"
 
@@ -18,7 +19,11 @@ namespace KFVM {
   struct ProblemSetup
   {
     // Static members to be set by the user
+    // Names for variables used in the solution files
     static std::array<std::string,NUM_VARS> varName;
+    // Array of boundary conditions
+    // Note: always 6 entries (2*3) even in 2D
+    static std::array<BoundaryConditions::BCType,6> bcType;
     
     // Stencil settings
     static constexpr idx_t rad = STENCIL_RADIUS;
@@ -70,7 +75,7 @@ namespace KFVM {
       finalTime(finalTime_),
       initialDeltaT(Real(1.e-8)),
       cfl(SPACE_DIM==3 ? 0.5 : 0.75),
-      plotFreq(50),
+      plotFreq(20),
       fluidProp({gam_})
       {
       }
