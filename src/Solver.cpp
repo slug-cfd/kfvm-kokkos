@@ -13,18 +13,19 @@
 #include <impl/Kokkos_HostThreadTeam.hpp>
 #include <impl/Kokkos_Profiling.hpp>
 
-#include "Dimension.H"
-#include "ProblemSetup.H"
 #include "SimVar.H"
 #include "Types.H"
+#include "Dimension.H"
+#include "ProblemSetup.H"
+#include "BoundaryConditions.H"
 #include "BoundaryConditions_K.H"
 #include "NetCDFWriter.H"
 #include "numeric/Numeric.H"
 #include "numeric/Numeric_K.H"
 #include "hydro/Hydro_K.H"
+#include "stencil/Stencil_K.H"
 
 #include "Solver.H"
-#include "stencil/Stencil_K.H"
 
 namespace KFVM {
   
@@ -187,297 +188,144 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
     using BoundaryConditions::CellBcBottom_K;
     using BoundaryConditions::CellBcTop_K;
     
-    (void) t;
     Kokkos::Profiling::pushRegion("Solver::setCellBCs");
 
 #if (SPACE_DIM == 2)
-    // Set western BCs
-    switch (ps.bcType[FaceLabel::west]) {
-    case BCType::periodic :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Periodic>({ps.rad,ps.rad + ps.nY});
-	Kokkos::parallel_for("CellBCs::West",rngPolicy,
-			     CellBcWest_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nX));
-      }
-      break;
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Outflow>({ps.rad,ps.rad + ps.nY});
-	Kokkos::parallel_for("CellBCs::West",rngPolicy,
-			     CellBcWest_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nX));
-      }
-      break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Reflecting>({ps.rad,ps.rad + ps.nY});
-	Kokkos::parallel_for("CellBCs::West",rngPolicy,
-			     CellBcWest_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nX));
-      }
-      break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
-      break;
-      // Default should never be reached, add error handling here later
-    }
-    
-    // Set eastern BCs
-    switch (ps.bcType[FaceLabel::east]) {
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Outflow>({ps.rad,ps.rad + ps.nY});
-	Kokkos::parallel_for("CellBCs::East",rngPolicy,
-			     CellBcEast_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nX));
-      }
-      break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Reflecting>({ps.rad,ps.rad + ps.nY});
-	Kokkos::parallel_for("CellBCs::East",rngPolicy,
-			     CellBcEast_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nX));
-      }
-      break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
-      break;
-    default:
-      if (ps.bcType[FaceLabel::east] != BCType::periodic) {
-	// Should never happen, need error handling later
-      }
-    }
-
-    // set southern BCs
-    switch (ps.bcType[FaceLabel::south]) {
-    case BCType::periodic :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Periodic>({0,ps.nX + 2*ps.rad});
-	Kokkos::parallel_for("CellBCs::South",rngPolicy,
-			     CellBcSouth_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nY));
-      }
-      break;
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Outflow>({0,ps.nX + 2*ps.rad});
-	Kokkos::parallel_for("CellBCs::South",rngPolicy,
-			     CellBcSouth_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nY));
-      }
-      break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Reflecting>({0,ps.nX + 2*ps.rad});
-	Kokkos::parallel_for("CellBCs::South",rngPolicy,
-			     CellBcSouth_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nY));
-      }
-      break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
-      break;
-      // Default should never be reached, add error handling here later
-    }
-
-    // set northern BCs
-    switch (ps.bcType[FaceLabel::north]) {
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Outflow>({0,ps.nX + 2*ps.rad});
-	Kokkos::parallel_for("CellBCs::North",rngPolicy,
-			     CellBcNorth_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nY));
-      }
-      break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Reflecting>({0,ps.nX + 2*ps.rad});
-	Kokkos::parallel_for("CellBCs::North",rngPolicy,
-			     CellBcNorth_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nY));
-      }
-      break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
-      break;
-    default:
-      if (ps.bcType[FaceLabel::north] != BCType::periodic) {
-	// Should never happen, need error handling later
-      }
-    }
+    auto rngPolicy_ew = Kokkos::RangePolicy<>({ps.rad,ps.rad + ps.nY});
+    auto rngPolicy_ns = Kokkos::RangePolicy<>({0,ps.nX + 2*ps.rad});
 #else
-    // Set western BCs
+    auto rngPolicy_ew = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({int(ps.rad),int(ps.rad)},
+							       {int(ps.nY + ps.rad),int(ps.nZ + ps.rad)});
+    auto rngPolicy_ns = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,int(ps.rad)},
+							       {int(ps.nX + 2*ps.rad),int(ps.nZ + ps.rad)});
+    auto rngPolicy_tb = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},
+							       {int(ps.nX + 2*ps.rad),int(ps.nY + 2*ps.rad)});
+#endif
+
+    // Western Boundary
     switch (ps.bcType[FaceLabel::west]) {
-    case BCType::periodic :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Periodic>({int(ps.rad),int(ps.rad)},
-									     {int(ps.nY + ps.rad),int(ps.nZ + ps.rad)});
-	Kokkos::parallel_for("CellBCs::West",rngPolicy,
-			     CellBcWest_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nX));
-      }
+    case BCType::outflow:
+      Kokkos::parallel_for("CellBCs::West",rngPolicy_ew,
+			   CellBcWest_K<decltype(sol_halo),BoundaryConditions::outflow>(sol_halo,ps.rad,ps.nX));
       break;
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({int(ps.rad),int(ps.rad)},
-									    {int(ps.nY + ps.rad),int(ps.nZ + ps.rad)});
-	Kokkos::parallel_for("CellBCs::West",rngPolicy,
-			     CellBcWest_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nX));
-      }
+    case BCType::reflecting:
+      Kokkos::parallel_for("CellBCs::West",rngPolicy_ew,
+			   CellBcWest_K<decltype(sol_halo),BoundaryConditions::reflecting>(sol_halo,ps.rad,ps.nX));
       break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({int(ps.rad),int(ps.rad)},
-									       {int(ps.nY + ps.rad),int(ps.nZ + ps.rad)});
-	Kokkos::parallel_for("CellBCs::West",rngPolicy,
-			     CellBcWest_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nX));
-      }
+    case BCType::periodic:
+      Kokkos::parallel_for("CellBCs::West",rngPolicy_ew,
+			   CellBcWest_K<decltype(sol_halo),BoundaryConditions::periodic>(sol_halo,ps.rad,ps.nX));
       break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
+    case BCType::user:
+      Kokkos::parallel_for("CellBCs::West",rngPolicy_ew,
+			   CellBcWest_K<decltype(sol_halo),BoundaryConditions::user>(sol_halo,geom,ps.rad,ps.nX,t));
       break;
-      // Default should never be reached, add error handling here later
+    default:
+      std::printf("Warning: Western cell BC undefined. How did this even compile?\n");
     }
-    
-    // Set eastern BCs
+
+    // Eastern Boundary
     switch (ps.bcType[FaceLabel::east]) {
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({int(ps.rad),int(ps.rad)},
-									    {int(ps.nY + ps.rad),int(ps.nZ + ps.rad)});
-	Kokkos::parallel_for("CellBCs::East",rngPolicy,
-			     CellBcEast_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nX));
-      }
+    case BCType::outflow:
+      Kokkos::parallel_for("CellBCs::East",rngPolicy_ew,
+			   CellBcEast_K<decltype(sol_halo),BoundaryConditions::outflow>(sol_halo,ps.rad,ps.nX));
       break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({int(ps.rad),int(ps.rad)},
-									       {int(ps.nY + ps.rad),int(ps.nZ + ps.rad)});
-	Kokkos::parallel_for("CellBCs::East",rngPolicy,
-			     CellBcEast_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nX));
-      }
+    case BCType::reflecting:
+      Kokkos::parallel_for("CellBCs::East",rngPolicy_ew,
+			   CellBcEast_K<decltype(sol_halo),BoundaryConditions::reflecting>(sol_halo,ps.rad,ps.nX));
       break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
+    case BCType::user:
+      Kokkos::parallel_for("CellBCs::East",rngPolicy_ew,
+			   CellBcEast_K<decltype(sol_halo),BoundaryConditions::user>(sol_halo,geom,ps.rad,ps.nX,t));
       break;
     default:
       if (ps.bcType[FaceLabel::east] != BCType::periodic) {
-	// Should never happen, need error handling later
+	std::printf("Warning: Eastern cell BC undefined. Is west set to periodic and east not?\n");
       }
     }
 
-    // set southern BCs
+    // Southern Boundary
     switch (ps.bcType[FaceLabel::south]) {
     case BCType::periodic :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Periodic>({0,int(ps.rad)},{int(ps.nX + 2*ps.rad),int(ps.nZ + ps.rad)});
-	Kokkos::parallel_for("CellBCs::South",rngPolicy,
-			     CellBcSouth_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nY));
-      }
+      Kokkos::parallel_for("CellBCs::South",rngPolicy_ns,
+			   CellBcSouth_K<decltype(sol_halo),BCType::periodic>(sol_halo,ps.rad,ps.nY));
       break;
     case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({0,int(ps.rad)},{int(ps.nX + 2*ps.rad),int(ps.nZ + ps.rad)});
-	Kokkos::parallel_for("CellBCs::South",rngPolicy,
-			     CellBcSouth_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nY));
-      }
+      Kokkos::parallel_for("CellBCs::South",rngPolicy_ns,
+			   CellBcSouth_K<decltype(sol_halo),BCType::outflow>(sol_halo,ps.rad,ps.nY));
       break;
     case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({0,int(ps.rad)},{int(ps.nX + 2*ps.rad),int(ps.nZ + ps.rad)});
-	Kokkos::parallel_for("CellBCs::South",rngPolicy,
-			     CellBcSouth_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nY));
-      }
+      Kokkos::parallel_for("CellBCs::South",rngPolicy_ns,
+			   CellBcSouth_K<decltype(sol_halo),BCType::reflecting>(sol_halo,ps.rad,ps.nY));
       break;
     case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
+      Kokkos::parallel_for("CellBCs::South",rngPolicy_ns,
+			   CellBcSouth_K<decltype(sol_halo),BCType::user>(sol_halo,geom,ps.rad,ps.nY,t));
       break;
-      // Default should never be reached, add error handling here later
+    default:
+      std::printf("Warning: Southern cell BC undefined. How did this even compile?\n");
     }
 
-    // set northern BCs
+    // Northern Boundary
     switch (ps.bcType[FaceLabel::north]) {
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({0,int(ps.rad)},{int(ps.nX + 2*ps.rad),int(ps.nZ + ps.rad)});
-	Kokkos::parallel_for("CellBCs::North",rngPolicy,
-			     CellBcNorth_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nY));
-      }
+    case BCType::outflow:
+      Kokkos::parallel_for("CellBCs::North",rngPolicy_ns,
+			   CellBcNorth_K<decltype(sol_halo),BCType::outflow>(sol_halo,ps.rad,ps.nY));
       break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({0,int(ps.rad)},{int(ps.nX + 2*ps.rad),int(ps.nZ + ps.rad)});
-	Kokkos::parallel_for("CellBCs::North",rngPolicy,
-			     CellBcNorth_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nY));
-      }
+    case BCType::reflecting:
+      Kokkos::parallel_for("CellBCs::North",rngPolicy_ns,
+			   CellBcNorth_K<decltype(sol_halo),BCType::reflecting>(sol_halo,ps.rad,ps.nY));
       break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
+    case BCType::user:
+      Kokkos::parallel_for("CellBCs::North",rngPolicy_ns,
+			   CellBcNorth_K<decltype(sol_halo),BCType::user>(sol_halo,geom,ps.rad,ps.nY,t));
       break;
     default:
       if (ps.bcType[FaceLabel::north] != BCType::periodic) {
-	// Should never happen, need error handling later
+	std::printf("Warning: Northern cell BC undefined. Is south set to periodic and north not?\n");
       }
     }
-
-    // set bottom BCs
+    
+#if (SPACE_DIM == 3)
+    // Bottom Boundary
     switch (ps.bcType[FaceLabel::bottom]) {
     case BCType::periodic :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Periodic>({0,0},{int(ps.nX + 2*ps.rad),int(ps.nY + 2*ps.rad)});
-	Kokkos::parallel_for("CellBCs::Bottom",rngPolicy,
-			     CellBcBottom_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nZ));
-      }
+      Kokkos::parallel_for("CellBCs::Bottom",rngPolicy_tb,
+			   CellBcBottom_K<decltype(sol_halo),BCType::periodic>(sol_halo,ps.rad,ps.nZ));
       break;
     case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({0,0},{int(ps.nX + 2*ps.rad),int(ps.nY + 2*ps.rad)});
-	Kokkos::parallel_for("CellBCs::Bottom",rngPolicy,
-			     CellBcBottom_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nZ));
-      }
+      Kokkos::parallel_for("CellBCs::Bottom",rngPolicy_tb,
+			   CellBcBottom_K<decltype(sol_halo),BCType::outflow>(sol_halo,ps.rad,ps.nZ));
       break;
     case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({0,0},{int(ps.nX + 2*ps.rad),int(ps.nY + 2*ps.rad)});
-	Kokkos::parallel_for("CellBCs::Bottom",rngPolicy,
-			     CellBcBottom_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nZ));
-      }
+      Kokkos::parallel_for("CellBCs::Bottom",rngPolicy_tb,
+			   CellBcBottom_K<decltype(sol_halo),BCType::reflecting>(sol_halo,ps.rad,ps.nZ));
       break;
     case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
+      Kokkos::parallel_for("CellBCs::Bottom",rngPolicy_tb,
+			   CellBcBottom_K<decltype(sol_halo),BCType::user>(sol_halo,geom,ps.rad,ps.nZ,t));
       break;
-      // Default should never be reached, add error handling here later
+    default:
+      std::printf("Warning: Bottom? cell BC undefined. How did this even compile?\n");
     }
 
-    // set top BCs
+    // Top Boundary
     switch (ps.bcType[FaceLabel::top]) {
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({0,0},{int(ps.nX + 2*ps.rad),int(ps.nY + 2*ps.rad)});
-	Kokkos::parallel_for("CellBCs::Top",rngPolicy,
-			     CellBcTop_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nZ));
-      }
+    case BCType::outflow:
+      Kokkos::parallel_for("CellBCs::Top",rngPolicy_tb,
+			   CellBcTop_K<decltype(sol_halo),BCType::outflow>(sol_halo,ps.rad,ps.nZ));
       break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({0,0},{int(ps.nX + 2*ps.rad),int(ps.nY + 2*ps.rad)});
-	Kokkos::parallel_for("CellBCs::Top",rngPolicy,
-			     CellBcTop_K<decltype(sol_halo)>(sol_halo,ps.rad,ps.nZ));
-      }
+    case BCType::reflecting:
+      Kokkos::parallel_for("CellBCs::Top",rngPolicy_tb,
+			   CellBcTop_K<decltype(sol_halo),BCType::reflecting>(sol_halo,ps.rad,ps.nZ));
       break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
+    case BCType::user:
+      Kokkos::parallel_for("CellBCs::Top",rngPolicy_tb,
+			   CellBcTop_K<decltype(sol_halo),BCType::user>(sol_halo,geom,ps.rad,ps.nZ,t));
       break;
     default:
       if (ps.bcType[FaceLabel::top] != BCType::periodic) {
-	// Should never happen, need error handling later
+	std::printf("Warning: Top cell BC undefined. Is bottom set to periodic and top not?\n");
       }
     }
 #endif
@@ -498,291 +346,124 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
     (void) t;
     Kokkos::Profiling::pushRegion("Solver::setFaceBCs");
 #if (SPACE_DIM == 2)
-    // Set western BCs
-    switch (ps.bcType[FaceLabel::west]) {
-    case BCType::periodic :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Periodic>({1,ps.nY + 1});
-	Kokkos::parallel_for("FaceBCs::West",rngPolicy,
-			     FaceBcWest_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nX));
-      }
-      break;
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Outflow>({1,ps.nY + 1});
-	Kokkos::parallel_for("FaceBCs::West",rngPolicy,
-			     FaceBcWest_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nX));
-      }
-      break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Reflecting>({1,ps.nY + 1});
-	Kokkos::parallel_for("FaceBCs::West",rngPolicy,
-			     FaceBcWest_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nX));
-      }
-      break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
-      break;
-      // Default should never be reached, add error handling here later
-    }
-    
-    // Set eastern BCs
-    switch (ps.bcType[FaceLabel::east]) {
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Outflow>({1,ps.nY + 1});
-	Kokkos::parallel_for("FaceBCs::East",rngPolicy,
-			     FaceBcEast_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nX));
-      }
-      break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Reflecting>({1,ps.nY + 1});
-	Kokkos::parallel_for("FaceBCs::East",rngPolicy,
-			     FaceBcEast_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nX));
-      }
-      break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
-      break;
-    default:
-      if (ps.bcType[FaceLabel::east] != BCType::periodic) {
-	// Should never happen, need error handling later
-      }
-    }
-
-    // set southern BCs
-    switch (ps.bcType[FaceLabel::south]) {
-    case BCType::periodic :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Periodic>({1,ps.nX + 1});
-	Kokkos::parallel_for("FaceBCs::South",rngPolicy,
-			     FaceBcSouth_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nY));
-      }
-      break;
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Outflow>({1,ps.nX + 1});
-	Kokkos::parallel_for("FaceBCs::South",rngPolicy,
-			     FaceBcSouth_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nY));
-      }
-      break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Reflecting>({1,ps.nX + 1});
-	Kokkos::parallel_for("FaceBCs::South",rngPolicy,
-			     FaceBcSouth_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nY));
-      }
-      break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
-      break;
-      // Default should never be reached, add error handling here later
-    }
-
-    // set northern BCs
-    switch (ps.bcType[FaceLabel::north]) {
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Outflow>({1,ps.nX + 1});
-	Kokkos::parallel_for("FaceBCs::North",rngPolicy,
-			     FaceBcNorth_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nY));
-      }
-      break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::RangePolicy<BoundaryConditions::Reflecting>({1,ps.nX + 1});
-	Kokkos::parallel_for("FaceBCs::North",rngPolicy,
-			     FaceBcNorth_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nY));
-      }
-      break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
-      break;
-    default:
-      if (ps.bcType[FaceLabel::north] != BCType::periodic) {
-	// Should never happen, need error handling later
-      }
-    }
+    auto rngPolicy_ew = Kokkos::RangePolicy<>({1,ps.nY + 1});
+    auto rngPolicy_ns = Kokkos::RangePolicy<>({1,ps.nX + 1});
 #else
-    // Set western BCs
+    auto rngPolicy_ew = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({1,1},{ps.nY + 1,ps.nZ + 1});
+    auto rngPolicy_ns = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({1,1},{ps.nX + 1,ps.nZ + 1});
+    auto rngPolicy_tb = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({1,1},{ps.nX + 1,ps.nY + 1});
+#endif
+
+    // Western Boundary
     switch (ps.bcType[FaceLabel::west]) {
-    case BCType::periodic :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Periodic>({1,1},{ps.nY + 1,ps.nZ + 1});
-	Kokkos::parallel_for("FaceBCs::West",rngPolicy,
-			     FaceBcWest_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nX));
-      }
+    case BCType::user:
+    case BCType::outflow:
+      Kokkos::parallel_for("FaceBCs::West",rngPolicy_ew,
+			   FaceBcWest_K<decltype(FaceVals),BoundaryConditions::outflow>(FaceVals,geom,ps.rad,ps.nX));
       break;
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({1,1},{ps.nY + 1,ps.nZ + 1});
-	Kokkos::parallel_for("FaceBCs::West",rngPolicy,
-			     FaceBcWest_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nX));
-      }
+    case BCType::reflecting:
+      Kokkos::parallel_for("FaceBCs::West",rngPolicy_ew,
+			   FaceBcWest_K<decltype(FaceVals),BoundaryConditions::reflecting>(FaceVals,geom,ps.rad,ps.nX));
       break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({1,1},{ps.nY + 1,ps.nZ + 1});
-	Kokkos::parallel_for("FaceBCs::West",rngPolicy,
-			     FaceBcWest_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nX));
-      }
+    case BCType::periodic:
+      Kokkos::parallel_for("FaceBCs::West",rngPolicy_ew,
+			   FaceBcWest_K<decltype(FaceVals),BoundaryConditions::periodic>(FaceVals,geom,ps.rad,ps.nX));
       break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
-      break;
-      // Default should never be reached, add error handling here later
+    default:
+      std::printf("Warning: Western face BC undefined. How did this even compile?\n");
     }
-    
-    // Set eastern BCs
+
+    // Eastern Boundary
     switch (ps.bcType[FaceLabel::east]) {
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({1,1},{ps.nY + 1,ps.nZ + 1});
-	Kokkos::parallel_for("FaceBCs::East",rngPolicy,
-			     FaceBcEast_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nX));
-      }
+    case BCType::user:
+    case BCType::outflow:
+      Kokkos::parallel_for("FaceBCs::East",rngPolicy_ew,
+			   FaceBcEast_K<decltype(FaceVals),BoundaryConditions::outflow>(FaceVals,geom,ps.rad,ps.nX));
       break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({1,1},{ps.nY + 1,ps.nZ + 1});
-	Kokkos::parallel_for("FaceBCs::East",rngPolicy,
-			     FaceBcEast_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nX));
-      }
-      break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
+    case BCType::reflecting:
+      Kokkos::parallel_for("FaceBCs::East",rngPolicy_ew,
+			   FaceBcEast_K<decltype(FaceVals),BoundaryConditions::reflecting>(FaceVals,geom,ps.rad,ps.nX));
       break;
     default:
       if (ps.bcType[FaceLabel::east] != BCType::periodic) {
-	// Should never happen, need error handling later
+	std::printf("Warning: Eastern face BC undefined. Is west set to periodic and east not?\n");
       }
     }
 
-    // set southern BCs
+    // Southern Boundary
     switch (ps.bcType[FaceLabel::south]) {
-    case BCType::periodic :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Periodic>({1,1},{ps.nX + 1,ps.nZ + 1});
-	Kokkos::parallel_for("FaceBCs::South",rngPolicy,
-			     FaceBcSouth_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nY));
-      }
+    case BCType::periodic:
+      Kokkos::parallel_for("FaceBCs::South",rngPolicy_ns,
+			   FaceBcSouth_K<decltype(FaceVals),BCType::periodic>(FaceVals,geom,ps.rad,ps.nY));
       break;
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({1,1},{ps.nX + 1,ps.nZ + 1});
-	Kokkos::parallel_for("FaceBCs::South",rngPolicy,
-			     FaceBcSouth_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nY));
-      }
+    case BCType::user:
+    case BCType::outflow:
+      Kokkos::parallel_for("FaceBCs::South",rngPolicy_ns,
+			   FaceBcSouth_K<decltype(FaceVals),BCType::outflow>(FaceVals,geom,ps.rad,ps.nY));
       break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({1,1},{ps.nX + 1,ps.nZ + 1});
-	Kokkos::parallel_for("FaceBCs::South",rngPolicy,
-			     FaceBcSouth_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nY));
-      }
+    case BCType::reflecting:
+      Kokkos::parallel_for("FaceBCs::South",rngPolicy_ns,
+			   FaceBcSouth_K<decltype(FaceVals),BCType::reflecting>(FaceVals,geom,ps.rad,ps.nY));
       break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
-      break;
-      // Default should never be reached, add error handling here later
+    default:
+      std::printf("Warning: Southern? face BC undefined. How did this even compile?\n");
     }
 
-    // set northern BCs
+    // Northern Boundary
     switch (ps.bcType[FaceLabel::north]) {
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({1,1},{ps.nX + 1,ps.nZ + 1});
-	Kokkos::parallel_for("FaceBCs::North",rngPolicy,
-			     FaceBcNorth_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nY));
-      }
+    case BCType::user:
+    case BCType::outflow:
+      Kokkos::parallel_for("FaceBCs::North",rngPolicy_ns,
+			   FaceBcNorth_K<decltype(FaceVals),BCType::outflow>(FaceVals,geom,ps.rad,ps.nY));
       break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({1,1},{ps.nX + 1,ps.nZ + 1});
-	Kokkos::parallel_for("FaceBCs::North",rngPolicy,
-			     FaceBcNorth_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nY));
-      }
-      break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
+    case BCType::reflecting:
+      Kokkos::parallel_for("FaceBCs::North",rngPolicy_ns,
+			   FaceBcNorth_K<decltype(FaceVals),BCType::reflecting>(FaceVals,geom,ps.rad,ps.nY));
       break;
     default:
       if (ps.bcType[FaceLabel::north] != BCType::periodic) {
-	// Should never happen, need error handling later
+	std::printf("Warning: Northern face BC undefined. Is south set to periodic and north not?\n");
       }
     }
-
-    // set bottom BCs
+    
+#if (SPACE_DIM == 3)
+    // Bottom Boundary
     switch (ps.bcType[FaceLabel::bottom]) {
-    case BCType::periodic :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					      BoundaryConditions::Periodic>({1,1},{ps.nX + 1,ps.nY + 1});
-	Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy,
-			     FaceBcBottom_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nZ));
-      }
+    case BCType::periodic:
+      Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy_tb,
+			   FaceBcBottom_K<decltype(FaceVals),BCType::periodic>(FaceVals,geom,ps.rad,ps.nZ));
       break;
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({1,1},{ps.nX + 1,ps.nY + 1});
-	Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy,
-			     FaceBcBottom_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nZ));
-      }
+    case BCType::user:
+    case BCType::outflow:
+      Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy_tb,
+			   FaceBcBottom_K<decltype(FaceVals),BCType::outflow>(FaceVals,geom,ps.rad,ps.nZ));
       break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({1,1},{ps.nX + 1,ps.nY + 1});
-	Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy,
-			     FaceBcBottom_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nZ));
-      }
+    case BCType::reflecting:
+      Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy_tb,
+			   FaceBcBottom_K<decltype(FaceVals),BCType::reflecting>(FaceVals,geom,ps.rad,ps.nZ));
       break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
-      break;
-      // Default should never be reached, add error handling here later
+    default:
+      std::printf("Warning: Bottom? face BC undefined. How did this even compile?\n");
     }
 
-    // set bottom BCs
+    // Top Boundary
     switch (ps.bcType[FaceLabel::top]) {
-    case BCType::outflow :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Outflow>({1,1},{ps.nX + 1,ps.nY + 1});
-	Kokkos::parallel_for("FaceBCs::Top",rngPolicy,
-			     FaceBcTop_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nZ));
-      }
+    case BCType::user:
+    case BCType::outflow:
+      Kokkos::parallel_for("FaceBCs::Top",rngPolicy_tb,
+			   FaceBcTop_K<decltype(FaceVals),BCType::outflow>(FaceVals,geom,ps.rad,ps.nZ));
       break;
-    case BCType::reflecting :
-      {
-	auto rngPolicy = Kokkos::MDRangePolicy<Kokkos::Rank<2>,
-					       BoundaryConditions::Reflecting>({1,1},{ps.nX + 1,ps.nY + 1});
-	Kokkos::parallel_for("FaceBCs::Top",rngPolicy,
-			     FaceBcTop_K<decltype(FaceVals)>(FaceVals,ps.rad,ps.nZ));
-      }
-      break;
-    case BCType::user :
-      std::printf("Warning: User defined BCs not yet implemented\n");
+    case BCType::reflecting:
+      Kokkos::parallel_for("FaceBCs::Top",rngPolicy_tb,
+			   FaceBcTop_K<decltype(FaceVals),BCType::reflecting>(FaceVals,geom,ps.rad,ps.nZ));
       break;
     default:
       if (ps.bcType[FaceLabel::top] != BCType::periodic) {
-	// Should never happen, need error handling later
+	std::printf("Warning: Top face BC undefined. Is bottom set to periodic and top not?\n");
       }
     }
 #endif
+
     Kokkos::Profiling::popRegion();
   }
 

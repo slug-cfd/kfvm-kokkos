@@ -8,20 +8,48 @@
 
 #include "SimVar.H"
 #include "Types.H"
+#include "Geometry.H"
+#include "BoundaryConditions.H"
 
 namespace KFVM {
 
   namespace BoundaryConditions {
 
-    // Work tags for different BC types
-    enum BCType {periodic = 0,outflow,reflecting,user};
-    struct Periodic {};
-    struct Outflow {};
-    struct Reflecting {};
-    struct User {}; // placeholder, not sure how to implement this one...
-  
+    // Unspecialized templates
+    template<class DataViewType,BCType bcType>
+    struct CellBcWest_K {};
+    template<class DataViewType,BCType bcType>
+    struct CellBcEast_K {};
+    template<class DataViewType,BCType bcType>
+    struct CellBcSouth_K {};
+    template<class DataViewType,BCType bcType>
+    struct CellBcNorth_K {};
+    template<class DataViewType,BCType bcType>
+    struct CellBcBottom_K {};
+    template<class DataViewType,BCType bcType>
+    struct CellBcTop_K {};
+    
+    template<class DataViewType,BCType bcType>
+    struct FaceBcWest_K {};
+    template<class DataViewType,BCType bcType>
+    struct FaceBcEast_K {};
+    template<class DataViewType,BCType bcType>
+    struct FaceBcSouth_K {};
+    template<class DataViewType,BCType bcType>
+    struct FaceBcNorth_K {};
+    template<class DataViewType,BCType bcType>
+    struct FaceBcBottom_K {};
+    template<class DataViewType,BCType bcType>
+    struct FaceBcTop_K {};
+
+    // Bring in user defined BCs
+    namespace {
+#include "UserBCs.H"
+    }
+    
+    // ---------------- Western Cell BC definitions. ---------------------------------
     template<class DataViewType>
-    struct CellBcWest_K {
+    struct CellBcWest_K<DataViewType,BCType::outflow> {
       DataViewType v;
       idx_t rad,nX;
 
@@ -31,8 +59,7 @@ namespace KFVM {
 	nX(nX_) {}
       
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int j) const {
-	(void) bct;
+      void operator()(const int j) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -43,8 +70,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int j,const int k) const {
-	(void) bct;
+      void operator()(const int j,const int k) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -53,10 +79,20 @@ namespace KFVM {
 	  }
 	}
       }
+    };
       
+    template<class DataViewType>
+    struct CellBcWest_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      idx_t rad,nX;
+
+      CellBcWest_K(const DataViewType& v_,idx_t rad_,idx_t nX_):
+	v(v_),
+	rad(rad_),
+	nX(nX_) {}
+    
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int j) const {
-	(void) bct;
+      void operator()(const int j) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -68,8 +104,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int j,const int k) const {
-	(void) bct;
+      void operator()(const int j,const int k) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -79,10 +114,20 @@ namespace KFVM {
 	  }
 	}
       }
+    };
+    
+    template<class DataViewType>
+    struct CellBcWest_K<DataViewType,BCType::periodic> {
+      DataViewType v;
+      idx_t rad,nX;
+
+      CellBcWest_K(const DataViewType& v_,idx_t rad_,idx_t nX_):
+	v(v_),
+	rad(rad_),
+	nX(nX_) {}
       
       KOKKOS_INLINE_FUNCTION
-      void operator()(Periodic bct,const int j) const {
-	(void) bct;
+      void operator()(const int j) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -94,8 +139,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Periodic bct,const int j,const int k) const {
-	(void) bct;
+      void operator()(const int j,const int k) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -106,9 +150,60 @@ namespace KFVM {
 	}
       }
     };
-  
+      
     template<class DataViewType>
-    struct CellBcEast_K {
+    struct CellBcWest_K<DataViewType,BCType::user> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nX;
+      Real t;
+
+      CellBcWest_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_,Real t_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nX(nX_),
+	t(t_) {}
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int j) const {
+	// Loop over halo
+	for (int nH=0; nH<rad; nH++) {
+	  // Get cell center in halo
+	  Real x = geom.xCoord(-nH-1);
+	  Real y = geom.yCoord(j - rad);
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  CellWest(v,rad,nX,j,0,nH,x,y,geom.zLo,t,state);
+	  // Copy into view
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(rad - nH - 1,j,nV) = state[nV];
+	  }
+	}
+      }
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int j,const int k) const {
+	// Loop over halo
+	for (int nH=0; nH<rad; nH++) {
+	  // Get cell center in halo
+	  Real x = geom.xCoord(-nH-1);
+	  Real y = geom.yCoord(j - rad);
+	  Real z = geom.yCoord(k - rad);
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  CellWest(v,rad,nX,j,k,nH,x,y,z,t,state);
+	  // Copy into view
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(rad - nH - 1,j,k,nV) = state[nV];
+	  }
+	}
+      }
+    };
+    
+    // ---------------- Eastern Cell BC definitions. ---------------------------------    
+    template<class DataViewType>
+    struct CellBcEast_K<DataViewType,BCType::outflow> {
       DataViewType v;
       idx_t rad,nX;
 
@@ -118,8 +213,7 @@ namespace KFVM {
 	nX(nX_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int j) const {
-	(void) bct;
+      void operator()(const int j) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -130,8 +224,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int j,const int k) const {
-	(void) bct;
+      void operator()(const int j,const int k) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -140,10 +233,20 @@ namespace KFVM {
 	  }
 	}
       }
+    };
+    
+    template<class DataViewType>
+    struct CellBcEast_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      idx_t rad,nX;
+
+      CellBcEast_K(const DataViewType& v_,idx_t rad_,idx_t nX_):
+	v(v_),
+	rad(rad_),
+	nX(nX_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int j) const {
-	(void) bct;
+      void operator()(const int j) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -155,8 +258,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int j,const int k) const {
-	(void) bct;
+      void operator()(const int j,const int k) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -167,20 +269,70 @@ namespace KFVM {
 	}
       }
     };
-  
+    
     template<class DataViewType>
-    struct CellBcSouth_K {
+    struct CellBcEast_K<DataViewType,BCType::user> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nX;
+      Real t;
+
+      CellBcEast_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_,Real t_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nX(nX_),
+	t(t_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int j) const {
+	// Loop over halo
+	for (int nH=0; nH<rad; nH++) {
+	  // Get cell center in halo
+	  Real x = geom.xCoord(nX + nH);
+	  Real y = geom.yCoord(j - rad);
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  CellEast(v,rad,nX,j,0,nH,x,y,geom.zLo,t,state);
+	  // Loop over SimVars
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(nX + rad + nH,j,nV) = state[nV];
+	  }
+	}
+      }
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int j,const int k) const {
+	// Loop over halo
+	for (int nH=0; nH<rad; nH++) {
+	  // Get cell center in halo
+	  Real x = geom.xCoord(nX + nH);
+	  Real y = geom.yCoord(j - rad);
+	  Real z = geom.yCoord(k - rad);
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  CellEast(v,rad,nX,j,k,nH,x,y,z,t,state);
+	  // Loop over SimVars
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(nX + rad + nH,j,k,nV) = state[nV];
+	  }
+	}
+      }
+    };
+    
+    // ---------------- Southern Cell BC definitions. ---------------------------------
+    template<class DataViewType>
+    struct CellBcSouth_K<DataViewType,BCType::outflow> {
       DataViewType v;
       idx_t rad,nY;
-
+      
       CellBcSouth_K(const DataViewType& v_,idx_t rad_,idx_t nY_):
 	v(v_),
 	rad(rad_),
 	nY(nY_) {}
-
+      
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i) const {
-	(void) bct;
+      void operator()(const int i) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -191,8 +343,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i,const int k) const {
-	(void) bct;
+      void operator()(const int i,const int k) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -201,10 +352,20 @@ namespace KFVM {
 	  }
 	}
       }
+    };
 
+    template<class DataViewType>
+    struct CellBcSouth_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      idx_t rad,nY;
+
+      CellBcSouth_K(const DataViewType& v_,idx_t rad_,idx_t nY_):
+	v(v_),
+	rad(rad_),
+	nY(nY_) {}
+      
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i) const {
-	(void) bct;
+      void operator()(const int i) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -216,8 +377,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i,const int k) const {
-	(void) bct;
+      void operator()(const int i,const int k) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -227,10 +387,20 @@ namespace KFVM {
 	  }
 	}
       }
+    };
+
+    template<class DataViewType>
+    struct CellBcSouth_K<DataViewType,BCType::periodic> {
+      DataViewType v;
+      idx_t rad,nY;
+
+      CellBcSouth_K(const DataViewType& v_,idx_t rad_,idx_t nY_):
+	v(v_),
+	rad(rad_),
+	nY(nY_) {}
       
       KOKKOS_INLINE_FUNCTION
-      void operator()(Periodic bct,const int i) const {
-	(void) bct;
+      void operator()(const int i) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -242,8 +412,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Periodic bct,const int i,const int k) const {
-	(void) bct;
+      void operator()(const int i,const int k) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -254,9 +423,60 @@ namespace KFVM {
 	}
       }
     };
-  
+
     template<class DataViewType>
-    struct CellBcNorth_K {
+    struct CellBcSouth_K<DataViewType,BCType::user> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nY;
+      Real t;
+
+      CellBcSouth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_,Real t_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nY(nY_),
+	t(t_) {}
+      
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i) const {
+	// Loop over halo
+	for (int nH=0; nH<rad; nH++) {
+	  // Get cell center in halo
+	  Real x = geom.xCoord(i - rad);
+	  Real y = geom.yCoord(-nH - 1);
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  CellSouth(v,rad,nY,i,0,nH,x,y,geom.zLo,t,state);
+	  // Loop over SimVars
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(i,rad - nH - 1,nV) = state[nV];
+	  }
+	}
+      }
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int k) const {
+	// Loop over halo
+	for (int nH=0; nH<rad; nH++) {
+	  // Get cell center in halo
+	  Real x = geom.xCoord(i - rad);
+	  Real y = geom.yCoord(-nH - 1);
+	  Real z = geom.zCoord(k - rad);
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  CellSouth(v,rad,nY,i,k,nH,x,y,z,t,state);
+	  // Loop over SimVars
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(i,rad - nH - 1,k,nV) = state[nV];
+	  }
+	}
+      }
+    };
+    
+    // ---------------- Northern Cell BC definitions. ---------------------------------
+    template<class DataViewType>
+    struct CellBcNorth_K<DataViewType,BCType::outflow> {
       DataViewType v;
       idx_t rad,nY;
 
@@ -266,8 +486,7 @@ namespace KFVM {
 	nY(nY_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i) const {
-	(void) bct;
+      void operator()(const int i) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -278,8 +497,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i,const int k) const {
-	(void) bct;
+      void operator()(const int i,const int k) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -288,10 +506,20 @@ namespace KFVM {
 	  }
 	}
       }
+    };
+    
+    template<class DataViewType>
+    struct CellBcNorth_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      idx_t rad,nY;
+
+      CellBcNorth_K(const DataViewType& v_,idx_t rad_,idx_t nY_):
+	v(v_),
+	rad(rad_),
+	nY(nY_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i) const {
-	(void) bct;
+      void operator()(const int i) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -303,8 +531,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i,const int k) const {
-	(void) bct;
+      void operator()(const int i,const int k) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -315,9 +542,60 @@ namespace KFVM {
 	}
       }
     };
-
+    
     template<class DataViewType>
-    struct CellBcBottom_K {
+    struct CellBcNorth_K<DataViewType,BCType::user> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nY;
+      Real t;
+
+      CellBcNorth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_,Real t_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nY(nY_),
+	t(t_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i) const {
+	// Loop over halo
+	for (int nH=0; nH<rad; nH++) {
+	  // Get cell center in halo
+	  Real x = geom.xCoord(i - rad);
+	  Real y = geom.yCoord(nY + nH);
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  CellNorth(v,rad,nY,i,0,nH,x,y,geom.zLo,t,state);
+	  // Loop over SimVars
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(i,nY + rad + nH,nV) = state[nV];
+	  }
+	}
+      }
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int k) const {
+	// Loop over halo
+	for (int nH=0; nH<rad; nH++) {
+	  // Get cell center in halo
+	  Real x = geom.xCoord(i - rad);
+	  Real y = geom.yCoord(nY + nH);
+	  Real z = geom.zCoord(k - rad);
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  CellNorth(v,rad,nY,i,k,nH,x,y,z,t,state);
+	  // Loop over SimVars
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(i,nY + rad + nH,k,nV) = state[nV];
+	  }
+	}
+      }
+    };
+    
+    // ---------------- Bottom Cell BC definitions. ---------------------------------
+    template<class DataViewType>
+    struct CellBcBottom_K<DataViewType,BCType::outflow> {
       DataViewType v;
       idx_t rad,nZ;
 
@@ -327,21 +605,7 @@ namespace KFVM {
 	nZ(nZ_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(Periodic bct,const int i,const int j) const {
-	(void) bct;
-	// Loop over halo
-	for (int nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    v(i,j,rad - nH - 1 ,nV) = v(i,j,nZ + rad - nH - 1,nV);
-	    v(i,j,nZ + rad + nH,nV) = v(i,j,rad + nH         ,nV);
-	  } 
-	}
-      }
-
-      KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i,const int j) const {
-	(void) bct;
+      void operator()(const int i,const int j) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -350,10 +614,20 @@ namespace KFVM {
 	  } 
 	}
       }
+    };
+
+    template<class DataViewType>
+    struct CellBcBottom_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      idx_t rad,nZ;
+
+      CellBcBottom_K(const DataViewType& v_,idx_t rad_,idx_t nZ_):
+	v(v_),
+	rad(rad_),
+	nZ(nZ_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i,const int j) const {
-	(void) bct;
+      void operator()(const int i,const int j) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -364,9 +638,66 @@ namespace KFVM {
 	}
       }
     };
-
+    
     template<class DataViewType>
-    struct CellBcTop_K {
+    struct CellBcBottom_K<DataViewType,BCType::periodic> {
+      DataViewType v;
+      idx_t rad,nZ;
+
+      CellBcBottom_K(const DataViewType& v_,idx_t rad_,idx_t nZ_):
+	v(v_),
+	rad(rad_),
+	nZ(nZ_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int j) const {
+	// Loop over halo
+	for (int nH=0; nH<rad; nH++) {
+	  // Loop over SimVars
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(i,j,rad - nH - 1 ,nV) = v(i,j,nZ + rad - nH - 1,nV);
+	    v(i,j,nZ + rad + nH,nV) = v(i,j,rad + nH         ,nV);
+	  } 
+	}
+      }
+    };
+    
+    template<class DataViewType>
+    struct CellBcBottom_K<DataViewType,BCType::user> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nZ;
+      Real t;
+
+      CellBcBottom_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_,Real t_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nZ(nZ_),
+	t(t_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int j) const {
+	// Loop over halo
+	for (int nH=0; nH<rad; nH++) {
+	  // Get cell center in halo
+	  Real x = geom.xCoord(i - rad);
+	  Real y = geom.yCoord(j - rad);
+	  Real z = geom.zCoord(-nH - 1);
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  CellBottom(v,rad,nZ,i,j,nH,x,y,z,t,state);
+	  // Loop over SimVars
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(i,j,rad - nH - 1 ,nV) = state[nV];
+	  } 
+	}
+      }
+    };
+    
+    // ---------------- Top Cell BC definitions. ---------------------------------
+    template<class DataViewType>
+    struct CellBcTop_K<DataViewType,BCType::outflow> {
       DataViewType v;
       idx_t rad,nZ;
 
@@ -376,8 +707,7 @@ namespace KFVM {
 	nZ(nZ_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i,const int j) const {
-	(void) bct;
+      void operator()(const int i,const int j) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -386,10 +716,20 @@ namespace KFVM {
 	  }
 	}
       }
+    };
+    
+    template<class DataViewType>
+    struct CellBcTop_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      idx_t rad,nZ;
+
+      CellBcTop_K(const DataViewType& v_,idx_t rad_,idx_t nZ_):
+	v(v_),
+	rad(rad_),
+	nZ(nZ_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i,const int j) const {
-	(void) bct;
+      void operator()(const int i,const int j) const {
 	// Loop over halo
 	for (int nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
@@ -400,48 +740,55 @@ namespace KFVM {
 	}
       }
     };
-  
+    
     template<class DataViewType>
-    struct FaceBcWest_K {
+    struct CellBcTop_K<DataViewType,BCType::user> {
       DataViewType v;
+      Geometry geom;
+      idx_t rad,nZ;
+      Real t;
+
+      CellBcTop_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_,Real t_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nZ(nZ_),
+	t(t_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int j) const {
+	// Loop over halo
+	for (int nH=0; nH<rad; nH++) {
+	  // Get cell center in halo
+	  Real x = geom.xCoord(i - rad);
+	  Real y = geom.yCoord(j - rad);
+	  Real z = geom.zCoord(nZ + nH);
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  CellTop(v,rad,nZ,i,j,nH,x,y,z,t,state);
+	  // Loop over SimVars
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(i,j,nZ + rad + nH,nV) = state[nV];
+	  } 
+	}
+      }
+    };
+    
+    // ---------------- West Face BC definitions. ---------------------------------
+    template<class DataViewType>
+    struct FaceBcWest_K<DataViewType,BCType::outflow> {
+      DataViewType v;
+      Geometry geom;
       idx_t rad,nX;
 
-      FaceBcWest_K(const DataViewType& v_,idx_t rad_,idx_t nX_):
+      FaceBcWest_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_):
 	v(v_),
+	geom(geom_),
 	rad(rad_),
 	nX(nX_) {}
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Periodic bct,const int j) const {
-	(void) bct;
-	// Loop over quadrature points
-	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    v(0     ,j,FaceLabel::east,nQ,nV) = v(nX,j,FaceLabel::east,nQ,nV);
-	    v(nX + 1,j,FaceLabel::west,nQ,nV) = v(1 ,j,FaceLabel::west,nQ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(Periodic bct,const int j,const int k) const {
-	(void) bct;
-	// Loop over quadrature points
-	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
-	    // Loop over SimVars
-	    for (int nV=0; nV<NUM_VARS; nV++) {
-	      v(0     ,j,k,FaceLabel::east,nQ,nR,nV) = v(nX,j,k,FaceLabel::east,nQ,nR,nV);
-	      v(nX + 1,j,k,FaceLabel::west,nQ,nR,nV) = v(1 ,j,k,FaceLabel::west,nQ,nR,nV);
-	    }
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int j) const {
-	(void) bct;
+      void operator()(const int j) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
@@ -452,8 +799,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int j,const int k) const {
-	(void) bct;
+      void operator()(const int j,const int k) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -464,10 +810,22 @@ namespace KFVM {
 	  }
 	}
       }
+    };
+    
+    template<class DataViewType>
+    struct FaceBcWest_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nX;
+
+      FaceBcWest_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nX(nX_) {}
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int j) const {
-	(void) bct;
+      void operator()(const int j) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
@@ -479,8 +837,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int j,const int k) const {
-	(void) bct;
+      void operator()(const int j,const int k) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -493,20 +850,61 @@ namespace KFVM {
 	}
       }
     };
-  
+    
     template<class DataViewType>
-    struct FaceBcEast_K {
+    struct FaceBcWest_K<DataViewType,BCType::periodic> {
       DataViewType v;
+      Geometry geom;
       idx_t rad,nX;
 
-      FaceBcEast_K(const DataViewType& v_,idx_t rad_,idx_t nX_):
+      FaceBcWest_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_):
 	v(v_),
+	geom(geom_),
 	rad(rad_),
 	nX(nX_) {}
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int j) const {
-	(void) bct;
+      void operator()(const int j) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  // Loop over SimVars
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(0     ,j,FaceLabel::east,nQ,nV) = v(nX,j,FaceLabel::east,nQ,nV);
+	    v(nX + 1,j,FaceLabel::west,nQ,nV) = v(1 ,j,FaceLabel::west,nQ,nV);
+	  }
+	}
+      }
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int j,const int k) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	    // Loop over SimVars
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      v(0     ,j,k,FaceLabel::east,nQ,nR,nV) = v(nX,j,k,FaceLabel::east,nQ,nR,nV);
+	      v(nX + 1,j,k,FaceLabel::west,nQ,nR,nV) = v(1 ,j,k,FaceLabel::west,nQ,nR,nV);
+	    }
+	  }
+	}
+      }
+    };
+    
+    // ---------------- East Face BC definitions. ---------------------------------
+    template<class DataViewType>
+    struct FaceBcEast_K<DataViewType,BCType::outflow> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nX;
+
+      FaceBcEast_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nX(nX_) {}
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int j) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
@@ -517,8 +915,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int j,const int k) const {
-	(void) bct;
+      void operator()(const int j,const int k) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -529,10 +926,22 @@ namespace KFVM {
 	  }
 	}
       }
+    };
     
+    template<class DataViewType>
+    struct FaceBcEast_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nX;
+
+      FaceBcEast_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nX(nX_) {}
+
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int j) const {
-	(void) bct;
+      void operator()(const int j) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
@@ -544,8 +953,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int j,const int k) const {
-	(void) bct;
+      void operator()(const int j,const int k) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -558,48 +966,22 @@ namespace KFVM {
 	}
       }
     };
-  
+    
+    // ---------------- South Face BC definitions. ---------------------------------
     template<class DataViewType>
-    struct FaceBcSouth_K {
+    struct FaceBcSouth_K<DataViewType,BCType::outflow> {
       DataViewType v;
+      Geometry geom;
       idx_t rad,nY;
 
-      FaceBcSouth_K(const DataViewType& v_,idx_t rad_,idx_t nY_):
+      FaceBcSouth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_):
 	v(v_),
+	geom(geom_),
 	rad(rad_),
 	nY(nY_) {}
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Periodic bct,const int i) const {
-	(void) bct;
-	// Loop over quadrature points
-	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    v(i,0     ,FaceLabel::north,nQ,nV) = v(i,nY,FaceLabel::north,nQ,nV);
-	    v(i,nY + 1,FaceLabel::south,nQ,nV) = v(i,1 ,FaceLabel::south,nQ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(Periodic bct,const int i,const int k) const {
-	(void) bct;
-	// Loop over quadrature points
-	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
-	    // Loop over SimVars
-	    for (int nV=0; nV<NUM_VARS; nV++) {
-	      v(i,0     ,k,FaceLabel::north,nQ,nR,nV) = v(i,nY,k,FaceLabel::north,nQ,nR,nV);
-	      v(i,nY + 1,k,FaceLabel::south,nQ,nR,nV) = v(i,1 ,k,FaceLabel::south,nQ,nR,nV);
-	    }
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i) const {
-	(void) bct;
+      void operator()(const int i) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
@@ -610,8 +992,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i,const int k) const {
-	(void) bct;
+      void operator()(const int i,const int k) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -622,10 +1003,22 @@ namespace KFVM {
 	  }
 	}
       }
+    };
     
+    template<class DataViewType>
+    struct FaceBcSouth_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nY;
+
+      FaceBcSouth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nY(nY_) {}
+
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i) const {
-	(void) bct;
+      void operator()(const int i) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
@@ -637,8 +1030,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i,const int k) const {
-	(void) bct;
+      void operator()(const int i,const int k) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -651,20 +1043,61 @@ namespace KFVM {
 	}
       }
     };
-  
+    
     template<class DataViewType>
-    struct FaceBcNorth_K {
+    struct FaceBcSouth_K<DataViewType,BCType::periodic> {
       DataViewType v;
+      Geometry geom;
       idx_t rad,nY;
 
-      FaceBcNorth_K(const DataViewType& v_,idx_t rad_,idx_t nY_):
+      FaceBcSouth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_):
 	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nY(nY_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  // Loop over SimVars
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(i,0     ,FaceLabel::north,nQ,nV) = v(i,nY,FaceLabel::north,nQ,nV);
+	    v(i,nY + 1,FaceLabel::south,nQ,nV) = v(i,1 ,FaceLabel::south,nQ,nV);
+	  }
+	}
+      }
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int k) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	    // Loop over SimVars
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      v(i,0     ,k,FaceLabel::north,nQ,nR,nV) = v(i,nY,k,FaceLabel::north,nQ,nR,nV);
+	      v(i,nY + 1,k,FaceLabel::south,nQ,nR,nV) = v(i,1 ,k,FaceLabel::south,nQ,nR,nV);
+	    }
+	  }
+	}
+      }
+    };
+    
+    // ---------------- North Face BC definitions. ---------------------------------
+    template<class DataViewType>
+    struct FaceBcNorth_K<DataViewType,BCType::outflow> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nY;
+
+      FaceBcNorth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_):
+	v(v_),
+	geom(geom_),
 	rad(rad_),
 	nY(nY_) {}
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i) const {
-	(void) bct;
+      void operator()(const int i) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
@@ -675,8 +1108,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i,const int k) const {
-	(void) bct;
+      void operator()(const int i,const int k) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -687,10 +1119,22 @@ namespace KFVM {
 	  }
 	}
       }
+    };
     
+    template<class DataViewType>
+    struct FaceBcNorth_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nY;
+
+      FaceBcNorth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nY(nY_) {}
+
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i) const {
-	(void) bct;
+      void operator()(const int i) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
@@ -702,8 +1146,7 @@ namespace KFVM {
       }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i,const int k) const {
-	(void) bct;
+      void operator()(const int i,const int k) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -716,35 +1159,22 @@ namespace KFVM {
 	}
       }
     };
-  
+    
+    // ---------------- Bottom Face BC definitions. ---------------------------------
     template<class DataViewType>
-    struct FaceBcBottom_K {
+    struct FaceBcBottom_K<DataViewType,BCType::outflow> {
       DataViewType v;
+      Geometry geom;
       idx_t rad,nZ;
 
-      FaceBcBottom_K(const DataViewType& v_,idx_t rad_,idx_t nZ_):
+      FaceBcBottom_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_):
 	v(v_),
+	geom(geom_),
 	rad(rad_),
 	nZ(nZ_) {}
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Periodic bct,const int i,const int j) const {
-	(void) bct;
-	// Loop over quadrature points
-	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
-	    // Loop over SimVars
-	    for (int nV=0; nV<NUM_VARS; nV++) {
-	      v(i,j,nZ + 1,FaceLabel::bottom,nQ,nR,nV) = v(i,j,1 ,FaceLabel::bottom,nQ,nR,nV);
-	      v(i,j,0     ,FaceLabel::top   ,nQ,nR,nV) = v(i,j,nZ,FaceLabel::top   ,nQ,nR,nV);
-	    }
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i,const int j) const {
-	(void) bct;
+      void operator()(const int i,const int j) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -755,10 +1185,22 @@ namespace KFVM {
 	  }
 	}
       }
+    };
+    
+    template<class DataViewType>
+    struct FaceBcBottom_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nZ;
+
+      FaceBcBottom_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nZ(nZ_) {}
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i,const int j) const {
-	(void) bct;
+      void operator()(const int i,const int j) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -771,20 +1213,49 @@ namespace KFVM {
 	}
       }
     };
-  
+    
     template<class DataViewType>
-    struct FaceBcTop_K {
+    struct FaceBcBottom_K<DataViewType,BCType::periodic> {
       DataViewType v;
+      Geometry geom;
       idx_t rad,nZ;
 
-      FaceBcTop_K(const DataViewType& v_,idx_t rad_,idx_t nZ_):
+      FaceBcBottom_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_):
 	v(v_),
+	geom(geom_),
 	rad(rad_),
 	nZ(nZ_) {}
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(Outflow bct,const int i,const int j) const {
-	(void) bct;
+      void operator()(const int i,const int j) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	    // Loop over SimVars
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      v(i,j,nZ + 1,FaceLabel::bottom,nQ,nR,nV) = v(i,j,1 ,FaceLabel::bottom,nQ,nR,nV);
+	      v(i,j,0     ,FaceLabel::top   ,nQ,nR,nV) = v(i,j,nZ,FaceLabel::top   ,nQ,nR,nV);
+	    }
+	  }
+	}
+      }
+    };
+    
+    // ---------------- Top Face BC definitions. ---------------------------------
+    template<class DataViewType>
+    struct FaceBcTop_K<DataViewType,BCType::outflow> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nZ;
+
+      FaceBcTop_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nZ(nZ_) {}
+        
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int j) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -795,10 +1266,22 @@ namespace KFVM {
 	  }
 	}
       }
+    };
     
+    template<class DataViewType>
+    struct FaceBcTop_K<DataViewType,BCType::reflecting> {
+      DataViewType v;
+      Geometry geom;
+      idx_t rad,nZ;
+
+      FaceBcTop_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_):
+	v(v_),
+	geom(geom_),
+	rad(rad_),
+	nZ(nZ_) {}
+        
       KOKKOS_INLINE_FUNCTION
-      void operator()(Reflecting bct,const int i,const int j) const {
-	(void) bct;
+      void operator()(const int i,const int j) const {
 	// Loop over quadrature points
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {

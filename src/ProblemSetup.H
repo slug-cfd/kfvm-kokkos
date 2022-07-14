@@ -5,9 +5,9 @@
 #include <cstdint>
 #include <string>
 
-#include "BoundaryConditions_K.H"
 #include "Dimension.H"
 #include "Types.H"
+#include "BoundaryConditions.H"
 
 #ifndef STENCIL_RADIUS
 #define STENCIL_RADIUS 2
@@ -53,7 +53,7 @@ namespace KFVM {
     ProblemSetup(std::string name_,
                  idx_t nX_,idx_t nY_,idx_t nZ_,
                  Real xLo_,Real xUp_,Real yLo_,Real yUp_,Real zLo_,Real zUp_,
-		 Real finalTime_,
+		 Real finalTime_,idx_t plotFreq_,
                  Real gam_):
       gp_lFac(Real(12.0)),
       gp_bpow(Real(STENCIL_RADIUS)),
@@ -75,7 +75,7 @@ namespace KFVM {
       finalTime(finalTime_),
       initialDeltaT(Real(1.e-8)),
       cfl(SPACE_DIM==3 ? 0.5 : 0.75),
-      plotFreq(20),
+      plotFreq(plotFreq_),
       fluidProp({gam_})
       {
       }

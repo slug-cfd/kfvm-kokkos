@@ -4,18 +4,19 @@
 // File: Geometry.H
 // Purpose: Hold grid geometry and convenience functions
 
+#include <Kokkos_Macros.hpp>
+
 #include "Types.H"
 #include "ProblemSetup.H"
-#include <Kokkos_Macros.hpp>
 
 namespace KFVM {
   
   struct Geometry
   {
     // Bounding box
-    Real xLo,xUp,yLo,yUp,zLo,zUp;
+    const Real xLo,xUp,yLo,yUp,zLo,zUp;
     // Grid spacing
-    Real dx,dy,dz;
+    const Real dx,dy,dz;
 
     // Construct from Problemsetup object
     Geometry(const ProblemSetup& ps):
