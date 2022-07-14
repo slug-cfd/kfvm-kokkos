@@ -4,6 +4,8 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
+  (void) z;
+  
   const Real gamm = 0.4; // 1.4 - 1.0
   const Real r3 = sqrt(3.0); // slope of shock
   Real rho,u,v,w,p;

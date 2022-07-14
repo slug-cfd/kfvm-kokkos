@@ -20,6 +20,14 @@ namespace KFVM {
 
   namespace Numeric {
 
+    // Helper function to convert abscissae on (-0.5,0.5)
+    // to the bounds of a cell
+    KOKKOS_INLINE_FUNCTION
+    Real sclAb(const Real ctr,const Real del,const Real ab)
+    {
+      return ab*del + ctr;
+    }
+
     // Lookup tables for specific values in Gaussian quadrature rules
     template<int nQuad> struct QuadRuleLUT
     {

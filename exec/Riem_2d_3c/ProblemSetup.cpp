@@ -18,5 +18,5 @@ std::array<KFVM::BoundaryConditions::BCType,6> KFVM::ProblemSetup::bcType = {
   KFVM::BoundaryConditions::BCType::outflow,
   KFVM::BoundaryConditions::BCType::outflow,
   KFVM::BoundaryConditions::BCType::outflow,
-  KFVM::BoundaryConditions::BCType::periodic,
-  KFVM::BoundaryConditions::BCType::periodic};
+  KFVM::BoundaryConditions::BCType::outflow,
+  KFVM::BoundaryConditions::BCType::outflow};

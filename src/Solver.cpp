@@ -356,18 +356,25 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
 
     // Western Boundary
     switch (ps.bcType[FaceLabel::west]) {
-    case BCType::user:
     case BCType::outflow:
       Kokkos::parallel_for("FaceBCs::West",rngPolicy_ew,
-			   FaceBcWest_K<decltype(FaceVals),BoundaryConditions::outflow>(FaceVals,geom,ps.rad,ps.nX));
+			   FaceBcWest_K<decltype(FaceVals),decltype(qr.ab),
+			   BoundaryConditions::outflow>(FaceVals,ps.nX));
       break;
     case BCType::reflecting:
       Kokkos::parallel_for("FaceBCs::West",rngPolicy_ew,
-			   FaceBcWest_K<decltype(FaceVals),BoundaryConditions::reflecting>(FaceVals,geom,ps.rad,ps.nX));
+			   FaceBcWest_K<decltype(FaceVals),decltype(qr.ab),
+			   BoundaryConditions::reflecting>(FaceVals,ps.nX));
       break;
     case BCType::periodic:
       Kokkos::parallel_for("FaceBCs::West",rngPolicy_ew,
-			   FaceBcWest_K<decltype(FaceVals),BoundaryConditions::periodic>(FaceVals,geom,ps.rad,ps.nX));
+			   FaceBcWest_K<decltype(FaceVals),decltype(qr.ab),
+			   BoundaryConditions::periodic>(FaceVals,ps.nX));
+      break;
+    case BCType::user:
+      Kokkos::parallel_for("FaceBCs::West",rngPolicy_ew,
+			   FaceBcWest_K<decltype(FaceVals),decltype(qr.ab),
+			   BoundaryConditions::user>(FaceVals,geom,qr.ab,ps.nX,t));
       break;
     default:
       std::printf("Warning: Western face BC undefined. How did this even compile?\n");
@@ -375,14 +382,20 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
 
     // Eastern Boundary
     switch (ps.bcType[FaceLabel::east]) {
-    case BCType::user:
     case BCType::outflow:
       Kokkos::parallel_for("FaceBCs::East",rngPolicy_ew,
-			   FaceBcEast_K<decltype(FaceVals),BoundaryConditions::outflow>(FaceVals,geom,ps.rad,ps.nX));
+			   FaceBcEast_K<decltype(FaceVals),decltype(qr.ab),
+			   BoundaryConditions::outflow>(FaceVals,ps.nX));
       break;
     case BCType::reflecting:
       Kokkos::parallel_for("FaceBCs::East",rngPolicy_ew,
-			   FaceBcEast_K<decltype(FaceVals),BoundaryConditions::reflecting>(FaceVals,geom,ps.rad,ps.nX));
+			   FaceBcEast_K<decltype(FaceVals),decltype(qr.ab),
+			   BoundaryConditions::reflecting>(FaceVals,ps.nX));
+      break;
+    case BCType::user:
+      Kokkos::parallel_for("FaceBCs::East",rngPolicy_ew,
+			   FaceBcEast_K<decltype(FaceVals),decltype(qr.ab),
+			   BoundaryConditions::user>(FaceVals,geom,qr.ab,ps.nX,t));
       break;
     default:
       if (ps.bcType[FaceLabel::east] != BCType::periodic) {
@@ -394,16 +407,23 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
     switch (ps.bcType[FaceLabel::south]) {
     case BCType::periodic:
       Kokkos::parallel_for("FaceBCs::South",rngPolicy_ns,
-			   FaceBcSouth_K<decltype(FaceVals),BCType::periodic>(FaceVals,geom,ps.rad,ps.nY));
+			   FaceBcSouth_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::periodic>(FaceVals,ps.nY));
       break;
-    case BCType::user:
     case BCType::outflow:
       Kokkos::parallel_for("FaceBCs::South",rngPolicy_ns,
-			   FaceBcSouth_K<decltype(FaceVals),BCType::outflow>(FaceVals,geom,ps.rad,ps.nY));
+			   FaceBcSouth_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::outflow>(FaceVals,ps.nY));
       break;
     case BCType::reflecting:
       Kokkos::parallel_for("FaceBCs::South",rngPolicy_ns,
-			   FaceBcSouth_K<decltype(FaceVals),BCType::reflecting>(FaceVals,geom,ps.rad,ps.nY));
+			   FaceBcSouth_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::reflecting>(FaceVals,ps.nY));
+      break;
+    case BCType::user:
+      Kokkos::parallel_for("FaceBCs::South",rngPolicy_ns,
+			   FaceBcSouth_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::user>(FaceVals,geom,qr.ab,ps.nY,t));
       break;
     default:
       std::printf("Warning: Southern? face BC undefined. How did this even compile?\n");
@@ -411,14 +431,20 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
 
     // Northern Boundary
     switch (ps.bcType[FaceLabel::north]) {
-    case BCType::user:
     case BCType::outflow:
       Kokkos::parallel_for("FaceBCs::North",rngPolicy_ns,
-			   FaceBcNorth_K<decltype(FaceVals),BCType::outflow>(FaceVals,geom,ps.rad,ps.nY));
+			   FaceBcNorth_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::outflow>(FaceVals,ps.nY));
       break;
     case BCType::reflecting:
       Kokkos::parallel_for("FaceBCs::North",rngPolicy_ns,
-			   FaceBcNorth_K<decltype(FaceVals),BCType::reflecting>(FaceVals,geom,ps.rad,ps.nY));
+			   FaceBcNorth_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::reflecting>(FaceVals,ps.nY));
+      break;
+    case BCType::user:
+      Kokkos::parallel_for("FaceBCs::North",rngPolicy_ns,
+			   FaceBcNorth_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::user>(FaceVals,geom,qr.ab,ps.nY,t));
       break;
     default:
       if (ps.bcType[FaceLabel::north] != BCType::periodic) {
@@ -431,16 +457,23 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
     switch (ps.bcType[FaceLabel::bottom]) {
     case BCType::periodic:
       Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy_tb,
-			   FaceBcBottom_K<decltype(FaceVals),BCType::periodic>(FaceVals,geom,ps.rad,ps.nZ));
+			   FaceBcBottom_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::periodic>(FaceVals,ps.nZ));
       break;
-    case BCType::user:
     case BCType::outflow:
       Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy_tb,
-			   FaceBcBottom_K<decltype(FaceVals),BCType::outflow>(FaceVals,geom,ps.rad,ps.nZ));
+			   FaceBcBottom_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::outflow>(FaceVals,ps.nZ));
       break;
     case BCType::reflecting:
       Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy_tb,
-			   FaceBcBottom_K<decltype(FaceVals),BCType::reflecting>(FaceVals,geom,ps.rad,ps.nZ));
+			   FaceBcBottom_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::reflecting>(FaceVals,ps.nZ));
+      break;
+    case BCType::user:
+      Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy_tb,
+			   FaceBcBottom_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::user>(FaceVals,geom,qr.ab,ps.nZ,t));
       break;
     default:
       std::printf("Warning: Bottom? face BC undefined. How did this even compile?\n");
@@ -448,14 +481,20 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
 
     // Top Boundary
     switch (ps.bcType[FaceLabel::top]) {
-    case BCType::user:
     case BCType::outflow:
       Kokkos::parallel_for("FaceBCs::Top",rngPolicy_tb,
-			   FaceBcTop_K<decltype(FaceVals),BCType::outflow>(FaceVals,geom,ps.rad,ps.nZ));
+			   FaceBcTop_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::outflow>(FaceVals,ps.nZ));
       break;
     case BCType::reflecting:
       Kokkos::parallel_for("FaceBCs::Top",rngPolicy_tb,
-			   FaceBcTop_K<decltype(FaceVals),BCType::reflecting>(FaceVals,geom,ps.rad,ps.nZ));
+			   FaceBcTop_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::reflecting>(FaceVals,ps.nZ));
+      break;
+    case BCType::user:
+      Kokkos::parallel_for("FaceBCs::Top",rngPolicy_tb,
+			   FaceBcTop_K<decltype(FaceVals),decltype(qr.ab),
+			   BCType::user>(FaceVals,geom,qr.ab,ps.nZ,t));
       break;
     default:
       if (ps.bcType[FaceLabel::top] != BCType::periodic) {

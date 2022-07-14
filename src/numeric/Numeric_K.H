@@ -42,14 +42,6 @@ namespace KFVM {
 	wt(wt_),
 	geom(geom_) {}
 
-      // Helper function to convert abscissae on (-0.5,0.5)
-      // to the bounds of a cell
-      KOKKOS_INLINE_FUNCTION
-      Real sclAb(const Real ctr,const Real del,const Real ab) const
-      {
-	return ab*del + ctr;
-      }
-
       // 2D version
       KOKKOS_INLINE_FUNCTION
       void operator()(const int i,const int j) const {	

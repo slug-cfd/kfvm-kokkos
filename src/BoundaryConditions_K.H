@@ -9,6 +9,7 @@
 #include "SimVar.H"
 #include "Types.H"
 #include "Geometry.H"
+#include "numeric/Numeric.H"
 #include "BoundaryConditions.H"
 
 namespace KFVM {
@@ -29,17 +30,17 @@ namespace KFVM {
     template<class DataViewType,BCType bcType>
     struct CellBcTop_K {};
     
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,class QRViewType,BCType bcType>
     struct FaceBcWest_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,class QRViewType,BCType bcType>
     struct FaceBcEast_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,class QRViewType,BCType bcType>
     struct FaceBcSouth_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,class QRViewType,BCType bcType>
     struct FaceBcNorth_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,class QRViewType,BCType bcType>
     struct FaceBcBottom_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,class QRViewType,BCType bcType>
     struct FaceBcTop_K {};
 
     // Bring in user defined BCs
@@ -775,16 +776,13 @@ namespace KFVM {
     };
     
     // ---------------- West Face BC definitions. ---------------------------------
-    template<class DataViewType>
-    struct FaceBcWest_K<DataViewType,BCType::outflow> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcWest_K<DataViewType,QRViewType,BCType::outflow> {
       DataViewType v;
-      Geometry geom;
-      idx_t rad,nX;
+      idx_t nX;
 
-      FaceBcWest_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_):
+      FaceBcWest_K(const DataViewType& v_,idx_t nX_):
 	v(v_),
-	geom(geom_),
-	rad(rad_),
 	nX(nX_) {}
     
       KOKKOS_INLINE_FUNCTION
@@ -812,16 +810,13 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcWest_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcWest_K<DataViewType,QRViewType,BCType::reflecting> {
       DataViewType v;
-      Geometry geom;
-      idx_t rad,nX;
+      idx_t nX;
 
-      FaceBcWest_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_):
+      FaceBcWest_K(const DataViewType& v_,idx_t nX_):
 	v(v_),
-	geom(geom_),
-	rad(rad_),
 	nX(nX_) {}
     
       KOKKOS_INLINE_FUNCTION
@@ -851,16 +846,13 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcWest_K<DataViewType,BCType::periodic> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcWest_K<DataViewType,QRViewType,BCType::periodic> {
       DataViewType v;
-      Geometry geom;
-      idx_t rad,nX;
+      idx_t nX;
 
-      FaceBcWest_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_):
+      FaceBcWest_K(const DataViewType& v_,idx_t nX_):
 	v(v_),
-	geom(geom_),
-	rad(rad_),
 	nX(nX_) {}
     
       KOKKOS_INLINE_FUNCTION
@@ -890,17 +882,65 @@ namespace KFVM {
       }
     };
     
-    // ---------------- East Face BC definitions. ---------------------------------
-    template<class DataViewType>
-    struct FaceBcEast_K<DataViewType,BCType::outflow> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcWest_K<DataViewType,QRViewType,BCType::user> {
       DataViewType v;
       Geometry geom;
-      idx_t rad,nX;
+      QRViewType ab;
+      idx_t nX;
+      Real t;
 
-      FaceBcEast_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_):
+      FaceBcWest_K(const DataViewType& v_,const Geometry& geom_,const QRViewType& ab_,idx_t nX_,Real t_):
 	v(v_),
 	geom(geom_),
-	rad(rad_),
+	ab(ab_),
+	nX(nX_),
+	t(t_) {}
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int j) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  // Get quadrature point global location
+	  Real y = Numeric::sclAb(geom.yCoord(j),geom.dy,ab(nQ));
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  FaceWest(v,nX,j,0,nQ,0,geom.xLo,y,geom.zLo,t,state);
+	  // Copy state over
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(0,j,FaceLabel::east,nQ,nV) = state[nV];
+	  }
+	}
+      }
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int j,const int k) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	    // Get quadrature point global location
+	    Real y = Numeric::sclAb(geom.yCoord(j),geom.dy,ab(nQ));
+	    Real z = Numeric::sclAb(geom.zCoord(k),geom.dz,ab(nR));
+	    // query user defined BCs
+	    Real state[NUM_VARS];
+	    FaceWest(v,nX,j,k,nQ,nR,geom.xLo,y,z,t,state);
+	    // Copy state over
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      v(0,j,k,FaceLabel::east,nQ,nR,nV) = state[nV];
+	    }
+	  }
+	}
+      }
+    };
+    
+    // ---------------- East Face BC definitions. ---------------------------------
+    template<class DataViewType,class QRViewType>
+    struct FaceBcEast_K<DataViewType,QRViewType,BCType::outflow> {
+      DataViewType v;
+      idx_t nX;
+
+      FaceBcEast_K(const DataViewType& v_,idx_t nX_):
+	v(v_),
 	nX(nX_) {}
     
       KOKKOS_INLINE_FUNCTION
@@ -928,16 +968,13 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcEast_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcEast_K<DataViewType,QRViewType,BCType::reflecting> {
       DataViewType v;
-      Geometry geom;
-      idx_t rad,nX;
+      idx_t nX;
 
-      FaceBcEast_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_):
+      FaceBcEast_K(const DataViewType& v_,idx_t nX_):
 	v(v_),
-	geom(geom_),
-	rad(rad_),
 	nX(nX_) {}
 
       KOKKOS_INLINE_FUNCTION
@@ -966,18 +1003,66 @@ namespace KFVM {
 	}
       }
     };
-    
-    // ---------------- South Face BC definitions. ---------------------------------
-    template<class DataViewType>
-    struct FaceBcSouth_K<DataViewType,BCType::outflow> {
+
+    template<class DataViewType,class QRViewType>
+    struct FaceBcEast_K<DataViewType,QRViewType,BCType::user> {
       DataViewType v;
       Geometry geom;
-      idx_t rad,nY;
+      QRViewType ab;
+      idx_t nX;
+      Real t;
 
-      FaceBcSouth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_):
+      FaceBcEast_K(const DataViewType& v_,const Geometry& geom_,const QRViewType& ab_,idx_t nX_,Real t_):
 	v(v_),
 	geom(geom_),
-	rad(rad_),
+	ab(ab_),
+	nX(nX_),
+	t(t_) {}
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int j) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  // Get quadrature point global location
+	  Real y = Numeric::sclAb(geom.yCoord(j),geom.dy,ab(nQ));
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  FaceEast(v,nX,j,0,nQ,0,geom.xUp,y,geom.zLo,t,state);
+	  // Copy state over
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(nX + 1,j,FaceLabel::west,nQ,nV) = state[nV];
+	  }
+	}
+      }
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int j,const int k) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	    // Get quadrature point global location
+	    Real y = Numeric::sclAb(geom.yCoord(j),geom.dy,ab(nQ));
+	    Real z = Numeric::sclAb(geom.zCoord(k),geom.dz,ab(nR));
+	    // query user defined BCs
+	    Real state[NUM_VARS];
+	    FaceEast(v,nX,j,k,nQ,nR,geom.xUp,y,z,t,state);
+	    // Copy state over
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      v(nX + 1,j,k,FaceLabel::west,nQ,nR,nV) = state[nV];
+	    }
+	  }
+	}
+      }
+    };
+    
+    // ---------------- South Face BC definitions. ---------------------------------
+    template<class DataViewType,class QRViewType>
+    struct FaceBcSouth_K<DataViewType,QRViewType,BCType::outflow> {
+      DataViewType v;
+      idx_t nY;
+
+      FaceBcSouth_K(const DataViewType& v_,idx_t nY_):
+	v(v_),
 	nY(nY_) {}
     
       KOKKOS_INLINE_FUNCTION
@@ -1005,16 +1090,13 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcSouth_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcSouth_K<DataViewType,QRViewType,BCType::reflecting> {
       DataViewType v;
-      Geometry geom;
-      idx_t rad,nY;
+      idx_t nY;
 
-      FaceBcSouth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_):
+      FaceBcSouth_K(const DataViewType& v_,idx_t nY_):
 	v(v_),
-	geom(geom_),
-	rad(rad_),
 	nY(nY_) {}
 
       KOKKOS_INLINE_FUNCTION
@@ -1044,16 +1126,13 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcSouth_K<DataViewType,BCType::periodic> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcSouth_K<DataViewType,QRViewType,BCType::periodic> {
       DataViewType v;
-      Geometry geom;
-      idx_t rad,nY;
+      idx_t nY;
 
-      FaceBcSouth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_):
+      FaceBcSouth_K(const DataViewType& v_,idx_t nY_):
 	v(v_),
-	geom(geom_),
-	rad(rad_),
 	nY(nY_) {}
 
       KOKKOS_INLINE_FUNCTION
@@ -1083,17 +1162,65 @@ namespace KFVM {
       }
     };
     
-    // ---------------- North Face BC definitions. ---------------------------------
-    template<class DataViewType>
-    struct FaceBcNorth_K<DataViewType,BCType::outflow> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcSouth_K<DataViewType,QRViewType,BCType::user> {
       DataViewType v;
       Geometry geom;
-      idx_t rad,nY;
+      QRViewType ab;
+      idx_t nY;
+      Real t;
 
-      FaceBcNorth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_):
+      FaceBcSouth_K(const DataViewType& v_,const Geometry& geom_,const QRViewType& ab_,idx_t nY_,Real t_):
 	v(v_),
 	geom(geom_),
-	rad(rad_),
+	ab(ab_),
+	nY(nY_),
+	t(t_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  // Get quadrature point global location
+	  Real x = Numeric::sclAb(geom.xCoord(i),geom.dx,ab(nQ));
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  FaceSouth(v,nY,i,0,nQ,0,x,geom.yLo,geom.zLo,t,state);
+	  // Copy into view
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(i,0,FaceLabel::north,nQ,nV) = state[nV];
+	  }
+	}
+      }
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int k) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	    // Get quadrature point global location
+	    Real x = Numeric::sclAb(geom.xCoord(i),geom.dx,ab(nQ));
+	    Real z = Numeric::sclAb(geom.zCoord(k),geom.dz,ab(nR));
+	    // query user defined BCs
+	    Real state[NUM_VARS];
+	    FaceSouth(v,nY,i,k,nQ,nR,x,geom.yLo,z,t,state);
+	    // Copy into view
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      v(i,0,k,FaceLabel::north,nQ,nR,nV) = state[nV];
+	    }
+	  }
+	}
+      }
+    };
+    
+    // ---------------- North Face BC definitions. ---------------------------------
+    template<class DataViewType,class QRViewType>
+    struct FaceBcNorth_K<DataViewType,QRViewType,BCType::outflow> {
+      DataViewType v;
+      idx_t nY;
+
+      FaceBcNorth_K(const DataViewType& v_,idx_t nY_):
+	v(v_),
 	nY(nY_) {}
     
       KOKKOS_INLINE_FUNCTION
@@ -1121,16 +1248,13 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcNorth_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcNorth_K<DataViewType,QRViewType,BCType::reflecting> {
       DataViewType v;
-      Geometry geom;
-      idx_t rad,nY;
+      idx_t nY;
 
-      FaceBcNorth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_):
+      FaceBcNorth_K(const DataViewType& v_,idx_t nY_):
 	v(v_),
-	geom(geom_),
-	rad(rad_),
 	nY(nY_) {}
 
       KOKKOS_INLINE_FUNCTION
@@ -1160,17 +1284,65 @@ namespace KFVM {
       }
     };
     
-    // ---------------- Bottom Face BC definitions. ---------------------------------
-    template<class DataViewType>
-    struct FaceBcBottom_K<DataViewType,BCType::outflow> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcNorth_K<DataViewType,QRViewType,BCType::user> {
       DataViewType v;
       Geometry geom;
-      idx_t rad,nZ;
+      QRViewType ab;
+      idx_t nY;
+      Real t;
 
-      FaceBcBottom_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_):
+      FaceBcNorth_K(const DataViewType& v_,const Geometry& geom_,const QRViewType& ab_,idx_t nY_,Real t_):
 	v(v_),
 	geom(geom_),
-	rad(rad_),
+	ab(ab_),
+	nY(nY_),
+	t(t_) {}
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  // Get quadrature point global location
+	  Real x = Numeric::sclAb(geom.xCoord(i),geom.dx,ab(nQ));
+	  // query user defined BCs
+	  Real state[NUM_VARS];
+	  FaceNorth(v,nY,i,0,nQ,0,x,geom.yUp,geom.zLo,t,state);
+	  // copy state over
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    v(i,nY + 1,FaceLabel::south,nQ,nV) = state[nV];
+	  }
+	}
+      }
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int k) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	    // Get quadrature point global location
+	    Real x = Numeric::sclAb(geom.xCoord(i),geom.dx,ab(nQ));
+	    Real z = Numeric::sclAb(geom.zCoord(k),geom.dz,ab(nR));
+	    // query user defined BCs
+	    Real state[NUM_VARS];
+	    FaceNorth(v,nY,i,0,nQ,nR,x,geom.yUp,z,t,state);
+	    // copy state over
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      v(i,nY + 1,k,FaceLabel::south,nQ,nR,nV) = state[nV];
+	    }
+	  }
+	}
+      }
+    };
+    
+    // ---------------- Bottom Face BC definitions. ---------------------------------
+    template<class DataViewType,class QRViewType>
+    struct FaceBcBottom_K<DataViewType,QRViewType,BCType::outflow> {
+      DataViewType v;
+      idx_t nZ;
+
+      FaceBcBottom_K(const DataViewType& v_,idx_t nZ_):
+	v(v_),
 	nZ(nZ_) {}
     
       KOKKOS_INLINE_FUNCTION
@@ -1187,16 +1359,13 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcBottom_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcBottom_K<DataViewType,QRViewType,BCType::reflecting> {
       DataViewType v;
-      Geometry geom;
-      idx_t rad,nZ;
+      idx_t nZ;
 
-      FaceBcBottom_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_):
+      FaceBcBottom_K(const DataViewType& v_,idx_t nZ_):
 	v(v_),
-	geom(geom_),
-	rad(rad_),
 	nZ(nZ_) {}
     
       KOKKOS_INLINE_FUNCTION
@@ -1214,16 +1383,13 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcBottom_K<DataViewType,BCType::periodic> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcBottom_K<DataViewType,QRViewType,BCType::periodic> {
       DataViewType v;
-      Geometry geom;
-      idx_t rad,nZ;
+      idx_t nZ;
 
-      FaceBcBottom_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_):
+      FaceBcBottom_K(const DataViewType& v_,idx_t nZ_):
 	v(v_),
-	geom(geom_),
-	rad(rad_),
 	nZ(nZ_) {}
     
       KOKKOS_INLINE_FUNCTION
@@ -1241,17 +1407,49 @@ namespace KFVM {
       }
     };
     
-    // ---------------- Top Face BC definitions. ---------------------------------
-    template<class DataViewType>
-    struct FaceBcTop_K<DataViewType,BCType::outflow> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcBottom_K<DataViewType,QRViewType,BCType::user> {
       DataViewType v;
       Geometry geom;
-      idx_t rad,nZ;
+      QRViewType ab;
+      idx_t nZ;
+      Real t;
 
-      FaceBcTop_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_):
+      FaceBcBottom_K(const DataViewType& v_,const Geometry& geom_,const QRViewType& ab_,idx_t nZ_,Real t_):
 	v(v_),
 	geom(geom_),
-	rad(rad_),
+	ab(ab_),
+	nZ(nZ_),
+	t(t_) {}
+    
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int j) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	    // Get quadrature point global location
+	    Real x = Numeric::sclAb(geom.xCoord(i),geom.dx,ab(nQ));
+	    Real y = Numeric::sclAb(geom.yCoord(j),geom.dy,ab(nR));
+	    // query user defined BCs
+	    Real state[NUM_VARS];
+	    FaceBottom(v,nZ,i,j,nQ,nR,x,y,geom.zLo,t,state);
+	    // copy state over
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      v(i,j,0,FaceLabel::top,nQ,nR,nV) = state[nV];
+	    }
+	  }
+	}
+      }
+    };
+    
+    // ---------------- Top Face BC definitions. ---------------------------------
+    template<class DataViewType,class QRViewType>
+    struct FaceBcTop_K<DataViewType,QRViewType,BCType::outflow> {
+      DataViewType v;
+      idx_t nZ;
+
+      FaceBcTop_K(const DataViewType& v_,idx_t nZ_):
+	v(v_),
 	nZ(nZ_) {}
         
       KOKKOS_INLINE_FUNCTION
@@ -1268,16 +1466,13 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcTop_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class QRViewType>
+    struct FaceBcTop_K<DataViewType,QRViewType,BCType::reflecting> {
       DataViewType v;
-      Geometry geom;
-      idx_t rad,nZ;
+      idx_t nZ;
 
-      FaceBcTop_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_):
+      FaceBcTop_K(const DataViewType& v_,idx_t nZ_):
 	v(v_),
-	geom(geom_),
-	rad(rad_),
 	nZ(nZ_) {}
         
       KOKKOS_INLINE_FUNCTION
@@ -1289,6 +1484,41 @@ namespace KFVM {
 	    for (int nV=0; nV<NUM_VARS; nV++) {
 	      Real pf = nV == SimVar::momz ? -1.0 : 1.0;
 	      v(i,j,nZ + 1,FaceLabel::bottom,nQ,nR,nV) = pf*v(i,j,nZ,FaceLabel::top,nQ,nR,nV);
+	    }
+	  }
+	}
+      }
+    };
+    
+    template<class DataViewType,class QRViewType>
+    struct FaceBcTop_K<DataViewType,QRViewType,BCType::user> {
+      DataViewType v;
+      Geometry geom;
+      QRViewType ab;
+      idx_t nZ;
+      Real t;
+
+      FaceBcTop_K(const DataViewType& v_,const Geometry& geom_,const QRViewType& ab_,idx_t nZ_,Real t_):
+	v(v_),
+	geom(geom_),
+	ab(ab_),
+	nZ(nZ_),
+	t(t_) {}
+        
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const int i,const int j) const {
+	// Loop over quadrature points
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	    // Get quadrature point global location
+	    Real x = Numeric::sclAb(geom.xCoord(i),geom.dx,ab(nQ));
+	    Real y = Numeric::sclAb(geom.yCoord(j),geom.dy,ab(nR));
+	    // query user defined BCs
+	    Real state[NUM_VARS];
+	    FaceBottom(v,nZ,i,j,nQ,nR,x,y,geom.zUp,t,state);
+	    // copy state over
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      v(i,j,nZ + 1,FaceLabel::bottom,nQ,nR,nV) = state[nV];
 	    }
 	  }
 	}

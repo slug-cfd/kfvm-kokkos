@@ -54,8 +54,8 @@ int main(int argc, char* argv[]) {
     
     // Create ProblemSetup object with all settings and configuration
     KFVM::ProblemSetup ps("data/DoubleMach",
-			  256,64,16,
-			  0.0,4.0,0.0,1.0,0.0,0.25,
+			  256,64,64,
+			  0.0,4.0,0.0,1.0,0.0,1.0,
 			  0.25,40,
 			  1.4);
 
