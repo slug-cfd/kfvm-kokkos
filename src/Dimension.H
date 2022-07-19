@@ -1,6 +1,8 @@
 #ifndef DIMENSION_H_
 #define DIMENSION_H_
 
+#include <Definitions.H>
+
 // File: Dimension.H
 // Usage: This file declares macros useful for dimension dependent
 //        code

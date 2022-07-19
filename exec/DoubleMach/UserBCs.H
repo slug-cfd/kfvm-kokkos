@@ -26,13 +26,13 @@ void CellWest(const DataViewType &U, idx_t rad, idx_t nX,
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
 void FaceWest(const DataViewType &U,idx_t nX,
-	      int j,int k,int nQ,int nR,
+	      int j,int k,int nQ,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) nX;
-  (void) j; (void) k; (void) nQ; (void) nR;
+  (void) j; (void) k; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 }
@@ -55,13 +55,13 @@ void CellEast(const DataViewType &U, idx_t rad, idx_t nX,
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
 void FaceEast(const DataViewType &U,idx_t nX,
-	      int j,int k,int nQ,int nR,
+	      int j,int k,int nQ,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) nX;
-  (void) j; (void) k; (void) nQ; (void) nR;
+  (void) j; (void) k; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 }
@@ -93,13 +93,13 @@ void CellSouth(const DataViewType &U, idx_t rad, idx_t nY,
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
 void FaceSouth(const DataViewType &U,idx_t nY,
-	       int i,int k,int nQ,int nR,
+	       int i,int k,int nQ,
 	       Real x,Real y,Real z,Real t,
 	       Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) nY;
-  (void) i; (void) k; (void) nQ; (void) nR;
+  (void) i; (void) k; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
@@ -147,13 +147,13 @@ void CellNorth(const DataViewType &U, idx_t rad, idx_t nY,
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
 void FaceNorth(const DataViewType &U,idx_t nY,
-	       int i,int k,int nQ,int nR,
+	       int i,int k,int nQ,
 	       Real x,Real y,Real z,Real t,
 	       Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) nY;
-  (void) i; (void) k; (void) nQ; (void) nR;
+  (void) i; (void) k; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
@@ -192,13 +192,13 @@ void CellBottom(const DataViewType &U, idx_t rad, idx_t nZ,
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
 void FaceBottom(const DataViewType &U,idx_t nZ,
-		int i,int j,int nQ,int nR,
+		int i,int j,int nQ,
 		Real x,Real y,Real z,Real t,
 		Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) nZ;
-  (void) i; (void) j; (void) nQ; (void) nR;
+  (void) i; (void) j; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 }
@@ -221,13 +221,13 @@ void CellTop(const DataViewType &U, idx_t rad, idx_t nZ,
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
 void FaceTop(const DataViewType &U,idx_t nZ,
-	     int i,int j,int nQ,int nR,
+	     int i,int j,int nQ,
 	     Real x,Real y,Real z,Real t,
 	     Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) nZ;
-  (void) i; (void) j; (void) nQ; (void) nR;
+  (void) i; (void) j; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 }

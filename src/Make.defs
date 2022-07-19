@@ -5,7 +5,7 @@ DEFINES = -DSPACE_DIM=$(DIM) -DSTENCIL_RADIUS=$(STENRAD) -DNUM_QUAD_PTS=$(NUMQUA
 CXXFLAGS = -g -Wall -Wextra -fmax-errors=2 $(DEFINES)
 
 # All external dependencies
-KFVM_LIBS = -lnetcdf_c++4 -lnetcdf -lsz -lz -llapack -lblas -lgsl -lgslcblas -lcerf -lm
+KFVM_LIBS = -L/usr/local/lib -lnetcdf-c++4 -lnetcdf -lsz -lz -llapack -lblas -lgsl -lgslcblas -lcerf -lm
 
 # Suffix for executables
 OPT_SUFFIX = $(DIM)D.R$(STENRAD).NQ$(NUMQUAD)

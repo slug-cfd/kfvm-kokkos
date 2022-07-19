@@ -6,15 +6,17 @@
 // Notes: The quadrature rules are all defined on (-0.5,0.5) with
 //        a slightly hacky "/2.0" at the end of each entry
 
+#include <cstdint>
+#include <array>
+
 #include <Kokkos_CopyViews.hpp>
 #include <Kokkos_Core_fwd.hpp>
 #include <Kokkos_HostSpace.hpp>
 #include <Kokkos_Layout.hpp>
-#include <cstdint>
-#include <array>
 #include <impl/Kokkos_ViewCtor.hpp>
 
-#include "Types.H"
+#include <Definitions.H>
+#include <Types.H>
 
 namespace KFVM {
 
@@ -35,18 +37,18 @@ namespace KFVM {
     };
 
     // Quadrature rule with values accessible in non-host space
-    template<int nQuad> struct QuadRule
+    struct QuadRule
     {
-      Kokkos::View<Real[nQuad]> ab,wt;
+      QuadRuleView ab,wt;
       QuadRule(): ab("QuadRuleAbscissae"),wt("QuadRuleWeights")
       {
 	// Create host mirror and copy in from LUT
-	auto h_ab = Kokkos::create_mirror_view(ab);
-	auto h_wt = Kokkos::create_mirror_view(wt);
+	auto h_ab = Kokkos::create_mirror(ab);
+	auto h_wt = Kokkos::create_mirror(wt);
 
-	for (int nQ=0; nQ<nQuad; nQ++) {
-	  h_ab(nQ) = QuadRuleLUT<nQuad>::ab[nQ];
-	  h_wt(nQ) = QuadRuleLUT<nQuad>::wt[nQ];
+	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  h_ab(nQ) = QuadRuleLUT<NUM_QUAD_PTS>::ab[nQ];
+	  h_wt(nQ) = QuadRuleLUT<NUM_QUAD_PTS>::wt[nQ];
 	}
 	
 	// Copy to views on the right memory space

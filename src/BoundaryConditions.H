@@ -10,10 +10,6 @@ namespace KFVM {
 
     // Work tags for different BC types
     enum BCType {periodic = 0,outflow,reflecting,user};
-    struct Periodic {};
-    struct Outflow {};
-    struct Reflecting {};
-    struct User {}; // placeholder, not sure how to implement this one...
 
   } // end namespace BoundaryConditions
 

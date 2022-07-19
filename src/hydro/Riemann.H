@@ -4,9 +4,10 @@
 #include <Kokkos_MathematicalFunctions.hpp>
 #include <Kokkos_Macros.hpp>
 
-#include "SimVar.H"
-#include "Types.H"
-#include "EOS.H"
+#include <Definitions.H>
+#include <SimVar.H>
+#include <Types.H>
+#include <EOS.H>
 
 namespace KFVM {
 

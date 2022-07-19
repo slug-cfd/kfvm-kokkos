@@ -7,23 +7,24 @@
 
 #include <netcdf>
 
-#include "SimVar.H"
-#include "Types.H"
-#include "ProblemSetup.H"
+#include <Definitions.H>
+#include <SimVar.H>
+#include <Types.H>
+#include <ProblemSetup.H>
 
 namespace KFVM {
 
   class NetCDFWriter
   {
     const ProblemSetup& ps;
-    const std::array<idx_t,SPACE_DIM> gridSize;
+    const std::array<int,SPACE_DIM> gridSize;
     std::array<std::vector<double>,SPACE_DIM> grid;
     std::vector<double> solTmp;
 
-    std::string FileName(idx_t);
+    std::string FileName(int);
   public:
     NetCDFWriter(const ProblemSetup& ps);
-    void write(CellDataView,idx_t,double);
+    void write(CellDataView,int,double);
   };
 
 }

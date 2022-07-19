@@ -8,14 +8,16 @@
 
 #include <Kokkos_View.hpp>
 
-#include "Dimension.H"
-#include "Geometry.H"
-#include "SimVar.H"
-#include "Types.H"
-#include "ProblemSetup.H"
-#include "Stencil.H"
-#include "NetCDFWriter.H"
-#include "numeric/Numeric.H"
+
+#include <Definitions.H>
+#include <Dimension.H>
+#include <Geometry.H>
+#include <SimVar.H>
+#include <Types.H>
+#include <ProblemSetup.H>
+#include <NetCDFWriter.H>
+#include <Numeric.H>
+#include <Stencil.H>
 
 namespace KFVM {
 
@@ -25,21 +27,24 @@ namespace KFVM {
     // IO object
     NetCDFWriter netCDFWriter;
     // Quadrature rule for face/cell integration
-    Numeric::QuadRule<NUM_QUAD_PTS> qr;
+    Numeric::QuadRule qr;
     // Grid geometry data
     Geometry geom;
+    // Stencil object for Riemann state reconstruction
+    Stencil::Stencil stencil;
     // Cell-based data
     CellDataView U_halo,U1_halo,U2_halo,U3_halo,U4_halo,K,Ktil;
     // Face-based data
     FaceDataView FaceVals;
+    // Cell data expanded for reconstruction stencils
+    Stencil::StenValsView StenVals;
     // Time step information
     Real time,dt;
     bool lastTimeStep;
     // Internal functions
     auto trimCellHalo(CellDataView v)
     {
-      return Kokkos::subview(v,KFVM_D_DECL(
-					   Kokkos::make_pair(ps.rad,ps.nX + ps.rad),
+      return Kokkos::subview(v,KFVM_D_DECL(Kokkos::make_pair(ps.rad,ps.nX + ps.rad),
 					   Kokkos::make_pair(ps.rad,ps.nY + ps.rad),
 					   Kokkos::make_pair(ps.rad,ps.nZ + ps.rad)),
 			     Kokkos::ALL);
@@ -48,17 +53,16 @@ namespace KFVM {
     {
 #if (SPACE_DIM == 2)
       return Kokkos::subview(v,
-			     Kokkos::make_pair(idx_t(1),ps.nX + 1),
-			     Kokkos::make_pair(idx_t(1),ps.nY + 1),
+			     Kokkos::make_pair(1,ps.nX + 1),
+			     Kokkos::make_pair(1,ps.nY + 1),
 			     Kokkos::ALL,
 			     Kokkos::ALL,
 			     Kokkos::ALL);
 #else
       return Kokkos::subview(v,
-			     Kokkos::make_pair(idx_t(1),ps.nX + 1),
-			     Kokkos::make_pair(idx_t(1),ps.nY + 1),
-			     Kokkos::make_pair(idx_t(1),ps.nZ + 1),
-			     Kokkos::ALL,
+			     Kokkos::make_pair(1,ps.nX + 1),
+			     Kokkos::make_pair(1,ps.nY + 1),
+			     Kokkos::make_pair(1,ps.nZ + 1),
 			     Kokkos::ALL,
 			     Kokkos::ALL,
 			     Kokkos::ALL);

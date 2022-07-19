@@ -5,18 +5,20 @@
 // Purpose: Define compute kernels for various simple numerical methods
 //          referencing data from Numeric.H
 
+#include <cstdint>
+#include <cstdio>
+
 #include <Kokkos_CopyViews.hpp>
 #include <Kokkos_Core.hpp>
 #include <Kokkos_HostSpace.hpp>
 #include <Kokkos_Macros.hpp>
 #include <Kokkos_View.hpp>
-#include <cstdint>
-#include <cstdio>
 
-#include "Types.H"
-#include "ProblemSetup.H"
-#include "Geometry.H"
-#include "Numeric.H"
+#include <Definitions.H>
+#include <Types.H>
+#include <ProblemSetup.H>
+#include <Geometry.H>
+#include <Numeric.H>
 
 namespace KFVM {
 
@@ -26,16 +28,16 @@ namespace KFVM {
 
   namespace Numeric {
 
-    template<class DataViewType,class QRViewType,int nQuad>
+    template<class DataViewType>
     struct IntegrateIC_K
     {
       DataViewType v;
-      QRViewType ab,wt;
+      QuadRuleView ab,wt;
       Geometry geom;
 
       IntegrateIC_K(const DataViewType& v_,
-		    const QRViewType& ab_,
-		    const QRViewType& wt_,
+		    const QuadRuleView& ab_,
+		    const QuadRuleView& wt_,
 		    const Geometry& geom_):
 	v(v_),
 	ab(ab_),
@@ -54,8 +56,8 @@ namespace KFVM {
 	}
 
 	// Loop over quadrature points and accumulate integral
-	for (int nX=0; nX<nQuad; nX++) {
-	  for (int nY=0; nY<nQuad; nY++) {
+	for (int nX=0; nX<NUM_QUAD_PTS; nX++) {
+	  for (int nY=0; nY<NUM_QUAD_PTS; nY++) {
 	    // Quadrature point
 	    Real abX = sclAb(xCtr,geom.dx,ab(nX));
 	    Real abY = sclAb(yCtr,geom.dy,ab(nY));
@@ -84,9 +86,9 @@ namespace KFVM {
 	}
 
 	// Loop over quadrature points and accumulate integral
-	for (int nX=0; nX<nQuad; nX++) {
-	  for (int nY=0; nY<nQuad; nY++) {
-	    for (int nZ=0; nZ<nQuad; nZ++) {
+	for (int nX=0; nX<NUM_QUAD_PTS; nX++) {
+	  for (int nY=0; nY<NUM_QUAD_PTS; nY++) {
+	    for (int nZ=0; nZ<NUM_QUAD_PTS; nZ++) {
 	      // Quadrature point
 	      Real abX = sclAb(xCtr,geom.dx,ab(nX));
 	      Real abY = sclAb(yCtr,geom.dy,ab(nY));
@@ -107,18 +109,18 @@ namespace KFVM {
     };
     
 
-    template<class RhsViewType,class FluxViewType,class QRViewType,int nQuad>
+    template<class RhsViewType,class FluxViewType>
     struct IntegrateFlux_K
     {
       RhsViewType rhs;
       FluxViewType flux;
-      QRViewType ab,wt;
+      QuadRuleView ab,wt;
       Geometry geom;
 
       IntegrateFlux_K(const RhsViewType& rhs_,
 		      const FluxViewType& flux_,
-		      const QRViewType& ab_,
-		      const QRViewType& wt_,
+		      const QuadRuleView& ab_,
+		      const QuadRuleView& wt_,
 		      const Geometry& geom_):
 	rhs(rhs_),
 	flux(flux_),
@@ -157,12 +159,12 @@ namespace KFVM {
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
-	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::west,nQ,nR,nV) -
-					      flux(i,j,k,FaceLabel::east,nQ,nR,nV))/geom.dx;
-	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::south,nQ,nR,nV) -
-					      flux(i,j,k,FaceLabel::north,nQ,nR,nV))/geom.dy;
-	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::bottom,nQ,nR,nV) -
-					      flux(i,j,k,FaceLabel::top,nQ,nR,nV))/geom.dz;
+	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::west,nQ*NUM_QUAD_PTS + nR,nV) -
+					      flux(i,j,k,FaceLabel::east,nQ*NUM_QUAD_PTS + nR,nV))/geom.dx;
+	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::south,nQ*NUM_QUAD_PTS + nR,nV) -
+					      flux(i,j,k,FaceLabel::north,nQ*NUM_QUAD_PTS + nR,nV))/geom.dy;
+	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::bottom,nQ*NUM_QUAD_PTS + nR,nV) -
+					      flux(i,j,k,FaceLabel::top,nQ*NUM_QUAD_PTS + nR,nV))/geom.dz;
 	    }
 	  }
 	}

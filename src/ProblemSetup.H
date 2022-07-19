@@ -5,9 +5,10 @@
 #include <cstdint>
 #include <string>
 
-#include "Dimension.H"
-#include "Types.H"
-#include "BoundaryConditions.H"
+#include <Definitions.H>
+#include <Dimension.H>
+#include <Types.H>
+#include <BoundaryConditions.H>
 
 #ifndef STENCIL_RADIUS
 #define STENCIL_RADIUS 2
@@ -26,24 +27,24 @@ namespace KFVM {
     static std::array<BoundaryConditions::BCType,6> bcType;
     
     // Stencil settings
-    static constexpr idx_t rad = STENCIL_RADIUS;
+    static constexpr int rad = STENCIL_RADIUS;
     Real gp_lFac,gp_bpow;
 
     // Solution file settings
     std::string baseName;
     
     // Domain and grid size
-    idx_t nX,nY,nZ;
+    int nX,nY,nZ;
     Real xLo,xUp,yLo,yUp,zLo,zUp;
     Real dx,dy,dz;
 
     // Time stepping information
-    idx_t maxTimeSteps;
+    int maxTimeSteps;
     Real initialTime,finalTime,initialDeltaT;
     Real cfl;
 
     // File output information
-    idx_t plotFreq;
+    int plotFreq;
 
     // Fluid properties array
     FluidProperties fluidProp;
@@ -51,9 +52,9 @@ namespace KFVM {
     // Simple constructor
     // To be replaced by input file reader
     ProblemSetup(std::string name_,
-                 idx_t nX_,idx_t nY_,idx_t nZ_,
+                 int nX_,int nY_,int nZ_,
                  Real xLo_,Real xUp_,Real yLo_,Real yUp_,Real zLo_,Real zUp_,
-		 Real finalTime_,idx_t plotFreq_,
+		 Real finalTime_,int plotFreq_,
                  Real gam_):
       gp_lFac(Real(12.0)),
       gp_bpow(Real(STENCIL_RADIUS)),

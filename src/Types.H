@@ -5,18 +5,19 @@
 // Purpose: Define any types needed throughout the code base
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_Core_fwd.hpp>
+#include <Kokkos_HostSpace.hpp>
+#include <Kokkos_View.hpp>
 #include <cstddef>
 
-#include "Dimension.H"
-#include "SimVar.H"
+#include <Definitions.H>
+#include <Dimension.H>
+#include <SimVar.H>
 
 namespace KFVM {
 
-  // Integer type for indices
-  typedef uint32_t idx_t;
-
   // Set floating point precision for solver
-#ifdef KFVM_SINGLE_PREC
+#if (FLOAT_PRECISION == 0)
   typedef float Real;
 #else
   typedef double Real;
@@ -28,14 +29,26 @@ namespace KFVM {
   // Enumeration of face names associated to [2*SPACE_DIM] entry in FaceDataView
   enum FaceLabel {west = 0, east, south, north, bottom, top};
 
+  // Kokkos spaces, mostly here for debugging
+#ifdef KFVM_DEBUG
+  typedef Kokkos::Serial ExecSpace;
+  typedef Kokkos::HostSpace MemSpace;
+#else
+  typedef Kokkos::DefaultExecutionSpace ExecSpace;
+  typedef Kokkos::DefaultExecutionSpace::memory_space MemSpace;
+#endif
+
   // Kokkos views for various state data
 #if (SPACE_DIM == 2)
-  typedef Kokkos::View<Real**[NUM_VARS]> CellDataView;
-  typedef Kokkos::View<Real**[2*SPACE_DIM][NUM_QUAD_PTS][NUM_VARS]> FaceDataView;
+  typedef Kokkos::View<Real**[NUM_VARS],MemSpace> CellDataView;
+  typedef Kokkos::View<Real**[2*SPACE_DIM][NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataView;
 #else
-  typedef Kokkos::View<Real***[NUM_VARS]> CellDataView;
-  typedef Kokkos::View<Real***[2*SPACE_DIM][NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_VARS]> FaceDataView;
+  typedef Kokkos::View<Real***[NUM_VARS],MemSpace> CellDataView;
+  typedef Kokkos::View<Real***[2*SPACE_DIM][NUM_QUAD_PTS*NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataView;
 #endif
+
+  // Kokkos views for quadrature rules
+  typedef Kokkos::View<Real[NUM_QUAD_PTS],MemSpace> QuadRuleView;
 }
 
 #endif

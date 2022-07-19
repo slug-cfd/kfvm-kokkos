@@ -3,6 +3,11 @@ obj
 data
 exec/*/*.hpp
 exec/*/*.h
+exec/*/src
+exec/*/CMakeFiles
+exec/*/CMakeCache.txt
+exec/*/cmake_install.cmake
+exec/*/Makefile
 user/Make.defs
 *.o
 *.d

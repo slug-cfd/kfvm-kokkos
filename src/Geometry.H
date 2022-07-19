@@ -6,8 +6,9 @@
 
 #include <Kokkos_Macros.hpp>
 
-#include "Types.H"
-#include "ProblemSetup.H"
+#include <Definitions.H>
+#include <Types.H>
+#include <ProblemSetup.H>
 
 namespace KFVM {
   
