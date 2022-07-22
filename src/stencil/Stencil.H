@@ -40,6 +40,8 @@ namespace KFVM {
       static constexpr int nCellsBias = 5;
       // Number of derivatives in smoothness indicator
       static constexpr int nDeriv = 4;
+      // Number of total smoothness indicator entries to form
+      static constexpr int nIndic = nDeriv*nqCell_d;
       // Number of substencils
       static constexpr int nSub = 6;
       // Number of biased substencils
@@ -57,6 +59,7 @@ namespace KFVM {
       static constexpr int nCellsCtr = 13;
       static constexpr int nCellsBias = 10;
       static constexpr int nDeriv = 4;
+      static constexpr int nIndic = nDeriv*nqCell_d;
       static constexpr int nSub = 6;
       static constexpr int nBias = 4;
     };
@@ -73,6 +76,7 @@ namespace KFVM {
       static constexpr int nCellsCtr = 7;
       static constexpr int nCellsBias = 11;
       static constexpr int nDeriv = 6;
+      static constexpr int nIndic = nDeriv*nqCell_d;
       static constexpr int nSub = 8;
       static constexpr int nBias = 6;
     };
@@ -88,6 +92,7 @@ namespace KFVM {
       static constexpr int nCellsCtr = 33;
       static constexpr int nCellsBias = 32;
       static constexpr int nDeriv = 6;
+      static constexpr int nIndic = nDeriv*nqCell_d;
       static constexpr int nSub = 8;
       static constexpr int nBias = 6;
     };
@@ -96,8 +101,10 @@ namespace KFVM {
     // each cell has nCells X nVars values to allow changing type of recon variables
 #if (SPACE_DIM == 2)
     typedef Kokkos::View<Real**[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull][NUM_VARS],MemSpace> StenValsView;
+    typedef Kokkos::View<Real**[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nIndic][NUM_VARS],MemSpace> StenIndicView;
 #else
     typedef Kokkos::View<Real***[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull][NUM_VARS],MemSpace> StenValsView;
+    typedef Kokkos::View<Real***[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nIndic][NUM_VARS],MemSpace> StenIndicView;
 #endif
 
     struct Stencil
@@ -149,7 +156,7 @@ namespace KFVM {
 
       // stencil weights for derivative reconstruction in cell
       // indices are substencil index/derivative type and location/cell in stencil
-      Kokkos::View<Real[Core::SI.nSub][Core::SI.nDeriv*Core::SI.nqCell_d][Core::SI.nCellsFull],MemSpace> derivWeights;
+      Kokkos::View<Real[Core::SI.nSub][Core::SI.nIndic][Core::SI.nCellsFull],MemSpace> derivWeights;
 
       Stencil(Real lfac_,Real bpow_,const QuadRuleView& ab_):
 	core(bpow_),

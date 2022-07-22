@@ -133,24 +133,13 @@ namespace KFVM {
     setCellBCs(sol_halo,t);
 
     // Reconstruct face states
-    // Temporary: hard coded to first order Godunov
-    auto U = trimCellHalo(sol_halo);
-    auto RS = trimFaceHalo(FaceVals);
-    auto cellRngPolicy =
-      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM> >({KFVM_D_DECL(0,0,0)},
-								{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
-    // Kokkos::parallel_for("FaceRecon",cellRngPolicy,Stencil::MinModRecon_K<decltype(U),decltype(RS)>(U,RS));
-    Kokkos::parallel_for("FaceRecon",cellRngPolicy,
-			 Stencil::Weno5JS_K<decltype(U),decltype(RS),
-			 decltype(stencil.lOff),decltype(stencil.faceWeights),
-			 decltype(stencil.derivWeights)>(U,StenVals,RS,stencil.core.SI.nCellsFull,
-							 KFVM_D_DECL(stencil.lOff,stencil.tOff,stencil.ttOff),
-							 stencil.faceWeights,stencil.derivWeights));
+    reconstructRiemannStates(sol_halo);
     
     // Set BCs on Riemann states
     setFaceBCs(t);
     
     // Call Riemann solver
+    auto RS = trimFaceHalo(FaceVals);
     Real vBulk = 0.0,vEast = 0.0,vNorth = 0.0,vTop = 0.0;
     auto fluxRngPolicy_bulk =
       Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Hydro::RiemannSolver_K<decltype(RS)>::BulkTag>({KFVM_D_DECL(0,0,0)},
@@ -181,11 +170,35 @@ namespace KFVM {
     Real maxVel = std::fmax(vBulk,std::fmax(vEast,std::fmax(vNorth,vTop)));
 
     // Integrate fluxes and store into rhs
+    auto cellRngPolicy =
+      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM> >({KFVM_D_DECL(0,0,0)},
+								{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
     Kokkos::parallel_for("IntegrateFlux",cellRngPolicy,
 			 Numeric::IntegrateFlux_K<decltype(rhs),decltype(RS)>(rhs,RS,qr.ab,qr.wt,geom));
     
     Kokkos::Profiling::popRegion();
     return maxVel;
+  }
+
+  void Solver::reconstructRiemannStates(CellDataView sol_halo)
+  {
+    // Subviews of cell data and Riemann states to simplify indexing
+    auto U = trimCellHalo(sol_halo);
+    auto RS = trimFaceHalo(FaceVals);
+
+    // Allocate view for smoothness indicators
+    Stencil::StenIndicView indic("StenIndic",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ));
+    
+    auto cellRngPolicy =
+      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM> >({KFVM_D_DECL(0,0,0)},
+								{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
+    
+    Kokkos::parallel_for("FaceRecon",cellRngPolicy,
+			 Stencil::Weno5JS_K<decltype(U),decltype(RS),
+			 decltype(stencil.lOff),decltype(stencil.faceWeights),
+			 decltype(stencil.derivWeights)>(U,RS,StenVals,indic,
+							 KFVM_D_DECL(stencil.lOff,stencil.tOff,stencil.ttOff),
+							 stencil.faceWeights,stencil.derivWeights));
   }
 
 void Solver::setCellBCs(CellDataView sol_halo,Real t)

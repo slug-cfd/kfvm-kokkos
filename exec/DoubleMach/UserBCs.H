@@ -11,7 +11,7 @@
 // Western boundary
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void CellWest(const DataViewType &U, idx_t rad, idx_t nX,
+void CellWest(const DataViewType &U, int rad, int nX,
 	      int j,int k,int nH,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
@@ -25,7 +25,7 @@ void CellWest(const DataViewType &U, idx_t rad, idx_t nX,
 
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void FaceWest(const DataViewType &U,idx_t nX,
+void FaceWest(const DataViewType &U,int nX,
 	      int j,int k,int nQ,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
@@ -40,7 +40,7 @@ void FaceWest(const DataViewType &U,idx_t nX,
 // Eastern boundary
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void CellEast(const DataViewType &U, idx_t rad, idx_t nX,
+void CellEast(const DataViewType &U, int rad, int nX,
 	      int j,int k,int nH,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
@@ -54,7 +54,7 @@ void CellEast(const DataViewType &U, idx_t rad, idx_t nX,
 
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void FaceEast(const DataViewType &U,idx_t nX,
+void FaceEast(const DataViewType &U,int nX,
 	      int j,int k,int nQ,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
@@ -69,7 +69,7 @@ void FaceEast(const DataViewType &U,idx_t nX,
 // Southern boundary
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void CellSouth(const DataViewType &U, idx_t rad, idx_t nY,
+void CellSouth(const DataViewType &U, int rad, int nY,
 	      int i,int k,int nH,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
@@ -92,7 +92,7 @@ void CellSouth(const DataViewType &U, idx_t rad, idx_t nY,
 
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void FaceSouth(const DataViewType &U,idx_t nY,
+void FaceSouth(const DataViewType &U,int nY,
 	       int i,int k,int nQ,
 	       Real x,Real y,Real z,Real t,
 	       Real state[NUM_VARS])
@@ -106,17 +106,17 @@ void FaceSouth(const DataViewType &U,idx_t nY,
   const Real xRef = cos(2.0*M_PI*z)/12.0 + 1.0/4.0;
   const Real pf = x>xRef ? -1.0 : 1.0; // Only reflect on part of the domain
 
-  state[SimVar::dens] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,KFVM_DM_DECL(nQ,nR),SimVar::dens);
-  state[SimVar::momx] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,KFVM_DM_DECL(nQ,nR),SimVar::momx);
-  state[SimVar::momy] = pf*U(KFVM_D_DECL(i,1,k),FaceLabel::south,KFVM_DM_DECL(nQ,nR),SimVar::momy);
-  state[SimVar::momz] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,KFVM_DM_DECL(nQ,nR),SimVar::momz);
-  state[SimVar::etot] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,KFVM_DM_DECL(nQ,nR),SimVar::etot);
+  state[SimVar::dens] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,nQ,SimVar::dens);
+  state[SimVar::momx] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,nQ,SimVar::momx);
+  state[SimVar::momy] = pf*U(KFVM_D_DECL(i,1,k),FaceLabel::south,nQ,SimVar::momy);
+  state[SimVar::momz] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,nQ,SimVar::momz);
+  state[SimVar::etot] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,nQ,SimVar::etot);
 }
 
 // Northern boundary
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void CellNorth(const DataViewType &U, idx_t rad, idx_t nY,
+void CellNorth(const DataViewType &U, int rad, int nY,
 	      int i,int k,int nH,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
@@ -146,7 +146,7 @@ void CellNorth(const DataViewType &U, idx_t rad, idx_t nY,
 
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void FaceNorth(const DataViewType &U,idx_t nY,
+void FaceNorth(const DataViewType &U,int nY,
 	       int i,int k,int nQ,
 	       Real x,Real y,Real z,Real t,
 	       Real state[NUM_VARS])
@@ -177,7 +177,7 @@ void FaceNorth(const DataViewType &U,idx_t nY,
 // Bottom boundary
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void CellBottom(const DataViewType &U, idx_t rad, idx_t nZ,
+void CellBottom(const DataViewType &U, int rad, int nZ,
 	      int i,int j,int nH,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
@@ -191,7 +191,7 @@ void CellBottom(const DataViewType &U, idx_t rad, idx_t nZ,
 
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void FaceBottom(const DataViewType &U,idx_t nZ,
+void FaceBottom(const DataViewType &U,int nZ,
 		int i,int j,int nQ,
 		Real x,Real y,Real z,Real t,
 		Real state[NUM_VARS])
@@ -206,7 +206,7 @@ void FaceBottom(const DataViewType &U,idx_t nZ,
 // Top boundary
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void CellTop(const DataViewType &U, idx_t rad, idx_t nZ,
+void CellTop(const DataViewType &U, int rad, int nZ,
 	      int i,int j,int nH,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
@@ -220,7 +220,7 @@ void CellTop(const DataViewType &U, idx_t rad, idx_t nZ,
 
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
-void FaceTop(const DataViewType &U,idx_t nZ,
+void FaceTop(const DataViewType &U,int nZ,
 	     int i,int j,int nQ,
 	     Real x,Real y,Real z,Real t,
 	     Real state[NUM_VARS])

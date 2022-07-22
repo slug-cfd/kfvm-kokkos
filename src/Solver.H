@@ -75,6 +75,7 @@ namespace KFVM {
     void TakeStep();
     void Solve();
     Real evalRHS(CellDataView,CellDataView,Real);
+    void reconstructRiemannStates(CellDataView);
     Real findFluxes();
     void setCellBCs(CellDataView,Real);
     void setFaceBCs(Real);

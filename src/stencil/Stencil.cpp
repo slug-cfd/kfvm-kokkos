@@ -210,7 +210,7 @@ namespace KFVM {
 	    }
 	  }
 	  
-	  for (int nQ=0; nQ<core.SI.nDeriv*core.SI.nqCell_d; nQ++) {
+	  for (int nQ=0; nQ<core.SI.nIndic; nQ++) {
 	    h_deriv(nS,nQ,nC) = 0.0;
 	  }
 	}
@@ -358,7 +358,153 @@ namespace KFVM {
 	h_face(SubSten::top,FaceLabel::bottom,nQ,zp1) = -7.0/6.0;
 	h_face(SubSten::top,FaceLabel::bottom,nQ,ctr) = 11.0/6.0;
       }
-#endif      
+#endif
+
+      // Fill in derivative weights
+#if (SPACE_DIM == 2)
+      for (int nQ=0; nQ<core.SI.nqCell_d; nQ++) {
+	const int ctr = 0;
+	const int xm1 = 1,xp1 = 2,xm2 = 5,xp2 = 6;
+	const int ym1 = 3,yp1 = 4,ym2 = 7,yp2 = 8;
+	const int r0 = nQ*core.SI.nDeriv,r1 = nQ*core.SI.nDeriv + 1;
+	const int r2 = nQ*core.SI.nDeriv + 2,r3 = nQ*core.SI.nDeriv + 3;
+	// West substencil
+	h_deriv(SubSten::west,r0,xm2) =  13.0/12.0;
+	h_deriv(SubSten::west,r0,xm1) = -13.0/6.0;
+	h_deriv(SubSten::west,r0,ctr) =  13.0/12.0;
+	
+	h_deriv(SubSten::west,r1,xm2) =  1.0/4.0;
+	h_deriv(SubSten::west,r1,xm1) = -1.0;
+	h_deriv(SubSten::west,r1,ctr) =  3.0/4.0;
+	
+	// East substencil
+	h_deriv(SubSten::east,r0,ctr) =  13.0/12.0;
+	h_deriv(SubSten::east,r0,xp1) = -13.0/6.0;
+	h_deriv(SubSten::east,r0,xp2) =  13.0/12.0;
+	
+	h_deriv(SubSten::east,r1,ctr) =  3.0/4.0;
+	h_deriv(SubSten::east,r1,xp1) = -1.0;
+	h_deriv(SubSten::east,r1,xp2) =  1.0/4.0;
+	
+	// South substencil
+	h_deriv(SubSten::south,r0,ym2) =  13.0/12.0;
+	h_deriv(SubSten::south,r0,ym1) = -13.0/6.0;
+	h_deriv(SubSten::south,r0,ctr) =  13.0/12.0;
+	
+	h_deriv(SubSten::south,r1,ym2) =  1.0/4.0;
+	h_deriv(SubSten::south,r1,ym1) = -1.0;
+	h_deriv(SubSten::south,r1,ctr) =  3.0/4.0;
+	
+	// North substencil
+	h_deriv(SubSten::north,r0,ctr) =  13.0/12.0;
+	h_deriv(SubSten::north,r0,yp1) = -13.0/6.0;
+	h_deriv(SubSten::north,r0,yp2) =  13.0/12.0;
+	
+	h_deriv(SubSten::north,r1,ctr) =  3.0/4.0;
+	h_deriv(SubSten::north,r1,yp1) = -1.0;
+	h_deriv(SubSten::north,r1,yp2) =  1.0/4.0;
+	
+	// Center substencil
+	h_deriv(SubSten::center,r0,xm1) =  13.0/12.0;
+	h_deriv(SubSten::center,r0,ctr) = -13.0/6.0;
+	h_deriv(SubSten::center,r0,xp1) =  13.0/12.0;
+	
+	h_deriv(SubSten::center,r1,xm1) =  1.0/4.0;
+	h_deriv(SubSten::center,r1,xp1) = -1.0/4.0;
+	
+	h_deriv(SubSten::center,r2,ym1) =  13.0/12.0;
+	h_deriv(SubSten::center,r2,ctr) = -13.0/6.0;
+	h_deriv(SubSten::center,r2,yp1) =  13.0/12.0;
+	
+	h_deriv(SubSten::center,r3,ym1) =  1.0/4.0;
+	h_deriv(SubSten::center,r3,yp1) = -1.0/4.0;
+      }
+#else
+      for (int nQ=0; nQ<core.SI.nqCell_d; nQ++) {
+	const int ctr = 3;
+	const int xm1 = 0,xp1 = 6,xm2 = 7,xp2 = 32;
+	const int ym1 = 1,yp1 = 5,ym2 = 16,yp2 = 23;
+	const int zm1 = 2,zp1 = 4,zm2 = 19,zp2 = 20;
+	const int r0 = nQ*core.SI.nDeriv,r1 = nQ*core.SI.nDeriv + 1;
+	const int r2 = nQ*core.SI.nDeriv + 2,r3 = nQ*core.SI.nDeriv + 3;
+	const int r4 = nQ*core.SI.nDeriv + 4,r5 = nQ*core.SI.nDeriv + 5;
+	// West substencil
+	h_deriv(SubSten::west,r0,xm2) =  13.0/12.0;
+	h_deriv(SubSten::west,r0,xm1) = -13.0/6.0;
+	h_deriv(SubSten::west,r0,ctr) =  13.0/12.0;
+	
+	h_deriv(SubSten::west,r1,xm2) =  1.0/4.0;
+	h_deriv(SubSten::west,r1,xm1) = -1.0;
+	h_deriv(SubSten::west,r1,ctr) =  3.0/4.0;
+	
+	// East substencil
+	h_deriv(SubSten::east,r0,ctr) =  13.0/12.0;
+	h_deriv(SubSten::east,r0,xp1) = -13.0/6.0;
+	h_deriv(SubSten::east,r0,xp2) =  13.0/12.0;
+	
+	h_deriv(SubSten::east,r1,ctr) =  3.0/4.0;
+	h_deriv(SubSten::east,r1,xp1) = -1.0;
+	h_deriv(SubSten::east,r1,xp2) =  1.0/4.0;
+	
+	// South substencil
+	h_deriv(SubSten::south,r0,ym2) =  13.0/12.0;
+	h_deriv(SubSten::south,r0,ym1) = -13.0/6.0;
+	h_deriv(SubSten::south,r0,ctr) =  13.0/12.0;
+	
+	h_deriv(SubSten::south,r1,ym2) =  1.0/4.0;
+	h_deriv(SubSten::south,r1,ym1) = -1.0;
+	h_deriv(SubSten::south,r1,ctr) =  3.0/4.0;
+	
+	// North substencil
+	h_deriv(SubSten::north,r0,ctr) =  13.0/12.0;
+	h_deriv(SubSten::north,r0,yp1) = -13.0/6.0;
+	h_deriv(SubSten::north,r0,yp2) =  13.0/12.0;
+	
+	h_deriv(SubSten::north,r1,ctr) =  3.0/4.0;
+	h_deriv(SubSten::north,r1,yp1) = -1.0;
+	h_deriv(SubSten::north,r1,yp2) =  1.0/4.0;
+	
+	// Bottom substencil
+	h_deriv(SubSten::bottom,r0,zm2) =  13.0/12.0;
+	h_deriv(SubSten::bottom,r0,zm1) = -13.0/6.0;
+	h_deriv(SubSten::bottom,r0,ctr) =  13.0/12.0;
+	
+	h_deriv(SubSten::bottom,r1,zm2) =  1.0/4.0;
+	h_deriv(SubSten::bottom,r1,zm1) = -1.0;
+	h_deriv(SubSten::bottom,r1,ctr) =  3.0/4.0;
+	
+	// Top substencil
+	h_deriv(SubSten::top,r0,ctr) =  13.0/12.0;
+	h_deriv(SubSten::top,r0,zp1) = -13.0/6.0;
+	h_deriv(SubSten::top,r0,zp2) =  13.0/12.0;
+	
+	h_deriv(SubSten::top,r1,ctr) =  3.0/4.0;
+	h_deriv(SubSten::top,r1,zp1) = -1.0;
+	h_deriv(SubSten::top,r1,zp2) =  1.0/4.0;
+	
+	// Center substencil
+	h_deriv(SubSten::center,r0,xm1) =  13.0/12.0;
+	h_deriv(SubSten::center,r0,ctr) = -13.0/6.0;
+	h_deriv(SubSten::center,r0,xp1) =  13.0/12.0;
+	
+	h_deriv(SubSten::center,r1,xm1) =  1.0/4.0;
+	h_deriv(SubSten::center,r1,xp1) = -1.0/4.0;
+	
+	h_deriv(SubSten::center,r2,ym1) =  13.0/12.0;
+	h_deriv(SubSten::center,r2,ctr) = -13.0/6.0;
+	h_deriv(SubSten::center,r2,yp1) =  13.0/12.0;
+	
+	h_deriv(SubSten::center,r3,ym1) =  1.0/4.0;
+	h_deriv(SubSten::center,r3,yp1) = -1.0/4.0;
+	
+	h_deriv(SubSten::center,r4,zm1) =  13.0/12.0;
+	h_deriv(SubSten::center,r4,ctr) = -13.0/6.0;
+	h_deriv(SubSten::center,r4,zp1) =  13.0/12.0;
+	
+	h_deriv(SubSten::center,r5,zm1) =  1.0/4.0;
+	h_deriv(SubSten::center,r5,zp1) = -1.0/4.0;
+      }
+#endif
       // Copy to views on the right memory space
       Kokkos::deep_copy(faceWeights,h_face);
       Kokkos::deep_copy(derivWeights,h_deriv);
