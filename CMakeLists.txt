@@ -11,6 +11,7 @@ set (CMAKE_CXX_EXTENSIONS OFF)
 find_package (Kokkos REQUIRED)
 find_package (KokkosKernels REQUIRED)
 find_package (NetCDF REQUIRED)
+find_package (LAPACK REQUIRED)
 
 # If only I knew how to write a FindJUNK.cmake file...
 set (CMAKE_PREFIX_PATH /usr/local/lib/cmake/netCDF)

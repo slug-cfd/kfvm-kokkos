@@ -16,8 +16,8 @@
 #include <Types.H>
 #include <ProblemSetup.H>
 #include <NetCDFWriter.H>
-#include <Numeric.H>
-#include <Stencil.H>
+#include <numeric/Numeric.H>
+#include <stencil/Stencil.H>
 
 namespace KFVM {
 
@@ -36,8 +36,6 @@ namespace KFVM {
     CellDataView U_halo,U1_halo,U2_halo,U3_halo,U4_halo,K,Ktil;
     // Face-based data
     FaceDataView FaceVals;
-    // Cell data expanded for reconstruction stencils
-    Stencil::StenValsView StenVals;
     // Time step information
     Real time,dt;
     bool lastTimeStep;

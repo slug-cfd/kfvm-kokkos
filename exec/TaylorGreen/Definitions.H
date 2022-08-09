@@ -11,6 +11,6 @@
 #define NUM_QUAD_PTS 2
 
 // Floating point precision (1 for double, 0 for single)
-#define FLOAT_PRECISION 1
+#define FLOAT_PRECISION 0
 
 #endif

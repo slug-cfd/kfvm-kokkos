@@ -1,6 +1,8 @@
 #include "SimVar.H"
 #include "Types.H"
+#include "../numeric/Numeric.H"
 #include "Stencil.H"
+#include <Kokkos_View.hpp>
 #include <cstdio>
 
 namespace KFVM {
@@ -195,13 +197,16 @@ namespace KFVM {
 #endif
     }
 
-    void Stencil::findWeights(double lfac,const QuadRuleView& ab)
+    void Stencil::findWeights(double lfac)
     {
       // Make host accessible views
       auto h_face = Kokkos::create_mirror(faceWeights);
       auto h_deriv = Kokkos::create_mirror(derivWeights);
-      
-      // Fill with zeros initially
+
+      // convert length scale to shape parameter
+      double eps = 1.0/(lfac*sqrt(2.0));
+
+      // Fill views with zeros initially
       for (int nS=0; nS<core.SI.nSub; nS++) {
 	for (int nC=0; nC<core.SI.nCellsFull; nC++) {
 	  for (int nD=0; nD<2*SPACE_DIM; nD++) {
@@ -215,296 +220,81 @@ namespace KFVM {
 	  }
 	}
       }
-
-      // Fill in face weights
+      
+      // Flatten quadrature points on faces
+      Numeric::QuadRuleLUT<NUM_QUAD_PTS> qr;
+      std::vector<double> fq1(core.SI.nqFace_d,0.0);
 #if (SPACE_DIM == 2)
-      for (int nQ=0; nQ<core.SI.nqFace_d; nQ++) {
-	const int ctr = 0;
-	const int xm1 = 1,xp1 = 2,xm2 = 5,xp2 = 6;
-	const int ym1 = 3,yp1 = 4,ym2 = 7,yp2 = 8;
-	// Reconstruction weights for east face
-	h_face(SubSten::west,FaceLabel::east,nQ,xm2) =  1.0/3.0;
-	h_face(SubSten::west,FaceLabel::east,nQ,xm1) = -7.0/6.0;
-	h_face(SubSten::west,FaceLabel::east,nQ,ctr) = 11.0/6.0;
-	
-	h_face(SubSten::center,FaceLabel::east,nQ,xm1) = -1.0/6.0;
-	h_face(SubSten::center,FaceLabel::east,nQ,ctr) =  5.0/6.0;
-	h_face(SubSten::center,FaceLabel::east,nQ,xp1) =  1.0/3.0;
-	
-	h_face(SubSten::east,FaceLabel::east,nQ,ctr) =  1.0/3.0;
-	h_face(SubSten::east,FaceLabel::east,nQ,xp1) =  5.0/6.0;
-	h_face(SubSten::east,FaceLabel::east,nQ,xp2) = -1.0/6.0;
-	
-	// Reconstruction weights for north face
-	h_face(SubSten::south,FaceLabel::north,nQ,ym2) =  1.0/3.0;
-	h_face(SubSten::south,FaceLabel::north,nQ,ym1) = -7.0/6.0;
-	h_face(SubSten::south,FaceLabel::north,nQ,ctr) = 11.0/6.0;
-	
-	h_face(SubSten::center,FaceLabel::north,nQ,ym1) = -1.0/6.0;
-	h_face(SubSten::center,FaceLabel::north,nQ,ctr) =  5.0/6.0;
-	h_face(SubSten::center,FaceLabel::north,nQ,yp1) =  1.0/3.0;
-	
-	h_face(SubSten::north,FaceLabel::north,nQ,ctr) =  1.0/3.0;
-	h_face(SubSten::north,FaceLabel::north,nQ,yp1) =  5.0/6.0;
-	h_face(SubSten::north,FaceLabel::north,nQ,yp2) = -1.0/6.0;
-	
-	// Reconstruction weights for west face
-	h_face(SubSten::west,FaceLabel::west,nQ,ctr) =  1.0/3.0;
-	h_face(SubSten::west,FaceLabel::west,nQ,xm1) =  5.0/6.0;
-	h_face(SubSten::west,FaceLabel::west,nQ,xm2) = -1.0/6.0;
-	
-	h_face(SubSten::center,FaceLabel::west,nQ,xp1) = -1.0/6.0;
-	h_face(SubSten::center,FaceLabel::west,nQ,ctr) =  5.0/6.0;
-	h_face(SubSten::center,FaceLabel::west,nQ,xm1) =  1.0/3.0;
-	
-	h_face(SubSten::east,FaceLabel::west,nQ,xp2) =  1.0/3.0;
-	h_face(SubSten::east,FaceLabel::west,nQ,xp1) = -7.0/6.0;
-	h_face(SubSten::east,FaceLabel::west,nQ,ctr) = 11.0/6.0;
-	
-	// Reconstruction weights for south face
-	h_face(SubSten::south,FaceLabel::south,nQ,ctr) =  1.0/3.0;
-	h_face(SubSten::south,FaceLabel::south,nQ,ym1) =  5.0/6.0;
-	h_face(SubSten::south,FaceLabel::south,nQ,ym2) = -1.0/6.0;
-	
-	h_face(SubSten::center,FaceLabel::south,nQ,yp1) = -1.0/6.0;
-	h_face(SubSten::center,FaceLabel::south,nQ,ctr) =  5.0/6.0;
-	h_face(SubSten::center,FaceLabel::south,nQ,ym1) =  1.0/3.0;
-	
-	h_face(SubSten::north,FaceLabel::south,nQ,yp2) =  1.0/3.0;
-	h_face(SubSten::north,FaceLabel::south,nQ,yp1) = -7.0/6.0;
-	h_face(SubSten::north,FaceLabel::south,nQ,ctr) = 11.0/6.0;
-      }
+      fq1.assign(qr.ab.begin(),qr.ab.end());
 #else
-      for (int nQ=0; nQ<core.SI.nqFace_d; nQ++) {
-	const int ctr = 3;
-	const int xm1 = 0,xp1 = 6,xm2 = 7,xp2 = 32;
-	const int ym1 = 1,yp1 = 5,ym2 = 16,yp2 = 23;
-	const int zm1 = 2,zp1 = 4,zm2 = 19,zp2 = 20;
-	// Reconstruction weights for east face
-	h_face(SubSten::west,FaceLabel::east,nQ,xm2) =  1.0/3.0;
-	h_face(SubSten::west,FaceLabel::east,nQ,xm1) = -7.0/6.0;
-	h_face(SubSten::west,FaceLabel::east,nQ,ctr) = 11.0/6.0;
-	
-	h_face(SubSten::center,FaceLabel::east,nQ,xm1) = -1.0/6.0;
-	h_face(SubSten::center,FaceLabel::east,nQ,ctr) =  5.0/6.0;
-	h_face(SubSten::center,FaceLabel::east,nQ,xp1) =  1.0/3.0;
-	
-	h_face(SubSten::east,FaceLabel::east,nQ,ctr) =  1.0/3.0;
-	h_face(SubSten::east,FaceLabel::east,nQ,xp1) =  5.0/6.0;
-	h_face(SubSten::east,FaceLabel::east,nQ,xp2) = -1.0/6.0;
-	
-	// Reconstruction weights for north face
-	h_face(SubSten::south,FaceLabel::north,nQ,ym2) =  1.0/3.0;
-	h_face(SubSten::south,FaceLabel::north,nQ,ym1) = -7.0/6.0;
-	h_face(SubSten::south,FaceLabel::north,nQ,ctr) = 11.0/6.0;
-	
-	h_face(SubSten::center,FaceLabel::north,nQ,ym1) = -1.0/6.0;
-	h_face(SubSten::center,FaceLabel::north,nQ,ctr) =  5.0/6.0;
-	h_face(SubSten::center,FaceLabel::north,nQ,yp1) =  1.0/3.0;
-	
-	h_face(SubSten::north,FaceLabel::north,nQ,ctr) =  1.0/3.0;
-	h_face(SubSten::north,FaceLabel::north,nQ,yp1) =  5.0/6.0;
-	h_face(SubSten::north,FaceLabel::north,nQ,yp2) = -1.0/6.0;
-	
-	// Reconstruction weights for top face
-	h_face(SubSten::bottom,FaceLabel::top,nQ,zm2) =  1.0/3.0;
-	h_face(SubSten::bottom,FaceLabel::top,nQ,zm1) = -7.0/6.0;
-	h_face(SubSten::bottom,FaceLabel::top,nQ,ctr) = 11.0/6.0;
-	
-	h_face(SubSten::center,FaceLabel::top,nQ,zm1) = -1.0/6.0;
-	h_face(SubSten::center,FaceLabel::top,nQ,ctr) =  5.0/6.0;
-	h_face(SubSten::center,FaceLabel::top,nQ,zp1) =  1.0/3.0;
-	
-	h_face(SubSten::top,FaceLabel::top,nQ,ctr) =  1.0/3.0;
-	h_face(SubSten::top,FaceLabel::top,nQ,zp1) =  5.0/6.0;
-	h_face(SubSten::top,FaceLabel::top,nQ,zp2) = -1.0/6.0;
-	
-	// Reconstruction weights for west face
-	h_face(SubSten::west,FaceLabel::west,nQ,ctr) =  1.0/3.0;
-	h_face(SubSten::west,FaceLabel::west,nQ,xm1) =  5.0/6.0;
-	h_face(SubSten::west,FaceLabel::west,nQ,xm2) = -1.0/6.0;
-	
-	h_face(SubSten::center,FaceLabel::west,nQ,xp1) = -1.0/6.0;
-	h_face(SubSten::center,FaceLabel::west,nQ,ctr) =  5.0/6.0;
-	h_face(SubSten::center,FaceLabel::west,nQ,xm1) =  1.0/3.0;
-	
-	h_face(SubSten::east,FaceLabel::west,nQ,xp2) =  1.0/3.0;
-	h_face(SubSten::east,FaceLabel::west,nQ,xp1) = -7.0/6.0;
-	h_face(SubSten::east,FaceLabel::west,nQ,ctr) = 11.0/6.0;
-	
-	// Reconstruction weights for south face
-	h_face(SubSten::south,FaceLabel::south,nQ,ctr) =  1.0/3.0;
-	h_face(SubSten::south,FaceLabel::south,nQ,ym1) =  5.0/6.0;
-	h_face(SubSten::south,FaceLabel::south,nQ,ym2) = -1.0/6.0;
-	
-	h_face(SubSten::center,FaceLabel::south,nQ,yp1) = -1.0/6.0;
-	h_face(SubSten::center,FaceLabel::south,nQ,ctr) =  5.0/6.0;
-	h_face(SubSten::center,FaceLabel::south,nQ,ym1) =  1.0/3.0;
-	
-	h_face(SubSten::north,FaceLabel::south,nQ,yp2) =  1.0/3.0;
-	h_face(SubSten::north,FaceLabel::south,nQ,yp1) = -7.0/6.0;
-	h_face(SubSten::north,FaceLabel::south,nQ,ctr) = 11.0/6.0;
-	
-	// Reconstruction weights for bottom face
-	h_face(SubSten::bottom,FaceLabel::bottom,nQ,ctr) =  1.0/3.0;
-	h_face(SubSten::bottom,FaceLabel::bottom,nQ,zm1) =  5.0/6.0;
-	h_face(SubSten::bottom,FaceLabel::bottom,nQ,zm2) = -1.0/6.0;
-	
-	h_face(SubSten::center,FaceLabel::bottom,nQ,zp1) = -1.0/6.0;
-	h_face(SubSten::center,FaceLabel::bottom,nQ,ctr) =  5.0/6.0;
-	h_face(SubSten::center,FaceLabel::bottom,nQ,zm1) =  1.0/3.0;
-	
-	h_face(SubSten::top,FaceLabel::bottom,nQ,zp2) =  1.0/3.0;
-	h_face(SubSten::top,FaceLabel::bottom,nQ,zp1) = -7.0/6.0;
-	h_face(SubSten::top,FaceLabel::bottom,nQ,ctr) = 11.0/6.0;
+      std::vector<double> fq2(core.SI.nqFace_d,0.0);
+      for (int nQ=0; nQ<core.SI.nqFace; nQ++) {
+	for (int nR=0; nR<core.SI.nqFace; nR++) {
+	  fq1[nQ*core.SI.nqFace + nR] = qr.ab[nQ];
+	  fq2[nQ*core.SI.nqFace + nR] = qr.ab[nR];
+	}
       }
 #endif
+      std::vector<double> half(core.SI.nqFace_d,0.5);
+      std::vector<double> mhalf(core.SI.nqFace_d,-0.5);
 
-      // Fill in derivative weights
+      // substencil sizes for reference
 #if (SPACE_DIM == 2)
-      for (int nQ=0; nQ<core.SI.nqCell_d; nQ++) {
-	const int ctr = 0;
-	const int xm1 = 1,xp1 = 2,xm2 = 5,xp2 = 6;
-	const int ym1 = 3,yp1 = 4,ym2 = 7,yp2 = 8;
-	const int r0 = nQ*core.SI.nDeriv,r1 = nQ*core.SI.nDeriv + 1;
-	const int r2 = nQ*core.SI.nDeriv + 2,r3 = nQ*core.SI.nDeriv + 3;
-	// West substencil
-	h_deriv(SubSten::west,r0,xm2) =  13.0/12.0;
-	h_deriv(SubSten::west,r0,xm1) = -13.0/6.0;
-	h_deriv(SubSten::west,r0,ctr) =  13.0/12.0;
-	
-	h_deriv(SubSten::west,r1,xm2) =  1.0/4.0;
-	h_deriv(SubSten::west,r1,xm1) = -1.0;
-	h_deriv(SubSten::west,r1,ctr) =  3.0/4.0;
-	
-	// East substencil
-	h_deriv(SubSten::east,r0,ctr) =  13.0/12.0;
-	h_deriv(SubSten::east,r0,xp1) = -13.0/6.0;
-	h_deriv(SubSten::east,r0,xp2) =  13.0/12.0;
-	
-	h_deriv(SubSten::east,r1,ctr) =  3.0/4.0;
-	h_deriv(SubSten::east,r1,xp1) = -1.0;
-	h_deriv(SubSten::east,r1,xp2) =  1.0/4.0;
-	
-	// South substencil
-	h_deriv(SubSten::south,r0,ym2) =  13.0/12.0;
-	h_deriv(SubSten::south,r0,ym1) = -13.0/6.0;
-	h_deriv(SubSten::south,r0,ctr) =  13.0/12.0;
-	
-	h_deriv(SubSten::south,r1,ym2) =  1.0/4.0;
-	h_deriv(SubSten::south,r1,ym1) = -1.0;
-	h_deriv(SubSten::south,r1,ctr) =  3.0/4.0;
-	
-	// North substencil
-	h_deriv(SubSten::north,r0,ctr) =  13.0/12.0;
-	h_deriv(SubSten::north,r0,yp1) = -13.0/6.0;
-	h_deriv(SubSten::north,r0,yp2) =  13.0/12.0;
-	
-	h_deriv(SubSten::north,r1,ctr) =  3.0/4.0;
-	h_deriv(SubSten::north,r1,yp1) = -1.0;
-	h_deriv(SubSten::north,r1,yp2) =  1.0/4.0;
-	
-	// Center substencil
-	h_deriv(SubSten::center,r0,xm1) =  13.0/12.0;
-	h_deriv(SubSten::center,r0,ctr) = -13.0/6.0;
-	h_deriv(SubSten::center,r0,xp1) =  13.0/12.0;
-	
-	h_deriv(SubSten::center,r1,xm1) =  1.0/4.0;
-	h_deriv(SubSten::center,r1,xp1) = -1.0/4.0;
-	
-	h_deriv(SubSten::center,r2,ym1) =  13.0/12.0;
-	h_deriv(SubSten::center,r2,ctr) = -13.0/6.0;
-	h_deriv(SubSten::center,r2,yp1) =  13.0/12.0;
-	
-	h_deriv(SubSten::center,r3,ym1) =  1.0/4.0;
-	h_deriv(SubSten::center,r3,yp1) = -1.0/4.0;
-      }
+      int subsize[] = {core.SI.nCellsFull,core.SI.nCellsCtr,
+		       core.SI.nCellsBias,core.SI.nCellsBias,
+		       core.SI.nCellsBias,core.SI.nCellsBias};
 #else
-      for (int nQ=0; nQ<core.SI.nqCell_d; nQ++) {
-	const int ctr = 3;
-	const int xm1 = 0,xp1 = 6,xm2 = 7,xp2 = 32;
-	const int ym1 = 1,yp1 = 5,ym2 = 16,yp2 = 23;
-	const int zm1 = 2,zp1 = 4,zm2 = 19,zp2 = 20;
-	const int r0 = nQ*core.SI.nDeriv,r1 = nQ*core.SI.nDeriv + 1;
-	const int r2 = nQ*core.SI.nDeriv + 2,r3 = nQ*core.SI.nDeriv + 3;
-	const int r4 = nQ*core.SI.nDeriv + 4,r5 = nQ*core.SI.nDeriv + 5;
-	// West substencil
-	h_deriv(SubSten::west,r0,xm2) =  13.0/12.0;
-	h_deriv(SubSten::west,r0,xm1) = -13.0/6.0;
-	h_deriv(SubSten::west,r0,ctr) =  13.0/12.0;
-	
-	h_deriv(SubSten::west,r1,xm2) =  1.0/4.0;
-	h_deriv(SubSten::west,r1,xm1) = -1.0;
-	h_deriv(SubSten::west,r1,ctr) =  3.0/4.0;
-	
-	// East substencil
-	h_deriv(SubSten::east,r0,ctr) =  13.0/12.0;
-	h_deriv(SubSten::east,r0,xp1) = -13.0/6.0;
-	h_deriv(SubSten::east,r0,xp2) =  13.0/12.0;
-	
-	h_deriv(SubSten::east,r1,ctr) =  3.0/4.0;
-	h_deriv(SubSten::east,r1,xp1) = -1.0;
-	h_deriv(SubSten::east,r1,xp2) =  1.0/4.0;
-	
-	// South substencil
-	h_deriv(SubSten::south,r0,ym2) =  13.0/12.0;
-	h_deriv(SubSten::south,r0,ym1) = -13.0/6.0;
-	h_deriv(SubSten::south,r0,ctr) =  13.0/12.0;
-	
-	h_deriv(SubSten::south,r1,ym2) =  1.0/4.0;
-	h_deriv(SubSten::south,r1,ym1) = -1.0;
-	h_deriv(SubSten::south,r1,ctr) =  3.0/4.0;
-	
-	// North substencil
-	h_deriv(SubSten::north,r0,ctr) =  13.0/12.0;
-	h_deriv(SubSten::north,r0,yp1) = -13.0/6.0;
-	h_deriv(SubSten::north,r0,yp2) =  13.0/12.0;
-	
-	h_deriv(SubSten::north,r1,ctr) =  3.0/4.0;
-	h_deriv(SubSten::north,r1,yp1) = -1.0;
-	h_deriv(SubSten::north,r1,yp2) =  1.0/4.0;
-	
-	// Bottom substencil
-	h_deriv(SubSten::bottom,r0,zm2) =  13.0/12.0;
-	h_deriv(SubSten::bottom,r0,zm1) = -13.0/6.0;
-	h_deriv(SubSten::bottom,r0,ctr) =  13.0/12.0;
-	
-	h_deriv(SubSten::bottom,r1,zm2) =  1.0/4.0;
-	h_deriv(SubSten::bottom,r1,zm1) = -1.0;
-	h_deriv(SubSten::bottom,r1,ctr) =  3.0/4.0;
-	
-	// Top substencil
-	h_deriv(SubSten::top,r0,ctr) =  13.0/12.0;
-	h_deriv(SubSten::top,r0,zp1) = -13.0/6.0;
-	h_deriv(SubSten::top,r0,zp2) =  13.0/12.0;
-	
-	h_deriv(SubSten::top,r1,ctr) =  3.0/4.0;
-	h_deriv(SubSten::top,r1,zp1) = -1.0;
-	h_deriv(SubSten::top,r1,zp2) =  1.0/4.0;
-	
-	// Center substencil
-	h_deriv(SubSten::center,r0,xm1) =  13.0/12.0;
-	h_deriv(SubSten::center,r0,ctr) = -13.0/6.0;
-	h_deriv(SubSten::center,r0,xp1) =  13.0/12.0;
-	
-	h_deriv(SubSten::center,r1,xm1) =  1.0/4.0;
-	h_deriv(SubSten::center,r1,xp1) = -1.0/4.0;
-	
-	h_deriv(SubSten::center,r2,ym1) =  13.0/12.0;
-	h_deriv(SubSten::center,r2,ctr) = -13.0/6.0;
-	h_deriv(SubSten::center,r2,yp1) =  13.0/12.0;
-	
-	h_deriv(SubSten::center,r3,ym1) =  1.0/4.0;
-	h_deriv(SubSten::center,r3,yp1) = -1.0/4.0;
-	
-	h_deriv(SubSten::center,r4,zm1) =  13.0/12.0;
-	h_deriv(SubSten::center,r4,ctr) = -13.0/6.0;
-	h_deriv(SubSten::center,r4,zp1) =  13.0/12.0;
-	
-	h_deriv(SubSten::center,r5,zm1) =  1.0/4.0;
-	h_deriv(SubSten::center,r5,zp1) = -1.0/4.0;
-      }
+      int subsize[] = {core.SI.nCellsFull,core.SI.nCellsCtr,
+		       core.SI.nCellsBias,core.SI.nCellsBias,
+		       core.SI.nCellsBias,core.SI.nCellsBias,
+		       core.SI.nCellsBias,core.SI.nCellsBias};
 #endif
+
+      // find weights one substencil at a time
+      for (int nS=0; nS<core.SI.nSub; nS++) {
+	// stencil as double arrays
+	std::vector<double> xs(subsize[nS],0.0);
+	std::vector<double> ys(subsize[nS],0.0);
+#if (SPACE_DIM == 3)
+	std::vector<double> zs(subsize[nS],0.0);
+#endif
+	for (int n=0; n<subsize[nS]; n++) {
+	  xs[n] = static_cast<double>(core.lOff[n]);
+	  ys[n] = static_cast<double>(core.tOff[n]);
+#if (SPACE_DIM == 3)
+	  zs[n] = static_cast<double>(core.ttOff[n]);
+#endif
+	}
+	
+	// Hilbert-Schmidt object for this stencil
+	HS_SVD hs_svd(eps,rad,KFVM_D_DECL(xs,ys,zs));
+	
+	// Find weights on each face
+	auto wWts = Kokkos::subview(h_face,nS,int(FaceLabel::west),
+				    Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(wWts)>(KFVM_D_DECL(mhalf,fq1,fq2),wWts);
+	
+	auto eWts = Kokkos::subview(h_face,nS,int(FaceLabel::east),
+				    Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(eWts)>(KFVM_D_DECL(half,fq1,fq2),eWts);
+	
+	auto sWts = Kokkos::subview(h_face,nS,int(FaceLabel::south),
+				    Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(sWts)>(KFVM_D_DECL(fq1,mhalf,fq2),sWts);
+	
+	auto nWts = Kokkos::subview(h_face,nS,int(FaceLabel::north),
+				    Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(nWts)>(KFVM_D_DECL(fq1,half,fq2),nWts);
+#if (SPACE_DIM == 3)
+	auto bWts = Kokkos::subview(h_face,nS,int(FaceLabel::bottom),
+				    Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(bWts)>(KFVM_D_DECL(fq1,fq2,mhalf),bWts);
+	
+	auto tWts = Kokkos::subview(h_face,nS,int(FaceLabel::top),
+				    Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(tWts)>(KFVM_D_DECL(fq1,fq2,half),tWts);
+#endif
+      }
       // Copy to views on the right memory space
       Kokkos::deep_copy(faceWeights,h_face);
       Kokkos::deep_copy(derivWeights,h_deriv);

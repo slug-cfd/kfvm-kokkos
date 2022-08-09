@@ -27,7 +27,7 @@ namespace KFVM {
     static std::array<BoundaryConditions::BCType,6> bcType;
     
     // Stencil settings
-    static constexpr int rad = STENCIL_RADIUS;
+    static constexpr unsigned int rad = STENCIL_RADIUS;
     Real gp_lFac,gp_bpow;
 
     // Solution file settings
@@ -56,7 +56,7 @@ namespace KFVM {
                  Real xLo_,Real xUp_,Real yLo_,Real yUp_,Real zLo_,Real zUp_,
 		 Real finalTime_,int plotFreq_,
                  Real gam_):
-      gp_lFac(Real(12.0)),
+      gp_lFac(Real(30.0)),
       gp_bpow(Real(STENCIL_RADIUS)),
       baseName(name_),
       nX(nX_),

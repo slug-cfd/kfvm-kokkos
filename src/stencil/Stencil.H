@@ -4,11 +4,12 @@
 #include <Kokkos_View.hpp>
 
 #include <cstdint>
+#include <cstdio>
 
 #include <SimVar.H>
 #include <Types.H>
 #include <ProblemSetup.H>
-#include <cstdio>
+#include <HilbertSchmidtSVD.H>
 
 namespace KFVM {
 
@@ -158,7 +159,7 @@ namespace KFVM {
       // indices are substencil index/derivative type and location/cell in stencil
       Kokkos::View<Real[Core::SI.nSub][Core::SI.nIndic][Core::SI.nCellsFull],MemSpace> derivWeights;
 
-      Stencil(Real lfac_,Real bpow_,const QuadRuleView& ab_):
+      Stencil(Real lfac_,Real bpow_):
 	core(bpow_),
 	lOff("Stencil::lOff"),
 	tOff("Stencil::tOff"),
@@ -167,10 +168,6 @@ namespace KFVM {
 	derivWeights("Stencil::derivWeights")
       {
 	Kokkos::Profiling::pushRegion("Stencil::Stencil");
-
-	for (int nC=0; nC<core.SI.nCellsFull; nC++) {
-	  std::printf("%2d: (%2d,%2d,%2d)\n",nC,core.lOff[nC],core.tOff[nC],core.ttOff[nC]);
-	}
 
 	// Copy cell layout from core into device-side views
 	auto h_lOff = Kokkos::create_mirror(lOff);
@@ -185,7 +182,7 @@ namespace KFVM {
 	Kokkos::deep_copy(tOff,h_tOff);
 	Kokkos::deep_copy(ttOff,h_ttOff);
 	
-	findWeights(static_cast<double>(lfac_),ab_);
+	findWeights(static_cast<double>(lfac_));
 	
 	Kokkos::Profiling::popRegion();
       }
@@ -195,7 +192,7 @@ namespace KFVM {
       Stencil() = delete;
       Stencil(const Stencil&) = delete;
 
-      void findWeights(double,const QuadRuleView&);
+      void findWeights(double);
     };
 
   } // end namespace Stencil

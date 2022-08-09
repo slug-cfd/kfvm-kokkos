@@ -21,10 +21,10 @@
 #include <BoundaryConditions.H>
 #include <BoundaryConditions_K.H>
 #include <NetCDFWriter.H>
-#include <Numeric.H>
-#include <Numeric_K.H>
-#include <Hydro_K.H>
-#include <Stencil_K.H>
+#include <numeric/Numeric.H>
+#include <numeric/Numeric_K.H>
+#include <hydro/Hydro_K.H>
+#include <stencil/Stencil_K.H>
 
 #include <Solver.H>
 
@@ -34,16 +34,25 @@ namespace KFVM {
     ps(ps_),
     netCDFWriter(ps),
     geom(ps),
-    stencil(ps.gp_lFac,ps.gp_bpow,qr.ab),
-    U_halo("U",        KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.nZ + 2*ps.rad)),
-    U1_halo("U_stage1",KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.nZ + 2*ps.rad)),
-    U2_halo("U_stage2",KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.nZ + 2*ps.rad)),
-    U3_halo("U_stage3",KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.nZ + 2*ps.rad)),
-    U4_halo("U_stage4",KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.nZ + 2*ps.rad)),
+    stencil(ps.gp_lFac,ps.gp_bpow),
+    U_halo("U",        KFVM_D_DECL(ps.nX + 2*ps.rad,
+				   ps.nY + 2*ps.rad,
+				   ps.nZ + 2*ps.rad)),
+    U1_halo("U_stage1",KFVM_D_DECL(ps.nX + 2*ps.rad,
+				   ps.nY + 2*ps.rad,
+				   ps.nZ + 2*ps.rad)),
+    U2_halo("U_stage2",KFVM_D_DECL(ps.nX + 2*ps.rad,
+				   ps.nY + 2*ps.rad,
+				   ps.nZ + 2*ps.rad)),
+    U3_halo("U_stage3",KFVM_D_DECL(ps.nX + 2*ps.rad,
+				   ps.nY + 2*ps.rad,
+				   ps.nZ + 2*ps.rad)),
+    U4_halo("U_stage4",KFVM_D_DECL(ps.nX + 2*ps.rad,
+				   ps.nY + 2*ps.rad,
+				   ps.nZ + 2*ps.rad)),
     K("RHS",       KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     Ktil("RHS_til",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     FaceVals("FaceVals",KFVM_D_DECL(ps.nX + 2,ps.nY + 2,ps.nZ + 2)),
-    StenVals("StenVals",KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.nZ + 2*ps.rad)),
     time(ps.initialTime),
     dt(ps.initialDeltaT),
     lastTimeStep(false)
@@ -186,17 +195,17 @@ namespace KFVM {
     auto U = trimCellHalo(sol_halo);
     auto RS = trimFaceHalo(FaceVals);
 
-    // Allocate view for smoothness indicators
-    Stencil::StenIndicView indic("StenIndic",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ));
+    // Allocate views for stencil values and smoothness indicators
+    Stencil::StenValsView vals("StenVals",KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.nZ + 2*ps.rad));
     
     auto cellRngPolicy =
       Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM> >({KFVM_D_DECL(0,0,0)},
 								{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
     
     Kokkos::parallel_for("FaceRecon",cellRngPolicy,
-			 Stencil::Weno5JS_K<decltype(U),decltype(RS),
+			 Stencil::KWeno_K<decltype(U),decltype(RS),
 			 decltype(stencil.lOff),decltype(stencil.faceWeights),
-			 decltype(stencil.derivWeights)>(U,RS,StenVals,indic,
+			 decltype(stencil.derivWeights)>(U,RS,vals,
 							 KFVM_D_DECL(stencil.lOff,stencil.tOff,stencil.ttOff),
 							 stencil.faceWeights,stencil.derivWeights));
   }
