@@ -4,6 +4,7 @@
 #include "Stencil.H"
 #include <Kokkos_View.hpp>
 #include <cstdio>
+#include <utility>
 
 namespace KFVM {
 
@@ -130,10 +131,10 @@ namespace KFVM {
       int nN = 0,nS = 0,nE = 0,nW = 0;
       for (int h=0; h<=rad; h++) {
         // Set on-axis indices first
-        subIdx[                  nE++] = coord2idx( h, 0);
-        subIdx[  SI.nCellsBias + nW++] = coord2idx(-h, 0);
-        subIdx[2*SI.nCellsBias + nN++] = coord2idx( 0, h);
-        subIdx[3*SI.nCellsBias + nS++] = coord2idx( 0,-h);
+        subIdx[0][nE++] = coord2idx( h, 0);
+        subIdx[1][nW++] = coord2idx(-h, 0);
+        subIdx[2][nN++] = coord2idx( 0, h);
+        subIdx[3][nS++] = coord2idx( 0,-h);
       }
       // Set off axis indices in pairs 
       for (int h=0; h<=rad; h++) {
@@ -141,23 +142,23 @@ namespace KFVM {
 	  int idx  = coord2idx(h,-l);
 	  int idxp = coord2idx(h, l);
           if (idx >= 0) {
-            subIdx[nE++] = idx;
-            subIdx[nE++] = idxp;
+            subIdx[0][nE++] = idx;
+            subIdx[0][nE++] = idxp;
         
             idx  = coord2idx(-h,-l);
             idxp = coord2idx(-h, l);
-            subIdx[SI.nCellsBias + nW++] = idx;
-            subIdx[SI.nCellsBias + nW++] = idxp;
+            subIdx[1][nW++] = idx;
+            subIdx[1][nW++] = idxp;
 	    
 	    idx  = coord2idx(-l,h);
 	    idxp = coord2idx( l,h);
-            subIdx[2*SI.nCellsBias + nN++] = idx;
-            subIdx[2*SI.nCellsBias + nN++] = idxp;
+            subIdx[2][nN++] = idx;
+            subIdx[2][nN++] = idxp;
         
             idx  = coord2idx(-l,-h);
             idxp = coord2idx( l,-h);
-            subIdx[3*SI.nCellsBias + nS++] = idx;
-            subIdx[3*SI.nCellsBias + nS++] = idxp;
+            subIdx[3][nS++] = idx;
+            subIdx[3][nS++] = idxp;
           }
         }
       }
@@ -165,33 +166,33 @@ namespace KFVM {
       int nN = 0,nS = 0,nE = 0,nW = 0,nT = 0,nB = 0;
       for (int n=0; n<SI.nCellsFull; n++) {
 	// check west substencil
-	if (-lOff[n] > abs(tOff[n]) && -lOff[n] > abs(ttOff[n])) {
-	  subIdx[nW++] = n;
+	if (-lOff[n] >= abs(tOff[n]) && -lOff[n] >= abs(ttOff[n])) {
+	  subIdx[0][nW++] = n;
 	}
 	
 	// check east substencil
-	if (lOff[n] > abs(tOff[n]) && lOff[n] > abs(ttOff[n])) {
-	  subIdx[SI.nCellsBias + nE++] = n;
+	if (lOff[n] >= abs(tOff[n]) && lOff[n] >= abs(ttOff[n])) {
+	  subIdx[1][nE++] = n;
 	}
 	
 	// check south substencil
-	if (-tOff[n] > abs(lOff[n]) && -tOff[n] > abs(ttOff[n])) {
-	  subIdx[2*SI.nCellsBias + nS++] = n;
+	if (-tOff[n] >= abs(lOff[n]) && -tOff[n] >= abs(ttOff[n])) {
+	  subIdx[2][nS++] = n;
 	}
 	
 	// check north substencil
-	if (tOff[n] > abs(lOff[n]) && tOff[n] > abs(ttOff[n])) {
-	  subIdx[3*SI.nCellsBias + nN++] = n;
+	if (tOff[n] >= abs(lOff[n]) && tOff[n] >= abs(ttOff[n])) {
+	  subIdx[3][nN++] = n;
 	}
 	
 	// check bottom substencil
-	if (-ttOff[n] > abs(lOff[n]) && -ttOff[n] > abs(tOff[n])) {
-	  subIdx[4*SI.nCellsBias + nB++] = n;
+	if (-ttOff[n] >= abs(lOff[n]) && -ttOff[n] >= abs(tOff[n])) {
+	  subIdx[4][nB++] = n;
 	}
 	
 	// check top substencil
-	if (ttOff[n] > abs(lOff[n]) && ttOff[n] > abs(tOff[n])) {
-	  subIdx[5*SI.nCellsBias + nT++] = n;
+	if (ttOff[n] >= abs(lOff[n]) && ttOff[n] >= abs(tOff[n])) {
+	  subIdx[5][nT++] = n;
 	}
       }
 #endif
@@ -207,36 +208,52 @@ namespace KFVM {
       double eps = 1.0/(lfac*sqrt(2.0));
 
       // Fill views with zeros initially
-      for (int nS=0; nS<core.SI.nSub; nS++) {
-	for (int nC=0; nC<core.SI.nCellsFull; nC++) {
-	  for (int nD=0; nD<2*SPACE_DIM; nD++) {
-	    for (int nQ=0; nQ<core.SI.nqFace_d; nQ++) {
-	      h_face(nS,nD,nQ,nC) = 0.0;
-	    }
-	  }
-	  
-	  for (int nQ=0; nQ<core.SI.nIndic; nQ++) {
-	    h_deriv(nS,nQ,nC) = 0.0;
-	  }
-	}
-      }
+      Kokkos::deep_copy(h_face,Real(0.0));
+      Kokkos::deep_copy(h_deriv,Real(0.0));
       
       // Flatten quadrature points on faces
-      Numeric::QuadRuleLUT<NUM_QUAD_PTS> qr;
+      Numeric::QuadRuleLUT<Core::SI.nqFace> qrf;
+      std::vector<double> half(core.SI.nqFace_d,0.5);
+      std::vector<double> mhalf(core.SI.nqFace_d,-0.5);
       std::vector<double> fq1(core.SI.nqFace_d,0.0);
 #if (SPACE_DIM == 2)
-      fq1.assign(qr.ab.begin(),qr.ab.end());
+      fq1.assign(qrf.ab.begin(),qrf.ab.end());
 #else
       std::vector<double> fq2(core.SI.nqFace_d,0.0);
       for (int nQ=0; nQ<core.SI.nqFace; nQ++) {
 	for (int nR=0; nR<core.SI.nqFace; nR++) {
-	  fq1[nQ*core.SI.nqFace + nR] = qr.ab[nQ];
-	  fq2[nQ*core.SI.nqFace + nR] = qr.ab[nR];
+	  int idx = nQ*core.SI.nqFace + nR;
+	  fq1[idx] = qrf.ab[nQ];
+	  fq2[idx] = qrf.ab[nR];
 	}
       }
 #endif
-      std::vector<double> half(core.SI.nqFace_d,0.5);
-      std::vector<double> mhalf(core.SI.nqFace_d,-0.5);
+
+      // Flatten quadrature points in cell
+      Numeric::QuadRuleLUT<Core::SI.nqCell> qrc;
+      std::vector<double> cq1(core.SI.nqCell_d,0.0);
+      std::vector<double> cq2(core.SI.nqCell_d,0.0);
+#if (SPACE_DIM == 2)
+      for (int nQ=0; nQ<core.SI.nqCell; nQ++) {
+	for (int nR=0; nR<core.SI.nqCell; nR++) {
+	  int idx = nQ*core.SI.nqCell + nR;
+	  cq1[idx] = qrc.ab[nQ];
+	  cq2[idx] = qrc.ab[nR];
+	}
+      }
+#else
+      std::vector<double> cq3(core.SI.nqCell_d,0.0);
+      for (int nQ=0; nQ<core.SI.nqCell; nQ++) {
+	for (int nR=0; nR<core.SI.nqCell; nR++) {
+	  for (int nS=0; nS<core.SI.nqCell; nS++) {
+	    int idx = nQ*nR*core.SI.nqCell + nR*core.SI.nqCell + nS;
+	    cq1[idx] = qrc.ab[nQ];
+	    cq2[idx] = qrc.ab[nR];
+	    cq3[idx] = qrc.ab[nS];
+	  }
+	}
+      }
+#endif
 
       // substencil sizes for reference
 #if (SPACE_DIM == 2)
@@ -259,10 +276,11 @@ namespace KFVM {
 	std::vector<double> zs(subsize[nS],0.0);
 #endif
 	for (int n=0; n<subsize[nS]; n++) {
-	  xs[n] = static_cast<double>(core.lOff[n]);
-	  ys[n] = static_cast<double>(core.tOff[n]);
+	  int idx = nS<2 ? n : core.subIdx[nS - 2][n];
+	  xs[n] = static_cast<double>(core.lOff[idx]);
+	  ys[n] = static_cast<double>(core.tOff[idx]);
 #if (SPACE_DIM == 3)
-	  zs[n] = static_cast<double>(core.ttOff[n]);
+	  zs[n] = static_cast<double>(core.ttOff[idx]);
 #endif
 	}
 	
@@ -270,29 +288,80 @@ namespace KFVM {
 	HS_SVD hs_svd(eps,rad,KFVM_D_DECL(xs,ys,zs));
 	
 	// Find weights on each face
-	auto wWts = Kokkos::subview(h_face,nS,int(FaceLabel::west),
-				    Kokkos::ALL,Kokkos::ALL);
-	hs_svd.predVecs<decltype(wWts)>(KFVM_D_DECL(mhalf,fq1,fq2),wWts);
+	auto wWts = Kokkos::subview(h_face,nS,int(FaceLabel::west),Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(wWts),
+			KFVM_D_DECL(SE::PhiFunctional::Point,
+				    SE::PhiFunctional::Point,
+				    SE::PhiFunctional::Point)>(KFVM_D_DECL(mhalf,fq1,fq2),wWts);
 	
-	auto eWts = Kokkos::subview(h_face,nS,int(FaceLabel::east),
-				    Kokkos::ALL,Kokkos::ALL);
-	hs_svd.predVecs<decltype(eWts)>(KFVM_D_DECL(half,fq1,fq2),eWts);
+	auto eWts = Kokkos::subview(h_face,nS,int(FaceLabel::east),Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(eWts),
+			KFVM_D_DECL(SE::PhiFunctional::Point,
+				    SE::PhiFunctional::Point,
+				    SE::PhiFunctional::Point)>(KFVM_D_DECL(half,fq1,fq2),eWts);
 	
-	auto sWts = Kokkos::subview(h_face,nS,int(FaceLabel::south),
-				    Kokkos::ALL,Kokkos::ALL);
-	hs_svd.predVecs<decltype(sWts)>(KFVM_D_DECL(fq1,mhalf,fq2),sWts);
+	auto sWts = Kokkos::subview(h_face,nS,int(FaceLabel::south),Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(sWts),
+			KFVM_D_DECL(SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Point)>(KFVM_D_DECL(fq1,mhalf,fq2),sWts);
 	
-	auto nWts = Kokkos::subview(h_face,nS,int(FaceLabel::north),
-				    Kokkos::ALL,Kokkos::ALL);
-	hs_svd.predVecs<decltype(nWts)>(KFVM_D_DECL(fq1,half,fq2),nWts);
+	auto nWts = Kokkos::subview(h_face,nS,int(FaceLabel::north),Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(nWts),
+			KFVM_D_DECL(SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Point)>(KFVM_D_DECL(fq1,half,fq2),nWts);
 #if (SPACE_DIM == 3)
-	auto bWts = Kokkos::subview(h_face,nS,int(FaceLabel::bottom),
-				    Kokkos::ALL,Kokkos::ALL);
-	hs_svd.predVecs<decltype(bWts)>(KFVM_D_DECL(fq1,fq2,mhalf),bWts);
+	auto bWts = Kokkos::subview(h_face,nS,int(FaceLabel::bottom),Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(bWts),
+			KFVM_D_DECL(SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Point)>(KFVM_D_DECL(fq1,fq2,mhalf),bWts);
 	
-	auto tWts = Kokkos::subview(h_face,nS,int(FaceLabel::top),
-				    Kokkos::ALL,Kokkos::ALL);
-	hs_svd.predVecs<decltype(tWts)>(KFVM_D_DECL(fq1,fq2,half),tWts);
+	auto tWts = Kokkos::subview(h_face,nS,int(FaceLabel::top),Kokkos::ALL,Kokkos::ALL);
+	hs_svd.predVecs<decltype(tWts),
+			KFVM_D_DECL(SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Point)>(KFVM_D_DECL(fq1,fq2,half),tWts);
+#endif
+
+	// Find weights for each derivative type
+	int nQCD = core.SI.nqCell_d;
+	auto dxWts = Kokkos::subview(h_deriv,nS,std::pair<int,int>(0,nQCD),Kokkos::ALL);
+	hs_svd.predVecs<decltype(dxWts),
+			KFVM_D_DECL(SE::PhiFunctional::Deriv,
+	                            SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dxWts);
+	
+	auto dxxWts = Kokkos::subview(h_deriv,nS,std::pair<int,int>(nQCD,2*nQCD),Kokkos::ALL);
+	hs_svd.predVecs<decltype(dxxWts),
+			KFVM_D_DECL(SE::PhiFunctional::SecDeriv,
+	                            SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dxxWts);
+	
+	auto dyWts = Kokkos::subview(h_deriv,nS,std::pair<int,int>(2*nQCD,3*nQCD),Kokkos::ALL);
+	hs_svd.predVecs<decltype(dyWts),
+			KFVM_D_DECL(SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Deriv,
+	                            SE::PhiFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dyWts);
+	
+	auto dyyWts = Kokkos::subview(h_deriv,nS,std::pair<int,int>(3*nQCD,4*nQCD),Kokkos::ALL);
+	hs_svd.predVecs<decltype(dyyWts),
+			KFVM_D_DECL(SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::SecDeriv,
+	                            SE::PhiFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dyyWts);
+#if (SPACE_DIM == 3)	
+	auto dzWts = Kokkos::subview(h_deriv,nS,std::pair<int,int>(4*nQCD,5*nQCD),Kokkos::ALL);
+	hs_svd.predVecs<decltype(dzWts),
+			KFVM_D_DECL(SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::Deriv)>(KFVM_D_DECL(cq1,cq2,cq3),dzWts);
+	
+	auto dzzWts = Kokkos::subview(h_deriv,nS,std::pair<int,int>(5*nQCD,6*nQCD),Kokkos::ALL);
+	hs_svd.predVecs<decltype(dzzWts),
+			KFVM_D_DECL(SE::PhiFunctional::Point,
+	  SE::PhiFunctional::Point,
+	                            SE::PhiFunctional::SecDeriv)>(KFVM_D_DECL(cq1,cq2,cq3),dzzWts);
 #endif
       }
       // Copy to views on the right memory space

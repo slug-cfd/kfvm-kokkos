@@ -1,3 +1,4 @@
+#include "SEKernel.H"
 #include <HermitePolynomials.H>
 #include <HilbertSchmidtSVD.H>
 #include <cstdint>
@@ -156,7 +157,7 @@ namespace KFVM {
       C(M,N),
       A(N,N),
       ipiv(N,0)
-    {
+    { 
       // Lapack error codes
       int lerr = 0;
       
@@ -233,13 +234,14 @@ namespace KFVM {
       // Fill Phi matrix
       for (int m=0; m<M; m++) {
 	for (int n=0; n<N; n++) {
-	  Phi(n,m) = SE::phiInt(xs[n],herm,pars.eigOrd[m][0],
-				pars.alpha,pars.beta,pars.delsq);
-	  Phi(n,m) *= SE::phiInt(ys[n],herm,pars.eigOrd[m][1],
-				 pars.alpha,pars.beta,pars.delsq);
+	  SE::PhiFunctional::Average ft;
+	  Phi(n,m) = SE::phi(ft,xs[n],herm,pars.eigOrd[m][0],
+			     pars.alpha,pars.beta,pars.delsq);
+	  Phi(n,m) *= SE::phi(ft,ys[n],herm,pars.eigOrd[m][1],
+			      pars.alpha,pars.beta,pars.delsq);
 #if (SPACE_DIM == 3)
-	  Phi(n,m) *= SE::phiInt(zs[n],herm,pars.eigOrd[m][2],
-				 pars.alpha,pars.beta,pars.delsq);
+	  Phi(n,m) *= SE::phi(ft,zs[n],herm,pars.eigOrd[m][2],
+			      pars.alpha,pars.beta,pars.delsq);
 #endif
 	}
       }

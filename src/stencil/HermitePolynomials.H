@@ -51,6 +51,7 @@ namespace KFVM {
       }
 
       // evaluate nth Hermite polynomial using Horner's method
+      // Note that negative n will return 0, this is important
       double operator()(double x,int n) const
       {
 	double v = 0.0;

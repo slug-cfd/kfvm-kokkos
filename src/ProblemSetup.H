@@ -71,7 +71,7 @@ namespace KFVM {
       dx((xUp - xLo)/nX),
       dy((yUp - yLo)/nY),
       dz((zUp - zLo)/nZ),
-      maxTimeSteps(10000),
+      maxTimeSteps(1000),
       initialTime(Real(0.0)),
       finalTime(finalTime_),
       initialDeltaT(Real(1.e-8)),

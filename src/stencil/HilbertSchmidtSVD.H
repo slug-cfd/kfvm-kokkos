@@ -71,10 +71,15 @@ namespace KFVM {
 	  int n = 0;
 #if (SPACE_DIM == 2)
 	  for (int t=0; t<=tDeg; t++) {
-	    for (int i=0; i<=t; i++) {
+	    for (int i=0; i<=t/2; i++) {
 	      eigOrd[n][0] = i;
 	      eigOrd[n][1] = t - i;
 	      n++;
+	      if (t != 2*i) {
+		eigOrd[n][0] = t - i;
+		eigOrd[n][1] = i;
+		n++;
+	      }
 	    }
 	  }
 #else
@@ -126,7 +131,7 @@ namespace KFVM {
 			 const std::vector<double>&,
 			 const std::vector<double>&));
       
-      template<class WtsViewType>
+      template<class WtsViewType,KFVM_D_DECL(class FTx,class FTy,class FTz)>
       void predVecs(KFVM_D_DECL(const std::vector<double>& xq,
 				const std::vector<double>& yq,
 				const std::vector<double>& zq),
@@ -139,12 +144,15 @@ namespace KFVM {
 	Matrix PhiQ(M,Nq);
 	for (int m=0; m<M; m++) {
 	  for (int n=0; n<Nq; n++) {
-	    PhiQ(m,n) = SE::phi(xq[n],herm,pars.eigOrd[m][0],
+	    FTx ftx;
+	    PhiQ(m,n) = SE::phi(ftx,xq[n],herm,pars.eigOrd[m][0],
 				pars.alpha,pars.beta,pars.delsq);
-	    PhiQ(m,n) *= SE::phi(yq[n],herm,pars.eigOrd[m][1],
+            FTy fty;
+            PhiQ(m,n) *= SE::phi(fty,yq[n],herm,pars.eigOrd[m][1],
 				 pars.alpha,pars.beta,pars.delsq);
 #if (SPACE_DIM == 3)
-	    PhiQ(m,n) *= SE::phi(zq[n],herm,pars.eigOrd[m][2],
+	    FTz ftz;
+	    PhiQ(m,n) *= SE::phi(ftz,zq[n],herm,pars.eigOrd[m][2],
 				 pars.alpha,pars.beta,pars.delsq);
 #endif
 	  }

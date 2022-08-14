@@ -196,18 +196,29 @@ namespace KFVM {
     auto RS = trimFaceHalo(FaceVals);
 
     // Allocate views for stencil values and smoothness indicators
-    Stencil::StenValsView vals("StenVals",KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.nZ + 2*ps.rad));
+    Stencil::WorkView stenWork("StenVals",KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.nZ + 2*ps.rad));
     
     auto cellRngPolicy =
       Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM> >({KFVM_D_DECL(0,0,0)},
 								{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
-    
+
+    // Linear reconstruction
+    // Kokkos::parallel_for("FaceRecon",cellRngPolicy,
+    // 			 Stencil::KernelLinearRecon_K<decltype(U),decltype(RS)>(U,RS,stenWork,
+    // 										KFVM_D_DECL(stencil.lOff,
+    // 											    stencil.tOff,
+    // 											    stencil.ttOff),
+    // 										stencil.faceWeights));
+
+    // Weno reconstruction
     Kokkos::parallel_for("FaceRecon",cellRngPolicy,
-			 Stencil::KWeno_K<decltype(U),decltype(RS),
-			 decltype(stencil.lOff),decltype(stencil.faceWeights),
-			 decltype(stencil.derivWeights)>(U,RS,vals,
-							 KFVM_D_DECL(stencil.lOff,stencil.tOff,stencil.ttOff),
-							 stencil.faceWeights,stencil.derivWeights));
+			 Stencil::KernelWenoRecon_K<decltype(U),decltype(RS)>(U,RS,stenWork,
+									      KFVM_D_DECL(stencil.lOff,
+											  stencil.tOff,
+											  stencil.ttOff),
+									      stencil.subIdx,
+									      stencil.faceWeights,
+									      stencil.derivWeights));
   }
 
 void Solver::setCellBCs(CellDataView sol_halo,Real t)

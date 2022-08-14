@@ -43,6 +43,8 @@ namespace KFVM {
       static constexpr int nDeriv = 4;
       // Number of total smoothness indicator entries to form
       static constexpr int nIndic = nDeriv*nqCell_d;
+      // Total workspace size needed by recon. kernel
+      static constexpr int nWorkspace = nCellsFull + nCellsBias + nIndic;
       // Number of substencils
       static constexpr int nSub = 6;
       // Number of biased substencils
@@ -61,6 +63,7 @@ namespace KFVM {
       static constexpr int nCellsBias = 10;
       static constexpr int nDeriv = 4;
       static constexpr int nIndic = nDeriv*nqCell_d;
+      static constexpr int nWorkspace = nCellsFull + nCellsBias + nIndic;
       static constexpr int nSub = 6;
       static constexpr int nBias = 4;
     };
@@ -78,6 +81,7 @@ namespace KFVM {
       static constexpr int nCellsBias = 11;
       static constexpr int nDeriv = 6;
       static constexpr int nIndic = nDeriv*nqCell_d;
+      static constexpr int nWorkspace = nCellsFull + nCellsBias + nIndic;
       static constexpr int nSub = 8;
       static constexpr int nBias = 6;
     };
@@ -94,18 +98,20 @@ namespace KFVM {
       static constexpr int nCellsBias = 32;
       static constexpr int nDeriv = 6;
       static constexpr int nIndic = nDeriv*nqCell_d;
+      static constexpr int nWorkspace = nCellsFull + nCellsBias + nIndic;
       static constexpr int nSub = 8;
       static constexpr int nBias = 6;
     };
 
-    // Set view types for expanded stencil values
-    // each cell has nCells X nVars values to allow changing type of recon variables
+    // Set view types for stencil information and needed kernel workspace
+    typedef Kokkos::View<int[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> OffsetView;
+    typedef Kokkos::View<int[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nBias][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsBias],MemSpace> SubIdxView;
+    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub][2*SPACE_DIM][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nqFace_d][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> FaceWtView;
+    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nIndic][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> CellWtView;
 #if (SPACE_DIM == 2)
-    typedef Kokkos::View<Real**[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull][NUM_VARS],MemSpace> StenValsView;
-    typedef Kokkos::View<Real**[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nIndic][NUM_VARS],MemSpace> StenIndicView;
+    typedef Kokkos::View<Real**[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nWorkspace][NUM_VARS],MemSpace> WorkView;
 #else
-    typedef Kokkos::View<Real***[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull][NUM_VARS],MemSpace> StenValsView;
-    typedef Kokkos::View<Real***[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nIndic][NUM_VARS],MemSpace> StenIndicView;
+    typedef Kokkos::View<Real***[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nWorkspace][NUM_VARS],MemSpace> WorkView;
 #endif
 
     struct Stencil
@@ -114,8 +120,6 @@ namespace KFVM {
 
       enum SubSten {full = 0,center,west,east,south,north,bottom,top};
       
-      // The 'Core' of the stencil is everything safe to copy into
-      // thread-private memory of device
       struct Core
       {
 	// StencilInfo provides counts of all relevant quantities
@@ -125,7 +129,7 @@ namespace KFVM {
         // Offsets from (i,j,k) describing full stencil
         std::array<int,SI.nCellsFull> lOff,tOff,ttOff;
         // Index maps into biased substencils
-        std::array<int,SI.nBias*SI.nCellsBias> subIdx;
+        std::array<std::array<int,SI.nCellsBias>,SI.nBias> subIdx;
         // WENO parameters and quadrature weights
         Real bpow;
         std::array<Real,SI.nSub> gamma;
@@ -147,23 +151,24 @@ namespace KFVM {
       Core core;
 
       // Layout of cells in stencil, and distribution into substencils
-      Kokkos::View<int[Core::SI.nCellsFull],MemSpace> lOff,tOff,ttOff;
-      Kokkos::View<int[Core::SI.nBias][Core::SI.nCellsBias],MemSpace> subIdx;
+      OffsetView lOff,tOff,ttOff;
+      SubIdxView subIdx;
 
       // stencil weights for reconstruction on faces
       // indices are substencil index/face index/quad point on face/cell in stencil
       // weights on smaller substencils will be extended by zeros initially
-      Kokkos::View<Real[Core::SI.nSub][2*SPACE_DIM][Core::SI.nqFace_d][Core::SI.nCellsFull],MemSpace> faceWeights;
+      FaceWtView faceWeights;
 
       // stencil weights for derivative reconstruction in cell
       // indices are substencil index/derivative type and location/cell in stencil
-      Kokkos::View<Real[Core::SI.nSub][Core::SI.nIndic][Core::SI.nCellsFull],MemSpace> derivWeights;
+      CellWtView derivWeights;
 
       Stencil(Real lfac_,Real bpow_):
 	core(bpow_),
 	lOff("Stencil::lOff"),
 	tOff("Stencil::tOff"),
 	ttOff("Stencil::ttOff"),
+	subIdx("Stencil::subIdx"),
 	faceWeights("Stencil::faceWeights"),
 	derivWeights("Stencil::derivWeights")
       {
@@ -173,14 +178,21 @@ namespace KFVM {
 	auto h_lOff = Kokkos::create_mirror(lOff);
 	auto h_tOff = Kokkos::create_mirror(tOff);
 	auto h_ttOff = Kokkos::create_mirror(ttOff);
+	auto h_subIdx = Kokkos::create_mirror(subIdx);
 	for (int nC=0; nC<Core::SI.nCellsFull; nC++) {
 	  h_lOff(nC) = core.lOff[nC];
 	  h_tOff(nC) = core.tOff[nC];
 	  h_ttOff(nC) = core.ttOff[nC];
 	}
+	for (int nB=0; nB<Core::SI.nBias; nB++) {
+	  for (int nC=0; nC<Core::SI.nCellsBias; nC++) {
+	    h_subIdx(nB,nC) = core.subIdx[nB][nC];
+	  }
+	}
 	Kokkos::deep_copy(lOff,h_lOff);
 	Kokkos::deep_copy(tOff,h_tOff);
 	Kokkos::deep_copy(ttOff,h_ttOff);
+	Kokkos::deep_copy(subIdx,h_subIdx);
 	
 	findWeights(static_cast<double>(lfac_));
 	

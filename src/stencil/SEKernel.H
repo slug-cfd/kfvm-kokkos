@@ -13,6 +13,14 @@ namespace KFVM {
 
     namespace SE {
 
+      struct PhiFunctional
+      {
+	struct Point {};
+	struct Average {};
+	struct Deriv {};
+	struct SecDeriv {};
+      };
+
       // HS eigenvalues for (univariate) squared exponential
       inline double eig(int n,double eps,double alpha,double delsq)
       {
@@ -36,20 +44,25 @@ namespace KFVM {
 	return (bdy + 2.0*(1.0 - dabsq)*(n - 1)*hInt)/dabsq;
       }
 
-      // integrated SE eigenfunctions
-      inline double phi(double x,const HermitePolynomials& herm,int n,
+      // Pointwise SE eigenfunctions
+      inline double phi(PhiFunctional::Point ft,
+			double x,const HermitePolynomials& herm,int n,
 			double alpha,double beta,double delsq)
       {
+	(void) ft;
 	// recall that gamma(n + 1) == n!
 	double gam = sqrt(beta/(pow(2.0,n) * tgamma(n + 1)));
+	double ab = alpha*beta;
 	double scl = exp(-delsq*x*x);
-	return gam*scl*herm(alpha*beta*x,n);
+	return gam*scl*herm(ab*x,n);
       }
 
       // integrated SE eigenfunctions
-      inline double phiInt(double x,const HermitePolynomials& herm,int n,
-			   double alpha,double beta,double delsq)
+      inline double phi(PhiFunctional::Average ft,
+			double x,const HermitePolynomials& herm,int n,
+			double alpha,double beta,double delsq)
       {
+	(void) ft;
 	// recall that gamma(n + 1) == n!
 	double gam = sqrt(beta/(pow(2.0,n) * tgamma(n + 1)));
 	double ab = alpha*beta;
@@ -57,6 +70,34 @@ namespace KFVM {
 	double yup = ab*(x + 0.5);
 	double ylo = ab*(x - 0.5);
 	return gam*hermInt(n,herm,dabsq,yup,ylo)/ab;
+      }
+
+      // Derivative SE eigenfunctions
+      inline double phi(PhiFunctional::Deriv ft,
+			double x,const HermitePolynomials& herm,int n,
+			double alpha,double beta,double delsq)
+      {
+	(void) ft;
+	// recall that gamma(n + 1) == n!
+	double gam = sqrt(beta/(pow(2.0,n) * tgamma(n + 1)));
+	double ab = alpha*beta;
+	double scl = exp(-delsq*x*x);
+	return 2.0*gam*scl*(n*ab*herm(ab*x,n - 1) - delsq*x*herm(ab*x,n));
+      }
+
+      // Second Derivative SE eigenfunctions
+      inline double phi(PhiFunctional::SecDeriv ft,
+			double x,const HermitePolynomials& herm,int n,
+			double alpha,double beta,double delsq)
+      {
+	(void) ft;
+	// recall that gamma(n + 1) == n!
+	double gam = sqrt(beta/(pow(2.0,n) * tgamma(n + 1)));
+	double ab = alpha*beta;
+	double scl = exp(-delsq*x*x);
+	return 2.0*gam*scl*(2.0*n*(n - 1)*ab*ab*herm(ab*x,n - 2) -
+			    2.0*(n + 1)*ab*delsq*x*herm(ab*x,n - 1) +
+			    delsq*(2.0*delsq*x*x - 1.0)*herm(ab*x,n));
       }
       
     } // end namespace SE

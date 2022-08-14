@@ -46,11 +46,11 @@ int main(int argc, char* argv[]) {
     // 			  1.4);
     
     // Create ProblemSetup object with all settings and configuration
-    // KFVM::ProblemSetup ps("data/IsenVort",
-    // 			  128,128,8,
-    // 			  -10.0,10.0,-10.0,10.0,0.0,160.0/128.0,
-    // 			  20.0,20,
-    // 			  1.4);
+    KFVM::ProblemSetup ps("data/IsenVort",
+			  128,128,8,
+			  -10.0,10.0,-10.0,10.0,0.0,160.0/128.0,
+			  20.0,20,
+			  1.4);
     
     // Create ProblemSetup object with all settings and configuration
     // KFVM::ProblemSetup ps("data/DoubleMach",
@@ -60,11 +60,11 @@ int main(int argc, char* argv[]) {
     // 			  1.4);
     
     // Create ProblemSetup object with all settings and configuration
-    KFVM::ProblemSetup ps("data/TaylorGreen",
-			  128,128,128,
-			  0.0,2.0*M_PI,0.0,2.0*M_PI,0.0,2.0*M_PI,
-			  10.75,40,
-			  1.4);
+    // KFVM::ProblemSetup ps("data/TaylorGreen",
+    // 			  128,128,128,
+    // 			  0.0,2.0*M_PI,0.0,2.0*M_PI,0.0,2.0*M_PI,
+    // 			  10.75,40,
+    // 			  1.4);
 
     // Create solver object to store and advance solution
     KFVM::Solver solver(ps);
