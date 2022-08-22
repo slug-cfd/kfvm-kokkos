@@ -1,10 +1,13 @@
-#include "SimVar.H"
-#include "Types.H"
-#include "../numeric/Numeric.H"
-#include "Stencil.H"
 #include <Kokkos_View.hpp>
 #include <cstdio>
 #include <utility>
+
+#include "../SimVar.H"
+#include "../Types.H"
+#include "../ProblemSetup.H"
+#include "../Geometry.H"
+#include "../numeric/Numeric.H"
+#include "Stencil.H"
 
 namespace KFVM {
 
@@ -131,34 +134,34 @@ namespace KFVM {
       int nN = 0,nS = 0,nE = 0,nW = 0;
       for (int h=0; h<=rad; h++) {
         // Set on-axis indices first
-        subIdx[0][nE++] = coord2idx( h, 0);
-        subIdx[1][nW++] = coord2idx(-h, 0);
-        subIdx[2][nN++] = coord2idx( 0, h);
-        subIdx[3][nS++] = coord2idx( 0,-h);
+        subIdx[0][nW++] = coord2idx(-h, 0);
+        subIdx[1][nE++] = coord2idx( h, 0);
+        subIdx[2][nS++] = coord2idx( 0,-h);
+        subIdx[3][nN++] = coord2idx( 0, h);
       }
       // Set off axis indices in pairs 
       for (int h=0; h<=rad; h++) {
         for (int l=1; l<=h; l++) {
-	  int idx  = coord2idx(h,-l);
-	  int idxp = coord2idx(h, l);
+	  int idx  = coord2idx(-h,-l);
+	  int idxp = coord2idx(-h, l);
           if (idx >= 0) {
-            subIdx[0][nE++] = idx;
-            subIdx[0][nE++] = idxp;
-        
-            idx  = coord2idx(-h,-l);
-            idxp = coord2idx(-h, l);
-            subIdx[1][nW++] = idx;
-            subIdx[1][nW++] = idxp;
+            subIdx[0][nW++] = idx;
+            subIdx[0][nW++] = idxp;
 	    
-	    idx  = coord2idx(-l,h);
-	    idxp = coord2idx( l,h);
-            subIdx[2][nN++] = idx;
-            subIdx[2][nN++] = idxp;
+	    int idx  = coord2idx(h,-l);
+	    int idxp = coord2idx(h, l);
+            subIdx[1][nE++] = idx;
+            subIdx[1][nE++] = idxp;
         
             idx  = coord2idx(-l,-h);
             idxp = coord2idx( l,-h);
-            subIdx[3][nS++] = idx;
-            subIdx[3][nS++] = idxp;
+            subIdx[2][nS++] = idx;
+            subIdx[2][nS++] = idxp;
+	    
+	    idx  = coord2idx(-l,h);
+	    idxp = coord2idx( l,h);
+            subIdx[3][nN++] = idx;
+            subIdx[3][nN++] = idxp;
           }
         }
       }
@@ -293,6 +296,21 @@ namespace KFVM {
 			KFVM_D_DECL(SE::PhiFunctional::Point,
 				    SE::PhiFunctional::Point,
 				    SE::PhiFunctional::Point)>(KFVM_D_DECL(mhalf,fq1,fq2),wWts);
+
+	// const int nTest = 0;
+
+	// if (nS == nTest || true) {
+	//   std::printf(" west face\n");
+	//   for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	//     Real xv = 0.5,yv = -fq1[nQ];
+	//     for (int nC=0; nC<subsize[nS]; nC++) {
+	//       // std::printf(" %e |",wWts(nQ,nC));
+	//       xv += xs[nC]*wWts(nQ,nC);
+	//       yv += ys[nC]*wWts(nQ,nC);
+	//     }
+	//     std::printf("  qp[%d]: %e | %e\n",nQ,fabs(xv),fabs(yv));
+	//   }
+	// }
 	
 	auto eWts = Kokkos::subview(h_face,nS,int(FaceLabel::east),Kokkos::ALL,Kokkos::ALL);
 	hs_svd.predVecs<decltype(eWts),
@@ -311,6 +329,7 @@ namespace KFVM {
 			KFVM_D_DECL(SE::PhiFunctional::Point,
 	                            SE::PhiFunctional::Point,
 	                            SE::PhiFunctional::Point)>(KFVM_D_DECL(fq1,half,fq2),nWts);
+
 #if (SPACE_DIM == 3)
 	auto bWts = Kokkos::subview(h_face,nS,int(FaceLabel::bottom),Kokkos::ALL,Kokkos::ALL);
 	hs_svd.predVecs<decltype(bWts),
@@ -350,6 +369,7 @@ namespace KFVM {
 			KFVM_D_DECL(SE::PhiFunctional::Point,
 	                            SE::PhiFunctional::SecDeriv,
 	                            SE::PhiFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dyyWts);
+
 #if (SPACE_DIM == 3)	
 	auto dzWts = Kokkos::subview(h_deriv,nS,std::pair<int,int>(4*nQCD,5*nQCD),Kokkos::ALL);
 	hs_svd.predVecs<decltype(dzWts),

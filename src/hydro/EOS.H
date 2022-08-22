@@ -3,8 +3,8 @@
 
 #include <Kokkos_MathematicalFunctions.hpp>
 
-#include "SimVar.H"
-#include "Types.H"
+#include "../SimVar.H"
+#include "../Types.H"
 
 namespace KFVM {
 

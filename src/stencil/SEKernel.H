@@ -1,11 +1,12 @@
 #ifndef SEKERNEL_H_
 #define SEKERNEL_H_
 
-#include <HermitePolynomials.H>
 #include <cmath>
 
 #include <Definitions.H>
-#include <Types.H>
+
+#include "../Types.H"
+#include "HermitePolynomials.H"
 
 namespace KFVM {
 

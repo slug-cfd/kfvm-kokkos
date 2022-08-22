@@ -1,0 +1,379 @@
+[ 30%] Built target stencil
+[ 50%] Built target numeric
+[ 60%] Building CXX object src/CMakeFiles/kfvm.ex.dir/Solver.cpp.o
+/home/ian/Code/kfvm-kokkos/src/stencil/Stencil_K.H(42): error: identifier "RSViewType" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/stencil/Stencil_K.H(42): error: identifier "RSViewType" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(34): error: expected an identifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(34): error: expected a ";"
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(113): warning #12-D: parsing restarts here after previous syntax error
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(34): error: class "KFVM::Solver::FaceVals"
+/home/ian/Code/kfvm-kokkos/src/numeric/../Solver.H(38): here is inaccessible
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(114): error: identifier "U1_halo" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(114): error: identifier "trimCellHalo" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(115): error: this declaration has no storage class or type specifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(115): error: overloaded function "Kokkos::parallel_for" cannot be defined in the current scope
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(115): error: identifier "rangePolicy" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(116): error: identifier "U" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(116): error: identifier "K" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(116): error: identifier "dt" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(115): error: too many initializer values
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(115): error: a value of type "const char *" cannot be used to initialize an entity of type "int"
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(119): error: this declaration has no storage class or type specifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(119): error: too many initializer values
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(120): error: identifier "U2_halo" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(121): error: this declaration has no storage class or type specifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(121): error: overloaded function "Kokkos::parallel_for" cannot be defined in the current scope
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(121): error: too many initializer values
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(121): error: a value of type "const char *" cannot be used to initialize an entity of type "int"
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(125): error: this declaration has no storage class or type specifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(125): error: variable "KFVM::evalRHS" has already been defined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(125): error: too many initializer values
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(126): error: identifier "U3_halo" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(127): error: this declaration has no storage class or type specifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(127): error: overloaded function "Kokkos::parallel_for" cannot be defined in the current scope
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(127): error: too many initializer values
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(127): error: a value of type "const char *" cannot be used to initialize an entity of type "int"
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(131): error: this declaration has no storage class or type specifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(131): error: variable "KFVM::evalRHS" has already been defined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(131): error: too many initializer values
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(132): error: identifier "U4_halo" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(133): error: this declaration has no storage class or type specifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(133): error: overloaded function "Kokkos::parallel_for" cannot be defined in the current scope
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(133): error: too many initializer values
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(133): error: a value of type "const char *" cannot be used to initialize an entity of type "int"
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(137): error: this declaration has no storage class or type specifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(137): error: variable "KFVM::evalRHS" has already been defined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(137): error: identifier "Ktil" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(137): error: too many initializer values
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(138): error: this declaration has no storage class or type specifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(138): error: overloaded function "Kokkos::parallel_for" cannot be defined in the current scope
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(138): error: too many initializer values
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(138): error: a value of type "const char *" cannot be used to initialize an entity of type "int"
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(141): error: this declaration has no storage class or type specifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(141): error: expected a ";"
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(143): error: explicit type is missing ("int" assumed)
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(143): error: cannot overload functions distinguished by return type alone
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(146): error: identifier "Real" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(146): error: expected a ";"
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(171): warning #12-D: parsing restarts here after previous syntax error
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(172): error: this declaration has no storage class or type specifier
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(172): error: no instance of overloaded function "Kokkos::parallel_reduce" matches the specified type
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(172): error: identifier "fluxRngPolicy_NS" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(173): error: name followed by "::" must be a class or namespace name
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(173): error: identifier "faceVals" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(174): error: identifier "Real" is undefined
+
+/usr/local/include/impl/Kokkos_ViewMapping.hpp(842): error: incomplete type is not allowed
+          detected during:
+            instantiation of class "Kokkos::Impl::ViewDataAnalysis<DataType, ArrayLayout, ValueType> [with DataType=<error-type>, ArrayLayout=Kokkos::Serial::array_layout, ValueType=<error-type>]" 
+/usr/local/include/Kokkos_View.hpp(289): here
+            instantiation of class "Kokkos::ViewTraits<DataType, Properties...> [with DataType=<error-type>, Properties=<Kokkos::HostSpace>]" 
+/usr/local/include/Kokkos_View.hpp(575): here
+            instantiation of class "Kokkos::View<DataType, Properties...> [with DataType=<error-type>, Properties=<Kokkos::HostSpace>]" 
+/usr/local/include/Kokkos_Parallel_Reduce.hpp(218): here
+            instantiation of class "Kokkos::Max<Scalar, Space> [with Scalar=<error-type>, Space=Kokkos::HostSpace]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(174): here
+
+/usr/local/include/impl/Kokkos_ViewMapping.hpp(843): error: incomplete type is not allowed
+          detected during:
+            instantiation of class "Kokkos::Impl::ViewDataAnalysis<DataType, ArrayLayout, ValueType> [with DataType=<error-type>, ArrayLayout=Kokkos::Serial::array_layout, ValueType=<error-type>]" 
+/usr/local/include/Kokkos_View.hpp(289): here
+            instantiation of class "Kokkos::ViewTraits<DataType, Properties...> [with DataType=<error-type>, Properties=<Kokkos::HostSpace>]" 
+/usr/local/include/Kokkos_View.hpp(575): here
+            instantiation of class "Kokkos::View<DataType, Properties...> [with DataType=<error-type>, Properties=<Kokkos::HostSpace>]" 
+/usr/local/include/Kokkos_Parallel_Reduce.hpp(218): here
+            instantiation of class "Kokkos::Max<Scalar, Space> [with Scalar=<error-type>, Space=Kokkos::HostSpace]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(174): here
+
+/usr/local/include/impl/Kokkos_ViewMapping.hpp(845): error: incomplete type is not allowed
+          detected during:
+            instantiation of class "Kokkos::Impl::ViewDataAnalysis<DataType, ArrayLayout, ValueType> [with DataType=<error-type>, ArrayLayout=Kokkos::Serial::array_layout, ValueType=<error-type>]" 
+/usr/local/include/Kokkos_View.hpp(289): here
+            instantiation of class "Kokkos::ViewTraits<DataType, Properties...> [with DataType=<error-type>, Properties=<Kokkos::HostSpace>]" 
+/usr/local/include/Kokkos_View.hpp(575): here
+            instantiation of class "Kokkos::View<DataType, Properties...> [with DataType=<error-type>, Properties=<Kokkos::HostSpace>]" 
+/usr/local/include/Kokkos_Parallel_Reduce.hpp(218): here
+            instantiation of class "Kokkos::Max<Scalar, Space> [with Scalar=<error-type>, Space=Kokkos::HostSpace]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(174): here
+
+/usr/local/include/impl/Kokkos_ViewUniformType.hpp(54): error: class "Kokkos::Impl::ViewScalarToDataType<<error-type>, <error-constant>>" has no member "type"
+          detected during:
+            instantiation of class "Kokkos::Impl::ViewScalarToDataType<ScalarType, Rank> [with ScalarType=<error-type>, Rank=<error-constant>]" 
+(84): here
+            instantiation of class "Kokkos::Impl::ViewUniformType<ViewType, Traits> [with ViewType=Kokkos::View<<error-type>, Kokkos::HostSpace>, Traits=0]" 
+/usr/local/include/Kokkos_View.hpp(625): here
+            instantiation of class "Kokkos::View<DataType, Properties...> [with DataType=<error-type>, Properties=<Kokkos::HostSpace>]" 
+/usr/local/include/Kokkos_Parallel_Reduce.hpp(218): here
+            instantiation of class "Kokkos::Max<Scalar, Space> [with Scalar=<error-type>, Space=Kokkos::HostSpace]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(174): here
+
+/usr/local/include/impl/Kokkos_ViewUniformType.hpp(54): error: class "Kokkos::Impl::ViewScalarToDataType<const <error-type>, <error-constant>>" has no member "type"
+          detected during:
+            instantiation of class "Kokkos::Impl::ViewScalarToDataType<ScalarType, Rank> [with ScalarType=const <error-type>, Rank=<error-constant>]" 
+(87): here
+            instantiation of class "Kokkos::Impl::ViewUniformType<ViewType, Traits> [with ViewType=Kokkos::View<<error-type>, Kokkos::HostSpace>, Traits=0]" 
+/usr/local/include/Kokkos_View.hpp(625): here
+            instantiation of class "Kokkos::View<DataType, Properties...> [with DataType=<error-type>, Properties=<Kokkos::HostSpace>]" 
+/usr/local/include/Kokkos_Parallel_Reduce.hpp(218): here
+            instantiation of class "Kokkos::Max<Scalar, Space> [with Scalar=<error-type>, Space=Kokkos::HostSpace]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(174): here
+
+/usr/local/include/Kokkos_View.hpp(644): error: class "Kokkos::Impl::ViewMapping<Kokkos::ViewTraits<<error-type>, Kokkos::HostSpace>, void>" has no member "Rank"
+          detected during:
+            instantiation of class "Kokkos::View<DataType, Properties...> [with DataType=<error-type>, Properties=<Kokkos::HostSpace>]" 
+/usr/local/include/Kokkos_Parallel_Reduce.hpp(218): here
+            instantiation of class "Kokkos::Max<Scalar, Space> [with Scalar=<error-type>, Space=Kokkos::HostSpace]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(174): here
+
+/usr/local/include/Kokkos_View.hpp(742): error: class "Kokkos::Impl::ViewMapping<Kokkos::ViewTraits<<error-type>, Kokkos::HostSpace>, void>" has no member "reference_type"
+          detected during:
+            instantiation of class "Kokkos::View<DataType, Properties...> [with DataType=<error-type>, Properties=<Kokkos::HostSpace>]" 
+/usr/local/include/Kokkos_Parallel_Reduce.hpp(218): here
+            instantiation of class "Kokkos::Max<Scalar, Space> [with Scalar=<error-type>, Space=Kokkos::HostSpace]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(174): here
+
+/usr/local/include/Kokkos_View.hpp(743): error: class "Kokkos::Impl::ViewMapping<Kokkos::ViewTraits<<error-type>, Kokkos::HostSpace>, void>" has no member "pointer_type"
+          detected during:
+            instantiation of class "Kokkos::View<DataType, Properties...> [with DataType=<error-type>, Properties=<Kokkos::HostSpace>]" 
+/usr/local/include/Kokkos_Parallel_Reduce.hpp(218): here
+            instantiation of class "Kokkos::Max<Scalar, Space> [with Scalar=<error-type>, Space=Kokkos::HostSpace]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(174): here
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(174): error: identifier "vNS" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(172): error: too many initializer values
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(172): error: a value of type "const char *" cannot be used to initialize an entity of type "int"
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(186): error: identifier "Real" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(186): error: identifier "vEW" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(186): error: identifier "vTB" is undefined
+
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(190): error: identifier "ExecSpace" is undefined
+
+/usr/local/include/impl/Kokkos_AnalyzePolicy.hpp(92): error: incomplete type is not allowed
+          detected during:
+            instantiation of class "Kokkos::Impl::AnalyzeExecPolicy<Enable, Traits...> [with Enable=void, Traits=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+(194): here
+            instantiation of class "Kokkos::Impl::ExecPolicyTraitsWithDefaults<AnalysisResults> [with AnalysisResults=Kokkos::Impl::AnalyzeExecPolicy<void, <error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+(210): here
+            instantiation of class "Kokkos::Impl::PolicyTraits<Traits...> [with Traits=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(176): here
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/impl/Kokkos_AnalyzePolicy.hpp(97): error: incomplete type is not allowed
+          detected during:
+            instantiation of class "Kokkos::Impl::AnalyzeExecPolicy<Enable, Traits...> [with Enable=void, Traits=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+(194): here
+            instantiation of class "Kokkos::Impl::ExecPolicyTraitsWithDefaults<AnalysisResults> [with AnalysisResults=Kokkos::Impl::AnalyzeExecPolicy<void, <error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+(210): here
+            instantiation of class "Kokkos::Impl::PolicyTraits<Traits...> [with Traits=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(176): here
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/impl/Kokkos_AnalyzePolicy.hpp(202): error: class "Kokkos::Impl::AnalyzeExecPolicy<void, <error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "index_type_is_defaulted"
+          detected during:
+            instantiation of class "Kokkos::Impl::ExecPolicyTraitsWithDefaults<AnalysisResults> [with AnalysisResults=Kokkos::Impl::AnalyzeExecPolicy<void, <error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+(210): here
+            instantiation of class "Kokkos::Impl::PolicyTraits<Traits...> [with Traits=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(176): here
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/impl/Kokkos_AnalyzePolicy.hpp(203): error: name followed by "::" must be a class or namespace name
+          detected during:
+            instantiation of class "Kokkos::Impl::ExecPolicyTraitsWithDefaults<AnalysisResults> [with AnalysisResults=Kokkos::Impl::AnalyzeExecPolicy<void, <error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+(210): here
+            instantiation of class "Kokkos::Impl::PolicyTraits<Traits...> [with Traits=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(176): here
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/impl/Kokkos_AnalyzePolicy.hpp(204): error: class "Kokkos::Impl::AnalyzeExecPolicy<void, <error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "index_type"
+          detected during:
+            instantiation of class "Kokkos::Impl::ExecPolicyTraitsWithDefaults<AnalysisResults> [with AnalysisResults=Kokkos::Impl::AnalyzeExecPolicy<void, <error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+(210): here
+            instantiation of class "Kokkos::Impl::PolicyTraits<Traits...> [with Traits=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(176): here
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/Kokkos_Concepts.hpp(77): error: static assertion failed with "Kokkos: Invalid IndexType<>."
+          detected during:
+            instantiation of class "Kokkos::IndexType<T> [with T=<error-type>]" 
+/usr/local/include/impl/Kokkos_AnalyzePolicy.hpp(204): here
+            instantiation of class "Kokkos::Impl::ExecPolicyTraitsWithDefaults<AnalysisResults> [with AnalysisResults=Kokkos::Impl::AnalyzeExecPolicy<void, <error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/usr/local/include/impl/Kokkos_AnalyzePolicy.hpp(210): here
+            instantiation of class "Kokkos::Impl::PolicyTraits<Traits...> [with Traits=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(176): here
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(180): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "execution_space"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(183): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "execution_space"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(184): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "schedule_type"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(193): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "iteration_pattern"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(196): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "iteration_pattern"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(197): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "work_tag"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(198): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "launch_bounds"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/Kokkos_ExecPolicy.hpp(95): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "execution_space"
+          detected during:
+            instantiation of class "Kokkos::RangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(199): here
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/Kokkos_ExecPolicy.hpp(110): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "execution_space"
+          detected during:
+            instantiation of class "Kokkos::RangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(199): here
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/Kokkos_ExecPolicy.hpp(140): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "execution_space"
+          detected during:
+            instantiation of class "Kokkos::RangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(199): here
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/Kokkos_ExecPolicy.hpp(158): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "execution_space"
+          detected during:
+            instantiation of class "Kokkos::RangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(199): here
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(201): error: name followed by "::" must be a class or namespace name
+          detected during:
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+(205): here
+            instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(227): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(228): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(229): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "execution_space"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(232): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(233): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(234): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "execution_space"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(239): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "execution_space"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(269): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "execution_space"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+/usr/local/include/KokkosExp_MDRangePolicy.hpp(292): error: class "Kokkos::Impl::PolicyTraits<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>" has no member "execution_space"
+          detected during instantiation of class "Kokkos::MDRangePolicy<Properties...> [with Properties=<<error-type>, Kokkos::Rank<2U, Kokkos::Iterate::Default, Kokkos::Iterate::Default>>]" 
+/home/ian/Code/kfvm-kokkos/src/Solver.cpp(191): here
+
+Error limit reached.
+100 errors detected in the compilation of "/home/ian/Code/kfvm-kokkos/src/Solver.cpp".
+Compilation terminated.
+make[2]: *** [src/CMakeFiles/kfvm.ex.dir/build.make:118: src/CMakeFiles/kfvm.ex.dir/Solver.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:152: src/CMakeFiles/kfvm.ex.dir/all] Error 2
+make: *** [Makefile:91: all] Error 2

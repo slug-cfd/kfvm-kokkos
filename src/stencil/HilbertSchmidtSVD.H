@@ -1,7 +1,6 @@
 #ifndef HILBERTSCHMIDTSVD_H_
 #define HILBERTSCHMIDTSVD_H_
 
-#include "HermitePolynomials.H"
 #include <Kokkos_View.hpp>
 
 #include <cstdio>
@@ -10,8 +9,10 @@
 #include <cmath>
 
 #include <Definitions.H>
-#include <Types.H>
-#include <SEKernel.H>
+
+#include "../Types.H"
+#include "HermitePolynomials.H"
+#include "SEKernel.H"
 
 namespace KFVM {
 
@@ -161,6 +162,9 @@ namespace KFVM {
 	// Generate Psi matrix (already transposed)
 	Matrix PsiHat(N,Nq);
 	lerr = Matrix::c_dgemm('T','N',1.0,C,PhiQ,0.0,PsiHat);
+	if (lerr !=0 ) {
+	  std::printf("Error: HS_SVD C*PhiQ failed with code: %d\n",lerr);
+	}
 	
 	// Solve outer system
 	lerr = Matrix::c_dgetrs(A,ipiv,PsiHat);
@@ -173,6 +177,9 @@ namespace KFVM {
 	  }
 	}
 	lerr = Matrix::c_dgemm('N','N',1.0,U,PsiHat,0.0,Psi);
+	if (lerr !=0 ) {
+	  std::printf("Error: HS_SVD U*PhiHat failed with code: %d\n",lerr);
+	}
 
 	// Copy out to wts view and cast as needed
 	for (int n=0; n<N; n++) {

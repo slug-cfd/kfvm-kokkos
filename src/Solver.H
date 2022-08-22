@@ -8,16 +8,16 @@
 
 #include <Kokkos_View.hpp>
 
-
 #include <Definitions.H>
-#include <Dimension.H>
-#include <Geometry.H>
-#include <SimVar.H>
-#include <Types.H>
-#include <ProblemSetup.H>
-#include <NetCDFWriter.H>
-#include <numeric/Numeric.H>
-#include <stencil/Stencil.H>
+
+#include "Dimension.H"
+#include "Geometry.H"
+#include "SimVar.H"
+#include "Types.H"
+#include "ProblemSetup.H"
+#include "NetCDFWriter.H"
+#include "numeric/Numeric.H"
+#include "stencil/Stencil.H"
 
 namespace KFVM {
 
@@ -35,7 +35,15 @@ namespace KFVM {
     // Cell-based data
     CellDataView U_halo,U1_halo,U2_halo,U3_halo,U4_halo,K,Ktil;
     // Face-based data
-    FaceDataView FaceVals;
+    struct FaceVals {
+      FaceDataView KFVM_D_DECL(xDir,yDir,zDir);
+      FaceVals(const ProblemSetup& ps_):
+	KFVM_D_DECL(xDir("FaceVals::xDir",KFVM_D_DECL(ps_.nX + 1,ps_.nY,ps_.nZ)),
+		    yDir("FaceVals::xDir",KFVM_D_DECL(ps_.nX,ps_.nY + 1,ps_.nZ)),
+		    zDir("FaceVals::xDir",KFVM_D_DECL(ps_.nX,ps_.nY,ps_.nZ + 1)))
+      {}
+    };
+    FaceVals faceVals;
     // Time step information
     Real time,dt;
     bool lastTimeStep;
@@ -46,25 +54,6 @@ namespace KFVM {
 					   Kokkos::make_pair(ps.rad,ps.nY + ps.rad),
 					   Kokkos::make_pair(ps.rad,ps.nZ + ps.rad)),
 			     Kokkos::ALL);
-    }
-    auto trimFaceHalo(FaceDataView v)
-    {
-#if (SPACE_DIM == 2)
-      return Kokkos::subview(v,
-			     Kokkos::make_pair(1,ps.nX + 1),
-			     Kokkos::make_pair(1,ps.nY + 1),
-			     Kokkos::ALL,
-			     Kokkos::ALL,
-			     Kokkos::ALL);
-#else
-      return Kokkos::subview(v,
-			     Kokkos::make_pair(1,ps.nX + 1),
-			     Kokkos::make_pair(1,ps.nY + 1),
-			     Kokkos::make_pair(1,ps.nZ + 1),
-			     Kokkos::ALL,
-			     Kokkos::ALL,
-			     Kokkos::ALL);
-#endif
     }
     
     void setIC();

@@ -11,8 +11,9 @@
 #include <cstddef>
 
 #include <Definitions.H>
-#include <Dimension.H>
-#include <SimVar.H>
+
+#include "Dimension.H"
+#include "SimVar.H"
 
 namespace KFVM {
 
@@ -41,10 +42,10 @@ namespace KFVM {
   // Kokkos views for various state data
 #if (SPACE_DIM == 2)
   typedef Kokkos::View<Real**[NUM_VARS],MemSpace> CellDataView;
-  typedef Kokkos::View<Real**[2*SPACE_DIM][NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataView;
+  typedef Kokkos::View<Real**[2][NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataView;
 #else
   typedef Kokkos::View<Real***[NUM_VARS],MemSpace> CellDataView;
-  typedef Kokkos::View<Real***[2*SPACE_DIM][NUM_QUAD_PTS*NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataView;
+  typedef Kokkos::View<Real***[2][NUM_QUAD_PTS*NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataView;
 #endif
 
   // Kokkos views for quadrature rules

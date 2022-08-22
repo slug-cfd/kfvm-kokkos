@@ -9,17 +9,20 @@
 
 #include <netcdf>
 
+#include <Definitions.H>
+
 #include "Dimension.H"
+#include "Geometry.H"
 #include "SimVar.H"
 #include "Types.H"
 #include "ProblemSetup.H"
+#include "numeric/Numeric.H"
 #include "NetCDFWriter.H"
 
 namespace KFVM {
 
   NetCDFWriter::NetCDFWriter(const ProblemSetup& a_ps):
     ps(a_ps),
-    gridSize({KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)}),
     solTmp(ps.nX*ps.nY*ps.nZ,0.0)
   {
     // Fill coordinate vectors
@@ -61,12 +64,12 @@ namespace KFVM {
       auto tVar = outFile.addVar("t",netCDF::ncDouble,tDim);
     
       // Write out domain info
-      auto xDim = outFile.addDim("x",gridSize[0]);
-      auto yDim = outFile.addDim("y",gridSize[1]);
+      auto xDim = outFile.addDim("x",ps.nX);
+      auto yDim = outFile.addDim("y",ps.nY);
       auto xVar = outFile.addVar("x",netCDF::ncDouble,xDim);
       auto yVar = outFile.addVar("y",netCDF::ncDouble,yDim);
 #if (SPACE_DIM == 3)
-      auto zDim = outFile.addDim("z",gridSize[2]);
+      auto zDim = outFile.addDim("z",ps.nZ);
       auto zVar = outFile.addVar("z",netCDF::ncDouble,zDim);
       std::vector<netCDF::NcDim> dimVec({zDim,yDim,xDim});
 #else
@@ -87,13 +90,12 @@ namespace KFVM {
 #endif
       tVar.putVar(&time);
     
-      // Write out solution variables, have to make temp copy due to slicing
+      // Write out solution variables, have to make temporary copy due to slicing
       auto h_U = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),U);
-      for (int nV=0; nV<NUM_VARS; ++nV) {
-	for (int nX=0; nX<ps.nX; ++nX) {
-	  for (int nY=0; nY<ps.nY; ++nY) {
-	    for (int nZ=0; nZ<ps.nZ; ++nZ) {
-	      //std::size_t idx = nZ + ps.nZ*nY + ps.nZ*ps.nY*nX;
+      for (int nV=0; nV<NUM_VARS; nV++) {
+	for (int nX=0; nX<ps.nX; nX++) {
+	  for (int nY=0; nY<ps.nY; nY++) {
+	    for (int nZ=0; nZ<ps.nZ; nZ++) {
 	      int idx = nX + ps.nX*nY + ps.nX*ps.nY*nZ;
 	      solTmp[idx] = h_U(KFVM_D_DECL(nX + ps.rad,nY + ps.rad,nZ + ps.rad),nV);
 	    }
@@ -107,4 +109,4 @@ namespace KFVM {
     }
   }
   
-}
+} // end namespace KFVM

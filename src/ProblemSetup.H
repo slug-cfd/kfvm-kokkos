@@ -6,9 +6,10 @@
 #include <string>
 
 #include <Definitions.H>
-#include <Dimension.H>
-#include <Types.H>
-#include <BoundaryConditions.H>
+
+#include "Dimension.H"
+#include "Types.H"
+#include "BoundaryConditions.H"
 
 #ifndef STENCIL_RADIUS
 #define STENCIL_RADIUS 2
@@ -56,7 +57,7 @@ namespace KFVM {
                  Real xLo_,Real xUp_,Real yLo_,Real yUp_,Real zLo_,Real zUp_,
 		 Real finalTime_,int plotFreq_,
                  Real gam_):
-      gp_lFac(Real(30.0)),
+      gp_lFac(80.0),
       gp_bpow(Real(STENCIL_RADIUS)),
       baseName(name_),
       nX(nX_),
@@ -71,7 +72,7 @@ namespace KFVM {
       dx((xUp - xLo)/nX),
       dy((yUp - yLo)/nY),
       dz((zUp - zLo)/nZ),
-      maxTimeSteps(1000),
+      maxTimeSteps(10000),
       initialTime(Real(0.0)),
       finalTime(finalTime_),
       initialDeltaT(Real(1.e-8)),

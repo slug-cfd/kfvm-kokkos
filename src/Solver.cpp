@@ -2,7 +2,7 @@
 // Purpose: The solver class is responsible for holding the
 //          solution and evolving it through time
 
-#include "stencil/Stencil_K.H"
+#include <Kokkos_Concepts.hpp>
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Core_fwd.hpp>
 #include <Kokkos_Macros.hpp>
@@ -14,17 +14,18 @@
 #include <impl/Kokkos_HostThreadTeam.hpp>
 #include <impl/Kokkos_Profiling.hpp>
 
-#include <SimVar.H>
-#include <Types.H>
-#include <Dimension.H>
-#include <ProblemSetup.H>
-#include <BoundaryConditions.H>
-#include <BoundaryConditions_K.H>
-#include <NetCDFWriter.H>
-#include <numeric/Numeric.H>
-#include <numeric/Numeric_K.H>
-#include <hydro/Hydro_K.H>
-#include <stencil/Stencil_K.H>
+#include <Definitions.H>
+
+#include "Dimension.H"
+#include "SimVar.H"
+#include "Types.H"
+#include "ProblemSetup.H"
+#include "BoundaryConditions_K.H"
+#include "NetCDFWriter.H"
+#include "numeric/Numeric.H"
+#include "numeric/Numeric_K.H"
+#include "hydro/Hydro_K.H"
+#include "stencil/Stencil_K.H"
 
 #include <Solver.H>
 
@@ -52,7 +53,7 @@ namespace KFVM {
 				   ps.nZ + 2*ps.rad)),
     K("RHS",       KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     Ktil("RHS_til",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
-    FaceVals("FaceVals",KFVM_D_DECL(ps.nX + 2,ps.nY + 2,ps.nZ + 2)),
+    faceVals(ps),
     time(ps.initialTime),
     dt(ps.initialDeltaT),
     lastTimeStep(false)
@@ -68,10 +69,10 @@ namespace KFVM {
     
     // Evolve in time, recording solutions as needed
     // Start at nT=1 since IC is step 0
-    for (std::size_t nT=1; nT<ps.maxTimeSteps && !lastTimeStep; ++nT) {
-      std::printf("Step %ld: ",nT);
+    for (int nT=1; nT<ps.maxTimeSteps && !lastTimeStep; ++nT) {
+      std::printf("Step %d: ",nT);
       TakeStep();
-      if (nT%ps.plotFreq == 0 || lastTimeStep || nT==ps.maxTimeSteps-1) {
+      if (nT%ps.plotFreq == 0 || lastTimeStep || nT == (ps.maxTimeSteps-1) ) {
         netCDFWriter.write(U_halo,nT,time);
       }
     }
@@ -85,8 +86,8 @@ namespace KFVM {
 
     // Set range policy for summing stages together
     auto rangePolicy =
-      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>>({KFVM_D_DECL(0,0,0)},
-							       {KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
+      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>>
+      ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
     
     // Evaluate RHS and set dt
     Real maxVel = evalRHS(U_halo,K,time);
@@ -104,30 +105,35 @@ namespace KFVM {
     auto U = trimCellHalo(U_halo);
     auto U1 = trimCellHalo(U1_halo);
     Kokkos::parallel_for("RKStage_1",rangePolicy,
-			 Numeric::SSP45_S1_K<decltype(U),decltype(K),5>(U1,U,K,Numeric::SSPCoeff<5>(),dt));
+			 Numeric::SSP45_S1_K<decltype(U),decltype(K),5>
+			 (U1,U,K,Numeric::SSPCoeff<5>(),dt));
 
     // Second stage
     evalRHS(U1_halo,K,time + dt/2.0);
     auto U2 = trimCellHalo(U2_halo);
     Kokkos::parallel_for("RKStage_2",rangePolicy,
-			 Numeric::SSP45_S2_K<decltype(U),decltype(K),5>(U2,U,U1,K,Numeric::SSPCoeff<5>(),dt));
+			 Numeric::SSP45_S2_K<decltype(U),decltype(K),5>
+			 (U2,U,U1,K,Numeric::SSPCoeff<5>(),dt));
 
     // Third stage
     evalRHS(U2_halo,K,time + dt/2.0);
     auto U3 = trimCellHalo(U3_halo);
     Kokkos::parallel_for("RKStage_3",rangePolicy,
-			 Numeric::SSP45_S3_K<decltype(U),decltype(K),5>(U3,U,U2,K,Numeric::SSPCoeff<5>(),dt));
+			 Numeric::SSP45_S3_K<decltype(U),decltype(K),5>
+			 (U3,U,U2,K,Numeric::SSPCoeff<5>(),dt));
 
     // Fourth stage
     evalRHS(U3_halo,K,time + dt/2.0);
     auto U4 = trimCellHalo(U4_halo);
     Kokkos::parallel_for("RKStage_4",rangePolicy,
-			 Numeric::SSP45_S4_K<decltype(U),decltype(K),5>(U4,U,U3,K,Numeric::SSPCoeff<5>(),dt));
+			 Numeric::SSP45_S4_K<decltype(U),decltype(K),5>
+			 (U4,U,U3,K,Numeric::SSPCoeff<5>(),dt));
 
     // Fifth stage
     evalRHS(U4_halo,Ktil,time + dt/2.0);
     Kokkos::parallel_for("RKStage_5",rangePolicy,
-			 Numeric::SSP45_S5_K<decltype(U),decltype(K),5>(U,U2,U3,U4,K,Ktil,Numeric::SSPCoeff<5>(),dt));
+			 Numeric::SSP45_S5_K<decltype(U),decltype(K),5>
+			 (U,U2,U3,U4,K,Ktil,Numeric::SSPCoeff<5>(),dt));
 
     time += dt;
 
@@ -148,42 +154,43 @@ namespace KFVM {
     setFaceBCs(t);
     
     // Call Riemann solver
-    auto RS = trimFaceHalo(FaceVals);
-    Real vBulk = 0.0,vEast = 0.0,vNorth = 0.0,vTop = 0.0;
-    auto fluxRngPolicy_bulk =
-      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Hydro::RiemannSolver_K<decltype(RS)>::BulkTag>({KFVM_D_DECL(0,0,0)},
-													     {KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
-    Kokkos::parallel_reduce("RiemannSolver::Bulk",fluxRngPolicy_bulk,
-			    Hydro::RiemannSolver_K<decltype(RS)>(RS,ps),
-			    Kokkos::Max<Real>(vBulk));
-#if (SPACE_DIM == 2)
-    auto fluxRngPolicy_east = Kokkos::RangePolicy<ExecSpace,Hydro::RiemannSolver_K<decltype(RS)>::EastTag>({0,ps.nY});
-    auto fluxRngPolicy_north = Kokkos::RangePolicy<ExecSpace,Hydro::RiemannSolver_K<decltype(RS)>::NorthTag>({0,ps.nX});
-#else
-    auto fluxRngPolicy_east = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,
-						    Hydro::RiemannSolver_K<decltype(RS)>::EastTag>({0,0},{ps.nY,ps.nZ});
-    auto fluxRngPolicy_north = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,
-						     Hydro::RiemannSolver_K<decltype(RS)>::NorthTag>({0,0},{ps.nX,ps.nZ});
-    auto fluxRngPolicy_top = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,
-						   Hydro::RiemannSolver_K<decltype(RS)>::TopTag>({0,0},{ps.nX,ps.nY});
-    Kokkos::parallel_reduce("RiemannSolver::Top",fluxRngPolicy_top,
-			    Hydro::RiemannSolver_K<decltype(RS)>(RS,ps),
-			    Kokkos::Max<Real>(vTop));
+    Real vEW = 0.0,vNS = 0.0,vTB = 0.0;
+
+    // East/West faces
+    auto fluxRngPolicy_EW = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>>
+      ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX + 1,ps.nY,ps.nZ)});
+    Kokkos::parallel_reduce("RiemannSolver::EW",fluxRngPolicy_EW,
+			    Hydro::RiemannSolverX_K(faceVals.xDir,1.4),
+			    Kokkos::Max<Real>(vEW));
+
+    // North/South faces
+    auto fluxRngPolicy_NS = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>>
+      ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY + 1,ps.nZ)});
+    Kokkos::parallel_reduce("RiemannSolver::NS",fluxRngPolicy_NS,
+			    Hydro::RiemannSolverY_K(faceVals.yDir,1.4),
+			    Kokkos::Max<Real>(vNS));
+    
+#if (SPACE_DIM == 3)
+    // Top/Bottom faces
+    auto fluxRngPolicy_TB = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>>
+      ({0,0,0},{ps.nX,ps.nY,ps.nZ + 1});
+    Kokkos::parallel_reduce("RiemannSolver::TB",fluxRngPolicy_TB,
+			    Hydro::RiemannSolverZ_K(faceVals.zDir,1.4),
+			    Kokkos::Max<Real>(vTB));
 #endif
-    Kokkos::parallel_reduce("RiemannSolver::East",fluxRngPolicy_east,
-			    Hydro::RiemannSolver_K<decltype(RS)>(RS,ps),
-			    Kokkos::Max<Real>(vEast));
-    Kokkos::parallel_reduce("RiemannSolver::North",fluxRngPolicy_north,
-			    Hydro::RiemannSolver_K<decltype(RS)>(RS,ps),
-			    Kokkos::Max<Real>(vNorth));
-    Real maxVel = std::fmax(vBulk,std::fmax(vEast,std::fmax(vNorth,vTop)));
+
+    // Reduce max velocities from each direction
+    Real maxVel = std::fmax(vEW,std::fmax(vNS,vTB));
 
     // Integrate fluxes and store into rhs
     auto cellRngPolicy =
-      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM> >({KFVM_D_DECL(0,0,0)},
-								{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
+      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>>
+      ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
     Kokkos::parallel_for("IntegrateFlux",cellRngPolicy,
-			 Numeric::IntegrateFlux_K<decltype(rhs),decltype(RS)>(rhs,RS,qr.ab,qr.wt,geom));
+			 Numeric::IntegrateFlux_K<decltype(rhs)>
+			 (rhs,
+			  KFVM_D_DECL(faceVals.xDir,faceVals.yDir,faceVals.zDir),
+			  qr.ab,qr.wt,geom));
     
     Kokkos::Profiling::popRegion();
     return maxVel;
@@ -193,32 +200,47 @@ namespace KFVM {
   {
     // Subviews of cell data and Riemann states to simplify indexing
     auto U = trimCellHalo(sol_halo);
-    auto RS = trimFaceHalo(FaceVals);
 
     // Allocate views for stencil values and smoothness indicators
-    Stencil::WorkView stenWork("StenVals",KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.nZ + 2*ps.rad));
+    Stencil::WorkView stenWork("StenWork",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ));
     
     auto cellRngPolicy =
-      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM> >({KFVM_D_DECL(0,0,0)},
-								{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
-
-    // Linear reconstruction
-    // Kokkos::parallel_for("FaceRecon",cellRngPolicy,
-    // 			 Stencil::KernelLinearRecon_K<decltype(U),decltype(RS)>(U,RS,stenWork,
-    // 										KFVM_D_DECL(stencil.lOff,
-    // 											    stencil.tOff,
-    // 											    stencil.ttOff),
-    // 										stencil.faceWeights));
+      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>>
+      ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
 
     // Weno reconstruction
     Kokkos::parallel_for("FaceRecon",cellRngPolicy,
-			 Stencil::KernelWenoRecon_K<decltype(U),decltype(RS)>(U,RS,stenWork,
-									      KFVM_D_DECL(stencil.lOff,
-											  stencil.tOff,
-											  stencil.ttOff),
-									      stencil.subIdx,
-									      stencil.faceWeights,
-									      stencil.derivWeights));
+			 Stencil::KernelWenoRecon_K<decltype(U)>
+			 (U,
+			  KFVM_D_DECL(faceVals.xDir,
+				      faceVals.yDir,
+				      faceVals.zDir),
+			  stenWork,
+			  KFVM_D_DECL(stencil.lOff,
+				      stencil.tOff,
+				      stencil.ttOff),
+			  stencil.subIdx,
+			  stencil.faceWeights,
+			  stencil.derivWeights));
+
+    // Linear Kernel reconstruction
+    // Kokkos::parallel_for("FaceRecon",cellRngPolicy,
+    // 			 Stencil::KernelLinearRecon_K<decltype(U)>
+    // 			 (U,KFVM_D_DECL(faceVals.xDir,
+    // 					faceVals.yDir,
+    // 					faceVals.zDir),
+    // 			  stenWork,
+    // 			  KFVM_D_DECL(stencil.lOff,
+    // 				      stencil.tOff,
+    // 				      stencil.ttOff),
+    // 			  stencil.faceWeights));
+
+    // MinMod reconstruction
+    // Kokkos::parallel_for("FaceRecon",cellRngPolicy,
+    // 			 Stencil::MinModRecon_K<decltype(U)>
+    // 			 (U,KFVM_D_DECL(faceVals.xDir,
+    // 					faceVals.yDir,
+    // 					faceVals.zDir)));
   }
 
 void Solver::setCellBCs(CellDataView sol_halo,Real t)
@@ -237,12 +259,9 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
     auto rngPolicy_ew = Kokkos::RangePolicy<ExecSpace>({ps.rad,ps.rad + ps.nY});
     auto rngPolicy_ns = Kokkos::RangePolicy<ExecSpace>({0,ps.nX + 2*ps.rad});
 #else
-    auto rngPolicy_ew = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>>({int(ps.rad),int(ps.rad)},
-									 {int(ps.nY + ps.rad),int(ps.nZ + ps.rad)});
-    auto rngPolicy_ns = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>>({0,int(ps.rad)},
-									 {int(ps.nX + 2*ps.rad),int(ps.nZ + ps.rad)});
-    auto rngPolicy_tb = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>>({0,0},
-									 {int(ps.nX + 2*ps.rad),int(ps.nY + 2*ps.rad)});
+    auto rngPolicy_ew = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>>({ps.rad,ps.rad},{ps.nY + ps.rad,ps.nZ + ps.rad});
+    auto rngPolicy_ns = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>>({0,ps.rad},{ps.nX + 2*ps.rad,ps.nZ + ps.rad});
+    auto rngPolicy_tb = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>>({0,0},{ps.nX + 2*ps.rad,ps.nY + 2*ps.rad});
 #endif
 
     // Western Boundary
@@ -388,32 +407,67 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
     
     (void) t;
     Kokkos::Profiling::pushRegion("Solver::setFaceBCs");
+
+    // Set ranges for each face
+    // need to specialize on dimension since MDRangepolicy will not
+    // decay to 1D
 #if (SPACE_DIM == 2)
-    auto rngPolicy_ew = Kokkos::RangePolicy<ExecSpace>({1,ps.nY + 1});
-    auto rngPolicy_ns = Kokkos::RangePolicy<ExecSpace>({1,ps.nX + 1});
+    auto rngPolicy_ew = Kokkos::RangePolicy<ExecSpace,
+					    Kokkos::IndexType<int>>({0,ps.nY});
+    auto rngPolicy_ns = Kokkos::RangePolicy<ExecSpace,
+					    Kokkos::IndexType<int>>({0,ps.nX});
 #else
-    auto rngPolicy_ew = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>>({1,1},{ps.nY + 1,ps.nZ + 1});
-    auto rngPolicy_ns = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>>({1,1},{ps.nX + 1,ps.nZ + 1});
-    auto rngPolicy_tb = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>>({1,1},{ps.nX + 1,ps.nY + 1});
+    auto rngPolicy_ew = Kokkos::MDRangePolicy<ExecSpace,
+					      Kokkos::Rank<2>>({0,0},{ps.nY,ps.nZ});
+    auto rngPolicy_ns = Kokkos::MDRangePolicy<ExecSpace,
+					      Kokkos::Rank<2>>({0,0},{ps.nX,ps.nZ});
+    auto rngPolicy_tb = Kokkos::MDRangePolicy<ExecSpace,
+					      Kokkos::Rank<2>>({0,0},{ps.nX,ps.nY});
 #endif
 
+    // Extract subviews of each boundary
+    auto westBnd = Kokkos::subview(faceVals.xDir,
+				   KFVM_D_DECL(0,Kokkos::ALL,Kokkos::ALL),
+				   Kokkos::ALL,Kokkos::ALL,Kokkos::ALL);
+    auto eastBnd = Kokkos::subview(faceVals.xDir,
+				   KFVM_D_DECL(ps.nX,Kokkos::ALL,Kokkos::ALL),
+				   Kokkos::ALL,Kokkos::ALL,Kokkos::ALL);
+    auto southBnd = Kokkos::subview(faceVals.yDir,
+				    KFVM_D_DECL(Kokkos::ALL,0,Kokkos::ALL),
+				    Kokkos::ALL,Kokkos::ALL,Kokkos::ALL);
+    auto northBnd = Kokkos::subview(faceVals.yDir,
+				    KFVM_D_DECL(Kokkos::ALL,ps.nY,Kokkos::ALL),
+				    Kokkos::ALL,Kokkos::ALL,Kokkos::ALL);
+#if (SPACE_DIM == 3)
+    auto bottomBnd = Kokkos::subview(faceVals.zDir,
+				     Kokkos::ALL,Kokkos::ALL,0,
+				     Kokkos::ALL,Kokkos::ALL,Kokkos::ALL);
+    auto topBnd = Kokkos::subview(faceVals.zDir,
+				  Kokkos::ALL,Kokkos::ALL,ps.nZ
+				  Kokkos::ALL,Kokkos::ALL,Kokkos::ALL);
+#endif
+    
     // Western Boundary
     switch (ps.bcType[FaceLabel::west]) {
     case BCType::outflow:
-      Kokkos::parallel_for("FaceBCs::West",rngPolicy_ew,
-			   FaceBcWest_K<decltype(FaceVals),BCType::outflow>(FaceVals,ps.nX));
+      Kokkos::parallel_for("FaceBCs::West::Outflow",rngPolicy_ew,
+			   FaceBcWest_K<decltype(westBnd),
+			   BCType::outflow>(westBnd));
       break;
     case BCType::reflecting:
-      Kokkos::parallel_for("FaceBCs::West",rngPolicy_ew,
-			   FaceBcWest_K<decltype(FaceVals),BCType::reflecting>(FaceVals,ps.nX));
+      Kokkos::parallel_for("FaceBCs::West::Reflecting",rngPolicy_ew,
+			   FaceBcWest_K<decltype(westBnd),
+			   BCType::reflecting>(westBnd));
       break;
     case BCType::periodic:
-      Kokkos::parallel_for("FaceBCs::West",rngPolicy_ew,
-			   FaceBcWest_K<decltype(FaceVals),BCType::periodic>(FaceVals,ps.nX));
+      Kokkos::parallel_for("FaceBCs::West::Periodic",rngPolicy_ew,
+			   FaceBcWest_K<decltype(westBnd),
+			   BCType::periodic>(westBnd,eastBnd));
       break;
     case BCType::user:
-      Kokkos::parallel_for("FaceBCs::West",rngPolicy_ew,
-			   FaceBcWest_K<decltype(FaceVals),BCType::user>(FaceVals,geom,qr.ab,ps.nX,t));
+      Kokkos::parallel_for("FaceBCs::West::User",rngPolicy_ew,
+			   FaceBcWest_K<decltype(westBnd),
+			   BCType::user>(westBnd,geom,qr.ab,t));
       break;
     default:
       std::printf("Warning: Western face BC undefined. How did this even compile?\n");
@@ -422,40 +476,47 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
     // Eastern Boundary
     switch (ps.bcType[FaceLabel::east]) {
     case BCType::outflow:
-      Kokkos::parallel_for("FaceBCs::East",rngPolicy_ew,
-			   FaceBcEast_K<decltype(FaceVals),BCType::outflow>(FaceVals,ps.nX));
+      Kokkos::parallel_for("FaceBCs::East::Outflow",rngPolicy_ew,
+			   FaceBcEast_K<decltype(eastBnd),
+			   BCType::outflow>(eastBnd));
       break;
     case BCType::reflecting:
-      Kokkos::parallel_for("FaceBCs::East",rngPolicy_ew,
-			   FaceBcEast_K<decltype(FaceVals),BCType::reflecting>(FaceVals,ps.nX));
+      Kokkos::parallel_for("FaceBCs::East::Reflecting",rngPolicy_ew,
+			   FaceBcEast_K<decltype(eastBnd),
+			   BCType::reflecting>(eastBnd));
       break;
     case BCType::user:
-      Kokkos::parallel_for("FaceBCs::East",rngPolicy_ew,
-			   FaceBcEast_K<decltype(FaceVals),BCType::user>(FaceVals,geom,qr.ab,ps.nX,t));
+      Kokkos::parallel_for("FaceBCs::East::User",rngPolicy_ew,
+			   FaceBcEast_K<decltype(eastBnd),
+			   BCType::user>(eastBnd,geom,qr.ab,t));
       break;
     default:
       if (ps.bcType[FaceLabel::east] != BCType::periodic) {
-	std::printf("Warning: Eastern face BC undefined. Is west set to periodic and east not?\n");
+	std::printf("Warning: Eastern face BC undefined.\n");
       }
     }
 
     // Southern Boundary
     switch (ps.bcType[FaceLabel::south]) {
     case BCType::periodic:
-      Kokkos::parallel_for("FaceBCs::South",rngPolicy_ns,
-			   FaceBcSouth_K<decltype(FaceVals),BCType::periodic>(FaceVals,ps.nY));
+      Kokkos::parallel_for("FaceBCs::South::Periodic",rngPolicy_ns,
+			   FaceBcSouth_K<decltype(southBnd),
+			   BCType::periodic>(southBnd,northBnd));
       break;
     case BCType::outflow:
-      Kokkos::parallel_for("FaceBCs::South",rngPolicy_ns,
-			   FaceBcSouth_K<decltype(FaceVals),BCType::outflow>(FaceVals,ps.nY));
+      Kokkos::parallel_for("FaceBCs::South::Outflow",rngPolicy_ns,
+			   FaceBcSouth_K<decltype(southBnd),
+			   BCType::outflow>(southBnd));
       break;
     case BCType::reflecting:
-      Kokkos::parallel_for("FaceBCs::South",rngPolicy_ns,
-			   FaceBcSouth_K<decltype(FaceVals),BCType::reflecting>(FaceVals,ps.nY));
+      Kokkos::parallel_for("FaceBCs::South::Reflecting",rngPolicy_ns,
+			   FaceBcSouth_K<decltype(southBnd),
+			   BCType::reflecting>(southBnd));
       break;
     case BCType::user:
-      Kokkos::parallel_for("FaceBCs::South",rngPolicy_ns,
-			   FaceBcSouth_K<decltype(FaceVals),BCType::user>(FaceVals,geom,qr.ab,ps.nY,t));
+      Kokkos::parallel_for("FaceBCs::South::User",rngPolicy_ns,
+			   FaceBcSouth_K<decltype(southBnd),
+			   BCType::user>(southBnd,geom,qr.ab,t));
       break;
     default:
       std::printf("Warning: Southern? face BC undefined. How did this even compile?\n");
@@ -464,20 +525,23 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
     // Northern Boundary
     switch (ps.bcType[FaceLabel::north]) {
     case BCType::outflow:
-      Kokkos::parallel_for("FaceBCs::North",rngPolicy_ns,
-			   FaceBcNorth_K<decltype(FaceVals),BCType::outflow>(FaceVals,ps.nY));
+      Kokkos::parallel_for("FaceBCs::North::Outflow",rngPolicy_ns,
+			   FaceBcNorth_K<decltype(northBnd),
+			   BCType::outflow>(northBnd));
       break;
     case BCType::reflecting:
-      Kokkos::parallel_for("FaceBCs::North",rngPolicy_ns,
-			   FaceBcNorth_K<decltype(FaceVals),BCType::reflecting>(FaceVals,ps.nY));
+      Kokkos::parallel_for("FaceBCs::North::Reflecting",rngPolicy_ns,
+			   FaceBcNorth_K<decltype(northBnd),
+			   BCType::reflecting>(northBnd));
       break;
     case BCType::user:
-      Kokkos::parallel_for("FaceBCs::North",rngPolicy_ns,
-			   FaceBcNorth_K<decltype(FaceVals),BCType::user>(FaceVals,geom,qr.ab,ps.nY,t));
+      Kokkos::parallel_for("FaceBCs::North::User",rngPolicy_ns,
+			   FaceBcNorth_K<decltype(northBnd),
+			   BCType::user>(northBnd,geom,qr.ab,t));
       break;
     default:
       if (ps.bcType[FaceLabel::north] != BCType::periodic) {
-	std::printf("Warning: Northern face BC undefined. Is south set to periodic and north not?\n");
+	std::printf("Warning: Northern face BC undefined.\n");
       }
     }
     
@@ -485,20 +549,24 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
     // Bottom Boundary
     switch (ps.bcType[FaceLabel::bottom]) {
     case BCType::periodic:
-      Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy_tb,
-			   FaceBcBottom_K<decltype(FaceVals),BCType::periodic>(FaceVals,ps.nZ));
+      Kokkos::parallel_for("FaceBCs::Bottom::Periodic",rngPolicy_tb,
+			   FaceBcBottom_K<decltype(bottomBnd),
+			   BCType::periodic>(bottomBnd,topBnd));
       break;
     case BCType::outflow:
-      Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy_tb,
-			   FaceBcBottom_K<decltype(FaceVals),BCType::outflow>(FaceVals,ps.nZ));
+      Kokkos::parallel_for("FaceBCs::Bottom::Outflow",rngPolicy_tb,
+			   FaceBcBottom_K<decltype(bottomBnd),
+			   BCType::outflow>(bottomBnd));
       break;
     case BCType::reflecting:
-      Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy_tb,
-			   FaceBcBottom_K<decltype(FaceVals),BCType::reflecting>(FaceVals,ps.nZ));
+      Kokkos::parallel_for("FaceBCs::Bottom::Reflecting",rngPolicy_tb,
+			   FaceBcBottom_K<decltype(bottomBnd),
+			   BCType::reflecting>(bottomBnd));
       break;
     case BCType::user:
-      Kokkos::parallel_for("FaceBCs::Bottom",rngPolicy_tb,
-			   FaceBcBottom_K<decltype(FaceVals),BCType::user>(FaceVals,geom,qr.ab,ps.nZ,t));
+      Kokkos::parallel_for("FaceBCs::Bottom::User",rngPolicy_tb,
+			   FaceBcBottom_K<decltype(bottomBnd),
+			   BCType::user>(bottomBnd,geom,qr.ab,t));
       break;
     default:
       std::printf("Warning: Bottom? face BC undefined. How did this even compile?\n");
@@ -507,20 +575,23 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
     // Top Boundary
     switch (ps.bcType[FaceLabel::top]) {
     case BCType::outflow:
-      Kokkos::parallel_for("FaceBCs::Top",rngPolicy_tb,
-			   FaceBcTop_K<decltype(FaceVals),BCType::outflow>(FaceVals,ps.nZ));
+      Kokkos::parallel_for("FaceBCs::Top::Outflow",rngPolicy_tb,
+			   FaceBcTop_K<decltype(topBnd),
+			   BCType::outflow>(topBnd));
       break;
     case BCType::reflecting:
-      Kokkos::parallel_for("FaceBCs::Top",rngPolicy_tb,
-			   FaceBcTop_K<decltype(FaceVals),BCType::reflecting>(FaceVals,ps.nZ));
+      Kokkos::parallel_for("FaceBCs::Top::Reflecting",rngPolicy_tb,
+			   FaceBcTop_K<decltype(topBnd),
+			   BCType::reflecting>(topBnd));
       break;
     case BCType::user:
-      Kokkos::parallel_for("FaceBCs::Top",rngPolicy_tb,
-			   FaceBcTop_K<decltype(FaceVals),BCType::user>(FaceVals,geom,qr.ab,ps.nZ,t));
+      Kokkos::parallel_for("FaceBCs::Top::User",rngPolicy_tb,
+			   FaceBcTop_K<decltype(topBnd),
+			   BCType::user>(topBnd,geom,qr.ab,t));
       break;
     default:
       if (ps.bcType[FaceLabel::top] != BCType::periodic) {
-	std::printf("Warning: Top face BC undefined. Is bottom set to periodic and top not?\n");
+	std::printf("Warning: Top face BC undefined.\n");
       }
     }
 #endif

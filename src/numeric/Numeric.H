@@ -16,7 +16,8 @@
 #include <impl/Kokkos_ViewCtor.hpp>
 
 #include <Definitions.H>
-#include <Types.H>
+
+#include "../Types.H"
 
 namespace KFVM {
 
@@ -35,6 +36,25 @@ namespace KFVM {
     {
       static std::array<Real,nQuad> ab,wt;
     };
+    
+    template <> std::array<Real,1> QuadRuleLUT<1>::ab;
+    template <> std::array<Real,1> QuadRuleLUT<1>::wt;
+    template <> std::array<Real,2> QuadRuleLUT<2>::ab;
+    template <> std::array<Real,2> QuadRuleLUT<2>::wt;
+    template <> std::array<Real,3> QuadRuleLUT<3>::ab;
+    template <> std::array<Real,3> QuadRuleLUT<3>::wt;
+    template <> std::array<Real,4> QuadRuleLUT<4>::ab;
+    template <> std::array<Real,4> QuadRuleLUT<4>::wt;
+    template <> std::array<Real,5> QuadRuleLUT<5>::ab;
+    template <> std::array<Real,5> QuadRuleLUT<5>::wt;
+    template <> std::array<Real,6> QuadRuleLUT<6>::ab;
+    template <> std::array<Real,6> QuadRuleLUT<6>::wt;
+    template <> std::array<Real,7> QuadRuleLUT<7>::ab;
+    template <> std::array<Real,7> QuadRuleLUT<7>::wt;
+    template <> std::array<Real,8> QuadRuleLUT<8>::ab;
+    template <> std::array<Real,8> QuadRuleLUT<8>::wt;
+    template <> std::array<Real,9> QuadRuleLUT<9>::ab;
+    template <> std::array<Real,9> QuadRuleLUT<9>::wt;
 
     // Quadrature rule with values accessible in non-host space
     struct QuadRule

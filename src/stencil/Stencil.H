@@ -6,10 +6,10 @@
 #include <cstdint>
 #include <cstdio>
 
-#include <SimVar.H>
-#include <Types.H>
-#include <ProblemSetup.H>
-#include <HilbertSchmidtSVD.H>
+#include "../SimVar.H"
+#include "../Types.H"
+#include "../ProblemSetup.H"
+#include "HilbertSchmidtSVD.H"
 
 namespace KFVM {
 

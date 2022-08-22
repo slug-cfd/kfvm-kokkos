@@ -15,10 +15,11 @@
 #include <Kokkos_View.hpp>
 
 #include <Definitions.H>
-#include <Types.H>
-#include <ProblemSetup.H>
-#include <Geometry.H>
-#include <Numeric.H>
+
+#include "../Types.H"
+#include "../ProblemSetup.H"
+#include "../Geometry.H"
+#include "Numeric.H"
 
 namespace KFVM {
 
@@ -107,27 +108,29 @@ namespace KFVM {
 	}
       }
     };
-    
 
-    template<class RhsViewType,class FluxViewType>
+    template<class RhsViewType>
     struct IntegrateFlux_K
     {
       RhsViewType rhs;
-      FluxViewType flux;
+      FaceDataView KFVM_D_DECL(flX,flY,flZ);
       QuadRuleView ab,wt;
       Geometry geom;
 
       IntegrateFlux_K(const RhsViewType& rhs_,
-		      const FluxViewType& flux_,
+		      KFVM_D_DECL(const FaceDataView& flX_,
+				  const FaceDataView& flY_,
+				  const FaceDataView& flZ_),
 		      const QuadRuleView& ab_,
 		      const QuadRuleView& wt_,
 		      const Geometry& geom_):
 	rhs(rhs_),
-	flux(flux_),
+	KFVM_D_DECL(flX(flX_),flY(flY_),flZ(flZ_)),
 	ab(ab_),
 	wt(wt_),
 	geom(geom_) {}
 
+#if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
       void operator()(const int i,const int j) const {
 	// Zero out RHS before accumulating fluxes
@@ -139,15 +142,13 @@ namespace KFVM {
 	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    // x-direction
-	    rhs(i,j,nV) += wt(nQ)*(flux(i,j,FaceLabel::west,nQ,nV) -
-				   flux(i,j,FaceLabel::east,nQ,nV))/geom.dx;
+	    rhs(i,j,nV) += wt(nQ)*(flX(i,j,1,nQ,nV) - flX(i + 1,j,0,nQ,nV))/geom.dx;
 	    // y-direction
-	    rhs(i,j,nV) += wt(nQ)*(flux(i,j,FaceLabel::south,nQ,nV) -
-				   flux(i,j,FaceLabel::north,nQ,nV))/geom.dy;
+	    rhs(i,j,nV) += wt(nQ)*(flY(i,j,1,nQ,nV) - flY(i,j + 1,0,nQ,nV))/geom.dy;
 	  }
 	}
       }
-
+#else
       KOKKOS_INLINE_FUNCTION
       void operator()(const int i,const int j,const int k) const {
 	// Zero out RHS before accumulating fluxes
@@ -159,16 +160,19 @@ namespace KFVM {
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
-	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::west,nQ*NUM_QUAD_PTS + nR,nV) -
-					      flux(i,j,k,FaceLabel::east,nQ*NUM_QUAD_PTS + nR,nV))/geom.dx;
-	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::south,nQ*NUM_QUAD_PTS + nR,nV) -
-					      flux(i,j,k,FaceLabel::north,nQ*NUM_QUAD_PTS + nR,nV))/geom.dy;
-	      rhs(i,j,k,nV) += wt(nQ)*wt(nR)*(flux(i,j,k,FaceLabel::bottom,nQ*NUM_QUAD_PTS + nR,nV) -
-					      flux(i,j,k,FaceLabel::top,nQ*NUM_QUAD_PTS + nR,nV))/geom.dz;
+	      int qIdx = nQ*NUM_QUAD_PTS + nR;
+	      Real qWt = wt(nQ)*wt(nR);
+	      rhs(i,j,k,nV) += qWt*(flX(i,j,k,0,qIdx,nV) -
+				    flX(i + 1,j,k,1,qIdx,nV))/geom.dx;
+	      rhs(i,j,k,nV) += qWt*(flY(i,j,k,0,qIdx,nV) -
+				    flY(i,j + 1,k,1,qIdx,nV))/geom.dy;
+	      rhs(i,j,k,nV) += qWt*(flZ(i,j,k,0,qIdx,nV) -
+				    flZ(i,j,k + 1,1,qIdx,nV))/geom.dz;
 	    }
 	  }
 	}
       }
+#endif
     };
 
     template<class UViewType,class KViewType,int nStage>
@@ -221,12 +225,10 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
 	for (int nV=0; nV<NUM_VARS; nV++) {
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    U2(KFVM_D_DECL(i,j,k),nV) =
-	      rk.a_2_0*U(KFVM_D_DECL(i,j,k),nV) +
-	      rk.a_2_1*U1(KFVM_D_DECL(i,j,k),nV) +
-	      dt*rk.b_2*K(KFVM_D_DECL(i,j,k),nV);
-	  }
+	  U2(KFVM_D_DECL(i,j,k),nV) =
+	    rk.a_2_0*U(KFVM_D_DECL(i,j,k),nV) +
+	    rk.a_2_1*U1(KFVM_D_DECL(i,j,k),nV) +
+	    dt*rk.b_2*K(KFVM_D_DECL(i,j,k),nV);
 	}
       }
     };
@@ -254,12 +256,10 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
 	for (int nV=0; nV<NUM_VARS; nV++) {
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    U3(KFVM_D_DECL(i,j,k),nV) =
-	      rk.a_3_0*U(KFVM_D_DECL(i,j,k),nV) +
-	      rk.a_3_2*U2(KFVM_D_DECL(i,j,k),nV) +
-	      dt*rk.b_3*K(KFVM_D_DECL(i,j,k),nV);
-	  }
+	  U3(KFVM_D_DECL(i,j,k),nV) =
+	    rk.a_3_0*U(KFVM_D_DECL(i,j,k),nV) +
+	    rk.a_3_2*U2(KFVM_D_DECL(i,j,k),nV) +
+	    dt*rk.b_3*K(KFVM_D_DECL(i,j,k),nV);
 	}
       }
     };
@@ -287,12 +287,10 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
 	for (int nV=0; nV<NUM_VARS; nV++) {
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    U4(KFVM_D_DECL(i,j,k),nV) =
-	      rk.a_4_0*U(KFVM_D_DECL(i,j,k),nV) +
-	      rk.a_4_3*U3(KFVM_D_DECL(i,j,k),nV) +
-	      dt*rk.b_4*K(KFVM_D_DECL(i,j,k),nV);
-	  }
+	  U4(KFVM_D_DECL(i,j,k),nV) =
+	    rk.a_4_0*U(KFVM_D_DECL(i,j,k),nV) +
+	    rk.a_4_3*U3(KFVM_D_DECL(i,j,k),nV) +
+	    dt*rk.b_4*K(KFVM_D_DECL(i,j,k),nV);
 	}
       }
     };

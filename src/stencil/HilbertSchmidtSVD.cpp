@@ -1,7 +1,8 @@
-#include "SEKernel.H"
-#include <HermitePolynomials.H>
-#include <HilbertSchmidtSVD.H>
 #include <cstdint>
+
+#include "SEKernel.H"
+#include "HermitePolynomials.H"
+#include "HilbertSchmidtSVD.H"
 
 namespace KFVM {
 
@@ -141,7 +142,7 @@ namespace KFVM {
 		   KFVM_D_DECL(const std::vector<double>& xs,
 			       const std::vector<double>& ys,
 			       const std::vector<double>& zs)):
-      pars(eps,1.0,static_cast<int>(3*(2*R + 1))),
+      pars(eps,0.025,static_cast<int>(3*(2*R + 1))),
       herm(pars.tDeg),
       N(xs.size()),
       M(pars.nEig),
@@ -166,6 +167,9 @@ namespace KFVM {
 
       // Compute SVD of Phi
       lerr = Matrix::c_dgesdd(Phi,U,S,Vt);
+      if (lerr !=0 ) {
+	std::printf("Error: HS_SVD svd of Phi failed with code: %d\n",lerr);
+      }
 
       // Unpack Vt into V1 and V2
       for (int j=0; j<N; j++) {
@@ -181,10 +185,19 @@ namespace KFVM {
       Matrix Vi(N,N);
       Vi.copy(V1);
       lerr = Matrix::c_dgetrf(Vi,ipiv);
+      if (lerr !=0 ) {
+	std::printf("Error: HS_SVD factorization of V1 failed with code: %d\n",lerr);
+      }
       lerr = Matrix::c_dgetri(Vi,ipiv);
+      if (lerr !=0 ) {
+	std::printf("Error: HS_SVD inversion of V1 failed with code: %d\n",lerr);
+      }
 
       // Fill LVViLi
       lerr = Matrix::c_dgemm('N','N',1.0,V2,Vi,0.0,LVViLi);
+      if (lerr !=0 ) {
+	std::printf("Error: HS_SVD V2*Vi failed with code: %d\n",lerr);
+      }
       for (int j=0; j<N; j++) {
 	for (int i=0; i<(M-N); i++) {
 	  LVViLi(i,j) *= (Lam2[i]/Lam1[j]);
@@ -202,7 +215,13 @@ namespace KFVM {
       // Create outer matrix and factor it
       A.copy(V1);
       lerr = Matrix::c_dgemm('T','N',1.0,LVViLi,V2,1.0,A);
+      if (lerr !=0 ) {
+	std::printf("Error: HS_SVD LVViLi*V2 failed with code: %d\n",lerr);
+      }
       lerr = Matrix::c_dgetrf(A,ipiv);
+      if (lerr !=0 ) {
+	std::printf("Error: HS_SVD factorization of A failed with code: %d\n",lerr);
+      }
     }
 
     void HS_SVD::MercerMats(KFVM_D_DECL(const std::vector<double>& xs,

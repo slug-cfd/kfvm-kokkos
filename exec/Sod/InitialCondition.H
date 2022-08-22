@@ -6,9 +6,10 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
   (void) y;
   (void) z;
-  state[SimVar::dens] = x<0.5 ? 1.0 : 0.125;
+  Real ax = Kokkos::Experimental::fabs(x);
+  state[SimVar::dens] = ax<0.5 ? 1.0 : 0.125;
   state[SimVar::momx] = 0.0;
   state[SimVar::momy] = 0.0;
   state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = (x<0.5 ? 1.0 : 0.1)/0.4;
+  state[SimVar::etot] = (ax<0.5 ? 1.0 : 0.1)/0.4;
 }
