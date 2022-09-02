@@ -210,31 +210,31 @@ namespace KFVM {
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
 
     // Weno reconstruction
-    // Kokkos::parallel_for("FaceRecon",cellRng,
-    // 			 Stencil::KernelWenoRecon_K<decltype(U)>
-    // 			 (U,
-    // 			  KFVM_D_DECL(faceVals.xDir,
-    // 				      faceVals.yDir,
-    // 				      faceVals.zDir),
-    // 			  stenWork,
-    // 			  KFVM_D_DECL(stencil.lOff,
-    // 				      stencil.tOff,
-    // 				      stencil.ttOff),
-    // 			  stencil.subIdx,
-    // 			  stencil.faceWeights,
-    // 			  stencil.derivWeights));
-
-    // Linear Kernel reconstruction
     Kokkos::parallel_for("FaceRecon",cellRng,
-			 Stencil::KernelLinearRecon_K<decltype(U)>
-			 (U,KFVM_D_DECL(faceVals.xDir,
-					faceVals.yDir,
-					faceVals.zDir),
+			 Stencil::KernelWenoRecon_K<decltype(U)>
+			 (U,
+			  KFVM_D_DECL(faceVals.xDir,
+				      faceVals.yDir,
+				      faceVals.zDir),
 			  stenWork,
 			  KFVM_D_DECL(stencil.lOff,
 				      stencil.tOff,
 				      stencil.ttOff),
-			  stencil.faceWeights));
+			  stencil.subIdx,
+			  stencil.faceWeights,
+			  stencil.derivWeights));
+
+    // Linear Kernel reconstruction
+    // Kokkos::parallel_for("FaceRecon",cellRng,
+    // 			 Stencil::KernelLinearRecon_K<decltype(U)>
+    // 			 (U,KFVM_D_DECL(faceVals.xDir,
+    // 					faceVals.yDir,
+    // 					faceVals.zDir),
+    // 			  stenWork,
+    // 			  KFVM_D_DECL(stencil.lOff,
+    // 				      stencil.tOff,
+    // 				      stencil.ttOff),
+    // 			  stencil.faceWeights));
 
     // MinMod reconstruction
     // Kokkos::parallel_for("FaceRecon",cellRng,
