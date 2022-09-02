@@ -7,3 +7,6 @@
 [submodule "external/kokkos-kernels"]
 	path = external/kokkos-kernels
 	url = git@github.com:kokkos/kokkos-kernels.git
+[submodule "external/libcerf"]
+	path = external/libcerf
+	url = https://jugit.fz-juelich.de/mlz/libcerf.git

@@ -27,17 +27,17 @@ namespace KFVM {
   {
     // Fill coordinate vectors
     grid[0].resize(ps.nX,0.0);
-    for (int n=0; n<ps.nX; ++n) {
+    for (idx_t n=0; n<ps.nX; ++n) {
       grid[0][n] = ps.xLo + (static_cast<double>(n) + 0.5)*ps.dx;
     }
     
     grid[1].resize(ps.nY,0.0);
-    for (int n=0; n<ps.nY; ++n) {
+    for (idx_t n=0; n<ps.nY; ++n) {
       grid[1][n] = ps.yLo + (static_cast<double>(n) + 0.5)*ps.dy;
     }
 #if (SPACE_DIM == 3)
     grid[2].resize(ps.nZ,0.0);
-    for (int n=0; n<ps.nZ; ++n) {
+    for (idx_t n=0; n<ps.nZ; ++n) {
       grid[2][n] = ps.zLo + (static_cast<double>(n) + 0.5)*ps.dz;
     }
 #endif
@@ -92,11 +92,11 @@ namespace KFVM {
     
       // Write out solution variables, have to make temporary copy due to slicing
       auto h_U = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),U);
-      for (int nV=0; nV<NUM_VARS; nV++) {
-	for (int nX=0; nX<ps.nX; nX++) {
-	  for (int nY=0; nY<ps.nY; nY++) {
-	    for (int nZ=0; nZ<ps.nZ; nZ++) {
-	      int idx = nX + ps.nX*nY + ps.nX*ps.nY*nZ;
+      for (idx_t nV=0; nV<NUM_VARS; nV++) {
+	for (idx_t nX=0; nX<ps.nX; nX++) {
+	  for (idx_t nY=0; nY<ps.nY; nY++) {
+	    for (idx_t nZ=0; nZ<ps.nZ; nZ++) {
+	      idx_t idx = nX + ps.nX*nY + ps.nX*ps.nY*nZ;
 	      solTmp[idx] = h_U(KFVM_D_DECL(nX + ps.rad,nY + ps.rad,nZ + ps.rad),nV);
 	    }
 	  }

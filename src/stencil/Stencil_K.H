@@ -37,6 +37,8 @@ namespace KFVM {
       SubIdxView subIdx;
       FaceWtView faceWeight;
       CellWtView derivWeight;
+      const int nCellsFull,nCellsCtr,nCellsBias;
+      const int nSub,nBias,nIndic,nqFace_d;
 
       KernelWenoRecon_K(const UViewType& U_,
 			KFVM_D_DECL(const FaceDataView& rsX_,
@@ -55,21 +57,25 @@ namespace KFVM {
 	KFVM_D_DECL(lOff(lOff_),tOff(tOff_),ttOff(ttOff_)),
 	subIdx(subIdx_),
 	faceWeight(face_),
-	derivWeight(deriv_) {}
+	derivWeight(deriv_),
+	nCellsFull(Stencil::Core::SI.nCellsFull),
+	nCellsCtr(Stencil::Core::SI.nCellsCtr),
+	nCellsBias(Stencil::Core::SI.nCellsBias),
+	nSub(Stencil::Core::SI.nSub),
+	nBias(Stencil::Core::SI.nBias),
+	nIndic(Stencil::Core::SI.nIndic),
+	nqFace_d(Stencil::Core::SI.nqFace_d)
+      {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
 	using namespace KokkosBatched;
 	using Kokkos::Experimental::fabs;
 	using Kokkos::Experimental::pow;
-	constexpr int nCellsFull = Stencil::Core::SI.nCellsFull;
-	constexpr int nCellsCtr = Stencil::Core::SI.nCellsCtr;
-	constexpr int nCellsBias = Stencil::Core::SI.nCellsBias;
-	constexpr int nIndic = Stencil::Core::SI.nIndic;
 
 	// Linear weights and epsilon value
-	constexpr Real eps = Real(1.e-8);
+	constexpr Real eps = Real(1.e-12);
 #if (SPACE_DIM == 2)
 	constexpr Real gHi = 0.8,gLo = 0.8;
 	Real gamma[] = {gHi,
@@ -79,7 +85,7 @@ namespace KFVM {
 			(1.0 - gHi)*(1.0 - gLo)/4.0,
 			(1.0 - gHi)*(1.0 - gLo)/4.0};
 #else
-	constexpr Real gHi = 0.75,gLo = 0.75;
+	constexpr Real gHi = 0.7,gLo = 0.75;
 	Real gamma[] = {gHi,
 			(1.0 - gHi)*gLo,
 			(1.0 - gHi)*(1.0 - gLo)/6.0,
@@ -92,12 +98,11 @@ namespace KFVM {
 	
 	// Create subview slices for values on each (sub)stencil
 	auto Vf = Kokkos::subview(Work,KFVM_D_DECL(i,j,k),
-				  Kokkos::make_pair(0,nCellsFull),Kokkos::ALL);
+				  Kokkos::pair<int,int>(0,nCellsFull),Kokkos::ALL);
 	auto Vc = Kokkos::subview(Work,KFVM_D_DECL(i,j,k),
-				  Kokkos::make_pair(0,nCellsCtr),Kokkos::ALL);
+				  Kokkos::pair<int,int>(0,nCellsCtr),Kokkos::ALL);
 	auto Vb = Kokkos::subview(Work,KFVM_D_DECL(i,j,k),
-				  Kokkos::make_pair(nCellsFull,
-						     nCellsFull+nCellsBias),Kokkos::ALL);
+				  Kokkos::pair<int,int>(nCellsFull,nCellsFull+nCellsBias),Kokkos::ALL);
 	// Subview slice to store derivatives in before accumulating into beta
 	auto B = Kokkos::subview(Work,KFVM_D_DECL(i,j,k),
 				 Kokkos::make_pair(nCellsFull+nCellsBias,
@@ -110,7 +115,7 @@ namespace KFVM {
 	Real refState[NUM_VARS];
 	
 	// Populate stencil values
-	for (int nC=0; nC<Stencil::Core::SI.nCellsFull; nC++) {
+	for (int nC=0; nC<nCellsFull; nC++) {
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    Vf(nC,nV) = U(KFVM_D_DECL(i + lOff(nC),
 				      j + tOff(nC),
@@ -123,7 +128,7 @@ namespace KFVM {
 	  refState[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
 	
-	for (int nC=0; nC<Stencil::Core::SI.nCellsFull; nC++) {
+	for (int nC=0; nC<nCellsFull; nC++) {
 	  auto state = Kokkos::subview(Vf,nC,Kokkos::ALL);
 	  Hydro::Cons2Prim(state,refState,1.4);
 	}
@@ -136,7 +141,7 @@ namespace KFVM {
 	  SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vf,Real(0.0),B);
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    omega[0][nV] = 0.0;
-	    for (int nI=0; nI<Stencil::Core::SI.nIndic; nI++) {
+	    for (int nI=0; nI<nIndic; nI++) {
 	      omega[0][nV] += B(nI,nV)*B(nI,nV);
 	    }
 	  }
@@ -147,19 +152,19 @@ namespace KFVM {
 	  SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vc,Real(0.0),B);
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    omega[1][nV] = 0.0;
-	    for (int nI=0; nI<Stencil::Core::SI.nIndic; nI++) {
+	    for (int nI=0; nI<nIndic; nI++) {
 	      omega[1][nV] += B(nI,nV)*B(nI,nV);
 	    }
 	  }
 	}
 	// biased substencils
-	for (int nB=0; nB<Stencil::Core::SI.nBias; nB++) {
+	for (int nB=0; nB<nBias; nB++) {
 	  fillBiased<decltype(Vf),decltype(Vb)>(nB,Vf,Vb);
 	  auto dWts = Kokkos::subview(derivWeight,nB + 2,Kokkos::ALL,Kokkos::make_pair(0,nCellsBias));
 	  SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vb,Real(0.0),B);
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    omega[nB + 2][nV] = 0.0;
-	    for (int nI=0; nI<Stencil::Core::SI.nIndic; nI++) {
+	    for (int nI=0; nI<nIndic; nI++) {
 	      omega[nB + 2][nV] += B(nI,nV)*B(nI,nV);
 	    }
 	  }
@@ -176,19 +181,19 @@ namespace KFVM {
 					  omega[6][nV] + omega[7][nV])/6.0);
 #endif
 	  Real tot = 0.0;
-	  for (int nS=0; nS<Stencil::Core::SI.nSub; nS++) {
+	  for (int nS=0; nS<nSub; nS++) {
 	    omega[nS][nV] = gamma[nS]*(1.0 + pow(tau/(omega[nS][nV] + eps),STENCIL_RADIUS));
 	    tot += omega[nS][nV];
 	  }
 	  // normalize them
-	  for (int nS=0; nS<Stencil::Core::SI.nSub; nS++) {
+	  for (int nS=0; nS<nSub; nS++) {
 	    omega[nS][nV] /= tot;
 	  }
 	}
 
 	// convert omegas to Weno-AO style weights
 	for (int nV=0; nV<NUM_VARS; nV++) {
-	  for (int nS=1; nS<Stencil::Core::SI.nSub; nS++) {
+	  for (int nS=1; nS<nSub; nS++) {
 	    omega[nS][nV] -= omega[0][nV]*gamma[nS]/gamma[0];
 	  }
 	  omega[0][nV] /= gamma[0];
@@ -227,7 +232,7 @@ namespace KFVM {
 	}
 	
 	// Biased substencils
-	for (int nB=0; nB<Stencil::Core::SI.nBias; nB++) {
+	for (int nB=0; nB<nBias; nB++) {
 	  fillBiased<decltype(Vf),decltype(Vb)>(nB,Vf,Vb);
 	  for (int nF=0; nF<2*SPACE_DIM; nF++) {
 	    auto rWtsB = Kokkos::subview(faceWeight,2 + nB,nF,Kokkos::ALL,Kokkos::make_pair(0,nCellsBias));
@@ -241,7 +246,7 @@ namespace KFVM {
 
 	// Convert back to conservative variables
 	for (int nF=0; nF<2*SPACE_DIM; nF++) {
-	  for (int nQ=0; nQ<Stencil::Core::SI.nqFace_d; nQ++) {
+	  for (int nQ=0; nQ<nqFace_d; nQ++) {
 	    auto state = Kokkos::subview(rsFace[nF],nQ,Kokkos::ALL);
 	    Hydro::Prim2Cons(state,refState,1.4);
 	  }
@@ -255,7 +260,7 @@ namespace KFVM {
       void fillBiased(int nB,ValsFullType Vf,ValsBiasType Vb) const
       {
 	for (int nV=0; nV<NUM_VARS; nV++) {
-	  for (int nC=0; nC<Stencil::Core::SI.nCellsBias; nC++) {
+	  for (int nC=0; nC<nCellsBias; nC++) {
 	    Vb(nC,nV) = Vf(subIdx(nB,nC),nV);
 	  }
 	}
@@ -269,6 +274,7 @@ namespace KFVM {
       WorkView Work;
       OffsetView KFVM_D_DECL(lOff,tOff,ttOff);
       FaceWtView faceWeight;
+      const int nCellsFull;
 
       KernelLinearRecon_K(const UViewType& U_,
 			  KFVM_D_DECL(const FaceDataView& rsX_,
@@ -283,20 +289,22 @@ namespace KFVM {
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
 	Work(Work_),
 	KFVM_D_DECL(lOff(lOff_),tOff(tOff_),ttOff(ttOff_)),
-	faceWeight(face_) {}
+	faceWeight(face_),
+	nCellsFull(Stencil::Core::SI.nCellsFull)
+      {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
 	using namespace KokkosBatched;
 		
 	// Create subview slices to use gemm calls
 	auto V = Kokkos::subview(Work,KFVM_D_DECL(i,j,k),
-				 Kokkos::make_pair(0,Stencil::Core::SI.nCellsFull),
+				 Kokkos::pair<int,int>(0,nCellsFull),
 				 Kokkos::ALL);
 	
 	// Populate stencil values
-	for (int nC=0; nC<Stencil::Core::SI.nCellsFull; nC++) {
+	for (int nC=0; nC<nCellsFull; nC++) {
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    V(nC,nV) = U(KFVM_D_DECL(i + lOff(nC),
 				     j + tOff(nC),
@@ -355,7 +363,7 @@ namespace KFVM {
       }
 #if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
-      void operator()(const int i,const int j) const {
+      void operator()(const idx_t i,const idx_t j) const {
 	// Loop over SimVars
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  Real slX = minmod(U(i-1,j,nV),U(i,j,nV),U(i+1,j,nV));
@@ -371,7 +379,7 @@ namespace KFVM {
       }
 #else
       KOKKOS_INLINE_FUNCTION
-      void operator()(const int i,const int j,const int k) const {
+      void operator()(const idx_t i,const idx_t j,const idx_t k) const {
 	// Loop over SimVars
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  Real slX = minmod(U(i-1,j,k,nV),U(i,j,k,nV),U(i+1,j,k,nV));

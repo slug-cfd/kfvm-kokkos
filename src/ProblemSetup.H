@@ -28,24 +28,24 @@ namespace KFVM {
     static std::array<BoundaryConditions::BCType,6> bcType;
     
     // Stencil settings
-    static constexpr unsigned int rad = STENCIL_RADIUS;
-    Real gp_lFac,gp_bpow;
+    const idx_t rad = STENCIL_RADIUS;
+    const Real gp_lFac,gp_bpow;
 
     // Solution file settings
     std::string baseName;
     
     // Domain and grid size
-    int nX,nY,nZ;
-    Real xLo,xUp,yLo,yUp,zLo,zUp;
-    Real dx,dy,dz;
+    const idx_t nX,nY,nZ;
+    const Real xLo,xUp,yLo,yUp,zLo,zUp;
+    const Real dx,dy,dz;
 
     // Time stepping information
-    int maxTimeSteps;
-    Real initialTime,finalTime,initialDeltaT;
-    Real cfl;
+    const int maxTimeSteps;
+    const Real initialTime,finalTime,initialDeltaT;
+    const Real cfl;
 
     // File output information
-    int plotFreq;
+    const int plotFreq;
 
     // Fluid properties array
     FluidProperties fluidProp;
@@ -53,11 +53,12 @@ namespace KFVM {
     // Simple constructor
     // To be replaced by input file reader
     ProblemSetup(std::string name_,
-                 int nX_,int nY_,int nZ_,
+                 idx_t nX_,idx_t nY_,idx_t nZ_,
                  Real xLo_,Real xUp_,Real yLo_,Real yUp_,Real zLo_,Real zUp_,
 		 Real finalTime_,int plotFreq_,
                  Real gam_):
-      gp_lFac(80.0),
+      rad(STENCIL_RADIUS),
+      gp_lFac(40.0),
       gp_bpow(Real(STENCIL_RADIUS)),
       baseName(name_),
       nX(nX_),

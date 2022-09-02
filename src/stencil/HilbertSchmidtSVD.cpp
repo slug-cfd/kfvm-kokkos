@@ -142,7 +142,7 @@ namespace KFVM {
 		   KFVM_D_DECL(const std::vector<double>& xs,
 			       const std::vector<double>& ys,
 			       const std::vector<double>& zs)):
-      pars(eps,0.025,static_cast<int>(3*(2*R + 1))),
+      pars(eps,0.05,static_cast<int>(4*(2*R + 1))),
       herm(pars.tDeg),
       N(xs.size()),
       M(pars.nEig),

@@ -80,7 +80,7 @@ void CellSouth(const DataViewType& U,int rad,int nY,
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
-  const Real xRef = cos(2.0*M_PI*z)/12.0 + 1.0/4.0;
+  const Real xRef = cos(8.0*M_PI*z)/12.0 + 1.0/4.0;
   const Real pf = x>xRef ? -1.0 : 1.0; // Only reflect on part of the domain
 
   state[SimVar::dens] =    U(KFVM_D_DECL(i,rad + nH,k),SimVar::dens);
@@ -103,14 +103,14 @@ void FaceSouth(const DataViewType& U,
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
-  const Real xRef = cos(2.0*M_PI*z)/12.0 + 1.0/4.0;
-  const Real pf = x>xRef ? -1.0 : 1.0; // Only reflect on part of the domain
+  const Real xRef = cos(8.0*M_PI*z)/12.0 + 1.0/4.0;
+  const Real pf = x>xRef ? -1.0 : 1.0; // Only reflect on part of the boundary
 
-  state[SimVar::dens] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,nQ,SimVar::dens);
-  state[SimVar::momx] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,nQ,SimVar::momx);
-  state[SimVar::momy] = pf*U(KFVM_D_DECL(i,1,k),FaceLabel::south,nQ,SimVar::momy);
-  state[SimVar::momz] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,nQ,SimVar::momz);
-  state[SimVar::etot] =    U(KFVM_D_DECL(i,1,k),FaceLabel::south,nQ,SimVar::etot);
+  state[SimVar::dens] =    U(KFVM_DM_DECL(i,k),1,nQ,SimVar::dens);
+  state[SimVar::momx] =    U(KFVM_DM_DECL(i,k),1,nQ,SimVar::momx);
+  state[SimVar::momy] = pf*U(KFVM_DM_DECL(i,k),1,nQ,SimVar::momy);
+  state[SimVar::momz] =    U(KFVM_DM_DECL(i,k),1,nQ,SimVar::momz);
+  state[SimVar::etot] =    U(KFVM_DM_DECL(i,k),1,nQ,SimVar::etot);
 }
 
 // Northern boundary

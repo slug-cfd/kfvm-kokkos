@@ -47,18 +47,18 @@ namespace KFVM {
 
       // 2D version
       KOKKOS_INLINE_FUNCTION
-      void operator()(const int i,const int j) const {	
+      void operator()(const idx_t i,const idx_t j) const {	
 	// Center of cell (i,j)
 	Real xCtr = geom.xCoord(i),yCtr = geom.yCoord(j);
 
 	// Zero out state
-	for (int nV=0; nV<NUM_VARS; nV++) {
+	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  v(i,j,nV) = 0.0;
 	}
 
 	// Loop over quadrature points and accumulate integral
-	for (int nX=0; nX<NUM_QUAD_PTS; nX++) {
-	  for (int nY=0; nY<NUM_QUAD_PTS; nY++) {
+	for (idx_t nX=0; nX<NUM_QUAD_PTS; nX++) {
+	  for (idx_t nY=0; nY<NUM_QUAD_PTS; nY++) {
 	    // Quadrature point
 	    Real abX = sclAb(xCtr,geom.dx,ab(nX));
 	    Real abY = sclAb(yCtr,geom.dy,ab(nY));
@@ -68,7 +68,7 @@ namespace KFVM {
 	    InitialCondition(abX,abY,geom.zLo,state);
 
 	    // Add each component into IC
-	    for (int nV=0; nV<NUM_VARS; nV++) {
+	    for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	      v(i,j,nV) += wt(nX)*wt(nY)*state[nV];
 	    }
 	  }
@@ -77,19 +77,19 @@ namespace KFVM {
 
       // 3D version
       KOKKOS_INLINE_FUNCTION
-      void operator()(const int i,const int j,const int k) const {
+      void operator()(const idx_t i,const idx_t j,const idx_t k) const {
 	// Center of cell (i,j,k)
 	Real xCtr = geom.xCoord(i),yCtr = geom.yCoord(j),zCtr = geom.zCoord(k);
 
 	// Zero out state
-	for (int nV=0; nV<NUM_VARS; nV++) {
+	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  v(i,j,k,nV) = 0.0;
 	}
 
 	// Loop over quadrature points and accumulate integral
-	for (int nX=0; nX<NUM_QUAD_PTS; nX++) {
-	  for (int nY=0; nY<NUM_QUAD_PTS; nY++) {
-	    for (int nZ=0; nZ<NUM_QUAD_PTS; nZ++) {
+	for (idx_t nX=0; nX<NUM_QUAD_PTS; nX++) {
+	  for (idx_t nY=0; nY<NUM_QUAD_PTS; nY++) {
+	    for (idx_t nZ=0; nZ<NUM_QUAD_PTS; nZ++) {
 	      // Quadrature point
 	      Real abX = sclAb(xCtr,geom.dx,ab(nX));
 	      Real abY = sclAb(yCtr,geom.dy,ab(nY));
@@ -100,7 +100,7 @@ namespace KFVM {
 	      InitialCondition(abX,abY,abZ,state);
 
 	      // Add each component into IC
-	      for (int nV=0; nV<NUM_VARS; nV++) {
+	      for (idx_t nV=0; nV<NUM_VARS; nV++) {
 		v(i,j,k,nV) += wt(nX)*wt(nY)*wt(nZ)*state[nV];
 	      }
 	    }
@@ -132,15 +132,15 @@ namespace KFVM {
 
 #if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
-      void operator()(const int i,const int j) const {
+      void operator()(const idx_t i,const idx_t j) const {
 	// Zero out RHS before accumulating fluxes
-	for (int nV=0; nV<NUM_VARS; nV++) {
+	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  rhs(i,j,nV) = 0.0;
 	}
 			   
 	// Loop over quadrature points and components
-	for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  for (int nV=0; nV<NUM_VARS; nV++) {
+	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    // x-direction
 	    rhs(i,j,nV) += wt(nQ)*(flX(i,j,1,nQ,nV) - flX(i + 1,j,0,nQ,nV))/geom.dx;
 	    // y-direction
@@ -150,17 +150,17 @@ namespace KFVM {
       }
 #else
       KOKKOS_INLINE_FUNCTION
-      void operator()(const int i,const int j,const int k) const {
+      void operator()(const idx_t i,const idx_t j,const idx_t k) const {
 	// Zero out RHS before accumulating fluxes
-	for (int nV=0; nV<NUM_VARS; nV++) {
+	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  rhs(i,j,k,nV) = 0.0;
 	}
 			   
 	// Loop over quadrature points and components
-	for (int nV=0; nV<NUM_VARS; nV++) {
-	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
-	      int qIdx = nQ*NUM_QUAD_PTS + nR;
+	for (idx_t nV=0; nV<NUM_VARS; nV++) {
+	  for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	    for (idx_t nR=0; nR<NUM_QUAD_PTS; nR++) {
+	      idx_t qIdx = nQ*NUM_QUAD_PTS + nR;
 	      Real qWt = wt(nQ)*wt(nR);
 	      rhs(i,j,k,nV) += qWt*(flX(i,j,k,0,qIdx,nV) -
 				    flX(i + 1,j,k,1,qIdx,nV))/geom.dx;
@@ -194,8 +194,8 @@ namespace KFVM {
 	dt(dt_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
-	for (int nV=0; nV<NUM_VARS; nV++) {
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
+	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  U1(KFVM_D_DECL(i,j,k),nV) =
 	    rk.a_1_0*U(KFVM_D_DECL(i,j,k),nV) + dt*rk.b_1*K(KFVM_D_DECL(i,j,k),nV);
 	}
@@ -223,8 +223,8 @@ namespace KFVM {
 	dt(dt_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
-	for (int nV=0; nV<NUM_VARS; nV++) {
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
+	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  U2(KFVM_D_DECL(i,j,k),nV) =
 	    rk.a_2_0*U(KFVM_D_DECL(i,j,k),nV) +
 	    rk.a_2_1*U1(KFVM_D_DECL(i,j,k),nV) +
@@ -254,8 +254,8 @@ namespace KFVM {
 	dt(dt_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
-	for (int nV=0; nV<NUM_VARS; nV++) {
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
+	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  U3(KFVM_D_DECL(i,j,k),nV) =
 	    rk.a_3_0*U(KFVM_D_DECL(i,j,k),nV) +
 	    rk.a_3_2*U2(KFVM_D_DECL(i,j,k),nV) +
@@ -285,8 +285,8 @@ namespace KFVM {
 	dt(dt_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
-	for (int nV=0; nV<NUM_VARS; nV++) {
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
+	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  U4(KFVM_D_DECL(i,j,k),nV) =
 	    rk.a_4_0*U(KFVM_D_DECL(i,j,k),nV) +
 	    rk.a_4_3*U3(KFVM_D_DECL(i,j,k),nV) +
@@ -320,8 +320,8 @@ namespace KFVM {
 	dt(dt_) {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(KFVM_D_DECL(const int i,const int j,const int k)) const {
-	for (int nV=0; nV<NUM_VARS; nV++) {
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
+	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  U(KFVM_D_DECL(i,j,k),nV) =
 	    rk.a_5_0*U(KFVM_D_DECL(i,j,k),nV) +
 	    rk.a_5_2*U2(KFVM_D_DECL(i,j,k),nV) +

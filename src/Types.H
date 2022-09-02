@@ -24,6 +24,9 @@ namespace KFVM {
   typedef double Real;
 #endif
 
+  // Set index type for all iteration spaces
+  typedef int64_t idx_t;
+
   // Array of fluid properties
   typedef std::array<Real,NUM_PROPS> FluidProperties;
 

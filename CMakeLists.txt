@@ -10,6 +10,7 @@ set (CMAKE_CXX_EXTENSIONS OFF)
 
 find_package (Kokkos REQUIRED)
 find_package (KokkosKernels REQUIRED)
+find_package (cerf REQUIRED)
 find_package (NetCDF REQUIRED)
 find_package (LAPACK REQUIRED)
 

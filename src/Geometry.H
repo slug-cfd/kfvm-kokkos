@@ -32,19 +32,19 @@ namespace KFVM {
 
     // Convenience functions to calculate coordinates at cell centers
     KOKKOS_INLINE_FUNCTION
-    Real xCoord(int n) const
+    Real xCoord(idx_t n) const
     {
       return dx*(Real(n) + 0.5) + xLo;
     }
     
     KOKKOS_INLINE_FUNCTION
-    Real yCoord(int n) const
+    Real yCoord(idx_t n) const
     {
       return dy*(Real(n) + 0.5) + yLo;
     }
     
     KOKKOS_INLINE_FUNCTION
-    Real zCoord(int n) const
+    Real zCoord(idx_t n) const
     {
       return dz*(Real(n) + 0.5) + zLo;
     }
