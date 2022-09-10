@@ -11,6 +11,7 @@
 
 #include "../Types.H"
 #include "CSEKernel.H"
+#include "Monomials.H"
 
 namespace KFVM {
 
@@ -57,6 +58,42 @@ namespace KFVM {
       private:
 	Matrix() = delete;
       };
+
+      // Enumeration of used monomials for augmented kernel system
+      struct MonomialEnum
+      {
+	const int tDeg,nMono;
+	std::vector<std::array<int,SPACE_DIM> > deg;
+
+	MonomialEnum(int tDeg_):
+	  tDeg(tDeg_),
+	  nMono(SPACE_DIM==2 ? (tDeg + 1)*(tDeg + 2)/2 : (tDeg + 1)*(tDeg + 2)*(tDeg + 3)/6),
+	  deg(nMono)
+	{
+	  // Enumerate all monomials up to total degree tDeg
+	  int n = 0;
+#if (SPACE_DIM == 2)
+	  for (int t=0; t<=tDeg; t++) {
+	    for (int i=0; i<=t; i++) {
+	      deg[n][0] = i;
+	      deg[n][1] = t - i;
+	      n++;
+	    }
+	  }
+#else
+	  for (int t=0; t<=tDeg; t++) {
+	    for (int i=0; i<=t; i++) {
+	      for (int j=0; j<=(t - i); j++) {
+		deg[n][0] = i;
+		deg[n][1] = j;
+		deg[n][2] = t - i - j;
+		n++;
+	      }
+	    }
+	  }
+#endif
+	}
+      };
       
       // Wrappers for Lapack calls
       static int c_dgemv(char,double,Matrix<double>&,
@@ -77,6 +114,12 @@ namespace KFVM {
 
       // Desired epsilon value
       double eps;
+
+      // Set of monomials to append
+      MonomialEnum monos;
+
+      // Size of kernel systems with additional polynomials
+      int sysSize;
 
       // Number of contour points to use
       int K;
@@ -101,11 +144,18 @@ namespace KFVM {
 			 KFVM_D_DECL(const double qx,const double qy,const double qz),
 			 std::vector<std::complex<double>>& T)
       {
+	// Evaluate kernel at query points for each center
 	for (int i=0; i<stenSize; i++) {
 	  double KFVM_D_DECL(dx = qx - xs[i],
 			     dy = qy - ys[i],
 			     dz = qz - zs[i]);
 	  T[i] = SE::K<KFVM_D_DECL(efX,efY,efZ)>(ep,KFVM_D_DECL(dx,dy,dz));
+	}
+	// Evaluate polynomials at query points
+	for (int i=0; i<monos.nMono; i++) {
+	  T[i + stenSize] =
+	    Monomials::mono<KFVM_D_DECL(efX,efY,efZ)>(monos.deg[i],
+						      KFVM_D_DECL(qx,qy,qz));
 	}
       }
 
@@ -132,18 +182,22 @@ namespace KFVM {
       {
 	// Solve system for each epsilon value
 	std::vector<std::vector<double>> f(stenSize,std::vector<double>(K,0.0));
-	std::vector<std::complex<double> > fc(stenSize,std::complex<double>(0.0,0.0));
+	std::vector<std::complex<double> > fc(sysSize,std::complex<double>(0.0,0.0));
 	std::vector<double> f_infty(K/2,0.0);
 	for (int k=0; k<K/2; k++) {
-	  fillSampleVec<KFVM_D_DECL(efX,efY,efZ)>(epsCont[k],KFVM_D_DECL(qx,qy,qz),fc);
+	  fillSampleVec<KFVM_D_DECL(efX,efY,efZ)>(epsCont[k],
+						  KFVM_D_DECL(qx,qy,qz),fc);
 	  c_zgetrs('N',C[k],ipiv[k],fc);
 	  
 	  // get infinity norm of prediction vector
+	  // Note that the tail of fc associated to the polynomial terms
+	  // is ignored
 	  for (int j=0; j<stenSize; j++) {
 	    f_infty[k] = std::fmax(f_infty[k],std::abs(fc[j]));
 	  }
 
 	  // Scatter into real valued pred vecs and rescale
+	  // Polynomial tail is still ignored
 	  for (int j=0; j<stenSize; j++) {
 	    f[j][k      ] = fc[j].real()/f_infty[k];
 	    f[j][k + K/2] = fc[j].imag()/f_infty[k];

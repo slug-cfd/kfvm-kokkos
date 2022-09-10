@@ -7,6 +7,7 @@
 #include "../ProblemSetup.H"
 #include "../Geometry.H"
 #include "../numeric/Numeric.H"
+#include "EvalFunctionals.H"
 #include "CSEKernel.H"
 #include "Stencil.H"
 #include "VectorValuedRA.H"
@@ -189,8 +190,6 @@ namespace KFVM {
 
     void Stencil::findWeights(double lfac)
     {
-      using SE::EvalFunctional;
-      
       // Make host accessible views
       auto h_face = Kokkos::create_mirror(faceWeights);
       auto h_deriv = Kokkos::create_mirror(derivWeights);

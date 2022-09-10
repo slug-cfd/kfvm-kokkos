@@ -8,7 +8,7 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {  
-  const Real L = 1.0,u0 = 1.0,rho0 = 1.0,p0 = 100.0;
+  const Real L = 1.0,u0 = 1.0,rho0 = 1.0,p0 = 1.0;//,p0 = 100.0;
 
   const Real u = u0*sin(x/L)*cos(y/L)*cos(z/L);
   const Real v = -u0*cos(x/L)*sin(y/L)*cos(z/L);

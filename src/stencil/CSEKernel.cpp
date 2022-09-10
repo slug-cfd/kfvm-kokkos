@@ -3,6 +3,7 @@
 
 #include <cerf.h>
 
+#include "EvalFunctionals.H"
 #include "CSEKernel.H"
 
 namespace KFVM {

@@ -16,14 +16,14 @@ int main(int argc, char* argv[]) {
     // Create ProblemSetup object with all settings and configuration
     // KFVM::ProblemSetup ps("data/Sod",
     // 			  256,8,8,
-    // 			  0.0,1.0,0.0,8.0/256.0,0.0,8.0/256.0,
+    // 			  -1.0,1.0,0.0,8.0/128.0,0.0,8.0/128.0,
     // 			  0.2,20,
     // 			  1.4);
     
     // Create ProblemSetup object with all settings and configuration
     // KFVM::ProblemSetup ps("data/Riem_2d_3c",
-    // 			  512,512,8,
-    // 			  0.0,1.0,0.0,1.0,0.0,8.0/128.0,
+    // 			  256,256,8,
+    // 			  0.0,1.0,0.0,1.0,0.0,8.0/256.0,
     // 			  0.8,100,
     // 			  1.4);
     
@@ -63,18 +63,18 @@ int main(int argc, char* argv[]) {
     // 			  1.4);
     
     // Create ProblemSetup object with all settings and configuration
-    KFVM::ProblemSetup ps("data/DoubleMach",
-			  256,64,16,
-			  0.0,4.0,0.0,1.0,0.0,0.25,
-			  0.25,20,
-			  1.4);
+    // KFVM::ProblemSetup ps("data/DoubleMach",
+    // 			  256,64,16,
+    // 			  0.0,4.0,0.0,1.0,0.0,0.25,
+    // 			  0.25,20,
+    // 			  1.4);
     
     // Create ProblemSetup object with all settings and configuration
-    // KFVM::ProblemSetup ps("data/TaylorGreen",
-    // 			  96,96,96,
-    // 			  0.0,2.0*M_PI,0.0,2.0*M_PI,0.0,2.0*M_PI,
-    // 			  10.75,100,
-    // 			  1.4);
+    KFVM::ProblemSetup ps("data/TaylorGreen",
+			  96,96,96,
+			  0.0,2.0*M_PI,0.0,2.0*M_PI,0.0,2.0*M_PI,
+			  10.75,100,
+			  1.4);
 
     // Create solver object to store and advance solution
     KFVM::Solver solver(ps);
