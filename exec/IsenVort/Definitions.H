@@ -2,7 +2,7 @@
 #define DEFINITIONS_H_
 
 // Space dimension of problem
-#define SPACE_DIM 3
+#define SPACE_DIM 2
 
 // Stencil radius (2-3)
 #define STENCIL_RADIUS 2

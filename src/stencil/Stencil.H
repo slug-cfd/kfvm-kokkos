@@ -5,102 +5,16 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <vector>
 
 #include "../SimVar.H"
 #include "../Types.H"
 #include "../ProblemSetup.H"
+#include "StencilInfo.H"
 
 namespace KFVM {
 
   namespace Stencil {
-    
-// Cell counts for various arrays in Stencil indexed by radius
-// This makes radius an adjustable (compile time) parameter
-// but also allows all arrays to remain static
-// Radius 0 and 1 ill defined.
-    template <int dim,idx_t rad> struct StencilInfo;
-
-    // 2D specializations
-    // Radius 2
-    template<> struct StencilInfo<2,2>
-    {
-      // Number of face quadrature points per dimension
-      static constexpr idx_t nqFace = NUM_QUAD_PTS;
-      // Total after tensoring across dimensions
-      static constexpr idx_t nqFace_d = nqFace;
-      // Number of interior quadrature points per dimension
-      static constexpr idx_t nqCell = 2;
-      // Total after tensoring across dimensions
-      static constexpr idx_t nqCell_d = nqCell*nqCell;
-      // Total number of cells in full stencil
-      static constexpr idx_t nCellsFull = 13;
-      // Total number of cells in central substencil
-      static constexpr idx_t nCellsCtr = 5;
-      // Total number of cells in biased substencils
-      static constexpr idx_t nCellsBias = 5;
-      // Number of derivatives in smoothness indicator
-      static constexpr idx_t nDeriv = 4;
-      // Number of total smoothness indicator entries to form
-      static constexpr idx_t nIndic = nDeriv*nqCell_d;
-      // Total workspace size needed by recon. kernel
-      static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
-      // Number of substencils
-      static constexpr idx_t nSub = 6;
-      // Number of biased substencils
-      static constexpr idx_t nBias = 4;
-    };
-
-    // radius 3
-    template<> struct StencilInfo<2,3>
-    {
-      static constexpr idx_t nqFace = NUM_QUAD_PTS;
-      static constexpr idx_t nqFace_d = nqFace;
-      static constexpr idx_t nqCell = 2;
-      static constexpr idx_t nqCell_d = nqCell*nqCell;
-      static constexpr idx_t nCellsFull = 29;
-      static constexpr idx_t nCellsCtr = 13;
-      static constexpr idx_t nCellsBias = 10;
-      static constexpr idx_t nDeriv = 4;
-      static constexpr idx_t nIndic = nDeriv*nqCell_d;
-      static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
-      static constexpr idx_t nSub = 6;
-      static constexpr idx_t nBias = 4;
-    };
-
-    // 3D specializations
-    // radius 2
-    template<> struct StencilInfo<3,2>
-    {
-      static constexpr idx_t nqFace = NUM_QUAD_PTS;
-      static constexpr idx_t nqFace_d = nqFace*nqFace;
-      static constexpr idx_t nqCell = 2;
-      static constexpr idx_t nqCell_d = nqCell*nqCell*nqCell;
-      static constexpr idx_t nCellsFull = 33;
-      static constexpr idx_t nCellsCtr = 7;
-      static constexpr idx_t nCellsBias = 11;
-      static constexpr idx_t nDeriv = 6;
-      static constexpr idx_t nIndic = nDeriv*nqCell_d;
-      static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
-      static constexpr idx_t nSub = 8;
-      static constexpr idx_t nBias = 6;
-    };
-
-    // radius 3
-    template<> struct StencilInfo<3,3>
-    {
-      static constexpr idx_t nqFace = NUM_QUAD_PTS;
-      static constexpr idx_t nqFace_d = nqFace*nqFace;
-      static constexpr idx_t nqCell = 2;
-      static constexpr idx_t nqCell_d = nqCell*nqCell*nqCell;
-      static constexpr idx_t nCellsFull = 123;
-      static constexpr idx_t nCellsCtr = 33;
-      static constexpr idx_t nCellsBias = 32;
-      static constexpr idx_t nDeriv = 6;
-      static constexpr idx_t nIndic = nDeriv*nqCell_d;
-      static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
-      static constexpr idx_t nSub = 8;
-      static constexpr idx_t nBias = 6;
-    };
 
     // Set view types for stencil information and needed kernel workspace
     typedef Kokkos::View<idx_t[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> OffsetView;
@@ -130,7 +44,9 @@ namespace KFVM {
         // Index maps into biased substencils
         std::array<std::array<idx_t,SI.nCellsBias>,SI.nBias> subIdx;
 	
-	Core() { findStencil(); }
+	Core() {
+	  findStencil();
+	}
       private:
 	idx_t coord2idx(idx_t,idx_t);
 	idx_t coord2idx(idx_t,idx_t,idx_t);
@@ -189,11 +105,14 @@ namespace KFVM {
 	Kokkos::Profiling::popRegion();
       }
 
-      private:
+    private:
       // This should never be default or copy constructed
       Stencil() = delete;
       Stencil(const Stencil&) = delete;
 
+      void off2Double(idx_t,idx_t,KFVM_D_DECL(std::vector<double>&,
+					      std::vector<double>&,
+					      std::vector<double>&));
       void findWeights(double);
     };
 

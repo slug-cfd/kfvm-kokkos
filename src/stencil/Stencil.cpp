@@ -1,15 +1,18 @@
 #include <Kokkos_View.hpp>
 #include <cstdio>
 #include <utility>
+#include <vector>
 
 #include "../SimVar.H"
 #include "../Types.H"
 #include "../ProblemSetup.H"
 #include "../Geometry.H"
 #include "../numeric/Numeric.H"
+#include "Definitions.H"
 #include "EvalFunctionals.H"
 #include "CSEKernel.H"
 #include "Stencil.H"
+#include "StencilSymmetry.H"
 #include "VectorValuedRA.H"
 
 namespace KFVM {
@@ -188,6 +191,51 @@ namespace KFVM {
 #endif
     }
 
+    void Stencil::off2Double(idx_t nS,idx_t subsize,
+			     KFVM_D_DECL(std::vector<double>& xs,
+					 std::vector<double>& ys,
+					 std::vector<double>& zs))
+    {
+      xs.resize(subsize,0.0);
+      ys.resize(subsize,0.0);
+#if (SPACE_DIM == 3)
+      zs.resize(subsize,0.0);
+#endif
+      for (idx_t n=0; n<subsize; n++) {
+	idx_t idx = nS<2 ? n : core.subIdx[nS - 2][n];
+	xs[n] = static_cast<double>(core.lOff[idx]);
+	ys[n] = static_cast<double>(core.tOff[idx]);
+#if (SPACE_DIM == 3)
+	zs[n] = static_cast<double>(core.ttOff[idx]);
+#endif
+      }
+    }
+
+    namespace {
+      template<class WType>
+      void testPV(const WType& wts,idx_t numQuad,KFVM_D_DECL(const std::vector<double>& xs,
+							     const std::vector<double>& ys,
+							     const std::vector<double>& zs))
+      {
+	for (idx_t nQ=0; nQ<numQuad; nQ++) {
+	  double cv = 0.0,KFVM_D_DECL(xv = 0.0,yv = 0.0,zv = 0.0);
+	  for (idx_t j=0; j<xs.size(); j++) {
+	    cv += wts(nQ,j);
+	    xv += xs[j]*wts(nQ,j);
+	    yv += ys[j]*wts(nQ,j);
+#if (SPACE_DIM == 3)
+	    zv += zs[j]*wts(nQ,j);
+#endif
+	  }
+#if (SPACE_DIM == 2)
+          std::printf("    nQ %d: (c,x,y) = (%lf,%lf,%lf)\n",nQ,cv,xv,yv);
+#else
+          std::printf("    nQ %d: (c,x,y,z) = (%lf,%lf,%lf,%lf)\n",nQ,cv,xv,yv,zv);
+#endif
+	}
+      }
+    }
+    
     void Stencil::findWeights(double lfac)
     {
       // Make host accessible views
@@ -245,102 +293,258 @@ namespace KFVM {
       }
 #endif
 
-      // substencil sizes for reference
-#if (SPACE_DIM == 2)
-      idx_t subsize[] = {core.SI.nCellsFull,core.SI.nCellsCtr,
-		       core.SI.nCellsBias,core.SI.nCellsBias,
-		       core.SI.nCellsBias,core.SI.nCellsBias};
-#else
-      idx_t subsize[] = {core.SI.nCellsFull,core.SI.nCellsCtr,
-		       core.SI.nCellsBias,core.SI.nCellsBias,
-		       core.SI.nCellsBias,core.SI.nCellsBias,
-		       core.SI.nCellsBias,core.SI.nCellsBias};
+      // find weights for centered substencils
+      for (idx_t nS=0; nS<2; nS++) {
+	std::printf("\nStencil: %d\n",nS);
+	// stencil as double arrays
+	idx_t subsize = nS==0 ? core.SI.nCellsFull : core.SI.nCellsCtr;
+	std::vector<double> KFVM_D_DECL(xs,ys,zs);
+	off2Double(nS,subsize,KFVM_D_DECL(xs,ys,zs));
+	
+	// Vector valued rational approximation for this (sub)stencil
+	VectorValuedRA vvra(eps,KFVM_D_DECL(xs,ys,zs));
+	
+	// Find weights on west face
+	std::printf("West face\n");
+	auto wWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::west),Kokkos::ALL,Kokkos::ALL);
+	vvra.predVecs<decltype(wWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(mhalf,fq1,fq2),wWts);
+	testPV(wWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+	// Map weights from west face to other faces
+	std::printf("\n  East face\n");
+	auto eWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::east),Kokkos::ALL,Kokkos::ALL);
+	auto ewSymMap = symmetryRelations(KFVM_D_DECL(half,fq1,fq2),KFVM_D_DECL(mhalf,fq1,fq2));
+	StencilSymmetry ewStenSym(ewSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	ewStenSym.mapWeights(eWts,wWts);
+	testPV(eWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+	
+	std::printf("\n  South face\n");
+	auto sWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::south),Kokkos::ALL,Kokkos::ALL);
+	auto swSymMap = symmetryRelations(KFVM_D_DECL(fq1,mhalf,fq2),KFVM_D_DECL(mhalf,fq1,fq2));
+	StencilSymmetry swStenSym(swSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	swStenSym.mapWeights(sWts,wWts);
+	testPV(sWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  North face\n");
+	auto nWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::north),Kokkos::ALL,Kokkos::ALL);
+	auto nsSymMap = symmetryRelations(KFVM_D_DECL(fq1,half,fq2),KFVM_D_DECL(fq1,mhalf,fq2));
+	StencilSymmetry nsStenSym(nsSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	nsStenSym.mapWeights(nWts,sWts);
+	testPV(nWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+#if (SPACE_DIM == 3)
+	std::printf("\n  Bottom face\n");
+	auto bWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::bottom),Kokkos::ALL,Kokkos::ALL);
+	auto bwSymMap = symmetryRelations(KFVM_D_DECL(fq1,fq2,mhalf),KFVM_D_DECL(mhalf,fq1,fq2));
+	StencilSymmetry bwStenSym(bwSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	bwStenSym.mapWeights(bWts,wWts);
+	testPV(bWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  Top face\n");
+	auto tWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::top),Kokkos::ALL,Kokkos::ALL);
+	auto tbSymMap = symmetryRelations(KFVM_D_DECL(fq1,fq2,half),KFVM_D_DECL(fq1,fq2,mhalf));
+	StencilSymmetry tbStenSym(twSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	tbStenSym.mapWeights(tWts,bWts);
+	testPV(tWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
 #endif
 
-      // find weights one substencil at a time
-      for (idx_t nS=0; nS<core.SI.nSub; nS++) {
+	// Find weights for each derivative type
+	std::printf("\n  Deriv x\n");
+	idx_t nQCD = core.SI.nqCell_d;
+	auto dxWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(0,nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dxWts),KFVM_D_DECL(EvalFunctional::Deriv,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dxWts);
+	testPV(dxWts,core.SI.nqCell_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  Deriv xx\n");	
+	auto dxxWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(nQCD,2*nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dxxWts),KFVM_D_DECL(EvalFunctional::SecDeriv,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dxxWts);
+	testPV(dxxWts,core.SI.nqCell_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  Deriv y\n");	
+	auto dyWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(2*nQCD,3*nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dyWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Deriv,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dyWts);
+	testPV(dyWts,core.SI.nqCell_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  Deriv yy\n");	
+	auto dyyWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(3*nQCD,4*nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dyyWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::SecDeriv,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dyyWts);
+	testPV(dyyWts,core.SI.nqCell_d,KFVM_D_DECL(xs,ys,zs));
+
+#if (SPACE_DIM == 3)
+	std::printf("\  nDeriv z\n");
+	auto dzWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(4*nQCD,5*nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dzWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Deriv)>(KFVM_D_DECL(cq1,cq2,cq3),dzWts);
+	testPV(dzWts,core.SI.nqCell_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  Deriv zz\n");	
+	auto dzzWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(5*nQCD,6*nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dzzWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::SecDeriv)>(KFVM_D_DECL(cq1,cq2,cq3),dzzWts);
+	testPV(dzzWts,core.SI.nqCell_d,KFVM_D_DECL(xs,ys,zs));
+#endif
+      }
+
+      char akslgh = std::getchar();
+
+      // Find weights for Western substencil
+      {
+	idx_t nS = 2;
+	std::printf("Stencil: %d\n",nS);
 	// stencil as double arrays
-	std::vector<double> xs(subsize[nS],0.0);
-	std::vector<double> ys(subsize[nS],0.0);
-#if (SPACE_DIM == 3)
-	std::vector<double> zs(subsize[nS],0.0);
-#endif
-	for (idx_t n=0; n<subsize[nS]; n++) {
-	  idx_t idx = nS<2 ? n : core.subIdx[nS - 2][n];
-	  xs[n] = static_cast<double>(core.lOff[idx]);
-	  ys[n] = static_cast<double>(core.tOff[idx]);
-#if (SPACE_DIM == 3)
-	  zs[n] = static_cast<double>(core.ttOff[idx]);
-#endif
-	}
+	idx_t subsize = core.SI.nCellsBias;
+	std::vector<double> KFVM_D_DECL(xs,ys,zs);
+	off2Double(nS,subsize,KFVM_D_DECL(xs,ys,zs));
 	
 	// Vector valued rational approximation for this (sub)stencil
 	VectorValuedRA vvra(eps,KFVM_D_DECL(xs,ys,zs));
 	
 	// Find weights on each face
+	std::printf("\n  West face\n");
+	auto wWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::west),Kokkos::ALL,Kokkos::ALL);
+	vvra.predVecs<decltype(wWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(mhalf,fq1,fq2),wWts);
+	testPV(wWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+	
+	std::printf("\n  East face\n");
+	auto eWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::east),Kokkos::ALL,Kokkos::ALL);
+	vvra.predVecs<decltype(eWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(half,fq1,fq2),eWts);
+	testPV(eWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+	
+	std::printf("\n  South face\n");
+	auto sWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::south),Kokkos::ALL,Kokkos::ALL);
+	vvra.predVecs<decltype(sWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(fq1,mhalf,fq2),sWts);
+	testPV(sWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  North face\n");	
+	auto nWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::north),Kokkos::ALL,Kokkos::ALL);
+	auto nsSymMap = symmetryRelations(KFVM_D_DECL(fq1,half,fq2),KFVM_D_DECL(fq1,mhalf,fq2));
+	StencilSymmetry nsStenSym(nsSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	nsStenSym.mapWeights(nWts,sWts);
+	//vvra.predVecs<decltype(nWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(fq1,half,fq2),nWts);
+	testPV(nWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+#if (SPACE_DIM == 3)
+	std::printf("\n  Bottom face\n");
+	auto bWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::bottom),Kokkos::ALL,Kokkos::ALL);
+	vvra.predVecs<decltype(bWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(fq1,fq2,mhalf),bWts);
+	testPV(bWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  Top face\n");	
+	auto tWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::top),Kokkos::ALL,Kokkos::ALL);
+	auto tbSymMap = symmetryRelations(KFVM_D_DECL(fq1,fq2,half),KFVM_D_DECL(fq1,fq2,mhalf));
+	StencilSymmetry tbStenSym(twSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	tbStenSym.mapWeights(tWts,bWts);
+	//vvra.predVecs<decltype(tWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(fq1,fq2,half),tWts);
+	testPV(tWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+#endif
+
+	// Find weights for each derivative type
+	std::printf("\n  Deriv x\n");
+	idx_t nQCD = core.SI.nqCell_d;
+	auto dxWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(0,nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dxWts),KFVM_D_DECL(EvalFunctional::Deriv,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dxWts);
+	testPV(dxWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  Deriv xx\n");	
+	auto dxxWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(nQCD,2*nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dxxWts),KFVM_D_DECL(EvalFunctional::SecDeriv,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dxxWts);
+	testPV(dxxWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  Deriv y\n");	
+	auto dyWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(2*nQCD,3*nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dyWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Deriv,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dyWts);
+	testPV(dyWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  Deriv yy\n");	
+	auto dyyWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(3*nQCD,4*nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dyyWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::SecDeriv,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dyyWts);
+	testPV(dyyWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+#if (SPACE_DIM == 3)
+	std::printf("\  nDeriv z\n");
+	auto dzWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(4*nQCD,5*nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dzWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Deriv)>(KFVM_D_DECL(cq1,cq2,cq3),dzWts);
+	testPV(dzWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+
+	std::printf("\n  Deriv zz\n");	
+	auto dzzWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(5*nQCD,6*nQCD),Kokkos::ALL);
+	vvra.predVecs<decltype(dzzWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::SecDeriv)>(KFVM_D_DECL(cq1,cq2,cq3),dzzWts);
+	testPV(dzzWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
+#endif
+      }
+
+      char akgh = std::getchar();
+
+      // find weights for biased substencils
+      for (idx_t nS=3; nS<core.SI.nSub; nS++) {
+	std::printf("Stencil: %d\n",nS);
+	// stencil as double arrays
+	idx_t subsize = core.SI.nCellsBias;
+	std::vector<double> KFVM_D_DECL(xs,ys,zs);
+	off2Double(nS,subsize,KFVM_D_DECL(xs,ys,zs));
+	
+	// Vector valued rational approximation for this (sub)stencil
+	VectorValuedRA vvra(eps,KFVM_D_DECL(xs,ys,zs));
+	
+	// Find weights on each face
+	std::printf("\n  West face\n");
 	auto wWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::west),Kokkos::ALL,Kokkos::ALL);
 	vvra.predVecs<decltype(wWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(mhalf,fq1,fq2),wWts);
 	
-	// const idx_t nTest = 0;
-
-	// if (nS == nTest) {
-	//   std::printf(" west face\n");
-	//   for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	//     Real xv = 0.5,yv = -fq1[nQ],zv = -fq2[nQ];
-	//     for (idx_t nC=0; nC<5; nC++) {
-	//       std::printf(" %e |",wWts(nQ,nC));
-	//     }
-	//     for (idx_t nC=0; nC<subsize[nS]; nC++) {
-	//       xv += xs[nC]*wWts(nQ,nC);
-	//       yv += ys[nC]*wWts(nQ,nC);
-	//       zv += zs[nC]*wWts(nQ,nC);
-	//     }
-	//     std::printf("\n  qp[%d]: %e | %e | %e\n",nQ,fabs(xv),fabs(yv),fabs(zv));
-	//   }
-	// }
-	
+	std::printf("\n  East face\n");
 	auto eWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::east),Kokkos::ALL,Kokkos::ALL);
 	vvra.predVecs<decltype(eWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(half,fq1,fq2),eWts);
 	
+	std::printf("\n  South face\n");
 	auto sWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::south),Kokkos::ALL,Kokkos::ALL);
 	vvra.predVecs<decltype(sWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(fq1,mhalf,fq2),sWts);
-	
+
+	std::printf("\n  North face\n");	
 	auto nWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::north),Kokkos::ALL,Kokkos::ALL);
 	vvra.predVecs<decltype(nWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(fq1,half,fq2),nWts);
 
 #if (SPACE_DIM == 3)
+	std::printf("\n  Bottom face\n");
 	auto bWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::bottom),Kokkos::ALL,Kokkos::ALL);
 	vvra.predVecs<decltype(bWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(fq1,fq2,mhalf),bWts);
-	
+
+	std::printf("\n  Top face\n");	
 	auto tWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::top),Kokkos::ALL,Kokkos::ALL);
 	vvra.predVecs<decltype(tWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(fq1,fq2,half),tWts);
 #endif
 
 	// Find weights for each derivative type
+	std::printf("\n  Deriv x\n");
 	idx_t nQCD = core.SI.nqCell_d;
 	auto dxWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(0,nQCD),Kokkos::ALL);
 	vvra.predVecs<decltype(dxWts),KFVM_D_DECL(EvalFunctional::Deriv,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dxWts);
-	
+
+	std::printf("\n  Deriv xx\n");	
 	auto dxxWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(nQCD,2*nQCD),Kokkos::ALL);
 	vvra.predVecs<decltype(dxxWts),KFVM_D_DECL(EvalFunctional::SecDeriv,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dxxWts);
-	
+
+	std::printf("\n  Deriv y\n");	
 	auto dyWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(2*nQCD,3*nQCD),Kokkos::ALL);
 	vvra.predVecs<decltype(dyWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Deriv,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dyWts);
-	
+
+	std::printf("\n  Deriv yy\n");	
 	auto dyyWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(3*nQCD,4*nQCD),Kokkos::ALL);
 	vvra.predVecs<decltype(dyyWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::SecDeriv,EvalFunctional::Point)>(KFVM_D_DECL(cq1,cq2,cq3),dyyWts);
 
-#if (SPACE_DIM == 3)	
+#if (SPACE_DIM == 3)
+	std::printf("\  nDeriv z\n");
 	auto dzWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(4*nQCD,5*nQCD),Kokkos::ALL);
 	vvra.predVecs<decltype(dzWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Deriv)>(KFVM_D_DECL(cq1,cq2,cq3),dzWts);
-	
+
+	std::printf("\n  Deriv zz\n");	
 	auto dzzWts = Kokkos::subview(h_deriv,nS,std::pair<idx_t,idx_t>(5*nQCD,6*nQCD),Kokkos::ALL);
 	vvra.predVecs<decltype(dzzWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::SecDeriv)>(KFVM_D_DECL(cq1,cq2,cq3),dzzWts);
 #endif
       }
+      
       // Copy to views on the right memory space
       Kokkos::deep_copy(faceWeights,h_face);
       Kokkos::deep_copy(derivWeights,h_deriv);
+
+      char aksldfgh = std::getchar();
     }
     
   } // end namespace Stencil

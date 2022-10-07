@@ -12,6 +12,7 @@
 #include "../Types.H"
 #include "CSEKernel.H"
 #include "Monomials.H"
+#include "StencilSymmetry.H"
 
 namespace KFVM {
 
@@ -248,13 +249,29 @@ namespace KFVM {
 				const std::vector<double>& qz),
 		    PredView wts)
       {
+	// Generate symmetries for the set of query points
+	auto symMap = symmetryRelations(KFVM_D_DECL(qx,qy,qz));
+	StencilSymmetry stenSym(symMap,KFVM_D_DECL(xs,ys,zs));
+	
 	// Generate prediction vector for each query point
 	std::vector<double> pred(stenSize,0.0);
 	for (int nQ=0; nQ<qx.size(); nQ++) {
-	  predVec<KFVM_D_DECL(efX,efY,efZ)>(KFVM_D_DECL(qx[nQ],qy[nQ],qz[nQ]),pred);
-	  for (int j=0; j<stenSize; j++) {
-	    wts(nQ,j) = static_cast<Real>(pred[j]);
+	  if (stenSym.symMap[nQ].first < 0) {
+	    // Create new prediction vector if no symmetry relation is available
+	    predVec<KFVM_D_DECL(efX,efY,efZ)>(KFVM_D_DECL(qx[nQ],qy[nQ],qz[nQ]),pred);
+	    for (int j=0; j<stenSize; j++) {
+	      wts(nQ,j) = static_cast<Real>(pred[j]);
+	    }
+	  } else {
+	    // Otherwise, fill using a previous point
+	    for (int j=0; j<stenSize; j++) {
+	      wts(nQ,j) = wts(stenSym.symMap[nQ].first,stenSym.idxMap[nQ][j]);
+	    }
 	  }
+
+	  // Debug information
+	  std::printf("    Filling point %d from %d via %s\n",
+		      nQ,stenSym.symMap[nQ].first,symName(stenSym.symMap[nQ].second));
 	}
       }
     };
