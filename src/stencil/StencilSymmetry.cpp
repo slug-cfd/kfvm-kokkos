@@ -41,355 +41,220 @@ namespace KFVM {
 
     // Single reflections
     template<>
-    bool testSymP<SymType::RefX>(double x1,double x2,double y1,double y2)
+    bool testSymP<SymType::RefX>(double x1,double y1,double x2,double y2)
     {
       return (x1 == -x2) && (y1 == y2);
     }
 
     template<>    
-    bool testSymP<SymType::RefX>(double x1,double x2,double y1,double y2,double z1,double z2)
+    bool testSymP<SymType::RefX>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
       return (x1 == -x2) && (y1 == y2) && (z1 == z2);
     }
 
     template<>    
-    bool testSymP<SymType::RefY>(double x1,double x2,double y1,double y2)
+    bool testSymP<SymType::RefY>(double x1,double y1,double x2,double y2)
     {
       return (x1 == x2) && (y1 == -y2);
     }
 
     template<>    
-    bool testSymP<SymType::RefY>(double x1,double x2,double y1,double y2,double z1,double z2)
+    bool testSymP<SymType::RefY>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
       return (x1 == x2) && (y1 == -y2) && (z1 == z2);
     }
 
     template<>    
-    bool testSymP<SymType::RefZ>(double x1,double x2,double y1,double y2,double z1,double z2)
+    bool testSymP<SymType::RefZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
       return (x1 == x2) && (y1 == y2) && (z1 == -z2);
     }
 
     // Double reflections
     template<>
-    bool testSymP<SymType::RefXY>(double x1,double x2,double y1,double y2)
+    bool testSymP<SymType::RefXY>(double x1,double y1,double x2,double y2)
     {
       return (x1 == -x2) && (y1 == -y2);
     }
 
     template<>    
-    bool testSymP<SymType::RefXY>(double x1,double x2,double y1,double y2,double z1,double z2)
+    bool testSymP<SymType::RefXY>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
       return (x1 == -x2) && (y1 == -y2) && (z1 == z2);
     }
 
     template<>    
-    bool testSymP<SymType::RefXZ>(double x1,double x2,double y1,double y2,double z1,double z2)
+    bool testSymP<SymType::RefXZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
       return (x1 == -x2) && (y1 == y2) && (z1 == -z2);
     }
 
     template<>    
-    bool testSymP<SymType::RefYZ>(double x1,double x2,double y1,double y2,double z1,double z2)
+    bool testSymP<SymType::RefYZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
       return (x1 == x2) && (y1 == -y2) && (z1 == -z2);
     }
 
     // Triple reflection
     template<>
-    bool testSymP<SymType::RefXYZ>(double x1,double x2,double y1,double y2,double z1,double z2)
+    bool testSymP<SymType::RefXYZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
       return (x1 == -x2) && (y1 == -y2) && (z1 == -z2);
     }
 
     // Planar rotations
     template<>
-    bool testSymP<SymType::RotXY>(double x1,double x2,double y1,double y2)
+    bool testSymP<SymType::RotXY>(double x1,double y1,double x2,double y2)
     {
       return (x1 == -y2) && (y1 == x2);
     }
 
     template<>    
-    bool testSymP<SymType::RotXY>(double x1,double x2,double y1,double y2,double z1,double z2)
+    bool testSymP<SymType::RotXY>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
       return (x1 == -y2) && (y1 == x2) && (z1 == z2);
     }
 
     template<>    
-    bool testSymP<SymType::RotXZ>(double x1,double x2,double y1,double y2,double z1,double z2)
+    bool testSymP<SymType::RotXZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
       return (x1 == z2) && (y1 == y2) && (z1 == x2);
     }
 
     template<>    
-    bool testSymP<SymType::RotYZ>(double x1,double x2,double y1,double y2,double z1,double z2)
+    bool testSymP<SymType::RotYZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
       return (x1 == x2) && (y1 == z2) && (z1 == y1);
     }
 
     // Aggregate test
-    bool testSym(SymType st,double x1,double x2,double y1,double y2)
+    bool testSym(SymType st,
+		 double x1,double y1,
+		 double x2,double y2)
     {
       switch (st) {
       case SymType::RefX:
-	return testSymP<SymType::RefX>(x1,x2,y1,y2);
+	return testSymP<SymType::RefX>(x1,y1,x2,y2);
       case SymType::RefY:
-	return testSymP<SymType::RefY>(x1,x2,y1,y2);
+	return testSymP<SymType::RefY>(x1,y1,x2,y2);
       case SymType::RefXY:
-	return testSymP<SymType::RefXY>(x1,x2,y1,y2);
+	return testSymP<SymType::RefXY>(x1,y1,x2,y2);
       case SymType::RotXY:
-	return testSymP<SymType::RotXY>(x1,x2,y1,y2);
+	return testSymP<SymType::RotXY>(x1,y1,x2,y2);
       default:
 	return false;
       }
     }
     
-    bool testSym(SymType st,double x1,double x2,double y1,double y2,double z1,double z2)
+    bool testSym(SymType st,
+		 double x1,double y1,double z1,
+		 double x2,double y2,double z2)
     {
       switch (st) {
       case SymType::RefX:
-	return testSymP<SymType::RefX>(x1,x2,y1,y2,z1,z2);
+	return testSymP<SymType::RefX>(x1,y1,z1,x2,y2,z2);
       case SymType::RefY:
-	return testSymP<SymType::RefY>(x1,x2,y1,y2,z1,z2);
+	return testSymP<SymType::RefY>(x1,y1,z1,x2,y2,z2);
       case SymType::RefZ:
-	return testSymP<SymType::RefZ>(x1,x2,y1,y2,z1,z2);
+	return testSymP<SymType::RefZ>(x1,y1,z1,x2,y2,z2);
       case SymType::RefXY:
-	return testSymP<SymType::RefXY>(x1,x2,y1,y2,z1,z2);
+	return testSymP<SymType::RefXY>(x1,y1,z1,x2,y2,z2);
       case SymType::RefXZ:
-	return testSymP<SymType::RefXZ>(x1,x2,y1,y2,z1,z2);
+	return testSymP<SymType::RefXZ>(x1,y1,z1,x2,y2,z2);
       case SymType::RefYZ:
-	return testSymP<SymType::RefYZ>(x1,x2,y1,y2,z1,z2);
+	return testSymP<SymType::RefYZ>(x1,y1,z1,x2,y2,z2);
       case SymType::RefXYZ:
-	return testSymP<SymType::RefXYZ>(x1,x2,y1,y2,z1,z2);
+	return testSymP<SymType::RefXYZ>(x1,y1,z1,x2,y2,z2);
       case SymType::RotXY:
-	return testSymP<SymType::RotXY>(x1,x2,y1,y2,z1,z2);
+	return testSymP<SymType::RotXY>(x1,y1,z1,x2,y2,z2);
       case SymType::RotXZ:
-	return testSymP<SymType::RotXZ>(x1,x2,y1,y2,z1,z2);
+	return testSymP<SymType::RotXZ>(x1,y1,z1,x2,y2,z2);
       case SymType::RotYZ:
-	return testSymP<SymType::RotYZ>(x1,x2,y1,y2,z1,z2);
+	return testSymP<SymType::RotYZ>(x1,y1,z1,x2,y2,z2);
       default:
 	return false;
       }
     }
     
-    // Function to find symmetries present within a set of points
-    std::vector<SymMap> symmetryRelations(const std::vector<Real>& x,
-					  const std::vector<Real>& y)
+    // Symmetry between two stencils
+    StencilSymmetry::StencilSymmetry(bool isSelf,
+				     KFVM_D_DECL(const std::vector<double>& lOffD,
+						 const std::vector<double>& tOffD,
+						 const std::vector<double>& ttOffD),
+				     KFVM_D_DECL(const std::vector<double>& lOffR,
+						 const std::vector<double>& tOffR,
+						 const std::vector<double>& ttOffR),
+				     KFVM_D_DECL(const std::vector<double>& xD,
+						 const std::vector<double>& yD,
+						 const std::vector<double>& zD),
+				     KFVM_D_DECL(const std::vector<double>& xR,
+						 const std::vector<double>& yR,
+						 const std::vector<double>& zR)):
+      nPts(xD.size()),
+      N(lOffD.size()),
+      symMap(N,SymMap(-1,SymType::None)),
+      idxMap(nPts,std::vector<idx_t>(N,-1))
     {
-      idx_t nPts = x.size();
-      
-      // Default the relations to no references and no symmetries
-      std::vector<SymMap> symRel(nPts,{-1,SymType::None});
-      
-      // Loop over points starting from the second
-      for (idx_t nD=1; nD<nPts; nD++) {
-	// and try to map them onto earlier ones
-	for (idx_t nR=0; nR<nD; nR++) {
-	  // Test each symmetry in 2D
-	  if (testSymP<SymType::RefX>(x[nD],x[nR],y[nD],y[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefX;
-	    break;
-	  } else if (testSymP<SymType::RefY>(x[nD],x[nR],y[nD],y[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefY;
-	    break;
-	  } else if (testSymP<SymType::RefXY>(x[nD],x[nR],y[nD],y[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefXY;
-	    break;
-	  } else if (testSymP<SymType::RotXY>(x[nD],x[nR],y[nD],y[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RotXY;
-	    break;
+      // Find all symmetries that the stencil(s) have
+      for (unsigned int i=0; i<SymTypes.size(); i++) {
+	// Loop over all destination coordinates and check symmetry i
+	bool hasSym = true;
+	for (idx_t nD=0; nD<N; nD++) {
+	  bool dSym = false;
+	  // Find reference point
+	  for (idx_t nR=0; nR<N; nR++) {
+	    dSym = testSym(SymTypes[i],
+			   KFVM_D_DECL(lOffD[nD],tOffD[nD],ttOffD[nD]),
+			   KFVM_D_DECL(lOffR[nR],tOffR[nR],ttOffR[nR]));
+	    if (dSym) { break; }
 	  }
+	  hasSym = hasSym && dSym;
+	}
+	if (hasSym) {
+	  stenSym.push_back(SymTypes[i]);
 	}
       }
 
-      return symRel;
-    }
-
-    // Function to find symmetries present within a set of points
-    std::vector<SymMap> symmetryRelations(const std::vector<Real>& x,
-					  const std::vector<Real>& y,
-					  const std::vector<Real>& z)
-    {
-      idx_t nPts = x.size();
-      
-      // Default the relations to no references and no symmetries
-      std::vector<SymMap> symRel(nPts,{-1,SymType::None});
-      
-      // Loop over points starting from the second
-      for (idx_t nD=1; nD<nPts; nD++) {
-	// and try to map them onto earlier ones
-	for (idx_t nR=0; nR<nD; nR++) {
-	  // Test each symmetry in 2D
-	  if (testSymP<SymType::RefX>(x[nD],x[nR],y[nD],y[nR],z[nD],z[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefX;
-	    break;
-	  } else if (testSymP<SymType::RefY>(x[nD],x[nR],y[nD],y[nR],z[nD],z[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefY;
-	    break;
-	  } else if (testSymP<SymType::RefZ>(x[nD],x[nR],y[nD],y[nR],z[nD],z[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefZ;
-	    break;
-	  } else if (testSymP<SymType::RefXY>(x[nD],x[nR],y[nD],y[nR],z[nD],z[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefXY;
-	    break;
-	  } else if (testSymP<SymType::RefXZ>(x[nD],x[nR],y[nD],y[nR],z[nD],z[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefXZ;
-	    break;
-	  } else if (testSymP<SymType::RefYZ>(x[nD],x[nR],y[nD],y[nR],z[nD],z[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefYZ;
-	    break;
-	  } else if (testSymP<SymType::RefXYZ>(x[nD],x[nR],y[nD],y[nR],z[nD],z[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefXYZ;
-	    break;
-	  } else if (testSymP<SymType::RotXY>(x[nD],x[nR],y[nD],y[nR],z[nD],z[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RotXY;
-	    break;
-	  } else if (testSymP<SymType::RotXZ>(x[nD],x[nR],y[nD],y[nR],z[nD],z[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RotXZ;
-	    break;
-	  } else if (testSymP<SymType::RotYZ>(x[nD],x[nR],y[nD],y[nR],z[nD],z[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RotYZ;
-	    break;
-	  }
-	}
-      }
-
-      return symRel;
-    }
-    
-    // Function to find symmetries between two sets of points
-    std::vector<SymMap> symmetryRelations(const std::vector<Real>& xd,
-					  const std::vector<Real>& yd,
-					  const std::vector<Real>& xr,
-					  const std::vector<Real>& yr)
-    {
-      idx_t nPts = xd.size();
-
-      if (nPts == 3) {
-	std::printf("Mapping point set:\n");
-	std::printf("  (%lf,%lf) | (%lf,%lf) | (%lf,%lf)\n",
-		    xr[0],yr[0],xr[1],yr[1],xr[2],yr[2]);
-	std::printf("onto:\n");
-	std::printf("  (%lf,%lf) | (%lf,%lf) | (%lf,%lf)\n",
-		    xd[0],yd[0],xd[1],yd[1],xd[2],yd[2]);
-      }
-      
-      // Default the relations to no references and no symmetries
-      std::vector<SymMap> symRel(nPts,{-1,SymType::None});
-      
-      // Loop over destination points
+      // Find all symmetries the query points have
+      // but restrict them to symmetries the underlying stencil has
       for (idx_t nD=0; nD<nPts; nD++) {
-	// and try to map them onto reference points
-	for (idx_t nR=0; nR<nPts; nR++) {
-	  // Test each symmetry in 2D
-	  if (testSymP<SymType::RefX>(xd[nD],xr[nR],yd[nD],yr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefX;
-	    break;
-	  } else if (testSymP<SymType::RefY>(xd[nD],xr[nR],yd[nD],yr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefY;
-	    break;
-	  } else if (testSymP<SymType::RefXY>(xd[nD],xr[nR],yd[nD],yr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefXY;
-	    break;
-	  } else if (testSymP<SymType::RotXY>(xd[nD],xr[nR],yd[nD],yr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RotXY;
-	    break;
+	// Try to map point nD onto point nR
+	idx_t refLim = isSelf ? nD : nPts;
+	for (idx_t nR=0; nR<refLim; nR++) {
+	  // and test only allowed symmetries
+	  bool hasSym = false;
+	  for (unsigned int i=0; i<stenSym.size(); i++) {
+	    hasSym = testSym(stenSym[i],
+			     KFVM_D_DECL(xD[nD],yD[nD],zD[nD]),
+			     KFVM_D_DECL(xR[nR],yR[nR],zR[nR]));
+	    if (hasSym) {
+	      symMap[nD].first = nR;
+	      symMap[nD].second = stenSym[i];
+	      break;
+	    }
 	  }
+	  // Break and process next destination point
+	  if (hasSym) { break; }
 	}
       }
 
-      if (nPts == 3) {
-	std::printf("Found map:\n");
-	std::printf("  (%d,%s) | (%d,%s) | (%d,%s)\n",
-		    symRel[0].first,symName(symRel[0].second),
-		    symRel[1].first,symName(symRel[1].second),
-		    symRel[2].first,symName(symRel[2].second));
-      }
+      // Finally, form index maps over the stencils
+      for (idx_t nP=0; nP<nPts; nP++) {
+	// Skip if this point isn't given by another
+	if (symMap[nP].first < 0) { continue; }
 
-      return symRel;
-    }
-
-    // Function to find symmetries present within a set of points
-    std::vector<SymMap> symmetryRelations(const std::vector<Real>& xd,
-                                          const std::vector<Real>& yd,
-                                          const std::vector<Real>& zd,
-					  const std::vector<Real>& xr,
-					  const std::vector<Real>& yr,
-					  const std::vector<Real>& zr)
-    {
-      idx_t nPts = xd.size();
-      
-      // Default the relations to no references and no symmetries
-      std::vector<SymMap> symRel(nPts,{-1,SymType::None});
-      
-      // Loop over destination points
-      for (idx_t nD=0; nD<nPts; nD++) {
-	// and try to map them onto references
-	for (idx_t nR=0; nR<nPts; nR++) {
-	  // Test each symmetry in 3D
-	  if (testSymP<SymType::RefX>(xd[nD],xr[nR],yd[nD],yr[nR],zd[nD],zr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefX;
-	    break;
-	  } else if (testSymP<SymType::RefY>(xd[nD],xr[nR],yd[nD],yr[nR],zd[nD],zr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefY;
-	    break;
-	  } else if (testSymP<SymType::RefZ>(xd[nD],xr[nR],yd[nD],yr[nR],zd[nD],zr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefZ;
-	    break;
-	  } else if (testSymP<SymType::RefXY>(xd[nD],xr[nR],yd[nD],yr[nR],zd[nD],zr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefXY;
-	    break;
-	  } else if (testSymP<SymType::RefXZ>(xd[nD],xr[nR],yd[nD],yr[nR],zd[nD],zr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefXZ;
-	    break;
-	  } else if (testSymP<SymType::RefYZ>(xd[nD],xr[nR],yd[nD],yr[nR],zd[nD],zr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefYZ;
-	    break;
-	  } else if (testSymP<SymType::RefXYZ>(xd[nD],xr[nR],yd[nD],yr[nR],zd[nD],zr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RefXYZ;
-	    break;
-	  } else if (testSymP<SymType::RotXY>(xd[nD],xr[nR],yd[nD],yr[nR],zd[nD],zr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RotXY;
-	    break;
-	  } else if (testSymP<SymType::RotXZ>(xd[nD],xr[nR],yd[nD],yr[nR],zd[nD],zr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RotXZ;
-	    break;
-	  } else if (testSymP<SymType::RotYZ>(xd[nD],xr[nR],yd[nD],yr[nR],zd[nD],zr[nR])) {
-	    symRel[nD].first = nR;
-	    symRel[nD].second = SymType::RotYZ;
-	    break;
+	// Otherwise find coord nR matching coord nD
+	for (idx_t nD=0; nD<N; nD++) {
+	  for (idx_t nR=0; nR<N; nR++) {
+	    if (testSym(symMap[nP].second,
+			KFVM_D_DECL(lOffD[nD],tOffD[nD],ttOffD[nD]),
+			KFVM_D_DECL(lOffR[nR],tOffR[nR],ttOffR[nR]))) {
+	      idxMap[nP][nD] = nR;
+	      break;
+	    }
 	  }
 	}
       }
-
-      return symRel;
     }
 
   } // end namespace Stencil
