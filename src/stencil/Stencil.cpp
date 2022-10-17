@@ -313,37 +313,42 @@ namespace KFVM {
 	// Map weights from west face to other faces
 	std::printf("\n  East face\n");
 	auto eWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::east),Kokkos::ALL,Kokkos::ALL);
-	auto ewSymMap = symmetryRelations(KFVM_D_DECL(half,fq1,fq2),KFVM_D_DECL(mhalf,fq1,fq2));
-	StencilSymmetry ewStenSym(ewSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	StencilSymmetry ewStenSym(false,
+				  KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs),
+				  KFVM_D_DECL(half,fq1,fq2),KFVM_D_DECL(mhalf,fq1,fq2));
 	ewStenSym.mapWeights(eWts,wWts);
 	testPV(eWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
 	
 	std::printf("\n  South face\n");
 	auto sWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::south),Kokkos::ALL,Kokkos::ALL);
-	auto swSymMap = symmetryRelations(KFVM_D_DECL(fq1,mhalf,fq2),KFVM_D_DECL(mhalf,fq1,fq2));
-	StencilSymmetry swStenSym(swSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	StencilSymmetry swStenSym(false,
+				  KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs),
+				  KFVM_D_DECL(fq1,mhalf,fq2),KFVM_D_DECL(mhalf,fq1,fq2));
 	swStenSym.mapWeights(sWts,wWts);
 	testPV(sWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
 
 	std::printf("\n  North face\n");
 	auto nWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::north),Kokkos::ALL,Kokkos::ALL);
-	auto nsSymMap = symmetryRelations(KFVM_D_DECL(fq1,half,fq2),KFVM_D_DECL(fq1,mhalf,fq2));
-	StencilSymmetry nsStenSym(nsSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	StencilSymmetry nsStenSym(false,
+				  KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs),
+				  KFVM_D_DECL(fq1,half,fq2),KFVM_D_DECL(fq1,mhalf,fq2));
 	nsStenSym.mapWeights(nWts,sWts);
 	testPV(nWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
 
 #if (SPACE_DIM == 3)
 	std::printf("\n  Bottom face\n");
 	auto bWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::bottom),Kokkos::ALL,Kokkos::ALL);
-	auto bwSymMap = symmetryRelations(KFVM_D_DECL(fq1,fq2,mhalf),KFVM_D_DECL(mhalf,fq1,fq2));
-	StencilSymmetry bwStenSym(bwSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	StencilSymmetry bwStenSym(false,
+				  KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs),
+				  KFVM_D_DECL(fq1,fq2,mhalf),KFVM_D_DECL(mhalf,fq1,fq2));
 	bwStenSym.mapWeights(bWts,wWts);
 	testPV(bWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
 
 	std::printf("\n  Top face\n");
 	auto tWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::top),Kokkos::ALL,Kokkos::ALL);
-	auto tbSymMap = symmetryRelations(KFVM_D_DECL(fq1,fq2,half),KFVM_D_DECL(fq1,fq2,mhalf));
-	StencilSymmetry tbStenSym(twSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	StencilSymmetry tbStenSym(false,
+				  KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs),
+				  KFVM_D_DECL(fq1,fq2,half),KFVM_D_DECL(fq1,fq2,mhalf));
 	tbStenSym.mapWeights(tWts,bWts);
 	testPV(tWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
 #endif
@@ -415,10 +420,10 @@ namespace KFVM {
 
 	std::printf("\n  North face\n");	
 	auto nWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::north),Kokkos::ALL,Kokkos::ALL);
-	auto nsSymMap = symmetryRelations(KFVM_D_DECL(fq1,half,fq2),KFVM_D_DECL(fq1,mhalf,fq2));
-	StencilSymmetry nsStenSym(nsSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	StencilSymmetry nsStenSym(false,
+				  KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs),
+				  KFVM_D_DECL(fq1,half,fq2),KFVM_D_DECL(fq1,mhalf,fq2));
 	nsStenSym.mapWeights(nWts,sWts);
-	//vvra.predVecs<decltype(nWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(fq1,half,fq2),nWts);
 	testPV(nWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
 
 #if (SPACE_DIM == 3)
@@ -429,10 +434,10 @@ namespace KFVM {
 
 	std::printf("\n  Top face\n");	
 	auto tWts = Kokkos::subview(h_face,nS,idx_t(FaceLabel::top),Kokkos::ALL,Kokkos::ALL);
-	auto tbSymMap = symmetryRelations(KFVM_D_DECL(fq1,fq2,half),KFVM_D_DECL(fq1,fq2,mhalf));
-	StencilSymmetry tbStenSym(twSymMap,KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs));
+	StencilSymmetry tbStenSym(false,
+				  KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs),
+				  KFVM_D_DECL(fq1,fq2,half),KFVM_D_DECL(fq1,fq2,mhalf));
 	tbStenSym.mapWeights(tWts,bWts);
-	//vvra.predVecs<decltype(tWts),KFVM_D_DECL(EvalFunctional::Point,EvalFunctional::Point,EvalFunctional::Point)>(KFVM_D_DECL(fq1,fq2,half),tWts);
 	testPV(tWts,core.SI.nqFace_d,KFVM_D_DECL(xs,ys,zs));
 #endif
 

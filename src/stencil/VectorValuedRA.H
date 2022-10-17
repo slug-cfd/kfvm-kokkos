@@ -250,8 +250,9 @@ namespace KFVM {
 		    PredView wts)
       {
 	// Generate symmetries for the set of query points
-	auto symMap = symmetryRelations(KFVM_D_DECL(qx,qy,qz));
-	StencilSymmetry stenSym(symMap,KFVM_D_DECL(xs,ys,zs));
+	StencilSymmetry stenSym(true,
+				KFVM_D_DECL(xs,ys,zs),KFVM_D_DECL(xs,ys,zs),
+				KFVM_D_DECL(qx,qy,qz),KFVM_D_DECL(qx,qy,qz));
 	
 	// Generate prediction vector for each query point
 	std::vector<double> pred(stenSize,0.0);
@@ -263,14 +264,13 @@ namespace KFVM {
 	      wts(nQ,j) = static_cast<Real>(pred[j]);
 	    }
 	  } else {
-	    // Otherwise, fill using a previous point
 	    for (int j=0; j<stenSize; j++) {
 	      wts(nQ,j) = wts(stenSym.symMap[nQ].first,stenSym.idxMap[nQ][j]);
 	    }
 	  }
 
 	  // Debug information
-	  std::printf("    Filling point %d from %d via %s\n",
+	  std::printf("    (VVRA) Filling point %d from %d via %s\n",
 		      nQ,stenSym.symMap[nQ].first,symName(stenSym.symMap[nQ].second));
 	}
       }
