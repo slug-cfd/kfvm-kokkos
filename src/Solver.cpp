@@ -236,13 +236,6 @@ namespace KFVM {
     // 				      stencil.ttOff),
     // 			  stencil.faceWeights));
 
-    // MinMod reconstruction
-    // Kokkos::parallel_for("FaceRecon",cellRng,
-    // 			 Stencil::MinModRecon_K<decltype(U)>
-    // 			 (U,KFVM_D_DECL(faceVals.xDir,
-    // 					faceVals.yDir,
-    // 					faceVals.zDir)));
-
     // Enforce positivity of Riemann states
     Kokkos::parallel_for("PosPres",cellRng,
 			 Hydro::PositivityPreserve_K<decltype(U)>

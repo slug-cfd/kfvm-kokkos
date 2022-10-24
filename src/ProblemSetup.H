@@ -58,7 +58,7 @@ namespace KFVM {
 		 Real finalTime_,int plotFreq_,
                  Real gam_):
       rad(STENCIL_RADIUS),
-      gp_lFac(40.0),
+      gp_lFac(20.0),
       gp_bpow(Real(STENCIL_RADIUS)),
       baseName(name_),
       nX(nX_),

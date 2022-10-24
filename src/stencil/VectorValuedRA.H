@@ -268,10 +268,6 @@ namespace KFVM {
 	      wts(nQ,j) = wts(stenSym.symMap[nQ].first,stenSym.idxMap[nQ][j]);
 	    }
 	  }
-
-	  // Debug information
-	  std::printf("    (VVRA) Filling point %d from %d via %s\n",
-		      nQ,stenSym.symMap[nQ].first,symName(stenSym.symMap[nQ].second));
 	}
       }
     };

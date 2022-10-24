@@ -13,13 +13,19 @@ namespace KFVM {
   namespace Stencil {
 
     // The needed symmetries are just combinations of reflections and rotations
-    enum class SymType {RefX,RefY,RefZ,RefXY,RefXZ,RefYZ,RefXYZ,RotXY,RotXZ,RotYZ,None};
+    enum class SymType {RefX,RefY,RefZ,
+			RefXY,RefXZ,RefYZ,
+			RefXYZ,
+			RotXY,RotXZ,RotYZ,
+			RotXYm,RotXZm,RotYZm,
+			None};
     // This array is needed because iterating on enums is impossible,
     // but an enum is nice for this purpose otherwise
-    constexpr std::array<SymType,11> SymTypes = {SymType::RefX,SymType::RefY,SymType::RefZ,
+    constexpr std::array<SymType,14> SymTypes = {SymType::RefX,SymType::RefY,SymType::RefZ,
 						 SymType::RefXY,SymType::RefXZ,SymType::RefYZ,
 						 SymType::RefXYZ,
 						 SymType::RotXY,SymType::RotXZ,SymType::RotYZ,
+						 SymType::RotXYm,SymType::RotXZm,SymType::RotYZm,
 						 SymType::None};
 
     // Convert symmetry type to string for printing
@@ -62,8 +68,6 @@ namespace KFVM {
 	for (int nP=0; nP<nPts; nP++) {
 	  if (symMap[nP].first >= 0) {
 	    // Fill destination from reference
-	    std::printf("    (MW) Filling point %d from %d via %s\n",
-			nP,symMap[nP].first,symName(symMap[nP].second));
 	    for (int j=0; j<N; j++) {
 	      dWts(nP,j) = rWts(symMap[nP].first,idxMap[nP][j]);
 	    }

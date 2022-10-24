@@ -30,6 +30,12 @@ namespace KFVM {
 	return "RotXZ";
       case SymType::RotYZ:
 	return "RotYZ";
+      case SymType::RotXYm:
+	return "RotXYm";
+      case SymType::RotXZm:
+	return "RotXZm";
+      case SymType::RotYZm:
+	return "RotYZm";
       default:
 	return "None";
       }
@@ -108,6 +114,12 @@ namespace KFVM {
     {
       return (x1 == -y2) && (y1 == x2);
     }
+    
+    template<>
+    bool testSymP<SymType::RotXYm>(double x1,double y1,double x2,double y2)
+    {
+      return (x1 == y2) && (y1 == -x2);
+    }
 
     template<>    
     bool testSymP<SymType::RotXY>(double x1,double y1,double z1,double x2,double y2,double z2)
@@ -116,15 +128,33 @@ namespace KFVM {
     }
 
     template<>    
+    bool testSymP<SymType::RotXYm>(double x1,double y1,double z1,double x2,double y2,double z2)
+    {
+      return (x1 == y2) && (y1 == -x2) && (z1 == z2);
+    }
+
+    template<>    
     bool testSymP<SymType::RotXZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == z2) && (y1 == y2) && (z1 == x2);
+      return (x1 == -z2) && (y1 == y2) && (z1 == x2);
+    }
+
+    template<>    
+    bool testSymP<SymType::RotXZm>(double x1,double y1,double z1,double x2,double y2,double z2)
+    {
+      return (x1 == z2) && (y1 == y2) && (z1 == -x2);
     }
 
     template<>    
     bool testSymP<SymType::RotYZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == x2) && (y1 == z2) && (z1 == y1);
+      return (x1 == x2) && (y1 == -z2) && (z1 == y2);
+    }
+
+    template<>    
+    bool testSymP<SymType::RotYZm>(double x1,double y1,double z1,double x2,double y2,double z2)
+    {
+      return (x1 == x2) && (y1 == z2) && (z1 == -y2);
     }
 
     // Aggregate test
@@ -141,6 +171,8 @@ namespace KFVM {
 	return testSymP<SymType::RefXY>(x1,y1,x2,y2);
       case SymType::RotXY:
 	return testSymP<SymType::RotXY>(x1,y1,x2,y2);
+      case SymType::RotXYm:
+	return testSymP<SymType::RotXYm>(x1,y1,x2,y2);
       default:
 	return false;
       }
@@ -171,6 +203,12 @@ namespace KFVM {
 	return testSymP<SymType::RotXZ>(x1,y1,z1,x2,y2,z2);
       case SymType::RotYZ:
 	return testSymP<SymType::RotYZ>(x1,y1,z1,x2,y2,z2);
+      case SymType::RotXYm:
+	return testSymP<SymType::RotXYm>(x1,y1,z1,x2,y2,z2);
+      case SymType::RotXZm:
+	return testSymP<SymType::RotXZm>(x1,y1,z1,x2,y2,z2);
+      case SymType::RotYZm:
+	return testSymP<SymType::RotYZm>(x1,y1,z1,x2,y2,z2);
       default:
 	return false;
       }
@@ -192,7 +230,7 @@ namespace KFVM {
 						 const std::vector<double>& zR)):
       nPts(xD.size()),
       N(lOffD.size()),
-      symMap(N,SymMap(-1,SymType::None)),
+      symMap(nPts,SymMap(-1,SymType::None)),
       idxMap(nPts,std::vector<idx_t>(N,-1))
     {
       // Find all symmetries that the stencil(s) have
