@@ -1,11 +1,11 @@
 #ifndef STENCIL_H_
 #define STENCIL_H_
 
-#include <Kokkos_View.hpp>
-
 #include <cstdint>
 #include <cstdio>
 #include <vector>
+
+#include <Kokkos_Core.hpp>
 
 #include "../SimVar.H"
 #include "../Types.H"

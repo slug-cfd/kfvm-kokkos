@@ -1,12 +1,13 @@
 #ifndef HILBERTSCHMIDTSVD_H_
 #define HILBERTSCHMIDTSVD_H_
 
-#include <Kokkos_View.hpp>
 
 #include <cstdio>
 #include <array>
 #include <vector>
 #include <cmath>
+
+#include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
 

@@ -3,7 +3,7 @@
 
 // File: BoundaryConditions_K.H
 // Purpose: Define various boundary conditions for cell and face data
-#include <Kokkos_Macros.hpp>
+#include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
 

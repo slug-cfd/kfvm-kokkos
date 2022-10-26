@@ -1,9 +1,9 @@
 #ifndef HYDRO_K_H_
 #define HYDRO_K_H_
 
-#include <Kokkos_Macros.hpp>
-#include <Kokkos_MathematicalFunctions.hpp>
 #include <cstdint>
+
+#include <Kokkos_Core.hpp>
 
 #include "Definitions.H"
 

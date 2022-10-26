@@ -9,11 +9,7 @@
 #include <cstdint>
 #include <array>
 
-#include <Kokkos_CopyViews.hpp>
-#include <Kokkos_Core_fwd.hpp>
-#include <Kokkos_HostSpace.hpp>
-#include <Kokkos_Layout.hpp>
-#include <impl/Kokkos_ViewCtor.hpp>
+#include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
 

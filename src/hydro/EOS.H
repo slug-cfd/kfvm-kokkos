@@ -1,7 +1,7 @@
 #ifndef EOS_H_
 #define EOS_H_
 
-#include <Kokkos_MathematicalFunctions.hpp>
+#include <Kokkos_Core.hpp>
 
 #include "../SimVar.H"
 #include "../Types.H"

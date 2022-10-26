@@ -19,7 +19,7 @@ namespace KFVM {
       stenSize(xs_.size()),
       KFVM_D_DECL(xs(xs_),ys(ys_),zs(zs_)),
       eps(eps_),
-      monos(0),
+      monos(1),
       sysSize(stenSize + monos.nMono),
       K(10*stenSize),
       N(8*stenSize),
@@ -29,7 +29,7 @@ namespace KFVM {
       C(K/2,{sysSize,sysSize})
     {
       // Layout epsilon contour
-      double epsRad = 0.2;
+      double epsRad = 0.4;
       double dT = M_PI/static_cast<double>(K),dhT = dT/2.0;
       for (int k=0; k<K/2; k++) {
 	double theta = k*dT + dhT;

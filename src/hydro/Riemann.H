@@ -1,8 +1,7 @@
 #ifndef RIEMANN_H_
 #define RIEMANN_H_
 
-#include <Kokkos_MathematicalFunctions.hpp>
-#include <Kokkos_Macros.hpp>
+#include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
 

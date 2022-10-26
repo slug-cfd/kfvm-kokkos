@@ -4,7 +4,7 @@
 // File: Geometry.H
 // Purpose: Hold grid geometry and convenience functions
 
-#include <Kokkos_Macros.hpp>
+#include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
 

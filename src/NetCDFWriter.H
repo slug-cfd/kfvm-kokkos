@@ -18,13 +18,15 @@ namespace KFVM {
   class NetCDFWriter
   {
     const ProblemSetup& ps;
-    std::array<std::vector<double>,SPACE_DIM> grid;
-    std::vector<double> solTmp;
+    std::array<std::vector<double>,SPACE_DIM> grid,gridHalo;
+    std::vector<double> solTmp,solTmpHalo;
 
     std::string FileName(int);
+    std::string FileNameHalo(int);
   public:
     NetCDFWriter(const ProblemSetup&);
     void write(CellDataView,int,double);
+    void writeHalo(CellDataView,int,double);
   };
 
 }

@@ -4,11 +4,9 @@
 // File: Types.H
 // Purpose: Define any types needed throughout the code base
 
-#include <Kokkos_Core.hpp>
-#include <Kokkos_Core_fwd.hpp>
-#include <Kokkos_HostSpace.hpp>
-#include <Kokkos_View.hpp>
 #include <cstddef>
+
+#include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
 

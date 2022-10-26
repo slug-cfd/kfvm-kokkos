@@ -6,7 +6,7 @@
 //          and is responsible for evolving the simulation through
 //          time.
 
-#include <Kokkos_View.hpp>
+#include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
 

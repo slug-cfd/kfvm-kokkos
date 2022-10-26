@@ -8,11 +8,7 @@
 #include <cstdint>
 #include <cstdio>
 
-#include <Kokkos_CopyViews.hpp>
 #include <Kokkos_Core.hpp>
-#include <Kokkos_HostSpace.hpp>
-#include <Kokkos_Macros.hpp>
-#include <Kokkos_View.hpp>
 
 #include <Definitions.H>
 

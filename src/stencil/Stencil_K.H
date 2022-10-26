@@ -5,12 +5,7 @@
 // Purpose: Define compute kernels for reconstructing Riemann states
 //          from cell average data
 
-#include <Kokkos_CopyViews.hpp>
 #include <Kokkos_Core.hpp>
-#include <Kokkos_HostSpace.hpp>
-#include <Kokkos_Macros.hpp>
-#include <Kokkos_MathematicalFunctions.hpp>
-#include <Kokkos_View.hpp>
 
 #include <KokkosBatched_Gemv_Decl.hpp>
 #include <KokkosBatched_Gemv_Serial_Impl.hpp>
@@ -102,11 +97,11 @@ namespace KFVM {
 	auto Vc = Kokkos::subview(Work,KFVM_D_DECL(i,j,k),
 				  Kokkos::pair<int,int>(0,nCellsCtr),Kokkos::ALL);
 	auto Vb = Kokkos::subview(Work,KFVM_D_DECL(i,j,k),
-				  Kokkos::pair<int,int>(nCellsFull,nCellsFull+nCellsBias),Kokkos::ALL);
+				  Kokkos::pair<int,int>(nCellsFull,nCellsFull + nCellsBias),Kokkos::ALL);
 	// Subview slice to store derivatives in before accumulating into beta
 	auto B = Kokkos::subview(Work,KFVM_D_DECL(i,j,k),
-				 Kokkos::make_pair(nCellsFull+nCellsBias,
-						    nCellsFull+nCellsBias+nIndic),Kokkos::ALL);
+				 Kokkos::make_pair(nCellsFull + nCellsBias,
+                                                   nCellsFull + nCellsBias + nIndic),Kokkos::ALL);
 
 	// Storage for nonlinear weights
 	Real omega[Stencil::Core::SI.nSub][NUM_VARS];
@@ -146,6 +141,7 @@ namespace KFVM {
 	    }
 	  }
 	}
+        
 	// Central substencil
 	{
 	  auto dWts = Kokkos::subview(derivWeight,1,Kokkos::ALL,Kokkos::make_pair(0,nCellsCtr));
@@ -157,6 +153,7 @@ namespace KFVM {
 	    }
 	  }
 	}
+        
 	// biased substencils
 	for (int nB=0; nB<nBias; nB++) {
 	  fillBiased<decltype(Vf),decltype(Vb)>(nB,Vf,Vb);
@@ -185,6 +182,7 @@ namespace KFVM {
 	    omega[nS][nV] = gamma[nS]*(1.0 + pow(tau/(omega[nS][nV] + eps),STENCIL_RADIUS));
 	    tot += omega[nS][nV];
 	  }
+          
 	  // normalize them
 	  for (int nS=0; nS<nSub; nS++) {
 	    omega[nS][nV] /= tot;

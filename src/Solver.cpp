@@ -2,18 +2,11 @@
 // Purpose: The solver class is responsible for holding the
 //          solution and evolving it through time
 
-#include <Kokkos_Array.hpp>
-#include <Kokkos_Concepts.hpp>
-#include <Kokkos_Core.hpp>
-#include <Kokkos_Core_fwd.hpp>
-#include <Kokkos_Macros.hpp>
-#include <Kokkos_Rank.hpp>
-#include <Kokkos_View.hpp>
 #include <array>
 #include <cstdint>
 #include <cstdio>
-#include <impl/Kokkos_HostThreadTeam.hpp>
-#include <impl/Kokkos_Profiling.hpp>
+
+#include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
 
@@ -562,12 +555,9 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
 			   BCType::reflecting>(northBnd));
       break;
     case BCType::user:
-      Kokkos::parallel_for("FaceBCs::North::Outflow",bndRng_NS,
+      Kokkos::parallel_for("FaceBCs::North::User",bndRng_NS,
 			   FaceBcNorth_K<decltype(northBnd),
-			   BCType::outflow>(northBnd));
-      // Kokkos::parallel_for("FaceBCs::North::User",bndRng_NS,
-      // 			   FaceBcNorth_K<decltype(northBnd),
-      // 			   BCType::user>(northBnd,geom,qr.ab,t));
+			   BCType::user>(northBnd,geom,qr.ab,t));
       break;
     default:
       if (ps.bcType[FaceLabel::north] != BCType::periodic) {
