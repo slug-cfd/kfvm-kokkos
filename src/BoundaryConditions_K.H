@@ -1276,10 +1276,10 @@ namespace KFVM {
 	    Real z = Numeric::sclAb(geom.zCoord(k),geom.dz,ab(nR));
 	    // query user defined BCs
 	    Real state[NUM_VARS];
-	    FaceNorth(v,i,k,nQ,x,geom.yUp,z,t,state);
+	    FaceNorth(v,i,k,nQ*NUM_QUAD_PTS + nR,x,geom.yUp,z,t,state);
 	    // copy state over
 	    for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	      v(i,k,1,nQ,nV) = state[nV];
+	      v(i,k,1,nQ*NUM_QUAD_PTS + nR,nV) = state[nV];
 	    }
 	  }
 	}

@@ -45,11 +45,11 @@ int main(int argc, char* argv[]) {
     // 			  0.53,100,
     // 			  1.4);
     
-    // KFVM::ProblemSetup ps("data/Implosion",
-    // 			  64,64,64,
-    // 			  0.0,0.3,0.0,0.3,0.0,0.3,
-    // 			  2.5,100,
-    // 			  1.4);
+    KFVM::ProblemSetup ps("data/Implosion",
+			  64,64,64,
+			  0.0,0.3,0.0,0.3,0.0,0.3,
+			  2.5,100,
+			  1.4);
     
     // KFVM::ProblemSetup ps("data/Implosion",
     // 			  128,96,64,
@@ -69,16 +69,16 @@ int main(int argc, char* argv[]) {
     //     		  20.0,5,
     //     		  1.4);
     
-    KFVM::ProblemSetup ps("data/BuchHelz",
-        		  128,128,8,
-                          -1.0,1.0,-1.0,1.0,0.0,16.0/128.0,
-        		  1.0,20,
-        		  1.4);
+    // KFVM::ProblemSetup ps("data/BuchHelz",
+    //     		  128,128,8,
+    //                       -1.0,1.0,-1.0,1.0,0.0,16.0/128.0,
+    //     		  1.0,20,
+    //     		  1.4);
     
     // KFVM::ProblemSetup ps("data/DoubleMach",
     // 			  256,64,16,
     // 			  0.0,4.0,0.0,1.0,0.0,0.25,
-    // 			  0.25,20,
+    // 			  0.25,5,
     // 			  1.4);
     
     // KFVM::ProblemSetup ps("data/TaylorGreen",
