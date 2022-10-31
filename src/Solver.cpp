@@ -47,13 +47,15 @@ namespace KFVM {
 				   ps.nZ + 2*ps.rad)),
     K("RHS",       KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     Ktil("RHS_til",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
+    U_aux("U_aux",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     faceVals(ps),
     time(ps.initialTime),
     dt(ps.initialDeltaT),
     lastTimeStep(false)
   {
     setIC();
-    netCDFWriter.write(U_halo,0,time);
+    evalAuxiliary();
+    netCDFWriter.write(U_halo,U_aux,0,time);
   }
 
   // Solve system for full time range
@@ -67,10 +69,27 @@ namespace KFVM {
       std::printf("Step %d: ",nT);
       TakeStep();
       if (nT%ps.plotFreq == 0 || lastTimeStep || nT == (ps.maxTimeSteps-1) ) {
-        netCDFWriter.write(U_halo,nT,time);
+	evalAuxiliary();
+        netCDFWriter.write(U_halo,U_aux,nT,time);
       }
     }
 
+    Kokkos::Profiling::popRegion();
+  }
+
+  void Solver::evalAuxiliary()
+  {
+    Kokkos::Profiling::pushRegion("Solver::evalAuxiliary");
+
+    // Range policy only over interior
+    auto cellRng =
+      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
+      ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
+
+    auto U = trimCellHalo(U_halo);
+
+    Kokkos::parallel_for("AuxVars",cellRng,Hydro::AuxVars<decltype(U)>(U,U_aux));
+    
     Kokkos::Profiling::popRegion();
   }
 

@@ -1,6 +1,7 @@
 #ifndef HYDRO_K_H_
 #define HYDRO_K_H_
 
+#include <Kokkos_Macros.hpp>
 #include <cstdint>
 
 #include <Kokkos_Core.hpp>
@@ -55,6 +56,50 @@ namespace KFVM {
       state(SimVar::momy) = (rho*state(SimVar::momy) + v*state(SimVar::dens));
       state(SimVar::momz) = (rho*state(SimVar::momz) + w*state(SimVar::dens));
     }
+
+    template<class UViewType>
+    struct AuxVars
+    {
+      UViewType U;
+      AuxDataView V;
+
+      AuxVars(const UViewType& U_,const AuxDataView V_):
+	U(U_),V(V_) {}
+
+#if (SPACE_DIM == 2)
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const idx_t i,const idx_t j) const
+      {
+	// Set velocities
+	V(i,j,AuxVar::velx) = U(i,j,SimVar::momx)/U(i,j,SimVar::dens);
+	V(i,j,AuxVar::vely) = U(i,j,SimVar::momy)/U(i,j,SimVar::dens);
+	V(i,j,AuxVar::velz) = U(i,j,SimVar::momz)/U(i,j,SimVar::dens);
+
+	// Internal energy and pressure
+	Real ekin = U(i,j,SimVar::dens)*(V(i,j,AuxVar::velx)*V(i,j,AuxVar::velx) +
+					 V(i,j,AuxVar::vely)*V(i,j,AuxVar::vely) +
+					 V(i,j,AuxVar::velz)*V(i,j,AuxVar::velz))/2.0;
+	V(i,j,AuxVar::eint) = (U(i,j,SimVar::etot) - ekin)/U(i,j,SimVar::dens);
+	V(i,j,AuxVar::pres) = 0.4*(U(i,j,SimVar::etot) - ekin);
+      }
+#else
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const idx_t i,const idx_t j,const idx_t k) const
+      {
+	// Set velocities
+	V(i,j,k,AuxVar::velx) = U(i,j,k,SimVar::momx)/U(i,j,k,SimVar::dens);
+	V(i,j,k,AuxVar::vely) = U(i,j,k,SimVar::momy)/U(i,j,k,SimVar::dens);
+	V(i,j,k,AuxVar::velz) = U(i,j,k,SimVar::momz)/U(i,j,k,SimVar::dens);
+
+	// Internal energy and pressure
+	Real ekin = U(i,j,k,SimVar::dens)*(V(i,j,k,AuxVar::velx)*V(i,j,k,AuxVar::velx) +
+					 V(i,j,k,AuxVar::vely)*V(i,j,k,AuxVar::vely) +
+					 V(i,j,k,AuxVar::velz)*V(i,j,k,AuxVar::velz))/2.0;
+	V(i,j,k,AuxVar::eint) = (U(i,j,k,SimVar::etot) - ekin)/U(i,j,k,SimVar::dens);
+	V(i,j,k,AuxVar::pres) = 0.4*(U(i,j,k,SimVar::etot) - ekin);
+      }
+#endif
+    };
 
     struct RiemannSolverX_K
     {

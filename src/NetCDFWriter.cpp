@@ -78,7 +78,7 @@ namespace KFVM {
     return os.str();
   }
 
-  void NetCDFWriter::write(CellDataView U,int step,double time)
+  void NetCDFWriter::write(CellDataView U,AuxDataView V,int step,double time)
   {
     // Create filename and open
     std::string fileName = FileName(step);
@@ -109,6 +109,9 @@ namespace KFVM {
       for (int nV=0; nV<NUM_VARS; nV++) {
 	solVar.emplace_back(outFile.addVar(ps.varName[nV],netCDF::ncDouble,dimVec));
       }
+      for (int nV=0; nV<NUM_AUX; nV++) {
+	solVar.emplace_back(outFile.addVar(ps.auxVarName[nV],netCDF::ncDouble,dimVec));
+      }
 
       // Write out time and domain variables
       xVar.putVar(grid[0].data());
@@ -131,6 +134,21 @@ namespace KFVM {
 	}
 	// Write out variables
 	solVar[nV].putVar(solTmp.data());
+      }
+      
+      // Write out auxiliary variables, have to make temporary copy due to slicing
+      auto h_V = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),V);
+      for (idx_t nV=0; nV<NUM_AUX; nV++) {
+	for (idx_t nX=0; nX<ps.nX; nX++) {
+	  for (idx_t nY=0; nY<ps.nY; nY++) {
+	    for (idx_t nZ=0; nZ<ps.nZ; nZ++) {
+	      idx_t idx = nX + ps.nX*nY + ps.nX*ps.nY*nZ;
+	      solTmp[idx] = h_V(KFVM_D_DECL(nX,nY,nZ),nV);
+	    }
+	  }
+	}
+	// Write out variables
+	solVar[nV + NUM_VARS].putVar(solTmp.data());
       }
     } catch (netCDF::exceptions::NcException& e) {
       std::cout << "Error writing netCDF file:\n" << e.what() << std::endl;

@@ -43,9 +43,11 @@ namespace KFVM {
   // Kokkos views for various state data
 #if (SPACE_DIM == 2)
   typedef Kokkos::View<Real**[NUM_VARS],MemSpace> CellDataView;
+  typedef Kokkos::View<Real**[NUM_AUX],MemSpace> AuxDataView;
   typedef Kokkos::View<Real**[2][NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataView;
 #else
   typedef Kokkos::View<Real***[NUM_VARS],MemSpace> CellDataView;
+  typedef Kokkos::View<Real***[NUM_AUX],MemSpace> AuxDataView;
   typedef Kokkos::View<Real***[2][NUM_QUAD_PTS*NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataView;
 #endif
 

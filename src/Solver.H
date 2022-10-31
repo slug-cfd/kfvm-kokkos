@@ -34,6 +34,8 @@ namespace KFVM {
     Stencil::Stencil stencil;
     // Cell-based data
     CellDataView U_halo,U1_halo,U2_halo,U3_halo,U4_halo,K,Ktil;
+    // Auxiliary data (cell-based but different number of components)
+    AuxDataView U_aux;
     // Face-based data
     struct FaceVals {
       FaceDataView KFVM_D_DECL(xDir,yDir,zDir);
@@ -59,8 +61,9 @@ namespace KFVM {
     void setIC();
   public:
     Solver(const ProblemSetup&);
-    void TakeStep();
     void Solve();
+    void TakeStep();
+    void evalAuxiliary();
     Real evalRHS(CellDataView,CellDataView,Real);
     void reconstructRiemannStates(CellDataView);
     Real findFluxes();

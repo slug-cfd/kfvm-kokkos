@@ -15,11 +15,11 @@ int main(int argc, char* argv[]) {
 	   typeid(Kokkos::DefaultExecutionSpace).name());
     
     // Create ProblemSetup object with all settings and configuration
-    // KFVM::ProblemSetup ps("data/SodX",
-    //     		  256,8,8,
-    //     		  -1.0,1.0,0.0,8.0/128.0,0.0,8.0/128.0,
-    //     		  0.2,20,
-    //     		  1.4);
+    KFVM::ProblemSetup ps("data/SodX",
+        		  256,8,8,
+        		  -1.0,1.0,0.0,8.0/128.0,0.0,8.0/128.0,
+        		  0.2,20,
+        		  1.4);
 
     // KFVM::ProblemSetup ps("data/SodY",
     // 			  8,256,8,
@@ -45,11 +45,11 @@ int main(int argc, char* argv[]) {
     // 			  0.53,100,
     // 			  1.4);
     
-    KFVM::ProblemSetup ps("data/Implosion",
-			  64,64,64,
-			  0.0,0.3,0.0,0.3,0.0,0.3,
-			  2.5,100,
-			  1.4);
+    // KFVM::ProblemSetup ps("data/Implosion",
+    // 			  64,64,64,
+    // 			  0.0,0.3,0.0,0.3,0.0,0.3,
+    // 			  2.5,100,
+    // 			  1.4);
     
     // KFVM::ProblemSetup ps("data/Implosion",
     // 			  128,96,64,

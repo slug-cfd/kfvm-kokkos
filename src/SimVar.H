@@ -12,6 +12,8 @@
 
 enum SimVar { dens = 0, momx, momy, momz, etot, NUM_VARS };
 
+enum AuxVar { velx = 0, vely, velz, eint, pres, NUM_AUX };
+
 enum FluidProp { gam = 0, NUM_PROPS };
 
 #endif
