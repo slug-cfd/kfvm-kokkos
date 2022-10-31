@@ -35,7 +35,7 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       Real soundspeed(Real gamma,const Real U[NUM_VARS])
       {
-        return Kokkos::Experimental::sqrt(gamma*pres(gam,U)/U[SimVar::dens]);
+        return Kokkos::Experimental::sqrt(gamma*pres(gamma,U)/U[SimVar::dens]);
       }
       
     } // end namespace EulerAdiabatic

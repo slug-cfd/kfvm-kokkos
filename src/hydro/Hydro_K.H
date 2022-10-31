@@ -11,6 +11,7 @@
 #include "../SimVar.H"
 #include "../Types.H"
 #include "EOS.H"
+#include "FluidProperties.H"
 #include "Riemann.H"
 
 namespace KFVM {
@@ -104,10 +105,12 @@ namespace KFVM {
     struct RiemannSolverX_K
     {
       FaceDataView U;
-      const Real gamma;
+      FluidProperties fProp;
 
-      RiemannSolverX_K(const FaceDataView& U_,Real gamma_):
-	U(U_),gamma(gamma_) {}
+      RiemannSolverX_K(const FaceDataView& U_,const FluidProperties& fProp_):
+	U(U_),
+        fProp(fProp_)
+      {}
 
 #if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
@@ -128,7 +131,7 @@ namespace KFVM {
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = EulerAdiabatic::HLL_X(gamma,uL,uR,F);
+	  Real vq = EulerAdiabatic::HLL_X(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -158,7 +161,7 @@ namespace KFVM {
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = EulerAdiabatic::HLL_X(gamma,uL,uR,F);
+	  Real vq = EulerAdiabatic::HLL_X(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -175,10 +178,12 @@ namespace KFVM {
     struct RiemannSolverY_K
     {
       FaceDataView U;
-      const Real gamma;
+      FluidProperties fProp;
 
-      RiemannSolverY_K(const FaceDataView& U_,Real gamma_):
-	U(U_),gamma(gamma_) {}
+      RiemannSolverY_K(const FaceDataView& U_,const FluidProperties& fProp_):
+	U(U_),
+        fProp(fProp_)
+      {}
 
 #if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
@@ -199,7 +204,7 @@ namespace KFVM {
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = EulerAdiabatic::HLL_Y(gamma,uL,uR,F);
+	  Real vq = EulerAdiabatic::HLL_Y(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -229,7 +234,7 @@ namespace KFVM {
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = EulerAdiabatic::HLL_Y(gamma,uL,uR,F);
+	  Real vq = EulerAdiabatic::HLL_Y(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -246,10 +251,12 @@ namespace KFVM {
     struct RiemannSolverZ_K
     {
       FaceDataView U;
-      const Real gamma;
+      FluidProperties fProp;
 
-      RiemannSolverZ_K(const FaceDataView& U_,Real gamma_):
-	U(U_),gamma(gamma_) {}
+      RiemannSolverZ_K(const FaceDataView& U_,const FluidProperties& fProp_):
+	U(U_),
+        fProp(fProp_)
+      {}
 
 #if (SPACE_DIM == 3)
       KOKKOS_INLINE_FUNCTION
@@ -270,7 +277,7 @@ namespace KFVM {
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = EulerAdiabatic::HLL_Z(gamma,uL,uR,F);
+	  Real vq = EulerAdiabatic::HLL_Z(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -289,16 +296,16 @@ namespace KFVM {
     {
       UDataView U;
       FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
-      const Real gamma;
+      FluidProperties fProp;
 
       PositivityPreserve_K(const UDataView& U_,
 			   KFVM_D_DECL(const FaceDataView& rsX_,
 				       const FaceDataView& rsY_,
 				       const FaceDataView& rsZ_),
-			   Real gamma_):
+			   const FluidProperties& fProp_):
 	U(U_),
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
-	gamma(gamma_)
+	fProp(fProp_)
       {}
 
 #if (SPACE_DIM == 2)
@@ -317,7 +324,7 @@ namespace KFVM {
 	  U(i,j,SimVar::etot)
 	}; 
 	Real rDens = refState[SimVar::dens];
-	Real rPres = pres(gamma,refState);
+	Real rPres = pres(fProp.gamma,refState);
 	
 	// Minimum allowable density and pressure
 	Real minDens = 1.e-13,minPres = 1.e-13;
@@ -333,7 +340,7 @@ namespace KFVM {
 	      U(i + xo,j + yo,SimVar::etot)
 	    };
 	    minDens = fmin(minDens,state[0]);
-	    minPres = fmin(minPres,pres(gamma,state));
+	    minPres = fmin(minPres,pres(fProp.gamma,state));
 	  }
 	}
 	Real rDensDiff = rDens - minDens;
@@ -384,7 +391,7 @@ namespace KFVM {
 	      rsX(i,j,1,nQ,SimVar::momz),
 	      rsX(i,j,1,nQ,SimVar::etot)
 	    };
-	    p = pres(gamma,state);
+	    p = pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -397,7 +404,7 @@ namespace KFVM {
 	      rsX(i + 1,j,0,nQ,SimVar::momz),
 	      rsX(i + 1,j,0,nQ,SimVar::etot)
 	    };
-	    p = pres(gamma,state);
+	    p = pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -410,7 +417,7 @@ namespace KFVM {
 	      rsY(i,j,1,nQ,SimVar::momz),
 	      rsY(i,j,1,nQ,SimVar::etot)
 	    };
-	    p = pres(gamma,state);
+	    p = pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -423,7 +430,7 @@ namespace KFVM {
 	      rsY(i,j + 1,0,nQ,SimVar::momz),
 	      rsY(i,j + 1,0,nQ,SimVar::etot)
 	    };
-	    p = pres(gamma,state);
+	    p = pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -455,7 +462,7 @@ namespace KFVM {
 	  U(i,j,k,SimVar::etot)
 	}; 
 	Real rDens = refState[SimVar::dens];
-	Real rPres = pres(gamma,refState);
+	Real rPres = pres(fProp.gamma,refState);
 	
 	// Minimum allowable density and pressure
 	Real minDens = 1.e-13,minPres = 1.e-13;
@@ -472,7 +479,7 @@ namespace KFVM {
 		U(i + xo,j + yo,k + zo,SimVar::etot)
 	      };
 	      minDens = fmin(minDens,state[0]);
-	      minPres = fmin(minPres,pres(gamma,state));
+	      minPres = fmin(minPres,pres(fProp.gamma,state));
 	    }
 	  }
 	}
@@ -534,7 +541,7 @@ namespace KFVM {
 	      rsX(i,j,k,1,nQ,SimVar::momz),
 	      rsX(i,j,k,1,nQ,SimVar::etot)
 	    };
-	    p = pres(gamma,state);
+	    p = pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -547,7 +554,7 @@ namespace KFVM {
 	      rsX(i + 1,j,k,0,nQ,SimVar::momz),
 	      rsX(i + 1,j,k,0,nQ,SimVar::etot)
 	    };
-	    p = pres(gamma,state);
+	    p = pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -560,7 +567,7 @@ namespace KFVM {
 	      rsY(i,j,k,1,nQ,SimVar::momz),
 	      rsY(i,j,k,1,nQ,SimVar::etot)
 	    };
-	    p = pres(gamma,state);
+	    p = pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -573,7 +580,7 @@ namespace KFVM {
 	      rsY(i,j + 1,k,0,nQ,SimVar::momz),
 	      rsY(i,j + 1,k,0,nQ,SimVar::etot)
 	    };
-	    p = pres(gamma,state);
+	    p = pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -586,7 +593,7 @@ namespace KFVM {
 	      rsZ(i,j,k,1,nQ,SimVar::momz),
 	      rsZ(i,j,k,1,nQ,SimVar::etot)
 	    };
-	    p = pres(gamma,state);
+	    p = pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -599,7 +606,7 @@ namespace KFVM {
 	      rsZ(i,j,k + 1,0,nQ,SimVar::momz),
 	      rsZ(i,j,k + 1,0,nQ,SimVar::etot)
 	    };
-	    p = pres(gamma,state);
+	    p = pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }

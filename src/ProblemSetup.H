@@ -9,6 +9,7 @@
 
 #include "Dimension.H"
 #include "Types.H"
+#include "FluidProperties.H"
 #include "BoundaryConditions.H"
 
 #ifndef STENCIL_RADIUS
@@ -49,7 +50,7 @@ namespace KFVM {
     // File output information
     const int plotFreq;
 
-    // Fluid properties array
+    // Fluid properties object
     FluidProperties fluidProp;
 
     // Simple constructor
@@ -58,7 +59,7 @@ namespace KFVM {
                  idx_t nX_,idx_t nY_,idx_t nZ_,
                  Real xLo_,Real xUp_,Real yLo_,Real yUp_,Real zLo_,Real zUp_,
 		 Real finalTime_,int plotFreq_,
-                 Real gam_):
+                 Real gamma_):
       rad(STENCIL_RADIUS),
       gp_lFac(20.0),
       gp_bpow(Real(STENCIL_RADIUS)),
@@ -81,9 +82,8 @@ namespace KFVM {
       initialDeltaT(Real(1.e-8)),
       cfl(SPACE_DIM==3 ? 0.5 : 0.75),
       plotFreq(plotFreq_),
-      fluidProp({gam_})
-      {
-      }
+      fluidProp(gamma_)
+    {}
   };
   
 }

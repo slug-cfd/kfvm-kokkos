@@ -173,14 +173,14 @@ namespace KFVM {
     auto fluxRng_EW = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX + 1,ps.nY,ps.nZ)});
     Kokkos::parallel_reduce("RiemannSolver::EW",fluxRng_EW,
-			    Hydro::RiemannSolverX_K(faceVals.xDir,1.4),
+			    Hydro::RiemannSolverX_K(faceVals.xDir,ps.fluidProp),
 			    Kokkos::Max<Real>(vEW));
 
     // North/South faces
     auto fluxRng_NS = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY + 1,ps.nZ)});
     Kokkos::parallel_reduce("RiemannSolver::NS",fluxRng_NS,
-			    Hydro::RiemannSolverY_K(faceVals.yDir,1.4),
+			    Hydro::RiemannSolverY_K(faceVals.yDir,ps.fluidProp),
 			    Kokkos::Max<Real>(vNS));
     
 #if (SPACE_DIM == 3)
@@ -188,7 +188,7 @@ namespace KFVM {
     auto fluxRng_TB = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({0,0,0},{ps.nX,ps.nY,ps.nZ + 1});
     Kokkos::parallel_reduce("RiemannSolver::TB",fluxRng_TB,
-			    Hydro::RiemannSolverZ_K(faceVals.zDir,1.4),
+			    Hydro::RiemannSolverZ_K(faceVals.zDir,ps.fluidProp),
 			    Kokkos::Max<Real>(vTB));
 #endif
 
@@ -234,7 +234,8 @@ namespace KFVM {
 				      stencil.ttOff),
 			  stencil.subIdx,
 			  stencil.faceWeights,
-			  stencil.derivWeights));
+			  stencil.derivWeights,
+                          ps.fluidProp));
 
     // Linear Kernel reconstruction
     // Kokkos::parallel_for("FaceRecon",cellRng,
@@ -255,7 +256,7 @@ namespace KFVM {
 			  KFVM_D_DECL(faceVals.xDir,
 				      faceVals.yDir,
 				      faceVals.zDir),
-			  1.4));
+			  ps.fluidProp));
   }
 
 void Solver::setCellBCs(CellDataView sol_halo,Real t)

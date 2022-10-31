@@ -5,11 +5,11 @@
 
 // Names of variables inside solution files
 std::array<std::string, NUM_VARS> KFVM::ProblemSetup::varName = {
-    "dens",
-    "momx",
-    "momy",
-    "momz",
-    "etot"};
+  "dens",
+  "momx",
+  "momy",
+  "momz",
+  "etot"};
 
 std::array<std::string,NUM_AUX> KFVM::ProblemSetup::auxVarName = {
   "velx",

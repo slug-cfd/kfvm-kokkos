@@ -14,9 +14,11 @@
 #include <KokkosBatched_Gemm_Serial_Impl.hpp>
 
 #include "../Types.H"
+#include "../FluidProperties.H"
 #include "../ProblemSetup.H"
 #include "../Geometry.H"
 #include "../hydro/Hydro_K.H"
+#include "FluidProperties.H"
 #include "Stencil.H"
 
 namespace KFVM {
@@ -32,6 +34,7 @@ namespace KFVM {
       SubIdxView subIdx;
       FaceWtView faceWeight;
       CellWtView derivWeight;
+      FluidProperties fProp;
       const int nCellsFull,nCellsCtr,nCellsBias;
       const int nSub,nBias,nIndic,nqFace_d;
 
@@ -45,7 +48,8 @@ namespace KFVM {
 				    const OffsetView& ttOff_),
 			const SubIdxView& subIdx_,
 			const FaceWtView& face_,
-			const CellWtView& deriv_):
+			const CellWtView& deriv_,
+                        const FluidProperties& fProp_):
 	U(U_),
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
 	Work(Work_),
@@ -53,6 +57,7 @@ namespace KFVM {
 	subIdx(subIdx_),
 	faceWeight(face_),
 	derivWeight(deriv_),
+        fProp(fProp_),
 	nCellsFull(Stencil::Core::SI.nCellsFull),
 	nCellsCtr(Stencil::Core::SI.nCellsCtr),
 	nCellsBias(Stencil::Core::SI.nCellsBias),

@@ -25,9 +25,6 @@ namespace KFVM {
   // Set index type for all iteration spaces
   typedef int64_t idx_t;
 
-  // Array of fluid properties
-  typedef std::array<Real,NUM_PROPS> FluidProperties;
-
   // Enumeration of face names associated to [2*SPACE_DIM] entry in FaceDataView
   enum FaceLabel {west = 0, east, south, north, bottom, top};
 
