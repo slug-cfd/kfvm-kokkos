@@ -18,7 +18,7 @@
 #include "NetCDFWriter.H"
 #include "numeric/Numeric.H"
 #include "numeric/Numeric_K.H"
-#include "hydro/Hydro_K.H"
+#include "physics/Physics_K.H"
 #include "stencil/Stencil_K.H"
 
 #include <Solver.H>
@@ -47,7 +47,7 @@ namespace KFVM {
 				   ps.nZ + 2*ps.rad)),
     K("RHS",       KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     Ktil("RHS_til",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
-    U_aux("U_aux",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
+    U_aux("U_aux", KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     faceVals(ps),
     time(ps.initialTime),
     dt(ps.initialDeltaT),
@@ -88,7 +88,7 @@ namespace KFVM {
 
     auto U = trimCellHalo(U_halo);
 
-    Kokkos::parallel_for("AuxVars",cellRng,Hydro::AuxVars<decltype(U)>(U,U_aux));
+    Kokkos::parallel_for("AuxVars",cellRng,Physics::AuxVars<eqType,decltype(U)>(U,U_aux));
     
     Kokkos::Profiling::popRegion();
   }
@@ -173,14 +173,14 @@ namespace KFVM {
     auto fluxRng_EW = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX + 1,ps.nY,ps.nZ)});
     Kokkos::parallel_reduce("RiemannSolver::EW",fluxRng_EW,
-			    Hydro::RiemannSolverX_K(faceVals.xDir,ps.fluidProp),
+			    Physics::RiemannSolverX_K<eqType>(faceVals.xDir,ps.fluidProp),
 			    Kokkos::Max<Real>(vEW));
 
     // North/South faces
     auto fluxRng_NS = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY + 1,ps.nZ)});
     Kokkos::parallel_reduce("RiemannSolver::NS",fluxRng_NS,
-			    Hydro::RiemannSolverY_K(faceVals.yDir,ps.fluidProp),
+			    Physics::RiemannSolverY_K<eqType>(faceVals.yDir,ps.fluidProp),
 			    Kokkos::Max<Real>(vNS));
     
 #if (SPACE_DIM == 3)
@@ -188,7 +188,7 @@ namespace KFVM {
     auto fluxRng_TB = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({0,0,0},{ps.nX,ps.nY,ps.nZ + 1});
     Kokkos::parallel_reduce("RiemannSolver::TB",fluxRng_TB,
-			    Hydro::RiemannSolverZ_K(faceVals.zDir,ps.fluidProp),
+			    Physics::RiemannSolverZ_K<eqType>(faceVals.zDir,ps.fluidProp),
 			    Kokkos::Max<Real>(vTB));
 #endif
 
@@ -251,7 +251,7 @@ namespace KFVM {
 
     // Enforce positivity of Riemann states
     Kokkos::parallel_for("PosPres",cellRng,
-			 Hydro::PositivityPreserve_K<decltype(U)>
+			 Physics::PositivityPreserve_K<eqType,decltype(U)>
 			 (U,
 			  KFVM_D_DECL(faceVals.xDir,
 				      faceVals.yDir,

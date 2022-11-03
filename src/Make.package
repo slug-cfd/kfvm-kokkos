@@ -1,6 +1,0 @@
-INCLUDE_PATH += ${KFVM_KOKKOS_ROOT}/src
-SOURCES += main.cpp Solver.cpp NetCDFWriter.cpp
-
-include ${KFVM_KOKKOS_ROOT}/src/numeric/Make.package
-include ${KFVM_KOKKOS_ROOT}/src/stencil/Make.package
-include ${KFVM_KOKKOS_ROOT}/src/hydro/Make.package

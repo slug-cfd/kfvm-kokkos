@@ -13,12 +13,14 @@
 #include <KokkosBatched_Gemm_Decl.hpp>
 #include <KokkosBatched_Gemm_Serial_Impl.hpp>
 
+#include <Definitions.H>
+
 #include "../Types.H"
 #include "../FluidProperties.H"
 #include "../ProblemSetup.H"
 #include "../Geometry.H"
-#include "../hydro/Hydro_K.H"
-#include "FluidProperties.H"
+#include "../physics/Physics_K.H"
+#include "../FluidProperties.H"
 #include "Stencil.H"
 
 namespace KFVM {
@@ -130,7 +132,7 @@ namespace KFVM {
 	
 	for (int nC=0; nC<nCellsFull; nC++) {
 	  auto state = Kokkos::subview(Vf,nC,Kokkos::ALL);
-	  Hydro::Cons2Prim(state,refState,1.4);
+          Physics::VarConvert<eqType,decltype(state)>::Cons2Prim(state,refState,1.4);
 	}
 
 	// Find all smoothness indicators
@@ -251,7 +253,7 @@ namespace KFVM {
 	for (int nF=0; nF<2*SPACE_DIM; nF++) {
 	  for (int nQ=0; nQ<nqFace_d; nQ++) {
 	    auto state = Kokkos::subview(rsFace[nF],nQ,Kokkos::ALL);
-	    Hydro::Prim2Cons(state,refState,1.4);
+	    Physics::VarConvert<eqType,decltype(state)>::Prim2Cons(state,refState,1.4);
 	  }
 	}
       }

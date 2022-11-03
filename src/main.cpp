@@ -33,11 +33,11 @@ int main(int argc, char* argv[]) {
     // 			  0.2,20,
     // 			  1.4);
     
-    KFVM::ProblemSetup ps("data/Riem_2d_3c",
-        		  256,256,8,
-        		  0.0,1.0,0.0,1.0,0.0,8.0/256.0,
-        		  0.8,100,
-        		  1.4);
+    // KFVM::ProblemSetup ps("data/Riem_2d_3c",
+    //     		  256,256,8,
+    //     		  0.0,1.0,0.0,1.0,0.0,8.0/256.0,
+    //     		  0.8,100,
+    //     		  1.4);
     
     // KFVM::ProblemSetup ps("data/Riem_3d_1c",
     // 			  96,96,96,
@@ -57,11 +57,11 @@ int main(int argc, char* argv[]) {
     // 			  2.5,40,
     // 			  1.4);
     
-    // KFVM::ProblemSetup ps("data/IsenVort",
-    //     		  128,128,8,
-    //     		  -10.0,10.0,-10.0,10.0,0.0,160.0/128.0,
-    //     		  20.0,20,
-    //     		  1.4);
+    KFVM::ProblemSetup ps("data/IsenVort",
+        		  128,128,8,
+        		  -10.0,10.0,-10.0,10.0,0.0,160.0/128.0,
+        		  20.0,20,
+        		  1.4);
     
     // KFVM::ProblemSetup ps("data/LinAdv",
     //     		  128,128,8,

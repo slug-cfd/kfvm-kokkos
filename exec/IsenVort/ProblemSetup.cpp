@@ -2,6 +2,7 @@
 
 #include "ProblemSetup.H"
 #include "BoundaryConditions_K.H"
+#include "physics/EquationTypes.H"
 
 // Names of variables inside solution files
 std::array<std::string,NUM_VARS> KFVM::ProblemSetup::varName = {

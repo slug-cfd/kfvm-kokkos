@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project("kfvm-kokkos::src")
 
 add_subdirectory(numeric)
-add_subdirectory(hydro)
+add_subdirectory(physics)
 add_subdirectory(stencil)
 
 add_executable(kfvm.ex main.cpp ${USER_DIR}/ProblemSetup.cpp NetCDFWriter.cpp Solver.cpp)

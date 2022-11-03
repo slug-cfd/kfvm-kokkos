@@ -9,6 +9,7 @@
 
 #include "Dimension.H"
 #include "Types.H"
+#include "physics/EquationTypes.H"
 #include "FluidProperties.H"
 #include "BoundaryConditions.H"
 
