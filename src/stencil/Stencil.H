@@ -7,7 +7,6 @@
 
 #include <Kokkos_Core.hpp>
 
-#include "../SimVar.H"
 #include "../Types.H"
 #include "../ProblemSetup.H"
 #include "StencilInfo.H"

@@ -15,6 +15,8 @@ Real Wendland(Real x,Real R)
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
+  using Physics::EulerAdiabatic::SimVar;
+  
   (void) z;
   
   Real xc = 0.0,yc = 0.0;

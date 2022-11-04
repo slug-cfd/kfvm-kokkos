@@ -1,3 +1,5 @@
+#ifndef USERBCS_H_
+#define USERBCS_H_
 // This holds all user defined boundary conditions
 // All of these functions must exist, regardless of BC type being used,
 // however they can be left empty and will be ignored when using the
@@ -79,15 +81,6 @@ void CellSouth(const DataViewType& U,int rad,int nY,
   (void) i; (void) k; (void) nH;
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
-
-  const Real xRef = cos(8.0*M_PI*z)/12.0 + 1.0/4.0;
-  const Real pf = x>xRef ? -1.0 : 1.0; // Only reflect on part of the domain
-
-  state[0] =    U(KFVM_D_DECL(i,rad + nH,k),0);
-  state[1] =    U(KFVM_D_DECL(i,rad + nH,k),1);
-  state[2] = pf*U(KFVM_D_DECL(i,rad + nH,k),2);
-  state[3] =    U(KFVM_D_DECL(i,rad + nH,k),3);
-  state[4] =    U(KFVM_D_DECL(i,rad + nH,k),4);
 }
 
 template<class DataViewType>
@@ -102,15 +95,6 @@ void FaceSouth(const DataViewType& U,
   (void) i; (void) k; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
-
-  const Real xRef = cos(8.0*M_PI*z)/12.0 + 1.0/4.0;
-  const Real pf = x>xRef ? -1.0 : 1.0; // Only reflect on part of the boundary
-
-  state[0] =    U(KFVM_DM_DECL(i,k),1,nQ,0);
-  state[1] =    U(KFVM_DM_DECL(i,k),1,nQ,1);
-  state[2] = pf*U(KFVM_DM_DECL(i,k),1,nQ,2);
-  state[3] =    U(KFVM_DM_DECL(i,k),1,nQ,3);
-  state[4] =    U(KFVM_DM_DECL(i,k),1,nQ,4);
 }
 
 // Northern boundary
@@ -126,22 +110,6 @@ void CellNorth(const DataViewType& U,int rad,int nY,
   (void) i; (void) k; (void) nH;
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
-
-  const Real gam = 1.4,gamm = gam - 1.0;
-  
-  if(x < 8.66025*gam*t + 0.744017) {
-    state[0] = 8.0;
-    state[1] = 8.0*7.1447096;
-    state[2] = -8.0*4.125;
-    state[3] = 0.0;
-    state[4] = 116.5/gamm + 4.0*(7.1447096*7.1447096 + 4.125*4.125);
-  } else {
-    state[0] = 1.4;
-    state[1] = 0.0;
-    state[2] = 0.0;
-    state[3] = 0.0;
-    state[4] = 1.0/gamm;
-  }
 }
 
 template<class DataViewType>
@@ -154,24 +122,8 @@ void FaceNorth(const DataViewType& U,
   // Void casts to ignore unused parameter warnings
   (void) U;
   (void) i; (void) k; (void) nQ;
-  (void) y; (void) z;
+  (void) x; (void) y; (void) z; (void) t;
   (void) state;
-
-  const Real gam = 1.4,gamm = gam - 1.0;
-  
-  if(x < 8.66025*gam*t + 0.744017) {
-    state[0] = 8.0;
-    state[1] = 8.0*7.1447096;
-    state[2] = -8.0*4.125;
-    state[3] = 0.0;
-    state[4] = 116.5/gamm + 4.0*(7.1447096*7.1447096 + 4.125*4.125);
-  } else {
-    state[0] = 1.4;
-    state[1] = 0.0;
-    state[2] = 0.0;
-    state[3] = 0.0;
-    state[4] = 1.0/gamm;
-  }
 }
 
 // Bottom boundary
@@ -231,3 +183,5 @@ void FaceTop(const DataViewType& U,
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 }
+
+#endif

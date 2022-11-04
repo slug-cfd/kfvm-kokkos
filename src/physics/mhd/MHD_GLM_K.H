@@ -1,5 +1,5 @@
-#ifndef HYDRO_K_H_
-#define HYDRO_K_H_
+#ifndef MHD_GLM_K_H_
+#define MHD_GLM_K_H_
 
 #include <Kokkos_Macros.hpp>
 #include <cstdint>
@@ -8,69 +8,83 @@
 
 #include "Definitions.H"
 
-#include "../SimVar.H"
-#include "../Types.H"
-#include "EOS.H"
-#include "FluidProperties.H"
-#include "Riemann.H"
+#include "../../Types.H"
+#include "../EquationTypes.H"
+#include "MHD_GLM_SimVar.H"
+#include "MHD_GLM_EOS.H"
+#include "../../FluidProperties.H"
+#include "MHD_GLM_Riemann.H"
 
 namespace KFVM {
 
-  namespace Hydro {
+  namespace Physics {
 
-    template<class S>
-    KOKKOS_INLINE_FUNCTION
-    void Cons2Prim(S& state,const Real ref[NUM_VARS],Real gam)
+    template<class StateType>
+    struct VarConvert<EquationType::MHD_GLM,StateType>
     {
-      Real gm = gam - 1.0;
-      Real rho = ref[SimVar::dens];
-      Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
-      Real vsq = (u*u + v*v + w*w)/2.0;
-      // Doing etot first allows state to be overwritten safely
-      state(SimVar::etot) = gm*(vsq*state(SimVar::dens) -
-				u*state(SimVar::momx) - 
-				v*state(SimVar::momy) - 
-				w*state(SimVar::momz) +
-				state(SimVar::etot));
+      KOKKOS_INLINE_FUNCTION
+      static void Cons2Prim(StateType& state,const Real ref[NUM_VARS],Real gam)
+      {
+        using MHD_GLM::SimVar;
+        
+        Real gm = gam - 1.0;
+        Real rho = ref[SimVar::dens];
+        Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
+        Real vsq = (u*u + v*v + w*w)/2.0;
+        // Doing etot first allows state to be overwritten safely
+        state(SimVar::etot) = gm*(vsq*state(SimVar::dens) -
+                                  u*state(SimVar::momx) - 
+                                  v*state(SimVar::momy) - 
+                                  w*state(SimVar::momz) +
+                                  state(SimVar::etot));
       
-      state(SimVar::momx) = (state(SimVar::momx) - u*state(SimVar::dens))/rho;
-      state(SimVar::momy) = (state(SimVar::momy) - v*state(SimVar::dens))/rho;
-      state(SimVar::momz) = (state(SimVar::momz) - w*state(SimVar::dens))/rho;
-    }
-
-    template<class S>
-    KOKKOS_INLINE_FUNCTION
-    void Prim2Cons(S& state,const Real ref[NUM_VARS],Real gam)
-    {
-      Real gm = gam - 1.0;
-      Real rho = ref[SimVar::dens];
-      Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
-      Real vsq = (u*u + v*v + w*w)/2.0;
-      // Doing etot first allows state to be overwritten safely
-      state(SimVar::etot) = (vsq*state(SimVar::dens) +
-			     rho*u*state(SimVar::momx) + 
-			     rho*v*state(SimVar::momy) + 
-			     rho*w*state(SimVar::momz) +
-			     state(SimVar::etot)/gm);
+        state(SimVar::momx) = (state(SimVar::momx) - u*state(SimVar::dens))/rho;
+        state(SimVar::momy) = (state(SimVar::momy) - v*state(SimVar::dens))/rho;
+        state(SimVar::momz) = (state(SimVar::momz) - w*state(SimVar::dens))/rho;
+      }
       
-      state(SimVar::momx) = (rho*state(SimVar::momx) + u*state(SimVar::dens));
-      state(SimVar::momy) = (rho*state(SimVar::momy) + v*state(SimVar::dens));
-      state(SimVar::momz) = (rho*state(SimVar::momz) + w*state(SimVar::dens));
-    }
+      KOKKOS_INLINE_FUNCTION
+      static void Prim2Cons(StateType& state,const Real ref[NUM_VARS],Real gam)
+      {
+        using MHD_GLM::SimVar;
+        
+        Real gm = gam - 1.0;
+        Real rho = ref[SimVar::dens];
+        Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
+        Real vsq = (u*u + v*v + w*w)/2.0;
+        // Doing etot first allows state to be overwritten safely
+        state(SimVar::etot) = (vsq*state(SimVar::dens) +
+                               rho*u*state(SimVar::momx) + 
+                               rho*v*state(SimVar::momy) + 
+                               rho*w*state(SimVar::momz) +
+                               state(SimVar::etot)/gm);
+      
+        state(SimVar::momx) = (rho*state(SimVar::momx) + u*state(SimVar::dens));
+        state(SimVar::momy) = (rho*state(SimVar::momy) + v*state(SimVar::dens));
+        state(SimVar::momz) = (rho*state(SimVar::momz) + w*state(SimVar::dens));
+      }
+    };
 
     template<class UViewType>
-    struct AuxVars
+    struct AuxVars<EquationType::MHD_GLM,UViewType>
     {
       UViewType U;
       AuxDataView V;
+      FluidProperties fProp;
 
-      AuxVars(const UViewType& U_,const AuxDataView V_):
-	U(U_),V(V_) {}
+      AuxVars(const UViewType& U_,const AuxDataView V_,const FluidProperties& fProp_):
+	U(U_),
+        V(V_),
+        fProp(fProp_)
+      {}
 
 #if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j) const
       {
+        using MHD_GLM::SimVar;
+        using MHD_GLM::AuxVar;
+        
 	// Set velocities
 	V(i,j,AuxVar::velx) = U(i,j,SimVar::momx)/U(i,j,SimVar::dens);
 	V(i,j,AuxVar::vely) = U(i,j,SimVar::momy)/U(i,j,SimVar::dens);
@@ -81,12 +95,17 @@ namespace KFVM {
 					 V(i,j,AuxVar::vely)*V(i,j,AuxVar::vely) +
 					 V(i,j,AuxVar::velz)*V(i,j,AuxVar::velz))/2.0;
 	V(i,j,AuxVar::eint) = (U(i,j,SimVar::etot) - ekin)/U(i,j,SimVar::dens);
-	V(i,j,AuxVar::pres) = 0.4*(U(i,j,SimVar::etot) - ekin);
+	V(i,j,AuxVar::pres) = (1.0 - fProp.gamma)*(U(i,j,SimVar::etot) - ekin);
+	V(i,j,AuxVar::prsg) = 0.0;
+	V(i,j,AuxVar::prsb) = 0.0;
       }
 #else
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j,const idx_t k) const
       {
+        using MHD_GLM::SimVar;
+        using MHD_GLM::AuxVar;
+        
 	// Set velocities
 	V(i,j,k,AuxVar::velx) = U(i,j,k,SimVar::momx)/U(i,j,k,SimVar::dens);
 	V(i,j,k,AuxVar::vely) = U(i,j,k,SimVar::momy)/U(i,j,k,SimVar::dens);
@@ -97,12 +116,15 @@ namespace KFVM {
 					 V(i,j,k,AuxVar::vely)*V(i,j,k,AuxVar::vely) +
 					 V(i,j,k,AuxVar::velz)*V(i,j,k,AuxVar::velz))/2.0;
 	V(i,j,k,AuxVar::eint) = (U(i,j,k,SimVar::etot) - ekin)/U(i,j,k,SimVar::dens);
-	V(i,j,k,AuxVar::pres) = 0.4*(U(i,j,k,SimVar::etot) - ekin);
+	V(i,j,k,AuxVar::pres) = (1.0 - fProp.gamma)*(U(i,j,k,SimVar::etot) - ekin);
+	V(i,j,k,AuxVar::prsg) = 0.0;
+	V(i,j,k,AuxVar::prsb) = 0.0;
       }
 #endif
     };
 
-    struct RiemannSolverX_K
+    template<>
+    struct RiemannSolverX_K<EquationType::MHD_GLM>
     {
       FaceDataView U;
       FluidProperties fProp;
@@ -131,7 +153,7 @@ namespace KFVM {
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = EulerAdiabatic::HLL_X(fProp.gamma,uL,uR,F);
+	  Real vq = MHD_GLM_HLL_X(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -161,7 +183,7 @@ namespace KFVM {
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = EulerAdiabatic::HLL_X(fProp.gamma,uL,uR,F);
+	  Real vq = MHD_GLM_HLL_X(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -175,7 +197,8 @@ namespace KFVM {
 #endif
     };
 
-    struct RiemannSolverY_K
+    template<>
+    struct RiemannSolverY_K<EquationType::MHD_GLM>
     {
       FaceDataView U;
       FluidProperties fProp;
@@ -204,7 +227,7 @@ namespace KFVM {
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = EulerAdiabatic::HLL_Y(fProp.gamma,uL,uR,F);
+	  Real vq = MHD_GLM_HLL_Y(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -234,7 +257,7 @@ namespace KFVM {
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = EulerAdiabatic::HLL_Y(fProp.gamma,uL,uR,F);
+	  Real vq = MHD_GLM_HLL_Y(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -248,7 +271,8 @@ namespace KFVM {
 #endif
     };
 
-    struct RiemannSolverZ_K
+    template<>
+    struct RiemannSolverZ_K<EquationType::MHD_GLM>
     {
       FaceDataView U;
       FluidProperties fProp;
@@ -277,7 +301,7 @@ namespace KFVM {
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = EulerAdiabatic::HLL_Z(fProp.gamma,uL,uR,F);
+	  Real vq = MHD_GLM_HLL_Z(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -292,7 +316,7 @@ namespace KFVM {
     };
 
     template<class UDataView>
-    struct PositivityPreserve_K
+    struct PositivityPreserve_K<EquationType::MHD_GLM,UDataView>
     {
       UDataView U;
       FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
@@ -313,7 +337,7 @@ namespace KFVM {
       void operator()(const idx_t i,const idx_t j) const
       {
 	using Kokkos::Experimental::fmin;
-	using EulerAdiabatic::pres;
+        using MHD_GLM::SimVar;
 
 	// Save reference state
 	Real refState[] = {
@@ -324,7 +348,7 @@ namespace KFVM {
 	  U(i,j,SimVar::etot)
 	}; 
 	Real rDens = refState[SimVar::dens];
-	Real rPres = pres(fProp.gamma,refState);
+	Real rPres = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,refState);
 	
 	// Minimum allowable density and pressure
 	Real minDens = 1.e-13,minPres = 1.e-13;
@@ -340,7 +364,7 @@ namespace KFVM {
 	      U(i + xo,j + yo,SimVar::etot)
 	    };
 	    minDens = fmin(minDens,state[0]);
-	    minPres = fmin(minPres,pres(fProp.gamma,state));
+	    minPres = fmin(minPres,EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state));
 	  }
 	}
 	Real rDensDiff = rDens - minDens;
@@ -391,7 +415,7 @@ namespace KFVM {
 	      rsX(i,j,1,nQ,SimVar::momz),
 	      rsX(i,j,1,nQ,SimVar::etot)
 	    };
-	    p = pres(fProp.gamma,state);
+	    p = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -404,7 +428,7 @@ namespace KFVM {
 	      rsX(i + 1,j,0,nQ,SimVar::momz),
 	      rsX(i + 1,j,0,nQ,SimVar::etot)
 	    };
-	    p = pres(fProp.gamma,state);
+	    p = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -417,7 +441,7 @@ namespace KFVM {
 	      rsY(i,j,1,nQ,SimVar::momz),
 	      rsY(i,j,1,nQ,SimVar::etot)
 	    };
-	    p = pres(fProp.gamma,state);
+	    p = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -430,7 +454,7 @@ namespace KFVM {
 	      rsY(i,j + 1,0,nQ,SimVar::momz),
 	      rsY(i,j + 1,0,nQ,SimVar::etot)
 	    };
-	    p = pres(fProp.gamma,state);
+	    p = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -451,7 +475,7 @@ namespace KFVM {
       void operator()(const idx_t i,const idx_t j,const idx_t k) const
       {
 	using Kokkos::Experimental::fmin;
-	using EulerAdiabatic::pres;
+        using MHD_GLM::SimVar;
 
 	// Save reference state
 	Real refState[] = {
@@ -462,7 +486,7 @@ namespace KFVM {
 	  U(i,j,k,SimVar::etot)
 	}; 
 	Real rDens = refState[SimVar::dens];
-	Real rPres = pres(fProp.gamma,refState);
+	Real rPres = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,refState);
 	
 	// Minimum allowable density and pressure
 	Real minDens = 1.e-13,minPres = 1.e-13;
@@ -479,7 +503,7 @@ namespace KFVM {
 		U(i + xo,j + yo,k + zo,SimVar::etot)
 	      };
 	      minDens = fmin(minDens,state[0]);
-	      minPres = fmin(minPres,pres(fProp.gamma,state));
+	      minPres = fmin(minPres,EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state));
 	    }
 	  }
 	}
@@ -541,7 +565,7 @@ namespace KFVM {
 	      rsX(i,j,k,1,nQ,SimVar::momz),
 	      rsX(i,j,k,1,nQ,SimVar::etot)
 	    };
-	    p = pres(fProp.gamma,state);
+	    p = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -554,7 +578,7 @@ namespace KFVM {
 	      rsX(i + 1,j,k,0,nQ,SimVar::momz),
 	      rsX(i + 1,j,k,0,nQ,SimVar::etot)
 	    };
-	    p = pres(fProp.gamma,state);
+	    p = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -567,7 +591,7 @@ namespace KFVM {
 	      rsY(i,j,k,1,nQ,SimVar::momz),
 	      rsY(i,j,k,1,nQ,SimVar::etot)
 	    };
-	    p = pres(fProp.gamma,state);
+	    p = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -580,7 +604,7 @@ namespace KFVM {
 	      rsY(i,j + 1,k,0,nQ,SimVar::momz),
 	      rsY(i,j + 1,k,0,nQ,SimVar::etot)
 	    };
-	    p = pres(fProp.gamma,state);
+	    p = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -593,7 +617,7 @@ namespace KFVM {
 	      rsZ(i,j,k,1,nQ,SimVar::momz),
 	      rsZ(i,j,k,1,nQ,SimVar::etot)
 	    };
-	    p = pres(fProp.gamma,state);
+	    p = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }
@@ -606,7 +630,7 @@ namespace KFVM {
 	      rsZ(i,j,k + 1,0,nQ,SimVar::momz),
 	      rsZ(i,j,k + 1,0,nQ,SimVar::etot)
 	    };
-	    p = pres(fProp.gamma,state);
+	    p = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state);
 	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
 	    theta = fmin(theta,th);
 	  }

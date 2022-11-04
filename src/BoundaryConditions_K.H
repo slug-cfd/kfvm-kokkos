@@ -8,41 +8,40 @@
 #include <Definitions.H>
 
 #include "Dimension.H"
-#include "SimVar.H"
 #include "Types.H"
 #include "Geometry.H"
 #include "numeric/Numeric.H"
-#include "BoundaryConditions.H"
+#include "physics/Physics_K.H"
 
 namespace KFVM {
 
   namespace BoundaryConditions {
 
     // Unspecialized templates
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct CellBcWest_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct CellBcEast_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct CellBcSouth_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct CellBcNorth_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct CellBcBottom_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct CellBcTop_K {};
     
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct FaceBcWest_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct FaceBcEast_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct FaceBcSouth_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct FaceBcNorth_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct FaceBcBottom_K {};
-    template<class DataViewType,BCType bcType>
+    template<class DataViewType,BCType bcType,class RefCoeff = void>
     struct FaceBcTop_K {};
 
     // Bring in user defined BCs
@@ -84,13 +83,15 @@ namespace KFVM {
       }
     };
       
-    template<class DataViewType>
-    struct CellBcWest_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct CellBcWest_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
       idx_t rad,nX;
 
-      CellBcWest_K(const DataViewType& v_,idx_t rad_,idx_t nX_):
+      CellBcWest_K(const DataViewType& v_,const RefCoeff& pf_,idx_t rad_,idx_t nX_):
 	v(v_),
+        pf(pf_),
 	rad(rad_),
 	nX(nX_) {}
     
@@ -100,8 +101,7 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momx ? -1.0 : 1.0;
-	    v(rad - nH - 1,j,nV) = pf*v(rad + nH,j,nV);
+	    v(rad - nH - 1,j,nV) = pf(nV)*v(rad + nH,j,nV);
 	  }
 	}
       }
@@ -112,8 +112,7 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momx ? -1.0 : 1.0;
-	    v(rad - nH - 1,j,k,nV) = pf*v(rad + nH,j,k,nV);
+	    v(rad - nH - 1,j,k,nV) = pf(nV)*v(rad + nH,j,k,nV);
 	  }
 	}
       }
@@ -238,13 +237,15 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct CellBcEast_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct CellBcEast_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
       idx_t rad,nX;
 
-      CellBcEast_K(const DataViewType& v_,idx_t rad_,idx_t nX_):
+      CellBcEast_K(const DataViewType& v_,const RefCoeff& pf_,idx_t rad_,idx_t nX_):
 	v(v_),
+        pf(pf_),
 	rad(rad_),
 	nX(nX_) {}
 
@@ -254,8 +255,7 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momx ? -1.0 : 1.0;
-	    v(nX + rad + nH,j,nV) = pf*v(nX + rad - nH - 1,j,nV);
+	    v(nX + rad + nH,j,nV) = pf(nV)*v(nX + rad - nH - 1,j,nV);
 	  }
 	}
       }
@@ -266,8 +266,7 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momx ? -1.0 : 1.0;
-	    v(nX + rad + nH,j,k,nV) = pf*v(nX + rad - nH - 1,j,k,nV);
+	    v(nX + rad + nH,j,k,nV) = pf(nV)*v(nX + rad - nH - 1,j,k,nV);
 	  }
 	}
       }
@@ -357,13 +356,15 @@ namespace KFVM {
       }
     };
 
-    template<class DataViewType>
-    struct CellBcSouth_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct CellBcSouth_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
       idx_t rad,nY;
 
-      CellBcSouth_K(const DataViewType& v_,idx_t rad_,idx_t nY_):
+      CellBcSouth_K(const DataViewType& v_,const RefCoeff& pf_,idx_t rad_,idx_t nY_):
 	v(v_),
+        pf(pf_),
 	rad(rad_),
 	nY(nY_) {}
       
@@ -373,8 +374,7 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momy ? -1.0 : 1.0;
-	    v(i,rad - nH - 1,nV) = pf*v(i,rad + nH,nV);
+	    v(i,rad - nH - 1,nV) = pf(nV)*v(i,rad + nH,nV);
 	  }
 	}
       }
@@ -385,8 +385,7 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momy ? -1.0 : 1.0;
-	    v(i,rad - nH - 1,k,nV) = pf*v(i,rad + nH,k,nV);
+	    v(i,rad - nH - 1,k,nV) = pf(nV)*v(i,rad + nH,k,nV);
 	  }
 	}
       }
@@ -511,13 +510,15 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct CellBcNorth_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct CellBcNorth_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
       idx_t rad,nY;
 
-      CellBcNorth_K(const DataViewType& v_,idx_t rad_,idx_t nY_):
+      CellBcNorth_K(const DataViewType& v_,const RefCoeff& pf_,idx_t rad_,idx_t nY_):
 	v(v_),
+        pf(pf_),
 	rad(rad_),
 	nY(nY_) {}
 
@@ -527,8 +528,7 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momy ? -1.0 : 1.0;
-	    v(i,nY + rad + nH,nV) = pf*v(i,nY + rad - nH - 1,nV);
+	    v(i,nY + rad + nH,nV) = pf(nV)*v(i,nY + rad - nH - 1,nV);
 	  }
 	}
       }
@@ -539,8 +539,7 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momy ? -1.0 : 1.0;
-	    v(i,nY + rad + nH,k,nV) = pf*v(i,nY + rad - nH - 1,k,nV);
+	    v(i,nY + rad + nH,k,nV) = pf(nV)*v(i,nY + rad - nH - 1,k,nV);
 	  }
 	}
       }
@@ -619,13 +618,15 @@ namespace KFVM {
       }
     };
 
-    template<class DataViewType>
-    struct CellBcBottom_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct CellBcBottom_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
       idx_t rad,nZ;
 
-      CellBcBottom_K(const DataViewType& v_,idx_t rad_,idx_t nZ_):
+      CellBcBottom_K(const DataViewType& v_,const RefCoeff& pf_,idx_t rad_,idx_t nZ_):
 	v(v_),
+        pf(pf_),
 	rad(rad_),
 	nZ(nZ_) {}
 
@@ -635,8 +636,7 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momz ? -1.0 : 1.0;
-	    v(i,j,rad - nH - 1,nV) = pf*v(i,j,rad + nH,nV);
+	    v(i,j,rad - nH - 1,nV) = pf(nV)*v(i,j,rad + nH,nV);
 	  } 
 	}
       }
@@ -721,13 +721,15 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct CellBcTop_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct CellBcTop_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
       idx_t rad,nZ;
 
-      CellBcTop_K(const DataViewType& v_,idx_t rad_,idx_t nZ_):
+      CellBcTop_K(const DataViewType& v_,const RefCoeff& pf_,idx_t rad_,idx_t nZ_):
 	v(v_),
+        pf(pf_),
 	rad(rad_),
 	nZ(nZ_) {}
 
@@ -737,8 +739,7 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momz ? -1.0 : 1.0;
-	    v(i,j,nZ + rad + nH,nV) = pf*v(i,j,nZ + rad - nH - 1,nV);
+	    v(i,j,nZ + rad + nH,nV) = pf(nV)*v(i,j,nZ + rad - nH - 1,nV);
 	  } 
 	}
       }
@@ -807,11 +808,15 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcWest_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct FaceBcWest_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
 
-      FaceBcWest_K(const DataViewType& v_): v(v_) {}
+      FaceBcWest_K(const DataViewType& v_,const RefCoeff& pf_):
+        v(v_),
+        pf(pf_)
+      {}
     
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t j) const {
@@ -819,8 +824,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momx ? -1.0 : 1.0;
-	    v(j,0,nQ,nV) = pf*v(j,1,nQ,nV);
+	    v(j,0,nQ,nV) = pf(nV)*v(j,1,nQ,nV);
 	  }
 	}
       }
@@ -831,8 +835,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momx ? -1.0 : 1.0;
-	    v(j,k,0,nQ,nV) = pf*v(j,k,1,nQ,nV);
+	    v(j,k,0,nQ,nV) = pf(nV)*v(j,k,1,nQ,nV);
 	  }
 	}
       }
@@ -949,12 +952,15 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcEast_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct FaceBcEast_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
 
-      FaceBcEast_K(const DataViewType& v_):
-	v(v_) {}
+      FaceBcEast_K(const DataViewType& v_,const RefCoeff& pf_):
+	v(v_),
+        pf(pf_)
+      {}
 
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t j) const {
@@ -962,8 +968,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momx ? -1.0 : 1.0;
-	    v(j,1,nQ,nV) = pf*v(j,0,nQ,nV);
+	    v(j,1,nQ,nV) = pf(nV)*v(j,0,nQ,nV);
 	  }
 	}
       }
@@ -974,8 +979,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momx ? -1.0 : 1.0;
-	    v(j,k,1,nQ,nV) = pf*v(j,k,0,nQ,nV);
+	    v(j,k,1,nQ,nV) = pf(nV)*v(j,k,0,nQ,nV);
 	  }
 	}
       }
@@ -1062,12 +1066,15 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcSouth_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct FaceBcSouth_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
 
-      FaceBcSouth_K(const DataViewType& v_):
-	v(v_) {}
+      FaceBcSouth_K(const DataViewType& v_,const RefCoeff& pf_):
+	v(v_),
+        pf(pf_)
+      {}
 
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i) const {
@@ -1075,8 +1082,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momy ? -1.0 : 1.0;
-	    v(i,0,nQ,nV) = pf*v(i,1,nQ,nV);
+	    v(i,0,nQ,nV) = pf(nV)*v(i,1,nQ,nV);
 	  }
 	}
       }
@@ -1087,8 +1093,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momy ? -1.0 : 1.0;
-	    v(i,k,0,nQ,nV) = pf*v(i,k,1,nQ,nV);
+	    v(i,k,0,nQ,nV) = pf(nV)*v(i,k,1,nQ,nV);
 	  }
 	}
       }
@@ -1205,12 +1210,15 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcNorth_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct FaceBcNorth_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
 
-      FaceBcNorth_K(const DataViewType& v_):
-	v(v_) {}
+      FaceBcNorth_K(const DataViewType& v_,const RefCoeff& pf_):
+	v(v_),
+        pf(pf_)
+      {}
 
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i) const {
@@ -1218,8 +1226,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momy ? -1.0 : 1.0;
-	    v(i,1,nQ,nV) = pf*v(i,0,nQ,nV);
+	    v(i,1,nQ,nV) = pf(nV)*v(i,0,nQ,nV);
 	  }
 	}
       }
@@ -1230,8 +1237,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momy ? -1.0 : 1.0;
-	    v(i,k,1,nQ,nV) = pf*v(i,k,0,nQ,nV);
+	    v(i,k,1,nQ,nV) = pf(nV)*v(i,k,0,nQ,nV);
 	  }
 	}
       }
@@ -1306,12 +1312,15 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcBottom_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct FaceBcBottom_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
 
-      FaceBcBottom_K(const DataViewType& v_):
-	v(v_) {}
+      FaceBcBottom_K(const DataViewType& v_,const RefCoeff& pf_):
+	v(v_),
+        pf(pf_)
+      {}
     
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j) const {
@@ -1319,8 +1328,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momz ? -1.0 : 1.0;
-	    v(i,j,0,nQ,nV) = pf*v(i,j,1,nQ,nV);
+	    v(i,j,0,nQ,nV) = pf(nV)*v(i,j,1,nQ,nV);
 	  }
 	}
       }
@@ -1397,11 +1405,15 @@ namespace KFVM {
       }
     };
     
-    template<class DataViewType>
-    struct FaceBcTop_K<DataViewType,BCType::reflecting> {
+    template<class DataViewType,class RefCoeff>
+    struct FaceBcTop_K<DataViewType,BCType::reflecting,RefCoeff> {
       DataViewType v;
+      RefCoeff pf;
 
-      FaceBcTop_K(const DataViewType& v_): v(v_) {}
+      FaceBcTop_K(const DataViewType& v_,const RefCoeff& pf_):
+        v(v_),
+        pf(pf_)
+      {}
         
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j) const {
@@ -1409,8 +1421,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    Real pf = nV == SimVar::momz ? -1.0 : 1.0;
-	    v(i,j,1,nQ,nV) = pf*v(i,j,0,nQ,nV);
+	    v(i,j,1,nQ,nV) = pf(nV)*v(i,j,0,nQ,nV);
 	  }
 	}
       }

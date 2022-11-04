@@ -9,7 +9,6 @@
 
 #include <Definitions.H>
 
-#include "SimVar.H"
 #include "Types.H"
 #include "ProblemSetup.H"
 

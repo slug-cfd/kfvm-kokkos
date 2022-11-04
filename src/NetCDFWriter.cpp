@@ -14,7 +14,6 @@
 
 #include "Dimension.H"
 #include "Geometry.H"
-#include "SimVar.H"
 #include "Types.H"
 #include "ProblemSetup.H"
 #include "numeric/Numeric.H"

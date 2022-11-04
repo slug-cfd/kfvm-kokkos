@@ -57,11 +57,11 @@ int main(int argc, char* argv[]) {
     // 			  2.5,40,
     // 			  1.4);
     
-    KFVM::ProblemSetup ps("data/IsenVort",
-        		  128,128,8,
-        		  -10.0,10.0,-10.0,10.0,0.0,160.0/128.0,
-        		  20.0,20,
-        		  1.4);
+    // KFVM::ProblemSetup ps("data/IsenVort",
+    //     		  128,128,8,
+    //     		  -10.0,10.0,-10.0,10.0,0.0,160.0/128.0,
+    //     		  20.0,20,
+    //     		  1.4);
     
     // KFVM::ProblemSetup ps("data/LinAdv",
     //     		  128,128,8,
@@ -86,6 +86,18 @@ int main(int argc, char* argv[]) {
     // 			  0.0,2.0*M_PI,0.0,2.0*M_PI,0.0,2.0*M_PI,
     // 			  10.75,100,
     // 			  1.4);
+    
+    // KFVM::ProblemSetup ps("data/OrszagTang",
+    //     		  128,128,64,
+    //     		  0.0,1.0,0.0,1.0,0.0,1.0,
+    //     		  1.0,20,
+    //     		  1.4);
+    
+    KFVM::ProblemSetup ps("data/OrszagTang",
+        		  64,64,64,
+        		  0.0,1.0,0.0,1.0,0.0,1.0,
+        		  1.0,20,
+        		  1.4);
 
     // Create solver object to store and advance solution
     KFVM::Solver solver(ps);

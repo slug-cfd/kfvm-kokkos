@@ -12,12 +12,12 @@
 
 #include "Dimension.H"
 #include "Geometry.H"
-#include "SimVar.H"
 #include "Types.H"
 #include "ProblemSetup.H"
 #include "NetCDFWriter.H"
 #include "numeric/Numeric.H"
 #include "stencil/Stencil.H"
+#include "physics/Physics_K.H"
 
 namespace KFVM {
 
@@ -32,6 +32,8 @@ namespace KFVM {
     Geometry geom;
     // Stencil object for Riemann state reconstruction
     Stencil::Stencil stencil;
+    // Boundary condition coefficients
+    Physics::BCCoeffs<eqType> bcCoeff;
     // Cell-based data
     CellDataView U_halo,U1_halo,U2_halo,U3_halo,U4_halo,K,Ktil;
     // Auxiliary data (cell-based but different number of components)

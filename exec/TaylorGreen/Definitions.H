@@ -1,6 +1,8 @@
 #ifndef DEFINITIONS_H_
 #define DEFINITIONS_H_
 
+#include "../../src/physics/EquationTypes.H"
+
 // Space dimension of problem
 #define SPACE_DIM 3
 
@@ -12,5 +14,7 @@
 
 // Floating point precision (1 for double, 0 for single)
 #define FLOAT_PRECISION 0
+
+constexpr KFVM::EquationType eqType = KFVM::EquationType::Euler;
 
 #endif

@@ -11,7 +11,7 @@
 #include <Definitions.H>
 
 #include "Dimension.H"
-#include "SimVar.H"
+#include "physics/EquationTypes.H"
 
 namespace KFVM {
 
@@ -27,6 +27,13 @@ namespace KFVM {
 
   // Enumeration of face names associated to [2*SPACE_DIM] entry in FaceDataView
   enum FaceLabel {west = 0, east, south, north, bottom, top};
+  
+  // Supported boundary conditions
+  enum BCType {periodic = 0,outflow,reflecting,user};
+
+  // Set number of evolved and auxiliary variables
+  constexpr std::size_t NUM_VARS = NUM_EQN_VARS[eqType];
+  constexpr std::size_t NUM_AUX = NUM_EQN_AUX[eqType];
 
   // Kokkos spaces, mostly here for debugging
 #ifdef KFVM_DEBUG

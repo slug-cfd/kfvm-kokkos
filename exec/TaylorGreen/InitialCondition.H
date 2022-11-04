@@ -7,7 +7,9 @@
 
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
-{  
+{
+  using Physics::EulerAdiabatic::SimVar;
+  
   const Real L = 1.0,u0 = 1.0,rho0 = 1.0,p0 = 1.0;//,p0 = 100.0;
 
   const Real u = u0*sin(x/L)*cos(y/L)*cos(z/L);

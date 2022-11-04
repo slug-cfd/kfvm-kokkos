@@ -4,6 +4,8 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
+  using Physics::EulerAdiabatic::SimVar;
+  
   (void) x;
   (void) z;
   Real ay = Kokkos::Experimental::fabs(y);

@@ -4,12 +4,12 @@
 
 #include <Kokkos_Core.hpp>
 
-#include "../SimVar.H"
+#include <Definitions.H>
+
 #include "../Types.H"
 #include "../ProblemSetup.H"
 #include "../Geometry.H"
 #include "../numeric/Numeric.H"
-#include "Definitions.H"
 #include "EvalFunctionals.H"
 #include "CSEKernel.H"
 #include "Stencil.H"

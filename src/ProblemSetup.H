@@ -11,7 +11,6 @@
 #include "Types.H"
 #include "physics/EquationTypes.H"
 #include "FluidProperties.H"
-#include "BoundaryConditions.H"
 
 #ifndef STENCIL_RADIUS
 #define STENCIL_RADIUS 2
@@ -29,7 +28,7 @@ namespace KFVM {
 
     // Array of boundary conditions
     // Note: always 6 entries (2*3) even in 2D
-    static std::array<BoundaryConditions::BCType,6> bcType;
+    static std::array<BCType,6> bcType;
     
     // Stencil settings
     const idx_t rad = STENCIL_RADIUS;
