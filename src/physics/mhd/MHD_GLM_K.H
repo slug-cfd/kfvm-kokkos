@@ -30,12 +30,16 @@ namespace KFVM {
         Real gm = gam - 1.0;
         Real rho = ref[SimVar::dens];
         Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
+        Real bx = ref[SimVar::magx],by = ref[SimVar::magy],bz = ref[SimVar::magz];
         Real vsq = (u*u + v*v + w*w)/2.0;
         // Doing etot first allows state to be overwritten safely
         state(SimVar::etot) = gm*(vsq*state(SimVar::dens) -
-                                  u*state(SimVar::momx) - 
-                                  v*state(SimVar::momy) - 
-                                  w*state(SimVar::momz) +
+                                  u*state(SimVar::momx) -
+                                  v*state(SimVar::momy) -
+                                  w*state(SimVar::momz) -
+                                  bx*state(SimVar::magx) -
+                                  by*state(SimVar::magy) -
+                                  bz*state(SimVar::magz) +
                                   state(SimVar::etot));
       
         state(SimVar::momx) = (state(SimVar::momx) - u*state(SimVar::dens))/rho;
@@ -51,12 +55,16 @@ namespace KFVM {
         Real gm = gam - 1.0;
         Real rho = ref[SimVar::dens];
         Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
+        Real bx = ref[SimVar::magx],by = ref[SimVar::magy],bz = ref[SimVar::magz];
         Real vsq = (u*u + v*v + w*w)/2.0;
         // Doing etot first allows state to be overwritten safely
         state(SimVar::etot) = (vsq*state(SimVar::dens) +
                                rho*u*state(SimVar::momx) + 
                                rho*v*state(SimVar::momy) + 
                                rho*w*state(SimVar::momz) +
+                               bx*state(SimVar::magx) + 
+                               by*state(SimVar::magy) + 
+                               bz*state(SimVar::magz) +
                                state(SimVar::etot)/gm);
       
         state(SimVar::momx) = (rho*state(SimVar::momx) + u*state(SimVar::dens));
@@ -84,6 +92,12 @@ namespace KFVM {
       {
         using MHD_GLM::SimVar;
         using MHD_GLM::AuxVar;
+
+	// Try not to assume the order of SimVars
+	Real ua[NUM_VARS];
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  ua[nV] = U(i,j,nV);
+	}
         
 	// Set velocities
 	V(i,j,AuxVar::velx) = U(i,j,SimVar::momx)/U(i,j,SimVar::dens);
@@ -91,13 +105,10 @@ namespace KFVM {
 	V(i,j,AuxVar::velz) = U(i,j,SimVar::momz)/U(i,j,SimVar::dens);
 
 	// Internal energy and pressure
-	Real ekin = U(i,j,SimVar::dens)*(V(i,j,AuxVar::velx)*V(i,j,AuxVar::velx) +
-					 V(i,j,AuxVar::vely)*V(i,j,AuxVar::vely) +
-					 V(i,j,AuxVar::velz)*V(i,j,AuxVar::velz))/2.0;
-	V(i,j,AuxVar::eint) = (U(i,j,SimVar::etot) - ekin)/U(i,j,SimVar::dens);
-	V(i,j,AuxVar::pres) = (1.0 - fProp.gamma)*(U(i,j,SimVar::etot) - ekin);
-	V(i,j,AuxVar::prsg) = 0.0;
-	V(i,j,AuxVar::prsb) = 0.0;
+	V(i,j,AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(fProp.gamma,ua);
+	V(i,j,AuxVar::pres) = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,ua);
+	V(i,j,AuxVar::prsg) = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,ua);
+	V(i,j,AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(ua);
       }
 #else
       KOKKOS_INLINE_FUNCTION
@@ -105,6 +116,12 @@ namespace KFVM {
       {
         using MHD_GLM::SimVar;
         using MHD_GLM::AuxVar;
+
+	// Try not to assume the order of SimVars
+	Real ua[NUM_VARS];
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  ua[nV] = U(i,j,k,nV);
+	}
         
 	// Set velocities
 	V(i,j,k,AuxVar::velx) = U(i,j,k,SimVar::momx)/U(i,j,k,SimVar::dens);
@@ -112,13 +129,10 @@ namespace KFVM {
 	V(i,j,k,AuxVar::velz) = U(i,j,k,SimVar::momz)/U(i,j,k,SimVar::dens);
 
 	// Internal energy and pressure
-	Real ekin = U(i,j,k,SimVar::dens)*(V(i,j,k,AuxVar::velx)*V(i,j,k,AuxVar::velx) +
-					 V(i,j,k,AuxVar::vely)*V(i,j,k,AuxVar::vely) +
-					 V(i,j,k,AuxVar::velz)*V(i,j,k,AuxVar::velz))/2.0;
-	V(i,j,k,AuxVar::eint) = (U(i,j,k,SimVar::etot) - ekin)/U(i,j,k,SimVar::dens);
-	V(i,j,k,AuxVar::pres) = (1.0 - fProp.gamma)*(U(i,j,k,SimVar::etot) - ekin);
-	V(i,j,k,AuxVar::prsg) = 0.0;
-	V(i,j,k,AuxVar::prsb) = 0.0;
+	V(i,j,k,AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(fProp.gamma,ua);
+	V(i,j,k,AuxVar::pres) = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,ua);
+	V(i,j,k,AuxVar::prsg) = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,ua);
+	V(i,j,k,AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(ua);
       }
 #endif
     };
@@ -140,16 +154,11 @@ namespace KFVM {
       {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // pull out states
-	  const Real uL[] = {U(i,j,0,nQ,0),
-			     U(i,j,0,nQ,1),
-			     U(i,j,0,nQ,2),
-			     U(i,j,0,nQ,3),
-			     U(i,j,0,nQ,4)};
-	  const Real uR[] = {U(i,j,1,nQ,0),
-			     U(i,j,1,nQ,1),
-			     U(i,j,1,nQ,2),
-			     U(i,j,1,nQ,3),
-			     U(i,j,1,nQ,4)};
+	  Real uL[NUM_VARS],uR[NUM_VARS];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    uL[nV] = U(i,j,0,nQ,nV);
+	    uR[nV] = U(i,j,1,nQ,nV);
+	  }
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
@@ -157,11 +166,10 @@ namespace KFVM {
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
-	  U(i,j,0,nQ,0) = F[0]; U(i,j,1,nQ,0) = F[0];
-	  U(i,j,0,nQ,1) = F[1]; U(i,j,1,nQ,1) = F[1];
-	  U(i,j,0,nQ,2) = F[2]; U(i,j,1,nQ,2) = F[2];
-	  U(i,j,0,nQ,3) = F[3]; U(i,j,1,nQ,3) = F[3];
-	  U(i,j,0,nQ,4) = F[4]; U(i,j,1,nQ,4) = F[4];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    U(i,j,0,nQ,nV) = F[nV];
+	    U(i,j,1,nQ,nV) = F[nV];
+	  }
 	}
       }
 #else
@@ -170,28 +178,22 @@ namespace KFVM {
       {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
 	  // pull out states
-	  const Real uL[] = {U(i,j,k,0,nQ,0),
-			     U(i,j,k,0,nQ,1),
-			     U(i,j,k,0,nQ,2),
-			     U(i,j,k,0,nQ,3),
-			     U(i,j,k,0,nQ,4)};
-	  const Real uR[] = {U(i,j,k,1,nQ,0),
-			     U(i,j,k,1,nQ,1),
-			     U(i,j,k,1,nQ,2),
-			     U(i,j,k,1,nQ,3),
-			     U(i,j,k,1,nQ,4)};
-
+	  Real uL[NUM_VARS],uR[NUM_VARS];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    uL[nV] = U(i,j,k,0,nQ,nV);
+	    uR[nV] = U(i,j,k,1,nQ,nV);
+	  }
+	  
 	  // Calculate flux
 	  Real F[NUM_VARS];
 	  Real vq = MHD_GLM_HLL_X(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
-	  U(i,j,k,0,nQ,0) = F[0]; U(i,j,k,1,nQ,0) = F[0];
-	  U(i,j,k,0,nQ,1) = F[1]; U(i,j,k,1,nQ,1) = F[1];
-	  U(i,j,k,0,nQ,2) = F[2]; U(i,j,k,1,nQ,2) = F[2];
-	  U(i,j,k,0,nQ,3) = F[3]; U(i,j,k,1,nQ,3) = F[3];
-	  U(i,j,k,0,nQ,4) = F[4]; U(i,j,k,1,nQ,4) = F[4];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    U(i,j,k,0,nQ,nV) = F[nV];
+	    U(i,j,k,1,nQ,nV) = F[nV];
+	  }
 	}
       }
 #endif
@@ -214,16 +216,11 @@ namespace KFVM {
       {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  // pull out states
-	  const Real uL[] = {U(i,j,0,nQ,0),
-			     U(i,j,0,nQ,1),
-			     U(i,j,0,nQ,2),
-			     U(i,j,0,nQ,3),
-			     U(i,j,0,nQ,4)};
-	  const Real uR[] = {U(i,j,1,nQ,0),
-			     U(i,j,1,nQ,1),
-			     U(i,j,1,nQ,2),
-			     U(i,j,1,nQ,3),
-			     U(i,j,1,nQ,4)};
+	  Real uL[NUM_VARS],uR[NUM_VARS];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    uL[nV] = U(i,j,0,nQ,nV);
+	    uR[nV] = U(i,j,1,nQ,nV);
+	  }
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
@@ -231,11 +228,10 @@ namespace KFVM {
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
-	  U(i,j,0,nQ,0) = F[0]; U(i,j,1,nQ,0) = F[0];
-	  U(i,j,0,nQ,1) = F[1]; U(i,j,1,nQ,1) = F[1];
-	  U(i,j,0,nQ,2) = F[2]; U(i,j,1,nQ,2) = F[2];
-	  U(i,j,0,nQ,3) = F[3]; U(i,j,1,nQ,3) = F[3];
-	  U(i,j,0,nQ,4) = F[4]; U(i,j,1,nQ,4) = F[4];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    U(i,j,0,nQ,nV) = F[nV];
+	    U(i,j,1,nQ,nV) = F[nV];
+	  }
 	}
       }
 #else
@@ -244,28 +240,22 @@ namespace KFVM {
       {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
 	  // pull out states
-	  const Real uL[] = {U(i,j,k,0,nQ,0),
-			     U(i,j,k,0,nQ,1),
-			     U(i,j,k,0,nQ,2),
-			     U(i,j,k,0,nQ,3),
-			     U(i,j,k,0,nQ,4)};
-	  const Real uR[] = {U(i,j,k,1,nQ,0),
-			     U(i,j,k,1,nQ,1),
-			     U(i,j,k,1,nQ,2),
-			     U(i,j,k,1,nQ,3),
-			     U(i,j,k,1,nQ,4)};
-
+	  Real uL[NUM_VARS],uR[NUM_VARS];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    uL[nV] = U(i,j,k,0,nQ,nV);
+	    uR[nV] = U(i,j,k,1,nQ,nV);
+	  }
+	  
 	  // Calculate flux
 	  Real F[NUM_VARS];
 	  Real vq = MHD_GLM_HLL_Y(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
-	  U(i,j,k,0,nQ,0) = F[0]; U(i,j,k,1,nQ,0) = F[0];
-	  U(i,j,k,0,nQ,1) = F[1]; U(i,j,k,1,nQ,1) = F[1];
-	  U(i,j,k,0,nQ,2) = F[2]; U(i,j,k,1,nQ,2) = F[2];
-	  U(i,j,k,0,nQ,3) = F[3]; U(i,j,k,1,nQ,3) = F[3];
-	  U(i,j,k,0,nQ,4) = F[4]; U(i,j,k,1,nQ,4) = F[4];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    U(i,j,k,0,nQ,nV) = F[nV];
+	    U(i,j,k,1,nQ,nV) = F[nV];
+	  }
 	}
       }
 #endif
@@ -288,16 +278,11 @@ namespace KFVM {
       {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
 	  // pull out states
-	  const Real uL[] = {U(i,j,k,0,nQ,0),
-			     U(i,j,k,0,nQ,1),
-			     U(i,j,k,0,nQ,2),
-			     U(i,j,k,0,nQ,3),
-			     U(i,j,k,0,nQ,4)};
-	  const Real uR[] = {U(i,j,k,1,nQ,0),
-			     U(i,j,k,1,nQ,1),
-			     U(i,j,k,1,nQ,2),
-			     U(i,j,k,1,nQ,3),
-			     U(i,j,k,1,nQ,4)};
+	  Real uL[NUM_VARS],uR[NUM_VARS];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    uL[nV] = U(i,j,k,0,nQ,nV);
+	    uR[nV] = U(i,j,k,1,nQ,nV);
+	  }
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
@@ -305,11 +290,10 @@ namespace KFVM {
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
-	  U(i,j,k,0,nQ,0) = F[0]; U(i,j,k,1,nQ,0) = F[0];
-	  U(i,j,k,0,nQ,1) = F[1]; U(i,j,k,1,nQ,1) = F[1];
-	  U(i,j,k,0,nQ,2) = F[2]; U(i,j,k,1,nQ,2) = F[2];
-	  U(i,j,k,0,nQ,3) = F[3]; U(i,j,k,1,nQ,3) = F[3];
-	  U(i,j,k,0,nQ,4) = F[4]; U(i,j,k,1,nQ,4) = F[4];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    U(i,j,k,0,nQ,nV) = F[nV];
+	    U(i,j,k,1,nQ,nV) = F[nV];
+	  }
 	}
       }
 #endif
@@ -364,7 +348,7 @@ namespace KFVM {
 	      U(i + xo,j + yo,SimVar::etot)
 	    };
 	    minDens = fmin(minDens,state[0]);
-	    minPres = fmin(minPres,EOS<EquationType::MHD_GLM>::pres(fProp.gamma,state));
+	    minPres = fmin(minPres,EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state));
 	  }
 	}
 	Real rDensDiff = rDens - minDens;

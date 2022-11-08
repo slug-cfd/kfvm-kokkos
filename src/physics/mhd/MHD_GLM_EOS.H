@@ -14,18 +14,13 @@ namespace KFVM {
     template<>
     struct EOS<EquationType::MHD_GLM>
     {
+      // Raw array versions
       KOKKOS_INLINE_FUNCTION
       static Real ekin(const Real U[NUM_VARS])
       {
         return 0.5*(U[MHD_GLM::SimVar::momx]*U[MHD_GLM::SimVar::momx] +
 		    U[MHD_GLM::SimVar::momy]*U[MHD_GLM::SimVar::momy] +
 		    U[MHD_GLM::SimVar::momz]*U[MHD_GLM::SimVar::momz])/U[MHD_GLM::SimVar::dens];
-      }
-      
-      KOKKOS_INLINE_FUNCTION
-      static Real pres(Real gamma,const Real U[NUM_VARS])
-      {  
-        return (gamma - 1.0)*(U[MHD_GLM::SimVar::etot] - ekin(U));
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -39,13 +34,25 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real prsg(Real gamma,const Real U[NUM_VARS])
       {
-        return pres(gamma,U) - prsb(U);
+        return (gamma - 1.0)*(U[MHD_GLM::SimVar::etot] - prsb(U) - ekin(U));
+      }
+      
+      KOKKOS_INLINE_FUNCTION
+      static Real pres(Real gamma,const Real U[NUM_VARS])
+      {  
+        return prsg(gamma,U) + prsb(U);
+      }
+      
+      KOKKOS_INLINE_FUNCTION
+      static Real eint(Real gamma,const Real U[NUM_VARS])
+      {
+        return (U[MHD_GLM::SimVar::etot] - prsb(U) - ekin(U))/U[MHD_GLM::SimVar::dens];
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real soundspeed(Real gamma,const Real U[NUM_VARS])
       {
-        return Kokkos::Experimental::sqrt(gamma*pres(gamma,U)/U[MHD_GLM::SimVar::dens]);
+        return Kokkos::Experimental::sqrt(gamma*prsg(gamma,U)/U[MHD_GLM::SimVar::dens]);
       }
       
     };

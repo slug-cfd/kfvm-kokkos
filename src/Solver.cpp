@@ -249,13 +249,13 @@ namespace KFVM {
     // 			  stencil.faceWeights));
 
     // Enforce positivity of Riemann states
-    Kokkos::parallel_for("PosPres",cellRng,
-			 Physics::PositivityPreserve_K<eqType,decltype(U)>
-			 (U,
-			  KFVM_D_DECL(faceVals.xDir,
-				      faceVals.yDir,
-				      faceVals.zDir),
-			  ps.fluidProp));
+    // Kokkos::parallel_for("PosPres",cellRng,
+    // 			 Physics::PositivityPreserve_K<eqType,decltype(U)>
+    // 			 (U,
+    // 			  KFVM_D_DECL(faceVals.xDir,
+    // 				      faceVals.yDir,
+    // 				      faceVals.zDir),
+    // 			  ps.fluidProp));
   }
 
 void Solver::setCellBCs(CellDataView sol_halo,Real t)

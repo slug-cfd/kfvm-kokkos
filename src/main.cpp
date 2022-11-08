@@ -87,17 +87,17 @@ int main(int argc, char* argv[]) {
     // 			  10.75,100,
     // 			  1.4);
     
-    // KFVM::ProblemSetup ps("data/OrszagTang",
-    //     		  128,128,64,
-    //     		  0.0,1.0,0.0,1.0,0.0,1.0,
-    //     		  1.0,20,
-    //     		  1.4);
-    
     KFVM::ProblemSetup ps("data/OrszagTang",
-        		  64,64,64,
+        		  256,256,8,
         		  0.0,1.0,0.0,1.0,0.0,1.0,
         		  1.0,20,
-        		  1.4);
+        		  5.0/3.0);
+    
+    // KFVM::ProblemSetup ps("data/OrszagTang",
+    //     		  64,64,64,
+    //     		  0.0,1.0,0.0,1.0,0.0,1.0,
+    //     		  1.0,20,
+    //     		  5.0/3.0);
 
     // Create solver object to store and advance solution
     KFVM::Solver solver(ps);
