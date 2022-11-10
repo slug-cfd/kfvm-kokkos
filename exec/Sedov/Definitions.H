@@ -15,7 +15,6 @@
 // Floating point precision (1 for double, 0 for single)
 #define FLOAT_PRECISION 1
 
-// Define one of the following devices
 #define KFVM_DEBUG
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Euler;

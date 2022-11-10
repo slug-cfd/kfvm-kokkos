@@ -86,8 +86,8 @@ namespace KFVM {
       
       // Wave speed estimates
       mhdGlmSpeed(gamma,vord[0],bord,uL,uR,pL,pR,&sL,&sR);
-      sMax = fmax(fabs(sL),fabs(sR));
-      ch = 0.5*sMax;
+      ch = 0.1;
+      sMax = fmax(fabs(sL),fmax(fabs(sR),ch));
       
       // Find appropriate region and fill in flux vector
       if(sR > 0) {

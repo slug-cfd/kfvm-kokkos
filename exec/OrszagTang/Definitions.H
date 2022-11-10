@@ -4,7 +4,7 @@
 #include "../../src/physics/EquationTypes.H"
 
 // Space dimension of problem
-#define SPACE_DIM 2
+#define SPACE_DIM 3
 
 // Stencil radius (2-4)
 #define STENCIL_RADIUS 2
@@ -13,7 +13,7 @@
 #define NUM_QUAD_PTS 3
 
 // Floating point precision (1 for double, 0 for single)
-#define FLOAT_PRECISION 1
+#define FLOAT_PRECISION 0
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::MHD_GLM;
 

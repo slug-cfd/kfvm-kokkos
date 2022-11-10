@@ -203,6 +203,11 @@ namespace KFVM {
 			 (rhs,
 			  KFVM_D_DECL(faceVals.xDir,faceVals.yDir,faceVals.zDir),
 			  qr.ab,qr.wt,geom));
+
+    // Fill in source terms
+    auto sol = trimCellHalo(sol_halo);
+    Kokkos::parallel_for("SourceTerms",cellRng,
+			 Physics::SourceTerms_K<eqType,decltype(sol),decltype(rhs)>(sol,rhs,ps.fluidProp,geom));
     
     Kokkos::Profiling::popRegion();
     return maxVel;
@@ -249,13 +254,13 @@ namespace KFVM {
     // 			  stencil.faceWeights));
 
     // Enforce positivity of Riemann states
-    // Kokkos::parallel_for("PosPres",cellRng,
-    // 			 Physics::PositivityPreserve_K<eqType,decltype(U)>
-    // 			 (U,
-    // 			  KFVM_D_DECL(faceVals.xDir,
-    // 				      faceVals.yDir,
-    // 				      faceVals.zDir),
-    // 			  ps.fluidProp));
+    Kokkos::parallel_for("PosPres",cellRng,
+			 Physics::PositivityPreserve_K<eqType,decltype(U)>
+			 (U,
+			  KFVM_D_DECL(faceVals.xDir,
+				      faceVals.yDir,
+				      faceVals.zDir),
+			  ps.fluidProp));
   }
 
 void Solver::setCellBCs(CellDataView sol_halo,Real t)

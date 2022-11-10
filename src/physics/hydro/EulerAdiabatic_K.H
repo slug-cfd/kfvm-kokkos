@@ -14,6 +14,7 @@
 #include "EulerAdiabatic_SimVar.H"
 #include "EulerAdiabatic_EOS.H"
 #include "EulerAdiabatic_Riemann.H"
+#include "Geometry.H"
 
 namespace KFVM {
 
@@ -297,6 +298,37 @@ namespace KFVM {
 	  U(i,j,k,0,nQ,3) = F[3]; U(i,j,k,1,nQ,3) = F[3];
 	  U(i,j,k,0,nQ,4) = F[4]; U(i,j,k,1,nQ,4) = F[4];
 	}
+      }
+#endif
+    };
+
+    template<class UDataView,class RHSDataView>
+    struct SourceTerms_K<EquationType::Euler,UDataView,RHSDataView>
+    {
+      UDataView U;
+      RHSDataView RHS;
+      FluidProperties fProp;
+      Geometry geom;
+
+      SourceTerms_K(const UDataView& U_,const RHSDataView RHS_,
+		    const FluidProperties& fProp_,const Geometry& geom_):
+	U(U_),
+	RHS(RHS_),
+	fProp(fProp_),
+	geom(geom_)
+      {}
+
+#if (SPACE_DIM == 2)
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const idx_t i,const idx_t j) const
+      {
+	return;
+      }
+#else
+      KOKKOS_INLINE_FUNCTION
+      void operator()(const idx_t i,const idx_t j,const idx_t k) const
+      {
+	return;
       }
 #endif
     };

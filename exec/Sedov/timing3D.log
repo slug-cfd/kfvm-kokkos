@@ -1,0 +1,147 @@
+Regions: 
+
+- Solver::Solve
+ (REGION)   1038.579534 1 1038.579534 100.324598 99.602362
+- Solver::TakeStep
+ (REGION)   1037.704055 302 3.436106 100.240028 99.518401
+- Solver::evalRHS
+ (REGION)   1037.430448 1510 0.687040 100.213599 99.492161
+- Stencil::Stencil
+ (REGION)   4.032892 1 4.032892 0.389569 0.386764
+- Solver::setFaceBCs
+ (REGION)   0.847533 1510 0.000561 0.081870 0.081281
+- Solver::setCellBCs
+ (REGION)   0.186283 1510 0.000123 0.017995 0.017865
+- Solver::evalAuxiliary
+ (REGION)   0.002305 17 0.000136 0.000223 0.000221
+- Solver::setIC
+ (REGION)   0.002203 1 0.002203 0.000213 0.000211
+
+-------------------------------------------------------------------------
+Kernels: 
+
+- FaceRecon
+ (ParFor)   972.696852 1510 0.644170 93.960469 93.284049
+- PosPres
+ (ParFor)   14.605915 1510 0.009673 1.410901 1.400744
+- RiemannSolver::EW
+ (ParRed)   12.284707 1510 0.008136 1.186677 1.178134
+- RiemannSolver::NS
+ (ParRed)   10.267617 1510 0.006800 0.991830 0.984690
+- IntegrateFlux
+ (ParFor)   9.641835 1510 0.006385 0.931381 0.924676
+- RiemannSolver::TB
+ (ParRed)   9.628704 1510 0.006377 0.930113 0.923417
+- Kokkos::View::initialization [StenWork] via memset
+ (ParFor)   4.813967 1510 0.003188 0.465019 0.461671
+- FaceBCs::East::Outflow
+ (ParFor)   0.331474 1510 0.000220 0.032020 0.031789
+- FaceBCs::West::Outflow
+ (ParFor)   0.327144 1510 0.000217 0.031601 0.031374
+- RKStage_5
+ (ParFor)   0.084286 302 0.000279 0.008142 0.008083
+- CellBCs::East
+ (ParFor)   0.059017 1510 0.000039 0.005701 0.005660
+- CellBCs::West
+ (ParFor)   0.057634 1510 0.000038 0.005567 0.005527
+- RKStage_3
+ (ParFor)   0.049455 302 0.000164 0.004777 0.004743
+- FaceBCs::South::Outflow
+ (ParFor)   0.049281 1510 0.000033 0.004760 0.004726
+- RKStage_4
+ (ParFor)   0.047947 302 0.000159 0.004632 0.004598
+- RKStage_2
+ (ParFor)   0.047601 302 0.000158 0.004598 0.004565
+- FaceBCs::Bottom::Outflow
+ (ParFor)   0.042260 1510 0.000028 0.004082 0.004053
+- FaceBCs::North::Outflow
+ (ParFor)   0.042015 1510 0.000028 0.004059 0.004029
+- FaceBCs::Top::Outflow
+ (ParFor)   0.039104 1510 0.000026 0.003777 0.003750
+- RKStage_1
+ (ParFor)   0.037353 302 0.000124 0.003608 0.003582
+- CellBCs::South
+ (ParFor)   0.015878 1510 0.000011 0.001534 0.001523
+- CellBCs::North
+ (ParFor)   0.014370 1510 0.000010 0.001388 0.001378
+- CellBCs::Top
+ (ParFor)   0.014048 1510 0.000009 0.001357 0.001347
+- CellBCs::Bottom
+ (ParFor)   0.013830 1510 0.000009 0.001336 0.001326
+- AuxVars
+ (ParFor)   0.002258 17 0.000133 0.000218 0.000217
+- IntegrateIC
+ (ParFor)   0.002193 1 0.002193 0.000212 0.000210
+- Kokkos::View::initialization [FaceVals::xDir] via memset
+ (ParFor)   0.001976 3 0.000659 0.000191 0.000190
+- Kokkos::View::initialization [U] via memset
+ (ParFor)   0.000060 1 0.000060 0.000006 0.000006
+- Kokkos::View::initialization [U_stage4] via memset
+ (ParFor)   0.000055 1 0.000055 0.000005 0.000005
+- Kokkos::View::initialization [U_stage1] via memset
+ (ParFor)   0.000049 1 0.000049 0.000005 0.000005
+- Kokkos::View::initialization [U_stage3] via memset
+ (ParFor)   0.000049 1 0.000049 0.000005 0.000005
+- Kokkos::View::initialization [U_stage2] via memset
+ (ParFor)   0.000048 1 0.000048 0.000005 0.000005
+- Kokkos::View::initialization [RHS] via memset
+ (ParFor)   0.000043 1 0.000043 0.000004 0.000004
+- Kokkos::View::initialization [U_aux] via memset
+ (ParFor)   0.000042 1 0.000042 0.000004 0.000004
+- Kokkos::View::initialization [RHS_til] via memset
+ (ParFor)   0.000042 1 0.000042 0.000004 0.000004
+- Kokkos::View::initialization [Stencil::faceWeights_mirror] via memset
+ (ParFor)   0.000025 1 0.000025 0.000002 0.000002
+- Kokkos::View::initialization [Stencil::derivWeights_mirror] via memset
+ (ParFor)   0.000019 1 0.000019 0.000002 0.000002
+- Kokkos::View::initialization [Physics::BCCoeffs::Reflect::x] via memset
+ (ParFor)   0.000010 1 0.000010 0.000001 0.000001
+- Kokkos::View::initialization [Stencil::faceWeights] via memset
+ (ParFor)   0.000008 1 0.000008 0.000001 0.000001
+- Kokkos::View::initialization [Stencil::derivWeights] via memset
+ (ParFor)   0.000007 1 0.000007 0.000001 0.000001
+- Kokkos::View::initialization [QuadRuleAbscissae] via memset
+ (ParFor)   0.000007 1 0.000007 0.000001 0.000001
+- Kokkos::View::initialization [Stencil::tOff] via memset
+ (ParFor)   0.000006 1 0.000006 0.000001 0.000001
+- Kokkos::View::initialization [Stencil::lOff] via memset
+ (ParFor)   0.000006 1 0.000006 0.000001 0.000001
+- Kokkos::View::initialization [Physics::BCCoeffs::Reflect::y] via memset
+ (ParFor)   0.000006 1 0.000006 0.000001 0.000001
+- Kokkos::View::initialization [QuadRuleWeights] via memset
+ (ParFor)   0.000005 1 0.000005 0.000000 0.000000
+- Kokkos::View::initialization [Physics::BCCoeffs::Reflect::z] via memset
+ (ParFor)   0.000005 1 0.000005 0.000000 0.000000
+- Kokkos::View::initialization [Stencil::subIdx] via memset
+ (ParFor)   0.000005 1 0.000005 0.000000 0.000000
+- Kokkos::View::initialization [Stencil::ttOff] via memset
+ (ParFor)   0.000005 1 0.000005 0.000000 0.000000
+- Kokkos::View::initialization [QuadRuleAbscissae_mirror] via memset
+ (ParFor)   0.000003 1 0.000003 0.000000 0.000000
+- Kokkos::View::initialization [Stencil::lOff_mirror] via memset
+ (ParFor)   0.000002 1 0.000002 0.000000 0.000000
+- Kokkos::View::initialization [Physics::BCCoeffs::Reflect::x_mirror] via memset
+ (ParFor)   0.000002 1 0.000002 0.000000 0.000000
+- Kokkos::View::initialization [Stencil::ttOff_mirror] via memset
+ (ParFor)   0.000001 1 0.000001 0.000000 0.000000
+- Kokkos::View::initialization [Physics::BCCoeffs::Reflect::z_mirror] via memset
+ (ParFor)   0.000001 1 0.000001 0.000000 0.000000
+- Kokkos::View::initialization [Physics::BCCoeffs::Reflect::y_mirror] via memset
+ (ParFor)   0.000001 1 0.000001 0.000000 0.000000
+- Kokkos::View::initialization [QuadRuleWeights_mirror] via memset
+ (ParFor)   0.000001 1 0.000001 0.000000 0.000000
+- Kokkos::View::initialization [Stencil::tOff_mirror] via memset
+ (ParFor)   0.000001 1 0.000001 0.000000 0.000000
+- Kokkos::View::initialization [Stencil::subIdx_mirror] via memset
+ (ParFor)   0.000001 1 0.000001 0.000000 0.000000
+
+-------------------------------------------------------------------------
+Summary:
+
+Total Execution Time (incl. Kokkos + non-Kokkos):                1042.72581 seconds
+Total Time in Kokkos kernels:                                    1035.21924 seconds
+   -> Time outside Kokkos kernels:                                  7.50658 seconds
+   -> Percentage in Kokkos kernels:                                   99.28 %
+Total Calls to Kokkos Kernels:                                        30251
+
+-------------------------------------------------------------------------

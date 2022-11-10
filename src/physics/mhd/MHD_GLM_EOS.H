@@ -34,7 +34,8 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real prsg(Real gamma,const Real U[NUM_VARS])
       {
-        return (gamma - 1.0)*(U[MHD_GLM::SimVar::etot] - prsb(U) - ekin(U));
+        return (gamma - 1.0)*(U[MHD_GLM::SimVar::etot] - prsb(U) - ekin(U) -
+			      0.5*U[MHD_GLM::SimVar::psi]*U[MHD_GLM::SimVar::psi]);
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -46,7 +47,8 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real eint(Real gamma,const Real U[NUM_VARS])
       {
-        return (U[MHD_GLM::SimVar::etot] - prsb(U) - ekin(U))/U[MHD_GLM::SimVar::dens];
+        return (U[MHD_GLM::SimVar::etot] - prsb(U) - ekin(U) -
+		0.5*U[MHD_GLM::SimVar::psi]*U[MHD_GLM::SimVar::psi])/U[MHD_GLM::SimVar::dens];
       }
       
       KOKKOS_INLINE_FUNCTION
