@@ -17,6 +17,7 @@
 #include "NetCDFWriter.H"
 #include "numeric/Numeric.H"
 #include "numeric/Numeric_K.H"
+#include "physics/EquationTypes.H"
 #include "physics/Physics_K.H"
 #include "stencil/Stencil_K.H"
 
@@ -24,7 +25,7 @@
 
 namespace KFVM {
   
-  Solver::Solver(const ProblemSetup& ps_):
+  Solver::Solver(ProblemSetup& ps_):
     ps(ps_),
     netCDFWriter(ps),
     geom(ps),
@@ -161,6 +162,17 @@ namespace KFVM {
 
     // Reconstruct face states
     reconstructRiemannStates(sol_halo);
+
+    // Calculate cleaning speed for GLM method
+    auto cellRng =
+      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
+      ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
+    if (eqType == EquationType::MHD_GLM) {
+      ps.fluidProp.ch_glm = 0.0;
+      Kokkos::parallel_reduce("CalculateCH_GLM",cellRng,
+			      Physics::SpeedEstimate_K<eqType>(KFVM_D_DECL(faceVals.xDir,faceVals.yDir,faceVals.zDir),ps.fluidProp),
+			      Kokkos::Max<Real>(ps.fluidProp.ch_glm));
+    }
     
     // Set BCs on Riemann states
     setFaceBCs(t);
@@ -195,9 +207,6 @@ namespace KFVM {
     Real maxVel = std::fmax(vEW,std::fmax(vNS,vTB));
 
     // Integrate fluxes and store into rhs
-    auto cellRng =
-      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
-      ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
     Kokkos::parallel_for("IntegrateFlux",cellRng,
 			 Numeric::IntegrateFlux_K<decltype(rhs)>
 			 (rhs,

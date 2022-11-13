@@ -12,11 +12,14 @@ namespace KFVM {
   
   struct FluidProperties
   {
-    const Real gamma;
+    const Real gamma; // Ratio of specific heats
+
+    Real ch_glm; // Hyperbolic cleaning speed for GLM (not constant!)
 
     // Construct from Problemsetup object
     FluidProperties(const Real gamma_):
-      gamma(gamma_)
+      gamma(gamma_),
+      ch_glm(0.0)
     {}
 
   private:

@@ -14,6 +14,7 @@ namespace KFVM {
     template<EquationType ET> struct RiemannSolverX_K {};
     template<EquationType ET> struct RiemannSolverY_K {};
     template<EquationType ET> struct RiemannSolverZ_K {};
+    template<EquationType ET> struct SpeedEstimate_K {};
     template<EquationType ET,class UViewType,class RHSViewType> struct SourceTerms_K {};
     template<EquationType ET,class UViewType> struct PositivityPreserve_K {};
     template<EquationType ET> struct EOS {};

@@ -23,7 +23,7 @@ namespace KFVM {
 
   class Solver 
   {
-    const ProblemSetup& ps;
+    ProblemSetup& ps;
     // IO object
     NetCDFWriter netCDFWriter;
     // Quadrature rule for face/cell integration
@@ -62,7 +62,7 @@ namespace KFVM {
     
     void setIC();
   public:
-    Solver(const ProblemSetup&);
+    Solver(ProblemSetup&);
     void Solve();
     void TakeStep();
     void evalAuxiliary();
