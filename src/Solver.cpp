@@ -250,18 +250,6 @@ namespace KFVM {
 			  stencil.derivWeights,
                           ps.fluidProp));
 
-    // Linear Kernel reconstruction
-    // Kokkos::parallel_for("FaceRecon",cellRng,
-    // 			 Stencil::KernelLinearRecon_K<decltype(U)>
-    // 			 (U,KFVM_D_DECL(faceVals.xDir,
-    // 					faceVals.yDir,
-    // 					faceVals.zDir),
-    // 			  stenWork,
-    // 			  KFVM_D_DECL(stencil.lOff,
-    // 				      stencil.tOff,
-    // 				      stencil.ttOff),
-    // 			  stencil.faceWeights));
-
     // Enforce positivity of Riemann states
     Kokkos::parallel_for("PosPres",cellRng,
 			 Physics::PositivityPreserve_K<eqType,decltype(U)>

@@ -66,23 +66,11 @@ namespace KFVM {
 		     const Real ch,Real* sL,Real* sR)
     {
       using MHD_GLM::SimVar;
-      using Kokkos::Experimental::sqrt;
       using Kokkos::Experimental::fmax;
       using Kokkos::Experimental::fmin;
-
-      const Real pgL = EOS<EquationType::MHD_GLM>::prsg(gamma,uL);
-      const Real aCaL = (gamma*pgL + (uL[bord[0]]*uL[bord[0]] +
-				      uL[bord[1]]*uL[bord[1]] +
-				      uL[bord[2]]*uL[bord[2]]))/uL[SimVar::dens];
-      const Real aCaxL = gamma*pgL*uL[bord[0]]*uL[bord[0]]/(uL[SimVar::dens]*uL[SimVar::dens]);
-      const Real cfL = sqrt((aCaL + sqrt(aCaL*aCaL - 4.0*aCaxL))/2.0);
-
-      const Real pgR = EOS<EquationType::MHD_GLM>::prsg(gamma,uR);
-      const Real aCaR = (gamma*pgR + (uR[bord[0]]*uR[bord[0]] +
-				      uR[bord[1]]*uR[bord[1]] +
-				      uR[bord[2]]*uR[bord[2]]))/uR[SimVar::dens];
-      const Real aCaxR = gamma*pgR*uR[bord[0]]*uR[bord[0]]/(uR[SimVar::dens]*uR[SimVar::dens]);
-      const Real cfR = sqrt((aCaR + sqrt(aCaR*aCaR - 4.0*aCaxR))/2.0);
+      
+      const Real cfL = EOS<EquationType::MHD_GLM>::fastMagSonic(gamma,uL,uL[bord[0]]);
+      const Real cfR = EOS<EquationType::MHD_GLM>::fastMagSonic(gamma,uR,uR[bord[0]]);
 
       const Real slMs = fmin(uL[lng]/uL[SimVar::dens] - cfL,uR[lng]/uR[SimVar::dens] - cfR);
       const Real slCh = fmin(uL[lng]/uL[SimVar::dens] - ch,uR[lng]/uR[SimVar::dens] - ch);
@@ -92,44 +80,7 @@ namespace KFVM {
       *sL = fmin(slMs,slCh);
       *sR = fmax(srMs,srCh);
     }
-      
-    KOKKOS_INLINE_FUNCTION
-    Real mhdGlmHLL(Real gamma,Real ch,int vord[3],int bord[3],
-		   const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-		   Real F[NUM_VARS])
-    {
-      using MHD_GLM::SimVar;
-      using Kokkos::Experimental::fmax;
-      using Kokkos::Experimental::fabs;
-      
-      Real FT[NUM_VARS];
-      Real sL,sR;
-      
-      // Wave speed estimates
-      mhdGlmSpeed(gamma,vord[0],bord,uL,uR,ch,&sL,&sR);
-      
-      // Find appropriate region and fill in flux vector
-      if(sR > 0) {
-        mhdGlmFlux(gamma,ch,vord,bord,uL,F);
-        if(sL <= 0) {
-          mhdGlmFlux(gamma,ch,vord,bord,uR,FT);
-          F[SimVar::dens] = hll(sL,sR,F[SimVar::dens],FT[SimVar::dens],uL[SimVar::dens],uR[SimVar::dens]);
-          F[vord[0]] = hll(sL,sR,F[vord[0]],FT[vord[0]],uL[vord[0]],uR[vord[0]]);
-          F[vord[1]] = hll(sL,sR,F[vord[1]],FT[vord[1]],uL[vord[1]],uR[vord[1]]);
-          F[vord[2]] = hll(sL,sR,F[vord[2]],FT[vord[2]],uL[vord[2]],uR[vord[2]]);
-          F[SimVar::etot] = hll(sL,sR,F[SimVar::etot],FT[SimVar::etot],uL[SimVar::etot],uR[SimVar::etot]);
-          F[bord[0]] = hll(sL,sR,F[bord[0]],FT[bord[0]],uL[bord[0]],uR[bord[0]]);
-          F[bord[1]] = hll(sL,sR,F[bord[1]],FT[bord[1]],uL[bord[1]],uR[bord[1]]);
-          F[bord[2]] = hll(sL,sR,F[bord[2]],FT[bord[2]],uL[bord[2]],uR[bord[2]]);
-          F[SimVar::psi] = hll(sL,sR,F[SimVar::psi],FT[SimVar::psi],uL[SimVar::psi],uR[SimVar::psi]);
-        }
-      } else {
-        mhdGlmFlux(gamma,ch,vord,bord,uR,F);
-      }
-
-      return fmax(fabs(sL),fabs(sR));
-    }
-      
+    
     KOKKOS_INLINE_FUNCTION
     Real mhdGlmKEPES(Real gamma,Real ch,int vord[3],int bord[3],
 		     const Real uL[NUM_VARS],const Real uR[NUM_VARS],
@@ -221,36 +172,6 @@ namespace KFVM {
       }
 
       return sMax;
-    }
-
-    KOKKOS_INLINE_FUNCTION
-    Real MHD_GLM_HLL_X(const Real gamma,const Real ch,
-		       const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-		       Real F[NUM_VARS])
-    {
-      int vord[] = {MHD_GLM::SimVar::momx,MHD_GLM::SimVar::momy,MHD_GLM::SimVar::momz};
-      int bord[] = {MHD_GLM::SimVar::magx,MHD_GLM::SimVar::magy,MHD_GLM::SimVar::magz};
-      return mhdGlmHLL(gamma,ch,vord,bord,uL,uR,F);
-    }
-
-    KOKKOS_INLINE_FUNCTION
-    Real MHD_GLM_HLL_Y(const Real gamma,const Real ch,
-		       const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-		       Real F[NUM_VARS])
-    {
-      int vord[] = {MHD_GLM::SimVar::momy,MHD_GLM::SimVar::momz,MHD_GLM::SimVar::momx};
-      int bord[] = {MHD_GLM::SimVar::magy,MHD_GLM::SimVar::magz,MHD_GLM::SimVar::magx};
-      return mhdGlmHLL(gamma,ch,vord,bord,uL,uR,F);
-    }
-
-    KOKKOS_INLINE_FUNCTION
-    Real MHD_GLM_HLL_Z(const Real gamma,const Real ch,
-		       const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-		       Real F[NUM_VARS])
-    {
-      int vord[] = {MHD_GLM::SimVar::momz,MHD_GLM::SimVar::momx,MHD_GLM::SimVar::momy};
-      int bord[] = {MHD_GLM::SimVar::magz,MHD_GLM::SimVar::magx,MHD_GLM::SimVar::magy};
-      return mhdGlmHLL(gamma,ch,vord,bord,uL,uR,F);
     }
 
     KOKKOS_INLINE_FUNCTION

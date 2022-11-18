@@ -19,7 +19,7 @@ namespace KFVM {
       stenSize(xs_.size()),
       KFVM_D_DECL(xs(xs_),ys(ys_),zs(zs_)),
       eps(eps_),
-      monos(1),
+      monos(SPACE_DIM == 2 ? 1 : 0),
       sysSize(stenSize + monos.nMono),
       K(10*stenSize),
       N(8*stenSize),

@@ -87,7 +87,7 @@ namespace KFVM {
 			(1.0 - gHi)*(1.0 - gLo)/4.0,
 			(1.0 - gHi)*(1.0 - gLo)/4.0};
 #else
-	constexpr Real gHi = 0.8,gLo = 0.7;
+	constexpr Real gHi = 0.75,gLo = 0.7;
 	Real gamma[] = {gHi,
 			(1.0 - gHi)*gLo,
 			(1.0 - gHi)*(1.0 - gLo)/6.0,

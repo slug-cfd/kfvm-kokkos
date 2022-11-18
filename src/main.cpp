@@ -40,8 +40,8 @@ int main(int argc, char* argv[]) {
     // 			  1.4);
     
     // KFVM::ProblemSetup ps("data/Sedov",
-    // 			  64,64,64,
-    // 			  -0.5,0.5,-0.5,0.5,-0.5,0.5,
+    // 			  32,32,32,
+    // 			  0.0,0.5,0.0,0.5,0.0,0.5,
     // 			  0.2,20,
     // 			  1.4);
     
@@ -99,23 +99,35 @@ int main(int argc, char* argv[]) {
     // 			  10.75,100,
     // 			  1.4);
     
+    // KFVM::ProblemSetup ps("data/BrioWuX",
+    //     		  512,8,8,
+    //     		  -1.0,1.0,0.0,8.0/256.0,0.0,8.0/256.0,
+    //     		  0.1,20,
+    //     		  2.0);
+    
     // KFVM::ProblemSetup ps("data/OrszagTang",
     //     		  256,256,8,
     //     		  0.0,1.0,0.0,1.0,0.0,1.0,
     //     		  1.0,20,
     //     		  5.0/3.0);
 
-    KFVM::ProblemSetup ps("data/Rotor",
-        		  512,512,8,
-        		  -0.5,0.5,-0.5,0.5,0.0,1.0/32.0,
-        		  0.15,20,
-        		  1.4);
-
     // KFVM::ProblemSetup ps("data/OrszagTang",
     //     		  64,64,64,
     //     		  0.0,1.0,0.0,1.0,0.0,1.0,
     //     		  0.5,20,
     //     		  5.0/3.0);
+    
+    // KFVM::ProblemSetup ps("data/Rotor",
+    //     		  512,512,8,
+    //     		  -0.5,0.5,-0.5,0.5,0.0,1.0/32.0,
+    //     		  0.15,20,
+    //     		  1.4);
+    
+    KFVM::ProblemSetup ps("data/MagBlast",
+        		  256,256,8,
+        		  -0.5,0.5,-0.5,0.5,0.0,1.0/32.0,
+        		  0.01,20,
+        		  1.4);
 
     // Create solver object to store and advance solution
     KFVM::Solver solver(ps);

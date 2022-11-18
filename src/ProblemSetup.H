@@ -79,7 +79,7 @@ namespace KFVM {
       maxTimeSteps(10000),
       initialTime(Real(0.0)),
       finalTime(finalTime_),
-      initialDeltaT(Real(1.e-8)),
+      initialDeltaT(Real(1.e-10)),
       cfl(SPACE_DIM==3 ? 0.5 : 0.75),
       plotFreq(plotFreq_),
       fluidProp(gamma_)

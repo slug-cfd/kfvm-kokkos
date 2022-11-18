@@ -5,12 +5,14 @@
 #include <cstdint>
 
 #include <Kokkos_Core.hpp>
+#include <limits>
 
 #include "Definitions.H"
 
 #include "../../Types.H"
 #include "../../FluidProperties.H"
 #include "../EquationTypes.H"
+#include "Dimension.H"
 #include "EulerAdiabatic_SimVar.H"
 #include "EulerAdiabatic_EOS.H"
 #include "EulerAdiabatic_Riemann.H"
@@ -26,39 +28,43 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static void Cons2Prim(StateType& state,const Real ref[NUM_VARS],Real gam)
       {
+        using EulerAdiabatic::SimVar;
+	
         Real gm = gam - 1.0;
-        Real rho = ref[EulerAdiabatic::SimVar::dens];
-        Real u = ref[EulerAdiabatic::SimVar::momx]/rho,v = ref[EulerAdiabatic::SimVar::momy]/rho,w = ref[EulerAdiabatic::SimVar::momz]/rho;
+        Real rho = ref[SimVar::dens];
+        Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
         Real vsq = (u*u + v*v + w*w)/2.0;
         // Doing etot first allows state to be overwritten safely
-        state(EulerAdiabatic::SimVar::etot) = gm*(vsq*state(EulerAdiabatic::SimVar::dens) -
-                                  u*state(EulerAdiabatic::SimVar::momx) - 
-                                  v*state(EulerAdiabatic::SimVar::momy) - 
-                                  w*state(EulerAdiabatic::SimVar::momz) +
-                                  state(EulerAdiabatic::SimVar::etot));
+        state(SimVar::etot) = gm*(vsq*state(SimVar::dens) -
+                                  u*state(SimVar::momx) - 
+                                  v*state(SimVar::momy) - 
+                                  w*state(SimVar::momz) +
+                                  state(SimVar::etot));
       
-        state(EulerAdiabatic::SimVar::momx) = (state(EulerAdiabatic::SimVar::momx) - u*state(EulerAdiabatic::SimVar::dens))/rho;
-        state(EulerAdiabatic::SimVar::momy) = (state(EulerAdiabatic::SimVar::momy) - v*state(EulerAdiabatic::SimVar::dens))/rho;
-        state(EulerAdiabatic::SimVar::momz) = (state(EulerAdiabatic::SimVar::momz) - w*state(EulerAdiabatic::SimVar::dens))/rho;
+        state(SimVar::momx) = (state(SimVar::momx) - u*state(SimVar::dens))/rho;
+        state(SimVar::momy) = (state(SimVar::momy) - v*state(SimVar::dens))/rho;
+        state(SimVar::momz) = (state(SimVar::momz) - w*state(SimVar::dens))/rho;
       }
       
       KOKKOS_INLINE_FUNCTION
       static void Prim2Cons(StateType& state,const Real ref[NUM_VARS],Real gam)
       {
+        using EulerAdiabatic::SimVar;
+	
         Real gm = gam - 1.0;
-        Real rho = ref[EulerAdiabatic::SimVar::dens];
-        Real u = ref[EulerAdiabatic::SimVar::momx]/rho,v = ref[EulerAdiabatic::SimVar::momy]/rho,w = ref[EulerAdiabatic::SimVar::momz]/rho;
+        Real rho = ref[SimVar::dens];
+        Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
         Real vsq = (u*u + v*v + w*w)/2.0;
         // Doing etot first allows state to be overwritten safely
-        state(EulerAdiabatic::SimVar::etot) = (vsq*state(EulerAdiabatic::SimVar::dens) +
-                               rho*u*state(EulerAdiabatic::SimVar::momx) + 
-                               rho*v*state(EulerAdiabatic::SimVar::momy) + 
-                               rho*w*state(EulerAdiabatic::SimVar::momz) +
-                               state(EulerAdiabatic::SimVar::etot)/gm);
+        state(SimVar::etot) = (vsq*state(SimVar::dens) +
+                               rho*u*state(SimVar::momx) + 
+                               rho*v*state(SimVar::momy) + 
+                               rho*w*state(SimVar::momz) +
+                               state(SimVar::etot)/gm);
       
-        state(EulerAdiabatic::SimVar::momx) = (rho*state(EulerAdiabatic::SimVar::momx) + u*state(EulerAdiabatic::SimVar::dens));
-        state(EulerAdiabatic::SimVar::momy) = (rho*state(EulerAdiabatic::SimVar::momy) + v*state(EulerAdiabatic::SimVar::dens));
-        state(EulerAdiabatic::SimVar::momz) = (rho*state(EulerAdiabatic::SimVar::momz) + w*state(EulerAdiabatic::SimVar::dens));
+        state(SimVar::momx) = (rho*state(SimVar::momx) + u*state(SimVar::dens));
+        state(SimVar::momy) = (rho*state(SimVar::momy) + v*state(SimVar::dens));
+        state(SimVar::momz) = (rho*state(SimVar::momz) + w*state(SimVar::dens));
       }
     };
 
@@ -75,39 +81,30 @@ namespace KFVM {
         fProp(fProp_)
       {}
 
-#if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
+        using EulerAdiabatic::SimVar;
+        using EulerAdiabatic::AuxVar;
+
+	// Try not to assume the order of SimVars
+	Real ua[NUM_VARS];
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  ua[nV] = U(KFVM_D_DECL(i,j,k),nV);
+	}
+	
 	// Set velocities
-	V(i,j,EulerAdiabatic::AuxVar::velx) = U(i,j,EulerAdiabatic::SimVar::momx)/U(i,j,EulerAdiabatic::SimVar::dens);
-	V(i,j,EulerAdiabatic::AuxVar::vely) = U(i,j,EulerAdiabatic::SimVar::momy)/U(i,j,EulerAdiabatic::SimVar::dens);
-	V(i,j,EulerAdiabatic::AuxVar::velz) = U(i,j,EulerAdiabatic::SimVar::momz)/U(i,j,EulerAdiabatic::SimVar::dens);
+	V(KFVM_D_DECL(i,j,k),AuxVar::velx) =
+	  U(KFVM_D_DECL(i,j,k),SimVar::momx)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
+	V(KFVM_D_DECL(i,j,k),AuxVar::vely) =
+	  U(KFVM_D_DECL(i,j,k),SimVar::momy)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
+	V(KFVM_D_DECL(i,j,k),AuxVar::velz) =
+	  U(KFVM_D_DECL(i,j,k),SimVar::momz)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
 
 	// Internal energy and pressure
-	Real ekin = U(i,j,EulerAdiabatic::SimVar::dens)*(V(i,j,EulerAdiabatic::AuxVar::velx)*V(i,j,EulerAdiabatic::AuxVar::velx) +
-					 V(i,j,EulerAdiabatic::AuxVar::vely)*V(i,j,EulerAdiabatic::AuxVar::vely) +
-					 V(i,j,EulerAdiabatic::AuxVar::velz)*V(i,j,EulerAdiabatic::AuxVar::velz))/2.0;
-	V(i,j,EulerAdiabatic::AuxVar::eint) = (U(i,j,EulerAdiabatic::SimVar::etot) - ekin)/U(i,j,EulerAdiabatic::SimVar::dens);
-	V(i,j,EulerAdiabatic::AuxVar::pres) = (1.0 - fProp.gamma)*(U(i,j,EulerAdiabatic::SimVar::etot) - ekin);
+	V(KFVM_D_DECL(i,j,k),AuxVar::eint) = EOS<EquationType::Euler>::eint(ua);
+	V(KFVM_D_DECL(i,j,k),AuxVar::pres) = EOS<EquationType::Euler>::pres(fProp.gamma,ua);
       }
-#else
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,const idx_t k) const
-      {
-	// Set velocities
-	V(i,j,k,EulerAdiabatic::AuxVar::velx) = U(i,j,k,EulerAdiabatic::SimVar::momx)/U(i,j,k,EulerAdiabatic::SimVar::dens);
-	V(i,j,k,EulerAdiabatic::AuxVar::vely) = U(i,j,k,EulerAdiabatic::SimVar::momy)/U(i,j,k,EulerAdiabatic::SimVar::dens);
-	V(i,j,k,EulerAdiabatic::AuxVar::velz) = U(i,j,k,EulerAdiabatic::SimVar::momz)/U(i,j,k,EulerAdiabatic::SimVar::dens);
-
-	// Internal energy and pressure
-	Real ekin = U(i,j,k,EulerAdiabatic::SimVar::dens)*(V(i,j,k,EulerAdiabatic::AuxVar::velx)*V(i,j,k,EulerAdiabatic::AuxVar::velx) +
-					 V(i,j,k,EulerAdiabatic::AuxVar::vely)*V(i,j,k,EulerAdiabatic::AuxVar::vely) +
-					 V(i,j,k,EulerAdiabatic::AuxVar::velz)*V(i,j,k,EulerAdiabatic::AuxVar::velz))/2.0;
-	V(i,j,k,EulerAdiabatic::AuxVar::eint) = (U(i,j,k,EulerAdiabatic::SimVar::etot) - ekin)/U(i,j,k,EulerAdiabatic::SimVar::dens);
-	V(i,j,k,EulerAdiabatic::AuxVar::pres) = (1.0 - fProp.gamma)*(U(i,j,k,EulerAdiabatic::SimVar::etot) - ekin);
-      }
-#endif
     };
 
     template<>
@@ -121,67 +118,30 @@ namespace KFVM {
         fProp(fProp_)
       {}
 
-#if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,Real& maxVel) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxVel) const
       {
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
-	  const Real uL[] = {U(i,j,0,nQ,0),
-			     U(i,j,0,nQ,1),
-			     U(i,j,0,nQ,2),
-			     U(i,j,0,nQ,3),
-			     U(i,j,0,nQ,4)};
-	  const Real uR[] = {U(i,j,1,nQ,0),
-			     U(i,j,1,nQ,1),
-			     U(i,j,1,nQ,2),
-			     U(i,j,1,nQ,3),
-			     U(i,j,1,nQ,4)};
+	  Real uL[NUM_VARS],uR[NUM_VARS],F[NUM_VARS];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
+	    uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
+	  }
 
 	  // Calculate flux
-	  Real F[NUM_VARS];
 	  Real vq = EulerHLL_X(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
-	  U(i,j,0,nQ,0) = F[0]; U(i,j,1,nQ,0) = F[0];
-	  U(i,j,0,nQ,1) = F[1]; U(i,j,1,nQ,1) = F[1];
-	  U(i,j,0,nQ,2) = F[2]; U(i,j,1,nQ,2) = F[2];
-	  U(i,j,0,nQ,3) = F[3]; U(i,j,1,nQ,3) = F[3];
-	  U(i,j,0,nQ,4) = F[4]; U(i,j,1,nQ,4) = F[4];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    U(KFVM_D_DECL(i,j,k),0,nQ,nV) = F[nV];
+	    U(KFVM_D_DECL(i,j,k),1,nQ,nV) = F[nV];
+	  }
 	}
       }
-#else
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,const idx_t k,Real& maxVel) const
-      {
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // pull out states
-	  const Real uL[] = {U(i,j,k,0,nQ,0),
-			     U(i,j,k,0,nQ,1),
-			     U(i,j,k,0,nQ,2),
-			     U(i,j,k,0,nQ,3),
-			     U(i,j,k,0,nQ,4)};
-	  const Real uR[] = {U(i,j,k,1,nQ,0),
-			     U(i,j,k,1,nQ,1),
-			     U(i,j,k,1,nQ,2),
-			     U(i,j,k,1,nQ,3),
-			     U(i,j,k,1,nQ,4)};
-
-	  // Calculate flux
-	  Real F[NUM_VARS];
-	  Real vq = EulerHLL_X(fProp.gamma,uL,uR,F);
-	  maxVel = vq > maxVel ? vq : maxVel;
-	    
-	  // Overwrite states with flux
-	  U(i,j,k,0,nQ,0) = F[0]; U(i,j,k,1,nQ,0) = F[0];
-	  U(i,j,k,0,nQ,1) = F[1]; U(i,j,k,1,nQ,1) = F[1];
-	  U(i,j,k,0,nQ,2) = F[2]; U(i,j,k,1,nQ,2) = F[2];
-	  U(i,j,k,0,nQ,3) = F[3]; U(i,j,k,1,nQ,3) = F[3];
-	  U(i,j,k,0,nQ,4) = F[4]; U(i,j,k,1,nQ,4) = F[4];
-	}
-      }
-#endif
     };
 
     template<>
@@ -195,67 +155,29 @@ namespace KFVM {
         fProp(fProp_)
       {}
 
-#if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,Real& maxVel) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxVel) const
       {
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
-	  const Real uL[] = {U(i,j,0,nQ,0),
-			     U(i,j,0,nQ,1),
-			     U(i,j,0,nQ,2),
-			     U(i,j,0,nQ,3),
-			     U(i,j,0,nQ,4)};
-	  const Real uR[] = {U(i,j,1,nQ,0),
-			     U(i,j,1,nQ,1),
-			     U(i,j,1,nQ,2),
-			     U(i,j,1,nQ,3),
-			     U(i,j,1,nQ,4)};
+	  Real uL[NUM_VARS],uR[NUM_VARS],F[NUM_VARS];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
+	    uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
+	  }
 
 	  // Calculate flux
-	  Real F[NUM_VARS];
 	  Real vq = EulerHLL_Y(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
-	    
+	  
 	  // Overwrite states with flux
-	  U(i,j,0,nQ,0) = F[0]; U(i,j,1,nQ,0) = F[0];
-	  U(i,j,0,nQ,1) = F[1]; U(i,j,1,nQ,1) = F[1];
-	  U(i,j,0,nQ,2) = F[2]; U(i,j,1,nQ,2) = F[2];
-	  U(i,j,0,nQ,3) = F[3]; U(i,j,1,nQ,3) = F[3];
-	  U(i,j,0,nQ,4) = F[4]; U(i,j,1,nQ,4) = F[4];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    U(KFVM_D_DECL(i,j,k),0,nQ,nV) = F[nV];
+	    U(KFVM_D_DECL(i,j,k),1,nQ,nV) = F[nV];
+	  }
 	}
       }
-#else
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,const idx_t k,Real& maxVel) const
-      {
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // pull out states
-	  const Real uL[] = {U(i,j,k,0,nQ,0),
-			     U(i,j,k,0,nQ,1),
-			     U(i,j,k,0,nQ,2),
-			     U(i,j,k,0,nQ,3),
-			     U(i,j,k,0,nQ,4)};
-	  const Real uR[] = {U(i,j,k,1,nQ,0),
-			     U(i,j,k,1,nQ,1),
-			     U(i,j,k,1,nQ,2),
-			     U(i,j,k,1,nQ,3),
-			     U(i,j,k,1,nQ,4)};
-
-	  // Calculate flux
-	  Real F[NUM_VARS];
-	  Real vq = EulerHLL_Y(fProp.gamma,uL,uR,F);
-	  maxVel = vq > maxVel ? vq : maxVel;
-	    
-	  // Overwrite states with flux
-	  U(i,j,k,0,nQ,0) = F[0]; U(i,j,k,1,nQ,0) = F[0];
-	  U(i,j,k,0,nQ,1) = F[1]; U(i,j,k,1,nQ,1) = F[1];
-	  U(i,j,k,0,nQ,2) = F[2]; U(i,j,k,1,nQ,2) = F[2];
-	  U(i,j,k,0,nQ,3) = F[3]; U(i,j,k,1,nQ,3) = F[3];
-	  U(i,j,k,0,nQ,4) = F[4]; U(i,j,k,1,nQ,4) = F[4];
-	}
-      }
-#endif
     };
 
     template<>
@@ -275,31 +197,43 @@ namespace KFVM {
       {
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
 	  // pull out states
-	  const Real uL[] = {U(i,j,k,0,nQ,0),
-			     U(i,j,k,0,nQ,1),
-			     U(i,j,k,0,nQ,2),
-			     U(i,j,k,0,nQ,3),
-			     U(i,j,k,0,nQ,4)};
-	  const Real uR[] = {U(i,j,k,1,nQ,0),
-			     U(i,j,k,1,nQ,1),
-			     U(i,j,k,1,nQ,2),
-			     U(i,j,k,1,nQ,3),
-			     U(i,j,k,1,nQ,4)};
-
+	  Real uL[NUM_VARS],uR[NUM_VARS],F[NUM_VARS];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    uL[nV] = U(i,j,k,0,nQ,nV);
+	    uR[nV] = U(i,j,k,1,nQ,nV);
+	  }
+	  
 	  // Calculate flux
-	  Real F[NUM_VARS];
 	  Real vq = EulerHLL_Z(fProp.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
-	    
+	  
 	  // Overwrite states with flux
-	  U(i,j,k,0,nQ,0) = F[0]; U(i,j,k,1,nQ,0) = F[0];
-	  U(i,j,k,0,nQ,1) = F[1]; U(i,j,k,1,nQ,1) = F[1];
-	  U(i,j,k,0,nQ,2) = F[2]; U(i,j,k,1,nQ,2) = F[2];
-	  U(i,j,k,0,nQ,3) = F[3]; U(i,j,k,1,nQ,3) = F[3];
-	  U(i,j,k,0,nQ,4) = F[4]; U(i,j,k,1,nQ,4) = F[4];
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    U(i,j,k,0,nQ,nV) = F[nV];
+	    U(i,j,k,1,nQ,nV) = F[nV];
+	  }
 	}
       }
 #endif
+    };
+
+    template<>
+    struct SpeedEstimate_K<EquationType::Euler>
+    {
+      FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
+      FluidProperties fProp;
+
+      SpeedEstimate_K(KFVM_D_DECL(const FaceDataView& rsX_,
+				  const FaceDataView& rsY_,
+				  const FaceDataView& rsZ_),const FluidProperties& fProp_):
+	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
+        fProp(fProp_)
+      {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxVel) const
+      {
+      }
     };
 
     template<class UDataView,class RHSDataView>
@@ -350,321 +284,144 @@ namespace KFVM {
 	fProp(fProp_)
       {}
 
-#if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
 	using Kokkos::Experimental::fmin;
+	using Kokkos::Experimental::fmax;
+	using EulerAdiabatic::SimVar;
+
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 
 	// Save reference state
-	Real refState[] = {
-	  U(i,j,EulerAdiabatic::SimVar::dens),
-	  U(i,j,EulerAdiabatic::SimVar::momx),
-	  U(i,j,EulerAdiabatic::SimVar::momy),
-	  U(i,j,EulerAdiabatic::SimVar::momz),
-	  U(i,j,EulerAdiabatic::SimVar::etot)
-	}; 
-	Real rDens = refState[EulerAdiabatic::SimVar::dens];
+	Real refState[NUM_VARS];
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  refState[nV] = U(KFVM_D_DECL(i,j,k),nV);
+	}
+	Real rDens = refState[SimVar::dens];
 	Real rPres = EOS<EquationType::Euler>::pres(fProp.gamma,refState);
 	
 	// Minimum allowable density and pressure
-	Real minDens = 1.e-13,minPres = 1.e-13;
-	
-	// Adjust minima according to neighboring values
+	Real minDens = std::numeric_limits<Real>::max();
+	Real minPres = std::numeric_limits<Real>::max();
 	for (idx_t xo=-1; xo<=1; xo++) {
 	  for (idx_t yo=-1; yo<=1; yo++) {
-	    Real state[] = {
-	      U(i + xo,j + yo,EulerAdiabatic::SimVar::dens),
-	      U(i + xo,j + yo,EulerAdiabatic::SimVar::momx),
-	      U(i + xo,j + yo,EulerAdiabatic::SimVar::momy),
-	      U(i + xo,j + yo,EulerAdiabatic::SimVar::momz),
-	      U(i + xo,j + yo,EulerAdiabatic::SimVar::etot)
-	    };
-	    minDens = fmin(minDens,state[0]);
-	    minPres = fmin(minPres,EOS<EquationType::Euler>::pres(fProp.gamma,state));
-	  }
-	}
-	Real rDensDiff = rDens - minDens;
-	Real rPresDiff = rPres - minPres;
-
-	// Enforce positive density
-	// Find mixing amount
-	Real theta = 1.0;
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  Real th;
-	  // West face
-	  th = rsX(i,j,1,nQ,EulerAdiabatic::SimVar::dens) > minDens ? 1.0 :
-	    rDensDiff/(rDens - rsX(i,j,1,nQ,EulerAdiabatic::SimVar::dens));
-	  theta = fmin(theta,th);
-	  // East face
-	  th = rsX(i + 1,j,0,nQ,EulerAdiabatic::SimVar::dens) > minDens ? 1.0 :
-	    rDensDiff/(rDens - rsX(i + 1,j,0,nQ,EulerAdiabatic::SimVar::dens));
-	  theta = fmin(theta,th);
-	  // South face
-	  th = rsY(i,j,1,nQ,EulerAdiabatic::SimVar::dens) > minDens ? 1.0 :
-	    rDensDiff/(rDens - rsY(i,j,1,nQ,EulerAdiabatic::SimVar::dens));
-	  theta = fmin(theta,th);
-	  // North face
-	  th = rsY(i,j + 1,0,nQ,EulerAdiabatic::SimVar::dens) > minDens ? 1.0 :
-	    rDensDiff/(rDens - rsY(i,j + 1,0,nQ,EulerAdiabatic::SimVar::dens));
-	  theta = fmin(theta,th);
-	}
-
-	// Apply mixing
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  rsX(i    ,j,1,nQ,EulerAdiabatic::SimVar::dens) = rDens + theta*(rsX(i    ,j,1,nQ,EulerAdiabatic::SimVar::dens) - rDens);
-	  rsX(i + 1,j,0,nQ,EulerAdiabatic::SimVar::dens) = rDens + theta*(rsX(i + 1,j,0,nQ,EulerAdiabatic::SimVar::dens) - rDens);
-	  rsY(i,j    ,1,nQ,EulerAdiabatic::SimVar::dens) = rDens + theta*(rsY(i,j    ,1,nQ,EulerAdiabatic::SimVar::dens) - rDens);
-	  rsY(i,j + 1,0,nQ,EulerAdiabatic::SimVar::dens) = rDens + theta*(rsY(i,j + 1,0,nQ,EulerAdiabatic::SimVar::dens) - rDens);
-	}
-
-	// Enforce positive pressure
-	// Find mixing amount
-	theta = 1.0;
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  Real th,p;
-	  // West face
-	  {
-	    Real state[] = {
-	      rsX(i,j,1,nQ,EulerAdiabatic::SimVar::dens),
-	      rsX(i,j,1,nQ,EulerAdiabatic::SimVar::momx),
-	      rsX(i,j,1,nQ,EulerAdiabatic::SimVar::momy),
-	      rsX(i,j,1,nQ,EulerAdiabatic::SimVar::momz),
-	      rsX(i,j,1,nQ,EulerAdiabatic::SimVar::etot)
-	    };
-	    p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
-	    theta = fmin(theta,th);
-	  }
-	  // East face
-	  {
-	    Real state[] = {
-	      rsX(i + 1,j,0,nQ,EulerAdiabatic::SimVar::dens),
-	      rsX(i + 1,j,0,nQ,EulerAdiabatic::SimVar::momx),
-	      rsX(i + 1,j,0,nQ,EulerAdiabatic::SimVar::momy),
-	      rsX(i + 1,j,0,nQ,EulerAdiabatic::SimVar::momz),
-	      rsX(i + 1,j,0,nQ,EulerAdiabatic::SimVar::etot)
-	    };
-	    p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
-	    theta = fmin(theta,th);
-	  }
-	  // South face
-	  {
-	    Real state[] = {
-	      rsY(i,j,1,nQ,EulerAdiabatic::SimVar::dens),
-	      rsY(i,j,1,nQ,EulerAdiabatic::SimVar::momx),
-	      rsY(i,j,1,nQ,EulerAdiabatic::SimVar::momy),
-	      rsY(i,j,1,nQ,EulerAdiabatic::SimVar::momz),
-	      rsY(i,j,1,nQ,EulerAdiabatic::SimVar::etot)
-	    };
-	    p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
-	    theta = fmin(theta,th);
-	  }
-	  // North face
-	  {
-	    Real state[] = {
-	      rsY(i,j + 1,0,nQ,EulerAdiabatic::SimVar::dens),
-	      rsY(i,j + 1,0,nQ,EulerAdiabatic::SimVar::momx),
-	      rsY(i,j + 1,0,nQ,EulerAdiabatic::SimVar::momy),
-	      rsY(i,j + 1,0,nQ,EulerAdiabatic::SimVar::momz),
-	      rsY(i,j + 1,0,nQ,EulerAdiabatic::SimVar::etot)
-	    };
-	    p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
-	    theta = fmin(theta,th);
-	  }
-	}
-
-	// Apply mixing
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    rsX(i    ,j,1,nQ,nV) = refState[nV] + theta*(rsX(i    ,j,1,nQ,nV) - refState[nV]);
-	    rsX(i + 1,j,0,nQ,nV) = refState[nV] + theta*(rsX(i + 1,j,0,nQ,nV) - refState[nV]);
-	    rsY(i,j    ,1,nQ,nV) = refState[nV] + theta*(rsY(i,j    ,1,nQ,nV) - refState[nV]);
-	    rsY(i,j + 1,0,nQ,nV) = refState[nV] + theta*(rsY(i,j + 1,0,nQ,nV) - refState[nV]);
-	  }
-	}
-      }
-#else
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,const idx_t k) const
-      {
-	using Kokkos::Experimental::fmin;
-
-	// Save reference state
-	Real refState[] = {
-	  U(i,j,k,EulerAdiabatic::SimVar::dens),
-	  U(i,j,k,EulerAdiabatic::SimVar::momx),
-	  U(i,j,k,EulerAdiabatic::SimVar::momy),
-	  U(i,j,k,EulerAdiabatic::SimVar::momz),
-	  U(i,j,k,EulerAdiabatic::SimVar::etot)
-	}; 
-	Real rDens = refState[EulerAdiabatic::SimVar::dens];
-	Real rPres = EOS<EquationType::Euler>::pres(fProp.gamma,refState);
-	
-	// Minimum allowable density and pressure
-	Real minDens = 1.e-13,minPres = 1.e-13;
-	
-	// Adjust minima according to neighboring values
-	for (idx_t xo=-1; xo<=1; xo++) {
-	  for (idx_t yo=-1; yo<=1; yo++) {
+#if (SPACE_DIM == 3)
 	    for (idx_t zo=-1; zo<=1; zo++) {
-	      Real state[] = {
-		U(i + xo,j + yo,k + zo,EulerAdiabatic::SimVar::dens),
-		U(i + xo,j + yo,k + zo,EulerAdiabatic::SimVar::momx),
-		U(i + xo,j + yo,k + zo,EulerAdiabatic::SimVar::momy),
-		U(i + xo,j + yo,k + zo,EulerAdiabatic::SimVar::momz),
-		U(i + xo,j + yo,k + zo,EulerAdiabatic::SimVar::etot)
-	      };
-	      minDens = fmin(minDens,state[0]);
+#endif
+	      Real state[NUM_VARS];
+	      for (int nV=0; nV<NUM_VARS; nV++) {
+		state[nV] = U(KFVM_D_DECL(i + xo,j + yo,k + zo),nV);
+	      }
+	      minDens = fmin(minDens,state[SimVar::dens]);
 	      minPres = fmin(minPres,EOS<EquationType::Euler>::pres(fProp.gamma,state));
+#if (SPACE_DIM == 3)
 	    }
+#endif
 	  }
 	}
+	// minDens *= 0.8;
+	// minPres *= 0.8;
 	Real rDensDiff = rDens - minDens;
 	Real rPresDiff = rPres - minPres;
 
 	// Enforce positive density
 	// Find mixing amount
 	Real theta = 1.0;
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  Real th;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // West face
-	  th = rsX(i,j,k,1,nQ,EulerAdiabatic::SimVar::dens) > minDens ? 1.0 :
-	    rDensDiff/(rDens - rsX(i,j,k,1,nQ,EulerAdiabatic::SimVar::dens));
-	  theta = fmin(theta,th);
+	  theta = fmin(theta,fmax(1.0,
+				  rDensDiff/(rDens - rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens))));
 	  // East face
-	  th = rsX(i + 1,j,k,0,nQ,EulerAdiabatic::SimVar::dens) > minDens ? 1.0 :
-	    rDensDiff/(rDens - rsX(i + 1,j,k,0,nQ,EulerAdiabatic::SimVar::dens));
-	  theta = fmin(theta,th);
+	  theta = fmin(theta,fmax(1.0,
+				  rDensDiff/(rDens - rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::dens))));
 	  // South face
-	  th = rsY(i,j,k,1,nQ,EulerAdiabatic::SimVar::dens) > minDens ? 1.0 :
-	    rDensDiff/(rDens - rsY(i,j,k,1,nQ,EulerAdiabatic::SimVar::dens));
-	  theta = fmin(theta,th);
+	  theta = fmin(theta,fmax(1.0,
+				  rDensDiff/(rDens - rsY(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens))));
 	  // North face
-	  th = rsY(i,j + 1,k,0,nQ,EulerAdiabatic::SimVar::dens) > minDens ? 1.0 :
-	    rDensDiff/(rDens - rsY(i,j + 1,k,0,nQ,EulerAdiabatic::SimVar::dens));
-	  theta = fmin(theta,th);
+	  theta = fmin(theta,fmax(1.0,
+				  rDensDiff/(rDens - rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::dens))));
+#if (SPACE_DIM == 3)
 	  // Bottom face
-	  th = rsZ(i,j,k,1,nQ,EulerAdiabatic::SimVar::dens) > minDens ? 1.0 :
-	    rDensDiff/(rDens - rsZ(i,j,k,1,nQ,EulerAdiabatic::SimVar::dens));
-	  theta = fmin(theta,th);
+	  theta = fmin(theta,fmax(1.0,
+				  rDensDiff/(rDens - rsZ(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens))));
 	  // Top face
-	  th = rsZ(i,j,k + 1,0,nQ,EulerAdiabatic::SimVar::dens) > minDens ? 1.0 :
-	    rDensDiff/(rDens - rsZ(i,j,k + 1,0,nQ,EulerAdiabatic::SimVar::dens));
-	  theta = fmin(theta,th);
+	  theta = fmin(theta,fmax(1.0,
+				  rDensDiff/(rDens - rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::dens))));
+#endif
 	}
 
 	// Apply mixing
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  rsX(i    ,j,k,1,nQ,EulerAdiabatic::SimVar::dens) = rDens + theta*(rsX(i    ,j,k,1,nQ,EulerAdiabatic::SimVar::dens) - rDens);
-	  rsX(i + 1,j,k,0,nQ,EulerAdiabatic::SimVar::dens) = rDens + theta*(rsX(i + 1,j,k,0,nQ,EulerAdiabatic::SimVar::dens) - rDens);
-	  rsY(i,j    ,k,1,nQ,EulerAdiabatic::SimVar::dens) = rDens + theta*(rsY(i,j    ,k,1,nQ,EulerAdiabatic::SimVar::dens) - rDens);
-	  rsY(i,j + 1,k,0,nQ,EulerAdiabatic::SimVar::dens) = rDens + theta*(rsY(i,j + 1,k,0,nQ,EulerAdiabatic::SimVar::dens) - rDens);
-	  rsZ(i,j,k    ,1,nQ,EulerAdiabatic::SimVar::dens) = rDens + theta*(rsZ(i,j,k    ,1,nQ,EulerAdiabatic::SimVar::dens) - rDens);
-	  rsZ(i,j,k + 1,0,nQ,EulerAdiabatic::SimVar::dens) = rDens + theta*(rsZ(i,j,k + 1,0,nQ,EulerAdiabatic::SimVar::dens) - rDens);
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
+	  rsX(KFVM_D_DECL(i    ,j,k),1,nQ,SimVar::dens) = rDens + theta*(rsX(KFVM_D_DECL(i    ,j,k),1,nQ,SimVar::dens) - rDens);
+	  rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::dens) = rDens + theta*(rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::dens) - rDens);
+	  rsY(KFVM_D_DECL(i,j    ,k),1,nQ,SimVar::dens) = rDens + theta*(rsY(KFVM_D_DECL(i,j    ,k),1,nQ,SimVar::dens) - rDens);
+	  rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::dens) = rDens + theta*(rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::dens) - rDens);
+#if (SPACE_DIM == 3)
+	  rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,SimVar::dens) = rDens + theta*(rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,SimVar::dens) - rDens);
+	  rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::dens) = rDens + theta*(rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::dens) - rDens);
+#endif
 	}
 
 	// Enforce positive pressure
 	// Find mixing amount
 	theta = 1.0;
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  Real th,p;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
+	  Real p,state[NUM_VARS];
 	  // West face
-	  {
-	    Real state[] = {
-	      rsX(i,j,k,1,nQ,EulerAdiabatic::SimVar::dens),
-	      rsX(i,j,k,1,nQ,EulerAdiabatic::SimVar::momx),
-	      rsX(i,j,k,1,nQ,EulerAdiabatic::SimVar::momy),
-	      rsX(i,j,k,1,nQ,EulerAdiabatic::SimVar::momz),
-	      rsX(i,j,k,1,nQ,EulerAdiabatic::SimVar::etot)
-	    };
-	    p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
-	    theta = fmin(theta,th);
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    state[nV] = rsX(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
+	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
+	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));	  
 	  // East face
-	  {
-	    Real state[] = {
-	      rsX(i + 1,j,k,0,nQ,EulerAdiabatic::SimVar::dens),
-	      rsX(i + 1,j,k,0,nQ,EulerAdiabatic::SimVar::momx),
-	      rsX(i + 1,j,k,0,nQ,EulerAdiabatic::SimVar::momy),
-	      rsX(i + 1,j,k,0,nQ,EulerAdiabatic::SimVar::momz),
-	      rsX(i + 1,j,k,0,nQ,EulerAdiabatic::SimVar::etot)
-	    };
-	    p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
-	    theta = fmin(theta,th);
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    state[nV] = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV);
 	  }
+	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
+	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));
 	  // South face
-	  {
-	    Real state[] = {
-	      rsY(i,j,k,1,nQ,EulerAdiabatic::SimVar::dens),
-	      rsY(i,j,k,1,nQ,EulerAdiabatic::SimVar::momx),
-	      rsY(i,j,k,1,nQ,EulerAdiabatic::SimVar::momy),
-	      rsY(i,j,k,1,nQ,EulerAdiabatic::SimVar::momz),
-	      rsY(i,j,k,1,nQ,EulerAdiabatic::SimVar::etot)
-	    };
-	    p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
-	    theta = fmin(theta,th);
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    state[nV] = rsY(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
+	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
+	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));	  
 	  // North face
-	  {
-	    Real state[] = {
-	      rsY(i,j + 1,k,0,nQ,EulerAdiabatic::SimVar::dens),
-	      rsY(i,j + 1,k,0,nQ,EulerAdiabatic::SimVar::momx),
-	      rsY(i,j + 1,k,0,nQ,EulerAdiabatic::SimVar::momy),
-	      rsY(i,j + 1,k,0,nQ,EulerAdiabatic::SimVar::momz),
-	      rsY(i,j + 1,k,0,nQ,EulerAdiabatic::SimVar::etot)
-	    };
-	    p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
-	    theta = fmin(theta,th);
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    state[nV] = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV);
 	  }
+	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
+	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));	  
+#if (SPACE_DIM == 3)
 	  // Bottom face
-	  {
-	    Real state[] = {
-	      rsZ(i,j,k,1,nQ,EulerAdiabatic::SimVar::dens),
-	      rsZ(i,j,k,1,nQ,EulerAdiabatic::SimVar::momx),
-	      rsZ(i,j,k,1,nQ,EulerAdiabatic::SimVar::momy),
-	      rsZ(i,j,k,1,nQ,EulerAdiabatic::SimVar::momz),
-	      rsZ(i,j,k,1,nQ,EulerAdiabatic::SimVar::etot)
-	    };
-	    p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
-	    theta = fmin(theta,th);
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    state[nV] = rsZ(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
+	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
+	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));	  
 	  // Top face
-	  {
-	    Real state[] = {
-	      rsZ(i,j,k + 1,0,nQ,EulerAdiabatic::SimVar::dens),
-	      rsZ(i,j,k + 1,0,nQ,EulerAdiabatic::SimVar::momx),
-	      rsZ(i,j,k + 1,0,nQ,EulerAdiabatic::SimVar::momy),
-	      rsZ(i,j,k + 1,0,nQ,EulerAdiabatic::SimVar::momz),
-	      rsZ(i,j,k + 1,0,nQ,EulerAdiabatic::SimVar::etot)
-	    };
-	    p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	    th = p > minPres ? 1.0 : rPresDiff/(rPres - p);
-	    theta = fmin(theta,th);
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    state[nV] = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV);
 	  }
+	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
+	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));
+#endif
 	}
-
+	
 	// Apply mixing
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    rsX(i    ,j,k,1,nQ,nV) = refState[nV] + theta*(rsX(i    ,j,k,1,nQ,nV) - refState[nV]);
-	    rsX(i + 1,j,k,0,nQ,nV) = refState[nV] + theta*(rsX(i + 1,j,k,0,nQ,nV) - refState[nV]);
-	    rsY(i,j    ,k,1,nQ,nV) = refState[nV] + theta*(rsY(i,j    ,k,1,nQ,nV) - refState[nV]);
-	    rsY(i,j + 1,k,0,nQ,nV) = refState[nV] + theta*(rsY(i,j + 1,k,0,nQ,nV) - refState[nV]);
-	    rsZ(i,j,k    ,1,nQ,nV) = refState[nV] + theta*(rsZ(i,j,k    ,1,nQ,nV) - refState[nV]);
-	    rsZ(i,j,k + 1,0,nQ,nV) = refState[nV] + theta*(rsZ(i,j,k + 1,0,nQ,nV) - refState[nV]);
-	  }
+	    rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) - refState[nV]);
+	    rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) - refState[nV]);
+	    rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) = refState[nV] + theta*(rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) - refState[nV]);
+	    rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV) = refState[nV] + theta*(rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV) - refState[nV]);
+#if (SPACE_DIM == 3)
+	    rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) - refState[nV]);
+	    rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) - refState[nV]);
+#endif
+	  }	  
 	}
       }
-#endif
     };
     
   } // End namespace Hydro
