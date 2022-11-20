@@ -5,6 +5,7 @@
 #include <array>
 #include <vector>
 #include <string>
+#include <filesystem>
 
 #include <Kokkos_Core.hpp>
 
@@ -23,9 +24,20 @@ namespace KFVM {
 
   NetCDFWriter::NetCDFWriter(const ProblemSetup& a_ps):
     ps(a_ps),
+    baseName(ps.dataDir),
     solTmp(ps.nX*ps.nY*ps.nZ,0.0),
     solTmpHalo((ps.nX + 2*ps.rad)*(ps.nY + 2*ps.rad)*(ps.nZ + 2*ps.rad),0.0)
   {
+    // Generate base filename and make directories as needed
+    std::ostringstream os;
+    os << ps.dataDir << "/R" << ps.rad << "_NX" << ps.nX << "_NY" << ps.nY;
+#if (SPACE_DIM == 3)
+    os << "_NZ" << ps.nZ;
+#endif
+    std::filesystem::create_directories(os.str());
+    os << "/" << ps.baseName;
+    baseName = os.str();
+    
     // Fill coordinate vectors
     grid[0].resize(ps.nX,0.0);
     gridHalo[0].resize(ps.nX + 2*ps.rad,0.0);
@@ -66,14 +78,14 @@ namespace KFVM {
   std::string NetCDFWriter::FileName(int step)
   {
     std::ostringstream os;
-    os << ps.baseName << std::setw(6) << std::setfill('0') << step << ".nc";
+    os << baseName << "_" << std::setw(6) << std::setfill('0') << step << ".nc";
     return os.str();
   }
 
   std::string NetCDFWriter::FileNameHalo(int step)
   {
     std::ostringstream os;
-    os << ps.baseName << "Halo" << std::setw(6) << std::setfill('0') << step << ".nc";
+    os << baseName << "_" << "Halo_" << std::setw(6) << std::setfill('0') << step << ".nc";
     return os.str();
   }
 

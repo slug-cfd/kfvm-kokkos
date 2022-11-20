@@ -17,6 +17,7 @@ namespace KFVM {
   class NetCDFWriter
   {
     const ProblemSetup& ps;
+    std::string baseName;
     std::array<std::vector<double>,SPACE_DIM> grid,gridHalo;
     std::vector<double> solTmp,solTmpHalo;
 

@@ -1,0 +1,22 @@
+# Set mesh resolution and extent
+mesh:resolution 256 256
+mesh:extent 0.0 0.3 0.0 0.3
+
+# Set time information
+time:initial 0.0
+time:final 2.5
+time:initialdt 1.e-10
+time:cfl 0.75
+time:maxsteps 2000
+
+# Set stencil options
+stencil:lfac 24
+# stencil:bpow 2 commented out as default usually right
+
+# Set fluid properties
+properties:gamma 1.4
+
+# Output settings
+output:datadir data
+output:basename Implosion
+output:plotfreq 100

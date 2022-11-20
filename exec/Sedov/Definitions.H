@@ -4,7 +4,7 @@
 #include "../../src/physics/EquationTypes.H"
 
 // Space dimension of problem
-#define SPACE_DIM 3
+#define SPACE_DIM 2
 
 // Stencil radius (2-4)
 #define STENCIL_RADIUS 2

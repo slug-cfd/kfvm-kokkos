@@ -1,0 +1,22 @@
+# Set mesh resolution and extent
+mesh:resolution 256 256 8
+mesh:extent -10.0 10.0 -10.0 10.0 0.0 0.625
+
+# Set time information
+time:initial 0.0
+time:final 20.0
+time:initialdt 1.e-10
+time:cfl 0.75
+time:maxsteps 2500
+
+# Set stencil options
+stencil:lfac 24
+# stencil:bpow 2 commented out as default usually right
+
+# Set fluid properties
+properties:gamma 1.4
+
+# Output settings
+output:datadir data
+output:basename IsenVort
+output:plotfreq 40

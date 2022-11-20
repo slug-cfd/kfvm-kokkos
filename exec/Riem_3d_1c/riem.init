@@ -1,0 +1,22 @@
+# Set mesh resolution and extent
+mesh:resolution 64 64 64
+mesh:extent -1.0 1.0 -1.0 1.0 -1.0 1.0
+
+# Set time information
+time:initial 0.0
+time:final 0.53
+time:initialdt 1.e-10
+time:cfl 0.75
+time:maxsteps 2500
+
+# Set stencil options
+stencil:lfac 24
+# stencil:bpow 2 commented out as default usually right
+
+# Set fluid properties
+properties:gamma 1.4
+
+# Output settings
+output:datadir data
+output:basename Riem
+output:plotfreq 50
