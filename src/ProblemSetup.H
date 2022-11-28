@@ -81,8 +81,7 @@ namespace KFVM {
       cfl(SPACE_DIM==3 ? 0.5 : 0.75),
       dataDir("data"),
       baseName("default"),
-      plotFreq(100),
-      fluidProp(1.4)
+      plotFreq(100)
     {}
 
     
@@ -117,6 +116,7 @@ namespace KFVM {
       // Print fluid properties
       std::printf("Properties:\n");
       std::printf("  gamma: %f\n",fluidProp.gamma);
+      std::printf("  wenothresh: %f\n",fluidProp.wenoThresh);
 
       // Print output information
       std::printf("Output:\n");
@@ -125,7 +125,7 @@ namespace KFVM {
       std::printf("  plotfreq: %d\n",plotFreq);
     }
 
-    void setFromFile(const char* fname)
+    bool setFromFile(const char* fname)
     {
       // Open file and report success
       std::ifstream inFile;
@@ -135,7 +135,7 @@ namespace KFVM {
 	std::printf("Setting options from input file: %s\n",fname);
       } else {
 	std::printf("Warning!!!! Could not open input file: %s\n",fname);
-	return;
+	return false;
       }
 
       // File opened successfully, start parsing through
@@ -173,6 +173,7 @@ namespace KFVM {
 	  std::cout << "Warning!!!! Line could not be parsed: " << line << std::endl;
 	}
       }
+      return true;
     }
 
   private:
@@ -283,6 +284,11 @@ namespace KFVM {
       if (category == "gamma") {
 	std::getline(lStream,value,' ');
 	fluidProp.gamma = std::stof(value,&pos);
+      } else if (category == "wenothresh") {
+	std::getline(lStream,value,' ');
+	fluidProp.wenoThresh = std::stof(value,&pos);
+      } else {
+	return false;
       }
       
       return true;

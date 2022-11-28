@@ -11,23 +11,22 @@
 
 int main(int argc, char* argv[]) {
   Kokkos::initialize(argc, argv);
-  do {
+  {
     std::printf("Kokkos initialized with default execution space: %s\n",
 		typeid(KFVM::ExecSpace).name());
     
     // Create ProblemSetup object with all settings and configuration
     KFVM::ProblemSetup ps;
     if (argc > 1) {
-      ps.setFromFile(argv[1]);
+      if (ps.setFromFile(argv[1])) {
+	ps.print();
+	// Create solver object to store and advance solution
+	KFVM::Solver solver(ps);
+	solver.Solve();
+      }
     } else {
       std::printf("Warning!!!! Input file must be provided. Exiting now\n");
-      break;
     }
-    ps.print();
-
-    // Create solver object to store and advance solution
-    KFVM::Solver solver(ps);
-    solver.Solve();
-  } while(0);
+  }
   Kokkos::finalize();
 }

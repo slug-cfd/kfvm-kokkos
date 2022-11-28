@@ -25,13 +25,13 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real eint(const Real U[NUM_VARS])
       {
-        return (U[EulerAdiabatic::SimVar::etot] - ekin(U))/U[EulerAdiabatic::SimVar::dens];
+        return (U[EulerAdiabatic::SimVar::etot] - ekin(U));
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real pres(Real gamma,const Real U[NUM_VARS])
       {  
-        return (gamma - 1.0)*(U[EulerAdiabatic::SimVar::etot] - ekin(U));
+        return (gamma - 1.0)*eint(U);
       }
       
       KOKKOS_INLINE_FUNCTION

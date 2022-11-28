@@ -320,8 +320,8 @@ namespace KFVM {
 #endif
 	  }
 	}
-	// minDens *= 0.8;
-	// minPres *= 0.8;
+	minDens *= 0.8;
+	minPres *= 0.8;
 	Real rDensDiff = rDens - minDens;
 	Real rPresDiff = rPres - minPres;
 

@@ -25,8 +25,8 @@ namespace KFVM {
     std::string FileNameHalo(int);
   public:
     NetCDFWriter(const ProblemSetup&);
-    void write(CellDataView,AuxDataView,int,double);
-    void writeHalo(CellDataView,int,double);
+    void write(ConsDataView,AuxDataView,CellDataView,int,double);
+    void writeHalo(ConsDataView,int,double);
   };
 
 }

@@ -22,6 +22,7 @@
 #include "stencil/Stencil_K.H"
 
 #include <Solver.H>
+#include <limits>
 
 namespace KFVM {
   
@@ -30,6 +31,7 @@ namespace KFVM {
     netCDFWriter(ps),
     geom(ps),
     stencil(ps.gp_lFac),
+    wenoSelect("WenoSelector",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     U_halo("U",        KFVM_D_DECL(ps.nX + 2*ps.rad,
 				   ps.nY + 2*ps.rad,
 				   ps.nZ + 2*ps.rad)),
@@ -51,11 +53,12 @@ namespace KFVM {
     faceVals(ps),
     time(ps.initialTime),
     dt(ps.initialDeltaT),
+    wThresh(0.0),
     lastTimeStep(false)
   {
     setIC();
     evalAuxiliary();
-    netCDFWriter.write(U_halo,U_aux,0,time);
+    netCDFWriter.write(U_halo,U_aux,wenoSelect,0,time);
   }
 
   // Solve system for full time range
@@ -70,7 +73,7 @@ namespace KFVM {
       TakeStep();
       if (nT%ps.plotFreq == 0 || lastTimeStep || nT == (ps.maxTimeSteps-1) ) {
 	evalAuxiliary();
-        netCDFWriter.write(U_halo,U_aux,nT,time);
+        netCDFWriter.write(U_halo,U_aux,wenoSelect,nT,time);
       }
     }
 
@@ -83,7 +86,8 @@ namespace KFVM {
 
     // Range policy only over interior
     auto cellRng =
-      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
+      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,
+			    Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
 
     auto U = trimCellHalo(U_halo);
@@ -99,8 +103,7 @@ namespace KFVM {
 
     // Set range policy for summing stages together
     auto cellRng =
-      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
-      ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
+      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
     
     // Evaluate RHS and set dt
     Real maxVel = evalRHS(U_halo,K,time);
@@ -112,7 +115,8 @@ namespace KFVM {
       std::printf("Warning: Time step has stagnated\n");
       lastTimeStep = true;
     }
-    std::printf("time = %e, dt = %e\n",time,dt);
+    wThresh = ps.fluidProp.wenoThresh*dt;
+    std::printf("time = %e, dt = %e, wThresh = %e\n",time,dt,wThresh);
 
     // First stage
     auto U = trimCellHalo(U_halo);
@@ -145,15 +149,15 @@ namespace KFVM {
     // Fifth stage
     evalRHS(U4_halo,Ktil,time + dt/2.0);
     Kokkos::parallel_for("RKStage_5",cellRng,
-			 Numeric::SSP45_S5_K<decltype(U),decltype(K),5>
-			 (U,U2,U3,U4,K,Ktil,Numeric::SSPCoeff<5>(),dt));
+			 Numeric::SSP45_S5_K<decltype(U),decltype(K),decltype(wenoSelect),5>
+			 (U,U2,U3,U4,K,Ktil,wenoSelect,Numeric::SSPCoeff<5>(),dt));
 
     time += dt;
 
     Kokkos::Profiling::popRegion();
   }
 
-  Real Solver::evalRHS(CellDataView sol_halo,CellDataView rhs,Real t)
+  Real Solver::evalRHS(ConsDataView sol_halo,ConsDataView rhs,Real t)
   {
     Kokkos::Profiling::pushRegion("Solver::evalRHS");
     
@@ -222,7 +226,7 @@ namespace KFVM {
     return maxVel;
   }
 
-  void Solver::reconstructRiemannStates(CellDataView sol_halo)
+  void Solver::reconstructRiemannStates(ConsDataView sol_halo)
   {
     // Subviews of cell data and Riemann states to simplify indexing
     auto U = trimCellHalo(sol_halo);
@@ -236,8 +240,8 @@ namespace KFVM {
 
     // Weno reconstruction
     Kokkos::parallel_for("FaceRecon",cellRng,
-			 Stencil::KernelWenoRecon_K<decltype(U)>
-			 (U,
+			 Stencil::KernelWenoRecon_K<decltype(U),decltype(wenoSelect)>
+			 (U,wenoSelect,wThresh,
 			  KFVM_D_DECL(faceVals.xDir,
 				      faceVals.yDir,
 				      faceVals.zDir),
@@ -260,7 +264,7 @@ namespace KFVM {
 			  ps.fluidProp));
   }
 
-void Solver::setCellBCs(CellDataView sol_halo,Real t)
+void Solver::setCellBCs(ConsDataView sol_halo,Real t)
   {
     using BoundaryConditions::CellBcWest_K;
     using BoundaryConditions::CellBcEast_K;
@@ -620,12 +624,17 @@ void Solver::setCellBCs(CellDataView sol_halo,Real t)
   void Solver::setIC()
   {
     Kokkos::Profiling::pushRegion("Solver::setIC");
-    
+
+    // Fill U using user specified initial condition
     auto U = trimCellHalo(U_halo);
     auto cellRng = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
     Kokkos::parallel_for("IntegrateIC",cellRng,Numeric::IntegrateIC_K<decltype(U)>
 			 (U,qr.ab,qr.wt,geom));
+
+    // First step always uses WENO everywhere
+    // -> set wenoSelect to large number everywhere
+    Kokkos::deep_copy(wenoSelect,100.0);
 
     Kokkos::Profiling::popRegion();
   }

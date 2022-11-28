@@ -21,15 +21,18 @@
 #include "../Geometry.H"
 #include "../physics/Physics_K.H"
 #include "../FluidProperties.H"
+#include "../Dimension.H"
 #include "Stencil.H"
 
 namespace KFVM {
 
   namespace Stencil {
 
-    template<class UViewType>
+    template<class UViewType,class WViewType>
     struct KernelWenoRecon_K {
       UViewType U;
+      WViewType W;
+      const Real wThresh;
       FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
       WorkView Work;
       OffsetView KFVM_D_DECL(lOff,tOff,ttOff);
@@ -40,7 +43,8 @@ namespace KFVM {
       const int nCellsFull,nCellsCtr,nCellsBias;
       const int nSub,nBias,nIndic,nqFace_d;
 
-      KernelWenoRecon_K(const UViewType& U_,
+      KernelWenoRecon_K(const UViewType& U_,const WViewType& W_,
+			const Real wThresh_,
 			KFVM_D_DECL(const FaceDataView& rsX_,
 				    const FaceDataView& rsY_,
 				    const FaceDataView& rsZ_),
@@ -53,6 +57,8 @@ namespace KFVM {
 			const CellWtView& deriv_,
                         const FluidProperties& fProp_):
 	U(U_),
+	W(W_),
+	wThresh(wThresh_),
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
 	Work(Work_),
 	KFVM_D_DECL(lOff(lOff_),tOff(tOff_),ttOff(ttOff_)),
@@ -129,79 +135,9 @@ namespace KFVM {
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  refState[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
-	
 	for (int nC=0; nC<nCellsFull; nC++) {
 	  auto state = Kokkos::subview(Vf,nC,Kokkos::ALL);
-          Physics::VarConvert<eqType,decltype(state)>::Cons2Prim(state,refState,1.4);
-	}
-
-	// Find all smoothness indicators
-	// For unknown reasons this gemm call can not be moved into a helper function
-	// Full stencil
-	{
-	  auto dWts = Kokkos::subview(derivWeight,0,Kokkos::ALL,Kokkos::ALL);
-	  SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vf,Real(0.0),B);
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    omega[0][nV] = 0.0;
-	    for (int nI=0; nI<nIndic; nI++) {
-	      omega[0][nV] += B(nI,nV)*B(nI,nV);
-	    }
-	  }
-	}
-        
-	// Central substencil
-	{
-	  auto dWts = Kokkos::subview(derivWeight,1,Kokkos::ALL,Kokkos::make_pair(0,nCellsCtr));
-	  SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vc,Real(0.0),B);
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    omega[1][nV] = 0.0;
-	    for (int nI=0; nI<nIndic; nI++) {
-	      omega[1][nV] += B(nI,nV)*B(nI,nV);
-	    }
-	  }
-	}
-        
-	// biased substencils
-	for (int nB=0; nB<nBias; nB++) {
-	  fillBiased<decltype(Vf),decltype(Vb)>(nB,Vf,Vb);
-	  auto dWts = Kokkos::subview(derivWeight,nB + 2,Kokkos::ALL,Kokkos::make_pair(0,nCellsBias));
-	  SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vb,Real(0.0),B);
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    omega[nB + 2][nV] = 0.0;
-	    for (int nI=0; nI<nIndic; nI++) {
-	      omega[nB + 2][nV] += B(nI,nV)*B(nI,nV);
-	    }
-	  }
-	}
-
-	// Convert smoothness indicators to omegas
-	for (int nV=0; nV<NUM_VARS; nV++) {
-#if (SPACE_DIM == 2)
-	  Real tau = fabs(omega[0][nV] - (omega[2][nV] + omega[3][nV] +
-					  omega[4][nV] + omega[5][nV])/4.0);
-#else
-	  Real tau = fabs(omega[0][nV] - (omega[2][nV] + omega[3][nV] +
-					  omega[4][nV] + omega[5][nV] +
-					  omega[6][nV] + omega[7][nV])/6.0);
-#endif
-	  Real tot = 0.0;
-	  for (int nS=0; nS<nSub; nS++) {
-	    omega[nS][nV] = gamma[nS]*(1.0 + pow(tau/(omega[nS][nV] + eps),STENCIL_RADIUS));
-	    tot += omega[nS][nV];
-	  }
-          
-	  // normalize them
-	  for (int nS=0; nS<nSub; nS++) {
-	    omega[nS][nV] /= tot;
-	  }
-	}
-
-	// convert omegas to Weno-AO style weights
-	for (int nV=0; nV<NUM_VARS; nV++) {
-	  for (int nS=1; nS<nSub; nS++) {
-	    omega[nS][nV] -= omega[0][nV]*gamma[nS]/gamma[0];
-	  }
-	  omega[0][nV] /= gamma[0];
+          Physics::VarConvert<eqType,decltype(state)>::Cons2Prim(state,refState,fProp.gamma);
 	}
 
 	// Pull Riemann states subviews out into array
@@ -226,25 +162,115 @@ namespace KFVM {
 	// Fill Riemann states using gemv one face at a time
 	for (int nF=0; nF<2*SPACE_DIM; nF++) {
 	  auto rWtsF = Kokkos::subview(faceWeight,0,nF,Kokkos::ALL,Kokkos::ALL);
-	  auto rWtsC = Kokkos::subview(faceWeight,1,nF,Kokkos::ALL,Kokkos::make_pair(0,nCellsCtr));
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    auto rsFV = Kokkos::subview(rsFace[nF],Kokkos::ALL,nV);
 	    auto vf = Kokkos::subview(Vf,Kokkos::ALL,nV);
-	    auto vc = Kokkos::subview(Vc,Kokkos::ALL,nV);
-	    SerialGemv<Trans::NoTranspose,Algo::Gemv::Unblocked>::invoke(omega[0][nV],rWtsF,vf,Real(0.0),rsFV);
-	    SerialGemv<Trans::NoTranspose,Algo::Gemv::Unblocked>::invoke(omega[1][nV],rWtsC,vc,Real(1.0),rsFV);
+	    SerialGemv<Trans::NoTranspose,Algo::Gemv::Unblocked>::invoke(Real(1.0),rWtsF,vf,Real(0.0),rsFV);
 	  }
 	}
+
+	// Do weno if selector is large enough
+	// otherwise skip ahead to convert back to conservative vars
+	if (W(KFVM_D_DECL(i,j,k)) > wThresh) {
+	  // Find all smoothness indicators
+	  // For unknown reasons this gemm call can not be moved into a helper function
+	  // Full stencil
+	  {
+	    auto dWts = Kokkos::subview(derivWeight,0,Kokkos::ALL,Kokkos::ALL);
+	    SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vf,Real(0.0),B);
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      omega[0][nV] = 0.0;
+	      for (int nI=0; nI<nIndic; nI++) {
+		omega[0][nV] += B(nI,nV)*B(nI,nV);
+	      }
+	    }
+	  }
+        
+	  // Central substencil
+	  {
+	    auto dWts = Kokkos::subview(derivWeight,1,Kokkos::ALL,Kokkos::make_pair(0,nCellsCtr));
+	    SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vc,Real(0.0),B);
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      omega[1][nV] = 0.0;
+	      for (int nI=0; nI<nIndic; nI++) {
+		omega[1][nV] += B(nI,nV)*B(nI,nV);
+	      }
+	    }
+	  }
+        
+	  // biased substencils
+	  for (int nB=0; nB<nBias; nB++) {
+	    fillBiased<decltype(Vf),decltype(Vb)>(nB,Vf,Vb);
+	    auto dWts = Kokkos::subview(derivWeight,nB + 2,Kokkos::ALL,Kokkos::make_pair(0,nCellsBias));
+	    SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vb,Real(0.0),B);
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      omega[nB + 2][nV] = 0.0;
+	      for (int nI=0; nI<nIndic; nI++) {
+		omega[nB + 2][nV] += B(nI,nV)*B(nI,nV);
+	      }
+	    }
+	  }
+
+	  // Convert smoothness indicators to omegas
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+#if (SPACE_DIM == 2)
+	    Real tau = fabs(omega[0][nV] - (omega[2][nV] + omega[3][nV] +
+					    omega[4][nV] + omega[5][nV])/4.0);
+#else
+	    Real tau = fabs(omega[0][nV] - (omega[2][nV] + omega[3][nV] +
+					    omega[4][nV] + omega[5][nV] +
+					    omega[6][nV] + omega[7][nV])/6.0);
+#endif
+	    Real tot = 0.0;
+	    for (int nS=0; nS<nSub; nS++) {
+	      omega[nS][nV] = gamma[nS]*(1.0 + pow(tau/(omega[nS][nV] + eps),STENCIL_RADIUS));
+	      tot += omega[nS][nV];
+	    }
+          
+	    // normalize them
+	    for (int nS=0; nS<nSub; nS++) {
+	      omega[nS][nV] /= tot;
+	    }
+	  }
+
+	  // convert omegas to Weno-AO style weights
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    for (int nS=1; nS<nSub; nS++) {
+	      omega[nS][nV] -= omega[0][nV]*gamma[nS]/gamma[0];
+	    }
+	    omega[0][nV] /= gamma[0];
+	  }
 	
-	// Biased substencils
-	for (int nB=0; nB<nBias; nB++) {
-	  fillBiased<decltype(Vf),decltype(Vb)>(nB,Vf,Vb);
+	  // Rescale full stencil prediction
 	  for (int nF=0; nF<2*SPACE_DIM; nF++) {
-	    auto rWtsB = Kokkos::subview(faceWeight,2 + nB,nF,Kokkos::ALL,Kokkos::make_pair(0,nCellsBias));
 	    for (int nV=0; nV<NUM_VARS; nV++) {
 	      auto rsFV = Kokkos::subview(rsFace[nF],Kokkos::ALL,nV);
-	      auto vb = Kokkos::subview(Vb,Kokkos::ALL,nV);
-	      SerialGemv<Trans::NoTranspose,Algo::Gemv::Unblocked>::invoke(omega[2 + nB][nV],rWtsB,vb,Real(1.0),rsFV);
+	      for (int nQ=0; nQ<nqFace_d; nQ++) {
+		rsFV(nQ) *= omega[0][nV];
+	      }
+	    }
+	  }
+	
+	  // Fill Riemann states using gemv one face at a time
+	  for (int nF=0; nF<2*SPACE_DIM; nF++) {
+	    auto rWtsC = Kokkos::subview(faceWeight,1,nF,Kokkos::ALL,Kokkos::make_pair(0,nCellsCtr));
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      auto rsFV = Kokkos::subview(rsFace[nF],Kokkos::ALL,nV);
+	      auto vc = Kokkos::subview(Vc,Kokkos::ALL,nV);
+	      SerialGemv<Trans::NoTranspose,Algo::Gemv::Unblocked>::invoke(omega[1][nV],rWtsC,vc,Real(1.0),rsFV);
+	    }
+	  }
+	
+	  // Biased substencils
+	  for (int nB=0; nB<nBias; nB++) {
+	    fillBiased<decltype(Vf),decltype(Vb)>(nB,Vf,Vb);
+	    for (int nF=0; nF<2*SPACE_DIM; nF++) {
+	      auto rWtsB = Kokkos::subview(faceWeight,2 + nB,nF,Kokkos::ALL,Kokkos::make_pair(0,nCellsBias));
+	      for (int nV=0; nV<NUM_VARS; nV++) {
+		auto rsFV = Kokkos::subview(rsFace[nF],Kokkos::ALL,nV);
+		auto vb = Kokkos::subview(Vb,Kokkos::ALL,nV);
+		SerialGemv<Trans::NoTranspose,Algo::Gemv::Unblocked>::invoke(omega[2 + nB][nV],rWtsB,vb,Real(1.0),rsFV);
+	      }
 	    }
 	  }
 	}
@@ -253,7 +279,7 @@ namespace KFVM {
 	for (int nF=0; nF<2*SPACE_DIM; nF++) {
 	  for (int nQ=0; nQ<nqFace_d; nQ++) {
 	    auto state = Kokkos::subview(rsFace[nF],nQ,Kokkos::ALL);
-	    Physics::VarConvert<eqType,decltype(state)>::Prim2Cons(state,refState,1.4);
+	    Physics::VarConvert<eqType,decltype(state)>::Prim2Cons(state,refState,fProp.gamma);
 	  }
 	}
       }
@@ -268,80 +294,6 @@ namespace KFVM {
 	  for (int nC=0; nC<nCellsBias; nC++) {
 	    Vb(nC,nV) = Vf(subIdx(nB,nC),nV);
 	  }
-	}
-      }
-    };
-    
-    template<class UViewType>
-    struct KernelLinearRecon_K {
-      UViewType U;
-      FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
-      WorkView Work;
-      OffsetView KFVM_D_DECL(lOff,tOff,ttOff);
-      FaceWtView faceWeight;
-      const int nCellsFull;
-
-      KernelLinearRecon_K(const UViewType& U_,
-			  KFVM_D_DECL(const FaceDataView& rsX_,
-				      const FaceDataView& rsY_,
-				      const FaceDataView& rsZ_),
-			  const WorkView& Work_,
-			  KFVM_D_DECL(const OffsetView& lOff_,
-				      const OffsetView& tOff_,
-				      const OffsetView& ttOff_),
-			  const FaceWtView& face_):
-	U(U_),
-	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
-	Work(Work_),
-	KFVM_D_DECL(lOff(lOff_),tOff(tOff_),ttOff(ttOff_)),
-	faceWeight(face_),
-	nCellsFull(Stencil::Core::SI.nCellsFull)
-      {}
-
-      KOKKOS_INLINE_FUNCTION
-      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
-      {
-	using namespace KokkosBatched;
-		
-	// Create subview slices to use gemm calls
-	auto V = Kokkos::subview(Work,KFVM_D_DECL(i,j,k),
-				 Kokkos::pair<int,int>(0,nCellsFull),
-				 Kokkos::ALL);
-	
-	// Populate stencil values
-	for (int nC=0; nC<nCellsFull; nC++) {
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    V(nC,nV) = U(KFVM_D_DECL(i + lOff(nC),
-				     j + tOff(nC),
-				     k + ttOff(nC)),nV);
-	  }
-	}
-
-	// Pull Riemann states subviews out into array
-#if (SPACE_DIM == 2)
-	decltype(Kokkos::subview(rsX,i,j,1,Kokkos::ALL,Kokkos::ALL)) rsFace[] = {
-	  Kokkos::subview(rsX,i    ,j,1,Kokkos::ALL,Kokkos::ALL),
-	  Kokkos::subview(rsX,i + 1,j,0,Kokkos::ALL,Kokkos::ALL),
-	  Kokkos::subview(rsY,i,j    ,1,Kokkos::ALL,Kokkos::ALL),
-	  Kokkos::subview(rsY,i,j + 1,0,Kokkos::ALL,Kokkos::ALL)
-	};
-#else
-	decltype(Kokkos::subview(rsX,i,j,k,1,Kokkos::ALL,Kokkos::ALL)) rsFace[] = {
-	  Kokkos::subview(rsX,i    ,j,k,1,Kokkos::ALL,Kokkos::ALL),
-	  Kokkos::subview(rsX,i + 1,j,k,0,Kokkos::ALL,Kokkos::ALL),
-	  Kokkos::subview(rsY,i,j    ,k,1,Kokkos::ALL,Kokkos::ALL),
-	  Kokkos::subview(rsY,i,j + 1,k,0,Kokkos::ALL,Kokkos::ALL),
-	  Kokkos::subview(rsZ,i,j,k    ,1,Kokkos::ALL,Kokkos::ALL),
-	  Kokkos::subview(rsZ,i,j,k + 1,0,Kokkos::ALL,Kokkos::ALL)
-	};
-#endif
-
-	// Fill Riemann states using gemm one face at a time
-	for (int nF=0; nF<2*SPACE_DIM; nF++) {
-	  auto rWts = Kokkos::subview(faceWeight,int(Stencil::SubSten::full),
-				      nF,Kokkos::ALL,Kokkos::ALL);
-	  SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>
-	    ::invoke(1.0,rWts,V,0.0,rsFace[nF]);
 	}
       }
     };

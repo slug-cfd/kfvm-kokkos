@@ -15,7 +15,7 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   const Real gam = 1.4,gamm = gam - 1.0;
   const Real R = SPACE_DIM == 2 ? 4.0/256.0 : 4.0/64.0; // 4 cell radius for typical resolutions
   const Real rsq = x*x + y*y + z*z;
-  const Real p = rsq <= R*R ? 1.0/(M_PI*R*R) : 1.e-5;
+  const Real p = rsq <= R*R ? gamm*gamm/(M_PI*R*R) : 1.e-5;
 
   // Background
   state[SimVar::dens] = 1.0;

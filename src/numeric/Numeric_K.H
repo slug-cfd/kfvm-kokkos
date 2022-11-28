@@ -15,6 +15,7 @@
 #include "../Types.H"
 #include "../ProblemSetup.H"
 #include "../Geometry.H"
+#include "../physics/Physics_K.H"
 #include "Numeric.H"
 
 namespace KFVM {
@@ -291,10 +292,11 @@ namespace KFVM {
       }
     };
 
-    template<class UViewType,class KViewType,int nStage>
+    template<class UViewType,class KViewType,class WViewType,int nStage>
     struct SSP45_S5_K {
       UViewType U,U2,U3,U4;
       KViewType K,Ktil;
+      WViewType W;
       SSPCoeff<nStage> rk;
       Real dt;
 
@@ -304,6 +306,7 @@ namespace KFVM {
 		 const UViewType& U4_,
 		 const KViewType& K_,
 		 const KViewType& Ktil_,
+		 const WViewType& W_,
 		 const SSPCoeff<nStage>& rk_,
 		 Real dt_):
 	U(U_),
@@ -312,11 +315,23 @@ namespace KFVM {
 	U4(U4_),
 	K(K_),
 	Ktil(Ktil_),
+	W(W_),
 	rk(rk_),
 	dt(dt_) {}
 
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
+	using Kokkos::Experimental::fabs;
+	using Kokkos::Experimental::fmin;
+
+	// Pull out a few states
+	Real u0[NUM_VARS],u1[NUM_VARS],u2[NUM_VARS];
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  u0[nV] = U(KFVM_D_DECL(i,j,k),nV);
+	  u1[nV] = U3(KFVM_D_DECL(i,j,k),nV);
+	}
+
+	// Update state
 	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  U(KFVM_D_DECL(i,j,k),nV) =
 	    rk.a_5_0*U(KFVM_D_DECL(i,j,k),nV) +
@@ -326,6 +341,14 @@ namespace KFVM {
 	    dt*rk.b_5*K(KFVM_D_DECL(i,j,k),nV) +
 	    dt*rk.b_5til*Ktil(KFVM_D_DECL(i,j,k),nV);
 	}
+
+	// Finish smoothness indicator calculation
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  u2[nV] = U(KFVM_D_DECL(i,j,k),nV);
+	}
+	Real e0 = Physics::EOS<eqType>::eint(u0);
+	Real e2 = Physics::EOS<eqType>::eint(u2);
+	W(KFVM_D_DECL(i,j,k)) = fabs(e2 - e0)/fmin(e0,e2);
       }
     };
     

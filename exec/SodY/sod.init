@@ -15,6 +15,7 @@ stencil:lfac 24
 
 # Set fluid properties
 properties:gamma 1.4
+properties:wenothresh 20.0
 
 # Output settings
 output:datadir data

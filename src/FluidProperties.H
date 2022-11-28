@@ -13,17 +13,20 @@ namespace KFVM {
   struct FluidProperties
   {
     Real gamma; // Ratio of specific heats
-
+    Real wenoThresh; // Threshold for weno selector
     Real ch_glm; // Hyperbolic cleaning speed for GLM (not constant!)
 
-    // Construct from Problemsetup object
-    FluidProperties(const Real gamma_):
-      gamma(gamma_),
+    FluidProperties():
+      gamma(1.4),
+      wenoThresh(10.0),
       ch_glm(0.0)
     {}
 
-  private:
-    FluidProperties() = delete;
+    FluidProperties(const Real gamma_,const Real wenoThresh_):
+      gamma(gamma_),
+      wenoThresh(wenoThresh_),
+      ch_glm(0.0)
+    {}
   };
 }
 

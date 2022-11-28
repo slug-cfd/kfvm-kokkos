@@ -112,7 +112,7 @@ namespace KFVM {
 	V(i,j,AuxVar::velz) = U(i,j,SimVar::momz)/U(i,j,SimVar::dens);
 
 	// Internal energy and pressure
-	V(i,j,AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(fProp.gamma,ua);
+	V(i,j,AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(ua);
 	V(i,j,AuxVar::pres) = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,ua);
 	V(i,j,AuxVar::prsg) = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,ua);
 	V(i,j,AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(ua);
@@ -136,7 +136,7 @@ namespace KFVM {
 	V(i,j,k,AuxVar::velz) = U(i,j,k,SimVar::momz)/U(i,j,k,SimVar::dens);
 
 	// Internal energy and pressure
-	V(i,j,k,AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(fProp.gamma,ua);
+	V(i,j,k,AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(ua);
 	V(i,j,k,AuxVar::pres) = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,ua);
 	V(i,j,k,AuxVar::prsg) = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,ua);
 	V(i,j,k,AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(ua);
@@ -525,8 +525,8 @@ namespace KFVM {
 #endif
 	  }
 	}
-	// minDens *= 0.8;
-	// minPres *= 0.8;
+	minDens *= 0.8;
+	minPres *= 0.8;
 	Real rDensDiff = rDens - minDens;
 	Real rPresDiff = rPres - minPres;
 

@@ -21,7 +21,7 @@
 
 namespace KFVM {
 
-  class Solver 
+  class Solver
   {
     ProblemSetup& ps;
     // IO object
@@ -34,8 +34,10 @@ namespace KFVM {
     Stencil::Stencil stencil;
     // Boundary condition coefficients
     Physics::BCCoeffs<eqType> bcCoeff;
+    // Field to test whether weno should be activated
+    CellDataView wenoSelect;
     // Cell-based data
-    CellDataView U_halo,U1_halo,U2_halo,U3_halo,U4_halo,K,Ktil;
+    ConsDataView U_halo,U1_halo,U2_halo,U3_halo,U4_halo,K,Ktil;
     // Auxiliary data (cell-based but different number of components)
     AuxDataView U_aux;
     // Face-based data
@@ -51,8 +53,11 @@ namespace KFVM {
     // Time step information
     Real time,dt;
     bool lastTimeStep;
+    // Threshold for WENO reconstruction
+    Real wThresh;
+    
     // Internal functions
-    auto trimCellHalo(CellDataView v)
+    auto trimCellHalo(ConsDataView v)
     {
       return Kokkos::subview(v,KFVM_D_DECL(Kokkos::make_pair(ps.rad,ps.nX + ps.rad),
 					   Kokkos::make_pair(ps.rad,ps.nY + ps.rad),
@@ -66,10 +71,10 @@ namespace KFVM {
     void Solve();
     void TakeStep();
     void evalAuxiliary();
-    Real evalRHS(CellDataView,CellDataView,Real);
-    void reconstructRiemannStates(CellDataView);
+    Real evalRHS(ConsDataView,ConsDataView,Real);
+    void reconstructRiemannStates(ConsDataView);
     Real findFluxes();
-    void setCellBCs(CellDataView,Real);
+    void setCellBCs(ConsDataView,Real);
     void setFaceBCs(Real);
   };
 
