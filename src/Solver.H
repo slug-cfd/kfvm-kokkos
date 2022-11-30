@@ -37,7 +37,7 @@ namespace KFVM {
     // Field to test whether weno should be activated
     CellDataView wenoSelect;
     // Cell-based data
-    ConsDataView U_halo,U1_halo,U2_halo,U3_halo,U4_halo,K,Ktil;
+    ConsDataView U_halo,Uhat,Uprev_halo,Utmp,K;
     // Auxiliary data (cell-based but different number of components)
     AuxDataView U_aux;
     // Face-based data
@@ -51,10 +51,12 @@ namespace KFVM {
     };
     FaceVals faceVals;
     // Time step information
-    Real time,dt;
+    Real time,dt,errEst;
     bool lastTimeStep;
     // Threshold for WENO reconstruction
     Real wThresh;
+    // Count RHS evals and step rejections
+    int nRhsEval,nRejected;
     
     // Internal functions
     auto trimCellHalo(ConsDataView v)

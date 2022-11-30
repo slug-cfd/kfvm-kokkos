@@ -29,6 +29,12 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
+      static Real positivity(const Real U[NUM_VARS])
+      {
+        return eint(U);
+      }
+      
+      KOKKOS_INLINE_FUNCTION
       static Real pres(Real gamma,const Real U[NUM_VARS])
       {  
         return (gamma - 1.0)*eint(U);

@@ -22,6 +22,7 @@
 #include "stencil/Stencil_K.H"
 
 #include <Solver.H>
+#include <impl/Kokkos_Combined_Reducer.hpp>
 #include <limits>
 
 namespace KFVM {
@@ -32,33 +33,32 @@ namespace KFVM {
     geom(ps),
     stencil(ps.gp_lFac),
     wenoSelect("WenoSelector",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
-    U_halo("U",        KFVM_D_DECL(ps.nX + 2*ps.rad,
+    U_halo("U",KFVM_D_DECL(ps.nX + 2*ps.rad,
+			   ps.nY + 2*ps.rad,
+			   ps.nZ + 2*ps.rad)),
+    Uhat("Uhat",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
+    Uprev_halo("Uprev",KFVM_D_DECL(ps.nX + 2*ps.rad,
 				   ps.nY + 2*ps.rad,
 				   ps.nZ + 2*ps.rad)),
-    U1_halo("U_stage1",KFVM_D_DECL(ps.nX + 2*ps.rad,
-				   ps.nY + 2*ps.rad,
-				   ps.nZ + 2*ps.rad)),
-    U2_halo("U_stage2",KFVM_D_DECL(ps.nX + 2*ps.rad,
-				   ps.nY + 2*ps.rad,
-				   ps.nZ + 2*ps.rad)),
-    U3_halo("U_stage3",KFVM_D_DECL(ps.nX + 2*ps.rad,
-				   ps.nY + 2*ps.rad,
-				   ps.nZ + 2*ps.rad)),
-    U4_halo("U_stage4",KFVM_D_DECL(ps.nX + 2*ps.rad,
-				   ps.nY + 2*ps.rad,
-				   ps.nZ + 2*ps.rad)),
-    K("RHS",       KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
-    Ktil("RHS_til",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
-    U_aux("U_aux", KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
+    Utmp("Utmp",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
+    K("RHS",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
+    U_aux("U_aux",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     faceVals(ps),
     time(ps.initialTime),
-    dt(ps.initialDeltaT),
+    errEst(1.0),
     wThresh(0.0),
-    lastTimeStep(false)
+    lastTimeStep(false),
+    nRhsEval(0),
+    nRejected(0)
   {
     setIC();
     evalAuxiliary();
     netCDFWriter.write(U_halo,U_aux,wenoSelect,0,time);
+
+    // Time steppers are FSAL, need one RHS eval to start
+    // Use CFL just to pick first time step size
+    Real maxVel = evalRHS(U_halo,K,time);
+    dt = ps.cfl*std::fmin(ps.dx,std::fmin(ps.dy,ps.dz))/maxVel;
   }
 
   // Solve system for full time range
@@ -69,13 +69,15 @@ namespace KFVM {
     // Evolve in time, recording solutions as needed
     // Start at nT=1 since IC is step 0
     for (int nT=1; nT<ps.maxTimeSteps && !lastTimeStep; ++nT) {
-      std::printf("Step %d: ",nT);
+      std::printf("Step %d: time = %e\n",nT,time);
       TakeStep();
       if (nT%ps.plotFreq == 0 || lastTimeStep || nT == (ps.maxTimeSteps-1) ) {
 	evalAuxiliary();
         netCDFWriter.write(U_halo,U_aux,wenoSelect,nT,time);
       }
     }
+
+    std::printf("Time stepping completed\n  %d RHS evals and %d rejected steps\n",nRhsEval,nRejected);
 
     Kokkos::Profiling::popRegion();
   }
@@ -99,67 +101,176 @@ namespace KFVM {
 
   void Solver::TakeStep()
   {
+    // Pull out RK coefficients
+    using RKCoeff = Numeric::RK_LSFSAL<rkType>;
+    
     Kokkos::Profiling::pushRegion("Solver::TakeStep");
 
-    // Set range policy for summing stages together
+    // Set range policy for summing registers together
     auto cellRng =
-      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
-    
-    // Evaluate RHS and set dt
-    Real maxVel = evalRHS(U_halo,K,time);
-    dt = std::fmin(ps.cfl*std::fmin(ps.dx,ps.dy)/maxVel,2.0*dt);
+      Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,
+			    Kokkos::IndexType<idx_t>>({KFVM_D_DECL(0,0,0)},
+						      {KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
+    // Test if this is the last step, and limit dt as needed
     if (time + dt > ps.finalTime) {
       dt = ps.finalTime - time;
       lastTimeStep = true;
-    } else if (dt < ps.initialDeltaT/10.0) {
-      std::printf("Warning: Time step has stagnated\n");
+    }
+
+    // Try step with dt, and repeat as needed
+    bool accepted = false;
+    for (int nT=0; nT<ps.rejectionLimit; nT++) {
+      wThresh = ps.fluidProp.wenoThresh*dt;
+      std::printf("  Attempt %d: dt = %e, wThresh = %e\n",nT+1,dt,wThresh);
+
+      // Trim halos off
+      auto U = trimCellHalo(U_halo);
+      auto Uprev = trimCellHalo(Uprev_halo);
+
+      // Need to reset K if this is a repeat of a rejected step
+      if (nT > 0) {
+	evalRHS(Uprev_halo,K,time);
+      }
+
+      // First stage is special, do it outside loop
+      Real betaDt = RKCoeff::beta[0]*dt;
+      Real bhatDt = RKCoeff::bhat[0]*dt;
+      Kokkos::parallel_for("RKStagePre",cellRng,Numeric::RK_StagePre_K<decltype(U),decltype(K)>(U,Uhat,Utmp,Uprev,K,betaDt,bhatDt));
+
+      // Loop over stages and update registers
+      for (int nS=1; nS<RKCoeff::nStages; nS++) {
+	// Extract RK coeffs into local vars to make dispatch happy
+	Real delta = RKCoeff::delta[nS];
+	Real gam1 = RKCoeff::gam1[nS];
+	Real gam2 = RKCoeff::gam2[nS];
+	Real gam3 = RKCoeff::gam3[nS];
+	Real cDt = RKCoeff::c[nS]*dt;
+	bhatDt = RKCoeff::bhat[nS]*dt;
+	betaDt = RKCoeff::beta[nS]*dt;
+
+	// Evaluate RHS on U
+	evalRHS(U_halo,K,time + cDt);
+      
+	// Update registers
+	Kokkos::parallel_for("RKStage",cellRng,Numeric::RK_Stage_K<decltype(U),decltype(K)>(U,Uhat,Utmp,Uprev,K,delta,gam1,gam2,gam3,betaDt,bhatDt));
+      }
+
+      // FSAL stage
+      evalRHS(U_halo,K,time + dt);
+      bhatDt = RKCoeff::bhatfsal*dt;
+      Kokkos::parallel_for("RKStageFSAL",cellRng,Numeric::RK_StageFSAL_K<decltype(K)>(Uhat,K,bhatDt));
+
+      // Estimate the error and test positivity
+      Real errNew = 0.0,posFlag,nDofs = NUM_VARS*ps.nX*ps.nY*ps.nZ;
+      Kokkos::parallel_reduce("ErrorEstimate",cellRng,Numeric::RK_ErrEst_K<decltype(U),decltype(K)>(U,Uhat,ps.atol,ps.rtol),errNew,Kokkos::Min<Real>(posFlag));
+      errNew = 1.0/std::sqrt(errNew/nDofs);
+
+      // Set a new time step size
+      Real dtfac = std::pow(errNew,RKCoeff::ep1)*std::pow(errEst,RKCoeff::ep2);
+      dtfac = 1.0 + std::atan(dtfac - 1.0);
+      if (posFlag < 0.0) {
+	// Solution is unphysical, reject and reduce dt
+	std::printf("    Rejected: Unphysical\n");
+	dt /= 4.0;
+	nRejected++;
+      } else if (dtfac >= ps.rejectionThresh) {
+	// Step is accepted
+	accepted = true;
+	time += dt;
+	dt *= dtfac;
+	errEst = errNew;
+
+	// Update the weno selector
+	Kokkos::parallel_for("WenoSelector",cellRng,Numeric::RK_WenoSelect_K<decltype(U),decltype(wenoSelect)>(U,Uprev,wenoSelect));
+	
+	Kokkos::deep_copy(Uprev,U);
+	break;
+      } else {
+	// otherwise step is rejected, try again with new smaller dt
+	std::printf("    Rejected: Tolerance\n");
+	dt *= dtfac;
+	nRejected++;
+      }
+    }
+
+    // Error out if step was rejected too many times or has stagnated
+    if (!accepted) {
+      std::printf("Warning: Time step was rejected too many times\n");
       lastTimeStep = true;
     }
-    wThresh = ps.fluidProp.wenoThresh*dt;
-    std::printf("time = %e, dt = %e, wThresh = %e\n",time,dt,wThresh);
-
-    // First stage
-    auto U = trimCellHalo(U_halo);
-    auto U1 = trimCellHalo(U1_halo);
-    Kokkos::parallel_for("RKStage_1",cellRng,
-			 Numeric::SSP45_S1_K<decltype(U),decltype(K),5>
-			 (U1,U,K,Numeric::SSPCoeff<5>(),dt));
-
-    // Second stage
-    evalRHS(U1_halo,K,time + dt/2.0);
-    auto U2 = trimCellHalo(U2_halo);
-    Kokkos::parallel_for("RKStage_2",cellRng,
-			 Numeric::SSP45_S2_K<decltype(U),decltype(K),5>
-			 (U2,U,U1,K,Numeric::SSPCoeff<5>(),dt));
-
-    // Third stage
-    evalRHS(U2_halo,K,time + dt/2.0);
-    auto U3 = trimCellHalo(U3_halo);
-    Kokkos::parallel_for("RKStage_3",cellRng,
-			 Numeric::SSP45_S3_K<decltype(U),decltype(K),5>
-			 (U3,U,U2,K,Numeric::SSPCoeff<5>(),dt));
-
-    // Fourth stage
-    evalRHS(U3_halo,K,time + dt/2.0);
-    auto U4 = trimCellHalo(U4_halo);
-    Kokkos::parallel_for("RKStage_4",cellRng,
-			 Numeric::SSP45_S4_K<decltype(U),decltype(K),5>
-			 (U4,U,U3,K,Numeric::SSPCoeff<5>(),dt));
-
-    // Fifth stage
-    evalRHS(U4_halo,Ktil,time + dt/2.0);
-    Kokkos::parallel_for("RKStage_5",cellRng,
-			 Numeric::SSP45_S5_K<decltype(U),decltype(K),decltype(wenoSelect),5>
-			 (U,U2,U3,U4,K,Ktil,wenoSelect,Numeric::SSPCoeff<5>(),dt));
-
-    time += dt;
+    if (dt < ps.initialDeltaT/10.0) {
+      std::printf("Warning: Time step stagnated\n");
+      lastTimeStep = true;
+    }
 
     Kokkos::Profiling::popRegion();
   }
 
+  // void Solver::TakeStepSSP()
+  // {
+  //   Kokkos::Profiling::pushRegion("Solver::TakeStep");
+
+  //   // Set range policy for summing stages together
+  //   auto cellRng =
+  //     Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
+    
+  //   // Evaluate RHS and set dt
+  //   Real maxVel = evalRHS(U_halo,K,time);
+  //   dt = std::fmin(ps.cfl*std::fmin(ps.dx,ps.dy)/maxVel,2.0*dt);
+  //   if (time + dt > ps.finalTime) {
+  //     dt = ps.finalTime - time;
+  //     lastTimeStep = true;
+  //   } else if (dt < ps.initialDeltaT/10.0) {
+  //     std::printf("Warning: Time step has stagnated\n");
+  //     lastTimeStep = true;
+  //   }
+  //   wThresh = ps.fluidProp.wenoThresh*dt;
+  //   std::printf("time = %e, dt = %e, wThresh = %e\n",time,dt,wThresh);
+
+  //   // First stage
+  //   auto U = trimCellHalo(U_halo);
+  //   auto U1 = trimCellHalo(U1_halo);
+  //   Kokkos::parallel_for("RKStage_1",cellRng,
+  // 			 Numeric::SSP45_S1_K<decltype(U),decltype(K),5>
+  // 			 (U1,U,K,Numeric::SSPCoeff<5>(),dt));
+
+  //   // Second stage
+  //   evalRHS(U1_halo,K,time + dt/2.0);
+  //   auto U2 = trimCellHalo(U2_halo);
+  //   Kokkos::parallel_for("RKStage_2",cellRng,
+  // 			 Numeric::SSP45_S2_K<decltype(U),decltype(K),5>
+  // 			 (U2,U,U1,K,Numeric::SSPCoeff<5>(),dt));
+
+  //   // Third stage
+  //   evalRHS(U2_halo,K,time + dt/2.0);
+  //   auto U3 = trimCellHalo(U3_halo);
+  //   Kokkos::parallel_for("RKStage_3",cellRng,
+  // 			 Numeric::SSP45_S3_K<decltype(U),decltype(K),5>
+  // 			 (U3,U,U2,K,Numeric::SSPCoeff<5>(),dt));
+
+  //   // Fourth stage
+  //   evalRHS(U3_halo,K,time + dt/2.0);
+  //   auto U4 = trimCellHalo(U4_halo);
+  //   Kokkos::parallel_for("RKStage_4",cellRng,
+  // 			 Numeric::SSP45_S4_K<decltype(U),decltype(K),5>
+  // 			 (U4,U,U3,K,Numeric::SSPCoeff<5>(),dt));
+
+  //   // Fifth stage
+  //   evalRHS(U4_halo,Ktil,time + dt/2.0);
+  //   Kokkos::parallel_for("RKStage_5",cellRng,
+  // 			 Numeric::SSP45_S5_K<decltype(U),decltype(K),decltype(wenoSelect),5>
+  // 			 (U,U2,U3,U4,K,Ktil,wenoSelect,Numeric::SSPCoeff<5>(),dt));
+
+  //   time += dt;
+
+  //   Kokkos::Profiling::popRegion();
+  // }
+
   Real Solver::evalRHS(ConsDataView sol_halo,ConsDataView rhs,Real t)
   {
     Kokkos::Profiling::pushRegion("Solver::evalRHS");
+
+    nRhsEval++;
     
     // Set BCs on cell averages
     setCellBCs(sol_halo,t);
@@ -627,10 +738,15 @@ void Solver::setCellBCs(ConsDataView sol_halo,Real t)
 
     // Fill U using user specified initial condition
     auto U = trimCellHalo(U_halo);
+    auto Uprev = trimCellHalo(Uprev_halo);
     auto cellRng = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
     Kokkos::parallel_for("IntegrateIC",cellRng,Numeric::IntegrateIC_K<decltype(U)>
 			 (U,qr.ab,qr.wt,geom));
+
+    // Set Uprev to also be IC
+    // Needed for error control in timestepper
+    Kokkos::deep_copy(Uprev,U);
 
     // First step always uses WENO everywhere
     // -> set wenoSelect to large number everywhere

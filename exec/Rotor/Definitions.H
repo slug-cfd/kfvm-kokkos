@@ -2,6 +2,7 @@
 #define DEFINITIONS_H_
 
 #include "../../src/physics/EquationTypes.H"
+#include "../../src/numeric/RKTypes.H"
 
 // Space dimension of problem
 #define SPACE_DIM 2
@@ -16,5 +17,6 @@
 #define FLOAT_PRECISION 0
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::MHD_GLM;
+constexpr KFVM::RK_LSFSAL_TYPE rkType = KFVM::RK_LSFSAL_TYPE::ThreeStarP;
 
 #endif

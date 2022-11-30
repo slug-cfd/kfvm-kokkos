@@ -2,6 +2,7 @@
 #define DEFINITIONS_H_
 
 #include "../../src/physics/EquationTypes.H"
+#include "../../src/numeric/RKTypes.H"
 
 // Space dimension of problem
 #define SPACE_DIM 3
@@ -18,5 +19,6 @@
 //#define KFVM_DEBUG
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Euler;
+constexpr KFVM::RK_LSFSAL_TYPE rkType = KFVM::RK_LSFSAL_TYPE::ThreeStarP;
 
 #endif

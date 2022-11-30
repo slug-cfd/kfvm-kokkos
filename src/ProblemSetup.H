@@ -48,6 +48,9 @@ namespace KFVM {
     // Time stepping information
     int maxTimeSteps;
     Real initialTime,finalTime,initialDeltaT;
+    Real atol,rtol;
+    Real rejectionThresh;
+    int rejectionLimit;
     Real cfl;
 
     // File output information
@@ -78,6 +81,10 @@ namespace KFVM {
       initialTime(0.0),
       finalTime(1.0),
       initialDeltaT(1.e-10),
+      atol(1.e-5),
+      rtol(1.e-5),
+      rejectionThresh(0.8),
+      rejectionLimit(4),
       cfl(SPACE_DIM==3 ? 0.5 : 0.75),
       dataDir("data"),
       baseName("default"),
@@ -104,6 +111,8 @@ namespace KFVM {
       std::printf("  initial: %f\n",initialTime);
       std::printf("  final: %f\n",finalTime);
       std::printf("  initial dt: %e\n",initialDeltaT);
+      std::printf("  atol: %e\n",atol);
+      std::printf("  rtol: %e\n",rtol);
       std::printf("  cfl: %f\n",cfl);
       std::printf("  maxsteps: %d\n",maxTimeSteps);
 
@@ -263,6 +272,18 @@ namespace KFVM {
       } else if (category == "cfl") {
 	std::getline(lStream,value,' ');
 	cfl = std::stof(value,&pos);
+      } else if (category == "atol") {
+	std::getline(lStream,value,' ');
+	atol = std::stof(value,&pos);
+      } else if (category == "rtol") {
+	std::getline(lStream,value,' ');
+	rtol = std::stof(value,&pos);
+      } else if (category == "rejectionthresh") {
+	std::getline(lStream,value,' ');
+	rejectionThresh = std::stof(value,&pos);
+      } else if (category == "rejectionlimit") {
+	std::getline(lStream,value,' ');
+	rejectionLimit = std::stod(value,&pos);
       } else if (category == "maxsteps") {
 	std::getline(lStream,value,' ');
 	maxTimeSteps = std::stod(value,&pos);

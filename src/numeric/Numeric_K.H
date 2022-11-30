@@ -325,10 +325,9 @@ namespace KFVM {
 	using Kokkos::Experimental::fmin;
 
 	// Pull out a few states
-	Real u0[NUM_VARS],u1[NUM_VARS],u2[NUM_VARS];
+	Real u0[NUM_VARS],u2[NUM_VARS];
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  u0[nV] = U(KFVM_D_DECL(i,j,k),nV);
-	  u1[nV] = U3(KFVM_D_DECL(i,j,k),nV);
 	}
 
 	// Update state
@@ -349,6 +348,159 @@ namespace KFVM {
 	Real e0 = Physics::EOS<eqType>::eint(u0);
 	Real e2 = Physics::EOS<eqType>::eint(u2);
 	W(KFVM_D_DECL(i,j,k)) = fabs(e2 - e0)/fmin(e0,e2);
+      }
+    };
+
+    template<class UViewType,class KViewType>
+    struct RK_StagePre_K {
+      UViewType U,Uprev;
+      KViewType Uhat,Utmp,K;
+      Real betaDt,bhatDt;
+
+      RK_StagePre_K(const UViewType& U_,
+		    const KViewType& Uhat_,
+		    const KViewType& Utmp_,
+		    const UViewType& Uprev_,
+		    const KViewType& K_,
+		    Real betaDt_,
+		    Real bhatDt_):
+	U(U_),
+	Uprev(Uprev_),
+	Uhat(Uhat_),
+	Utmp(Utmp_),
+	K(K_),
+	betaDt(betaDt_),
+	bhatDt(bhatDt_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  U(KFVM_D_DECL(i,j,k),nV) = Uprev(KFVM_D_DECL(i,j,k),nV) + betaDt*K(KFVM_D_DECL(i,j,k),nV);
+	  Uhat(KFVM_D_DECL(i,j,k),nV) = Uprev(KFVM_D_DECL(i,j,k),nV) + bhatDt*K(KFVM_D_DECL(i,j,k),nV);
+	  Utmp(KFVM_D_DECL(i,j,k),nV) = Uprev(KFVM_D_DECL(i,j,k),nV);
+	}
+      }
+    };
+
+    template<class UViewType,class KViewType>
+    struct RK_Stage_K {
+      UViewType U,Uprev;
+      KViewType Uhat,Utmp,K;
+      Real delta,gam1,gam2,gam3,betaDt,bhatDt;
+
+      RK_Stage_K(const UViewType& U_,
+		 const KViewType& Uhat_,
+		 const KViewType& Utmp_,
+		 const UViewType& Uprev_,
+		 const KViewType& K_,
+		 Real delta_,
+		 Real gam1_,
+		 Real gam2_,
+		 Real gam3_,
+		 Real betaDt_,
+		 Real bhatDt_):
+	U(U_),
+	Uprev(Uprev_),
+	Uhat(Uhat_),
+	Utmp(Utmp_),
+	K(K_),
+	delta(delta_),
+	gam1(gam1_),
+	gam2(gam2_),
+	gam3(gam3_),
+	betaDt(betaDt_),
+	bhatDt(bhatDt_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  Utmp(KFVM_D_DECL(i,j,k),nV) += delta*U(KFVM_D_DECL(i,j,k),nV);
+	  U(KFVM_D_DECL(i,j,k),nV) =
+	    gam1*U(KFVM_D_DECL(i,j,k),nV) +
+	    gam2*Utmp(KFVM_D_DECL(i,j,k),nV) +
+	    gam3*Uprev(KFVM_D_DECL(i,j,k),nV) +
+	    betaDt*K(KFVM_D_DECL(i,j,k),nV);
+	  Uhat(KFVM_D_DECL(i,j,k),nV) += bhatDt*K(KFVM_D_DECL(i,j,k),nV);
+	}
+      }
+    };
+
+    template<class KViewType>
+    struct RK_StageFSAL_K {
+      KViewType Uhat,K;
+      Real bhatDt;
+
+      RK_StageFSAL_K(const KViewType& Uhat_,
+		     const KViewType& K_,
+		     Real bhatDt_):
+	Uhat(Uhat_),
+	K(K_),
+	bhatDt(bhatDt_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  Uhat(KFVM_D_DECL(i,j,k),nV) += bhatDt*K(KFVM_D_DECL(i,j,k),nV);
+	}
+      }
+    };
+
+    template<class UViewType,class KViewType>
+    struct RK_ErrEst_K {
+      UViewType U;
+      KViewType Uhat;
+      Real atol,rtol;
+
+      RK_ErrEst_K(const UViewType& U_,
+		  const KViewType& Uhat_,
+		  Real atol_,
+		  Real rtol_):
+	U(U_),
+	Uhat(Uhat_),
+	atol(atol_),
+	rtol(rtol_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& err,Real& posFlag) const {
+	using Kokkos::Experimental::fabs;
+	using Kokkos::Experimental::fmax;
+	using Kokkos::Experimental::pow;
+
+	Real state[NUM_VARS];
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  Real u = U(KFVM_D_DECL(i,j,k),nV),uhat = Uhat(KFVM_D_DECL(i,j,k),nV);
+	  state[nV] = u;
+	  err += pow((u - uhat)/(atol + rtol*fmax(fabs(u),fabs(uhat))),2);
+	}
+	Real pos = Physics::EOS<eqType>::positivity(state);
+	posFlag = posFlag > pos ? pos : posFlag;
+      }
+    };
+
+    template<class UViewType,class WViewType>
+    struct RK_WenoSelect_K {
+      UViewType U,Uprev;
+      WViewType W;
+
+      RK_WenoSelect_K(const UViewType& U_,
+		      const UViewType& Uprev_,
+		      const WViewType& W_):
+	U(U_),
+	Uprev(Uprev_),
+	W(W_) {}
+
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
+	using Kokkos::Experimental::fabs;
+	using Kokkos::Experimental::fmin;
+	Real u0[NUM_VARS],u1[NUM_VARS];
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  u0[nV] = Uprev(KFVM_D_DECL(i,j,k),nV);
+	  u1[nV] = U(KFVM_D_DECL(i,j,k),nV);
+	}
+	Real e0 = Physics::EOS<eqType>::eint(u0);
+	Real e1 = Physics::EOS<eqType>::eint(u1);
+	W(KFVM_D_DECL(i,j,k)) = fabs(e1 - e0)/fmin(e0,e1);
       }
     };
     

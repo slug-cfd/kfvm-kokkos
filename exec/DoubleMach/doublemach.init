@@ -6,8 +6,10 @@ mesh:extent 0.0 4.0 0.0 1.0 0.0 0.25
 time:initial 0.0
 time:final 0.25
 time:initialdt 1.e-10
-time:cfl 0.75
-time:maxsteps 2500
+time:cfl 0.1
+time:maxsteps 20000
+time:atol 1.e-4
+time:rtol 1.e-4
 
 # Set stencil options
 stencil:lfac 24
@@ -20,4 +22,4 @@ properties:wenothresh 30.0
 # Output settings
 output:datadir data
 output:basename DoubleMach
-output:plotfreq 40
+output:plotfreq 200
