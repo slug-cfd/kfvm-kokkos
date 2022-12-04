@@ -44,117 +44,118 @@ namespace KFVM {
     // Functions to test for symmetry
     template<SymType st> bool testSymP(double,double,double,double);
     template<SymType st> bool testSymP(double,double,double,double,double,double);
+    bool dblEq(double a,double b) { return std::fabs(a-b) < 1.e-3; }
 
     // Single reflections
     template<>
     bool testSymP<SymType::RefX>(double x1,double y1,double x2,double y2)
     {
-      return (x1 == -x2) && (y1 == y2);
+      return dblEq(x1,-x2) && dblEq(y1,y2);
     }
 
     template<>    
     bool testSymP<SymType::RefX>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == -x2) && (y1 == y2) && (z1 == z2);
+      return dblEq(x1,-x2) && dblEq(y1,y2) && dblEq(z1,z2);
     }
 
     template<>    
     bool testSymP<SymType::RefY>(double x1,double y1,double x2,double y2)
     {
-      return (x1 == x2) && (y1 == -y2);
+      return dblEq(x1,x2) && dblEq(y1,-y2);
     }
 
     template<>    
     bool testSymP<SymType::RefY>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == x2) && (y1 == -y2) && (z1 == z2);
+      return dblEq(x1,x2) && dblEq(y1,-y2) && dblEq(z1,z2);
     }
 
     template<>    
     bool testSymP<SymType::RefZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == x2) && (y1 == y2) && (z1 == -z2);
+      return dblEq(x1,x2) && dblEq(y1,y2) && dblEq(z1,-z2);
     }
 
     // Double reflections
     template<>
     bool testSymP<SymType::RefXY>(double x1,double y1,double x2,double y2)
     {
-      return (x1 == -x2) && (y1 == -y2);
+      return dblEq(x1,-x2) && dblEq(y1,-y2);
     }
 
     template<>    
     bool testSymP<SymType::RefXY>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == -x2) && (y1 == -y2) && (z1 == z2);
+      return dblEq(x1,-x2) && dblEq(y1,-y2) && dblEq(z1,z2);
     }
 
     template<>    
     bool testSymP<SymType::RefXZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == -x2) && (y1 == y2) && (z1 == -z2);
+      return dblEq(x1,-x2) && dblEq(y1,y2) && dblEq(z1,-z2);
     }
 
     template<>    
     bool testSymP<SymType::RefYZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == x2) && (y1 == -y2) && (z1 == -z2);
+      return dblEq(x1,x2) && dblEq(y1,-y2) && dblEq(z1,-z2);
     }
 
     // Triple reflection
     template<>
     bool testSymP<SymType::RefXYZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == -x2) && (y1 == -y2) && (z1 == -z2);
+      return dblEq(x1,-x2) && dblEq(y1,-y2) && dblEq(z1,-z2);
     }
 
     // Planar rotations
     template<>
     bool testSymP<SymType::RotXY>(double x1,double y1,double x2,double y2)
     {
-      return (x1 == -y2) && (y1 == x2);
+      return dblEq(x1,-y2) && dblEq(y1,x2);
     }
     
     template<>
     bool testSymP<SymType::RotXYm>(double x1,double y1,double x2,double y2)
     {
-      return (x1 == y2) && (y1 == -x2);
+      return dblEq(x1,y2) && dblEq(y1,-x2);
     }
 
     template<>    
     bool testSymP<SymType::RotXY>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == -y2) && (y1 == x2) && (z1 == z2);
+      return dblEq(x1,-y2) && dblEq(y1,x2) && dblEq(z1,z2);
     }
 
     template<>    
     bool testSymP<SymType::RotXYm>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == y2) && (y1 == -x2) && (z1 == z2);
+      return dblEq(x1,y2) && dblEq(y1,-x2) && dblEq(z1,z2);
     }
 
-    template<>    
+    template<>
     bool testSymP<SymType::RotXZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == -z2) && (y1 == y2) && (z1 == x2);
+      return dblEq(x1,-z2) && dblEq(y1,y2) && dblEq(z1,x2);
     }
 
     template<>    
     bool testSymP<SymType::RotXZm>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == z2) && (y1 == y2) && (z1 == -x2);
+      return dblEq(x1,z2) && dblEq(y1,y2) && dblEq(z1,-x2);
     }
 
     template<>    
     bool testSymP<SymType::RotYZ>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == x2) && (y1 == -z2) && (z1 == y2);
+      return dblEq(x1,x2) && dblEq(y1,-z2) && dblEq(z1,y2);
     }
 
     template<>    
     bool testSymP<SymType::RotYZm>(double x1,double y1,double z1,double x2,double y2,double z2)
     {
-      return (x1 == x2) && (y1 == z2) && (z1 == -y2);
+      return dblEq(x1,x2) && dblEq(y1,z2) && dblEq(z1,-y2);
     }
 
     // Aggregate test

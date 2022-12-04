@@ -72,11 +72,7 @@ namespace KFVM {
 	      dWts(nP,j) = rWts(symMap[nP].first,idxMap[nP][j]);
 	    }
 	  } else {
-	    std::printf("Symmetry missing in StencilSymmetry::mapWeights\n");
-	    std::printf("  (%d,%s) | (%d,%s) | (%d,%s)\n",
-			symMap[0].first,symName(symMap[0].second),
-			symMap[1].first,symName(symMap[1].second),
-			symMap[2].first,symName(symMap[2].second));
+	    std::printf("Symmetry missing for %d in StencilSymmetry::mapWeights\n",nP);
 	  }
 	}
       }

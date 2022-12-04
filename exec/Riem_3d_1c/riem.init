@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 96 96 96
+mesh:resolution 64 64 64
 mesh:extent -1.0 1.0 -1.0 1.0 -1.0 1.0
 
 # Set time information
@@ -13,7 +13,6 @@ time:rtol 1.e-4
 
 # Set stencil options
 stencil:lfac 24
-# stencil:bpow 2 commented out as default usually right
 
 # Set fluid properties
 properties:gamma 1.4

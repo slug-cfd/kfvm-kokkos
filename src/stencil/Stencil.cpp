@@ -689,6 +689,7 @@ namespace KFVM {
 	// Use west substencil to fill north substencil
 	{
 	  nS = 5;
+          
 	  // stencil as double arrays
 	  std::vector<double> KFVM_D_DECL(xs,ys,zs);
 	  off2Double(nS,subsize,KFVM_D_DECL(xs,ys,zs));
@@ -771,6 +772,7 @@ namespace KFVM {
 	// Use west substencil to fill bottom substencil
 	{
 	  nS = 6;
+          
 	  // stencil as double arrays
 	  std::vector<double> KFVM_D_DECL(xs,ys,zs);
 	  off2Double(nS,subsize,KFVM_D_DECL(xs,ys,zs));

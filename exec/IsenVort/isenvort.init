@@ -1,6 +1,6 @@
 # Set mesh resolution and extent
-mesh:resolution 256 256 8
-mesh:extent -10.0 10.0 -10.0 10.0 0.0 0.625
+mesh:resolution 128 128 8
+mesh:extent -10.0 10.0 -10.0 10.0 0.0 1.25
 
 # Set time information
 time:initial 0.0
