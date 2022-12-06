@@ -113,6 +113,8 @@ namespace KFVM {
       std::printf("  initial dt: %e\n",initialDeltaT);
       std::printf("  atol: %e\n",atol);
       std::printf("  rtol: %e\n",rtol);
+      std::printf("  rejectionlimit: %d\n",rejectionLimit);
+      std::printf("  rejectionthresh: %f\n",rejectionThresh);
       std::printf("  cfl: %f\n",cfl);
       std::printf("  maxsteps: %d\n",maxTimeSteps);
 

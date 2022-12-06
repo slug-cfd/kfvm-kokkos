@@ -198,7 +198,7 @@ namespace KFVM {
       std::printf("Warning: Time step was rejected too many times\n");
       lastTimeStep = true;
     }
-    if (dt < ps.initialDeltaT/10.0) {
+    if (dt < ps.initialDeltaT) {
       std::printf("Warning: Time step stagnated\n");
       lastTimeStep = true;
     }
