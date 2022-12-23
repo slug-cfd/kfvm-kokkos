@@ -1,7 +1,7 @@
 // Set intial condition
 // must take (x,y,z) coordinates regardless of space dimension
 
-#define ASTROJET_VEL 10.0
+#define ASTROJET_VEL 800.0
 
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])

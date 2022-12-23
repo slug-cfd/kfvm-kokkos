@@ -14,12 +14,12 @@
 #define NUM_QUAD_PTS 3
 
 // Floating point precision (1 for double, 0 for single)
-#define FLOAT_PRECISION 0
+#define FLOAT_PRECISION 1
 
 // Define one of the following devices
 //#define KFVM_DEBUG
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Euler;
-constexpr KFVM::RK_LSFSAL_TYPE rkType = KFVM::RK_LSFSAL_TYPE::ThreeStarP;
+constexpr KFVM::RK_TYPE rkType = KFVM::RK_TYPE::KETCH104;
 
 #endif

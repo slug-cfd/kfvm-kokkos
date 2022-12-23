@@ -302,19 +302,20 @@ namespace KFVM {
 	Real rPres = EOS<EquationType::Euler>::pres(fProp.gamma,refState);
 	
 	// Minimum allowable density and pressure
-	Real minDens = 1.e-8;
-	Real minPres = 1.e-8;
-	for (idx_t xo=-1; xo<=1; xo++) {
-	  for (idx_t yo=-1; yo<=1; yo++) {
+	Real minDens = 1.e-13;
+	Real minPres = 1.e-13;
+	for (idx_t xo=-2; xo<=2; xo++) {
+	  for (idx_t yo=-2; yo<=2; yo++) {
 #if (SPACE_DIM == 3)
-	    for (idx_t zo=-1; zo<=1; zo++) {
+	    for (idx_t zo=-2; zo<=2; zo++) {
 #endif
 	      Real state[NUM_VARS];
 	      for (int nV=0; nV<NUM_VARS; nV++) {
 		state[nV] = U(KFVM_D_DECL(i + xo,j + yo,k + zo),nV);
 	      }
-	      minDens = fmin(minDens,state[SimVar::dens]);
-	      minPres = fmin(minPres,EOS<EquationType::Euler>::pres(fProp.gamma,state));
+	      minDens = state[SimVar::dens] > 0 ? fmin(minDens,state[SimVar::dens]) : minDens;
+              Real pres = EOS<EquationType::Euler>::pres(fProp.gamma,state);
+	      minPres = pres > 0 ? fmin(minPres,pres) : minPres;
 #if (SPACE_DIM == 3)
 	    }
 #endif

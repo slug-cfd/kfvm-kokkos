@@ -17,6 +17,6 @@
 #define FLOAT_PRECISION 0
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Euler;
-constexpr KFVM::RK_LSFSAL_TYPE rkType = KFVM::RK_LSFSAL_TYPE::ThreeStarP;
+constexpr KFVM::RK_TYPE rkType = KFVM::RK_TYPE::ThreeStarP;
 
 #endif

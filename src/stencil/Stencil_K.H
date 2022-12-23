@@ -83,7 +83,7 @@ namespace KFVM {
 	using Kokkos::Experimental::pow;
 
 	// Linear weights and epsilon value
-	constexpr Real eps = Real(1.e-8);
+	constexpr Real eps = Real(1.e-14);
 #if (SPACE_DIM == 2)
 	constexpr Real gHi = 0.75,gLo = 0.7;
 	Real gamma[] = {gHi,

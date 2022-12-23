@@ -32,10 +32,8 @@ namespace KFVM {
     KOKKOS_INLINE_FUNCTION
     void eulerSpeed(Real gamma,int lng,
 		    const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-		    Real pL,Real pR,
 		    Real* sL,Real* sR)
     {
-      using Kokkos::Experimental::sqrt;
       using Kokkos::Experimental::fmax;
       using Kokkos::Experimental::fmin;
       using EulerAdiabatic::SimVar;
@@ -56,12 +54,10 @@ namespace KFVM {
       using EulerAdiabatic::SimVar;
       
       Real FT[NUM_VARS];
-      Real pL = EOS<EquationType::Euler>::pres(gamma,uL);
-      Real pR = EOS<EquationType::Euler>::pres(gamma,uR);
       Real sL,sR;
       
       // Wave speed estimates
-      eulerSpeed(gamma,ord[0],uL,uR,pL,pR,&sL,&sR);
+      eulerSpeed(gamma,ord[0],uL,uR,&sL,&sR);
       
       // Find appropriate region and fill in flux vector
       if(sR > 0) {

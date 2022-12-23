@@ -71,7 +71,8 @@ namespace KFVM {
   public:
     Solver(ProblemSetup&);
     void Solve();
-    void TakeStep();
+    void TakeStepErrEst();
+    void TakeStepCFL();
     void evalAuxiliary();
     Real evalRHS(ConsDataView,ConsDataView,Real);
     void reconstructRiemannStates(ConsDataView);

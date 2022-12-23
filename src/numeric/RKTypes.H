@@ -3,7 +3,7 @@
 
 namespace KFVM {
   
-  enum RK_LSFSAL_TYPE { ThreeStarP = 0, FourStarP, NUM_RK_TYPES };
+  enum RK_TYPE { ThreeStarP = 0, FourStarP, KETCH104, NUM_RK_TYPES };
   
 } // end namespace KFVM
 
