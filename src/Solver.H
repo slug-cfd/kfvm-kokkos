@@ -24,12 +24,12 @@ namespace KFVM {
   class Solver
   {
     ProblemSetup& ps;
-    // IO object
-    NetCDFWriter netCDFWriter;
     // Quadrature rule for face/cell integration
     Numeric::QuadRule qr;
     // Grid geometry data
     Geometry geom;
+    // IO object
+    NetCDFWriter netCDFWriter;
     // Stencil object for Riemann state reconstruction
     Stencil::Stencil stencil;
     // Boundary condition coefficients
@@ -56,7 +56,7 @@ namespace KFVM {
     // Threshold for WENO reconstruction
     Real wThresh;
     // Count RHS evals and step rejections
-    int nRhsEval,nRejected;
+    int nRhsEval,nRejectUnphys,nRejectThresh;
     
     // Internal functions
     auto trimCellHalo(ConsDataView v)

@@ -18,7 +18,7 @@ namespace KFVM {
     // Bounding box
     const Real xLo,xUp,yLo,yUp,zLo,zUp;
     // Grid spacing
-    const Real dx,dy,dz;
+    const Real dx,dy,dz,dmin;
 
     // Construct from Problemsetup object
     Geometry(const ProblemSetup& ps):
@@ -27,7 +27,12 @@ namespace KFVM {
       zLo(ps.zLo),zUp(ps.zUp),
       dx((xUp-xLo)/ps.nX),
       dy((yUp-yLo)/ps.nY),
-      dz((zUp-zLo)/ps.nZ)
+      dz((zUp-zLo)/ps.nZ),
+#if (SPACE_DIM == 2)
+      dmin(std::fmin(dx,dy))
+#else
+      dmin(std::fmin(dx,std::fmin(dy,dz)))
+#endif
     {}
 
     // Convenience functions to calculate coordinates at cell centers

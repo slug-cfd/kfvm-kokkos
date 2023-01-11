@@ -31,15 +31,15 @@ namespace KFVM {
     // Wavespeed estimates
     KOKKOS_INLINE_FUNCTION
     void eulerSpeed(Real gamma,int lng,
-		    const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-		    Real* sL,Real* sR)
+        	    const Real uL[NUM_VARS],const Real uR[NUM_VARS],
+        	    Real* sL,Real* sR)
     {
       using Kokkos::Experimental::fmax;
       using Kokkos::Experimental::fmin;
       using EulerAdiabatic::SimVar;
       
       Real a = fmax(EOS<EquationType::Euler>::soundspeed(gamma,uL),
-		    EOS<EquationType::Euler>::soundspeed(gamma,uR));
+        	    EOS<EquationType::Euler>::soundspeed(gamma,uR));
       *sL = fmin(uL[lng]/uL[SimVar::dens],uR[lng]/uR[SimVar::dens]) - a;
       *sR = fmax(uL[lng]/uL[SimVar::dens],uR[lng]/uR[SimVar::dens]) + a;
     }

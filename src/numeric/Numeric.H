@@ -76,6 +76,23 @@ namespace KFVM {
 
     template<RK_TYPE RKType> struct RKCoeff{};
 
+    // SSP method, 4 stages, order 3, embedded order 2
+    template<>
+    struct RKCoeff<RK_TYPE::SSP4_3_2>
+    {
+      constexpr static int nStages = 4;
+      constexpr static std::array<Real,4> gam1 = {0.0,1.0,1.0/3.0,1.0};
+      constexpr static std::array<Real,4> gam2 = {0.0,0.0,0.0,0.0};
+      constexpr static std::array<Real,4> gam3 = {0.0,0.0,2.0/3.0,0.0};
+      constexpr static std::array<Real,4> delta = {0.0,0.0,0.0,0.0};
+      constexpr static std::array<Real,4> beta = {1.0/2.0,1.0/2.0,1.0/6.0,1.0/2.0};
+      constexpr static std::array<Real,4> bhat = {1.0/4.0,1.0/4.0,1.0/4.0,1.0/4.0};
+      constexpr static Real bhatfsal = 0.0;
+      constexpr static std::array<Real,5> c = {0.0,1.0/2.0,1.0,1.0/2.0};
+      constexpr static Real ep1 = 0.8/3.0;
+      constexpr static Real ep2 = -0.31/3.0;
+    };
+
     template<>
     struct RKCoeff<RK_TYPE::ThreeStarP>
     {
@@ -207,10 +224,10 @@ namespace KFVM {
       constexpr static std::array<Real,10> c = {0.0,
                                                 1.0/6.0,
                                                 1.0/3.0,
-                                                0.5,
+                                                1.0/2.0,
                                                 2.0/3.0,
                                                 1.0/3.0,
-                                                0.5,
+                                                1.0/2.0,
                                                 2.0/3.0,
                                                 5.0/6.0,
                                                 1.0};

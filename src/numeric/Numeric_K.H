@@ -294,9 +294,9 @@ namespace KFVM {
 	  Real u = U(KFVM_D_DECL(i,j,k),nV),uhat = Uhat(KFVM_D_DECL(i,j,k),nV);
 	  state[nV] = u;
           hasNan = hasNan || isnan(u);
-	  err += pow((u - uhat)/(atol + rtol*fmax(fabs(u),fabs(uhat))),2);
+          err += pow((u - uhat)/(atol + rtol*fmax(fabs(u),fabs(uhat))),2);
 	}
-	Real pos = hasNan ? -1.0 : Physics::EOS<eqType>::positivity(state);
+	Real pos = hasNan ? -1.0 : state[0];
 	posFlag = posFlag > pos ? pos : posFlag;
       }
     };
@@ -360,10 +360,8 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
 	for (int nV=0; nV<NUM_VARS; nV++) {
-	  Utmp(KFVM_D_DECL(i,j,k),nV) =
-            Utmp(KFVM_D_DECL(i,j,k),nV)/25.0 + 9.0*U(KFVM_D_DECL(i,j,k),nV)/25.0;
-	  U(KFVM_D_DECL(i,j,k),nV) =
-            15.0*Utmp(KFVM_D_DECL(i,j,k),nV) - 5.0*U(KFVM_D_DECL(i,j,k),nV);
+	  Utmp(KFVM_D_DECL(i,j,k),nV) = Utmp(KFVM_D_DECL(i,j,k),nV)/25.0 + 9.0*U(KFVM_D_DECL(i,j,k),nV)/25.0;
+	  U(KFVM_D_DECL(i,j,k),nV) = 15.0*Utmp(KFVM_D_DECL(i,j,k),nV) - 5.0*U(KFVM_D_DECL(i,j,k),nV);
 	}
       }
     };
@@ -402,9 +400,7 @@ namespace KFVM {
 
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& posFlag) const {
-	using Kokkos::Experimental::fabs;
-	using Kokkos::Experimental::fmax;
-	using Kokkos::Experimental::pow;
+	using Kokkos::Experimental::fmin;
         using Kokkos::Experimental::isnan;
 
         bool hasNan = false;
@@ -413,8 +409,8 @@ namespace KFVM {
 	  state[nV] = U(KFVM_D_DECL(i,j,k),nV);
           hasNan = hasNan || isnan(state[nV]);
 	}
-	Real pos = hasNan ? -1.0 : Physics::EOS<eqType>::positivity(state);
-	posFlag = posFlag > pos ? pos : posFlag;
+	Real pos = hasNan ? -1.0 : state[0];
+	posFlag = fmin(posFlag,pos);
       }
     };
 

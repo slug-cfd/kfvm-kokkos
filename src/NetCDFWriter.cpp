@@ -22,8 +22,9 @@
 
 namespace KFVM {
 
-  NetCDFWriter::NetCDFWriter(const ProblemSetup& a_ps):
-    ps(a_ps),
+  NetCDFWriter::NetCDFWriter(const ProblemSetup& ps_,const Geometry& geom_):
+    ps(ps_),
+    geom(geom_),
     baseName(ps.dataDir),
     solTmp(ps.nX*ps.nY*ps.nZ,0.0),
     solTmpHalo((ps.nX + 2*ps.rad)*(ps.nY + 2*ps.rad)*(ps.nZ + 2*ps.rad),0.0)
@@ -42,14 +43,14 @@ namespace KFVM {
     grid[0].resize(ps.nX,0.0);
     gridHalo[0].resize(ps.nX + 2*ps.rad,0.0);
     for (idx_t n=0; n<ps.nX; ++n) {
-      grid[0][n] = ps.xLo + (static_cast<double>(n) + 0.5)*ps.dx;
+      grid[0][n] = ps.xLo + (static_cast<double>(n) + 0.5)*geom.dx;
       gridHalo[0][n + ps.rad] = grid[0][n];
     }
     
     grid[1].resize(ps.nY,0.0);
     gridHalo[1].resize(ps.nY + 2*ps.rad,0.0);
     for (idx_t n=0; n<ps.nY; ++n) {
-      grid[1][n] = ps.yLo + (static_cast<double>(n) + 0.5)*ps.dy;
+      grid[1][n] = ps.yLo + (static_cast<double>(n) + 0.5)*geom.dy;
       gridHalo[1][n + ps.rad] = grid[1][n];
     }
     
@@ -57,20 +58,20 @@ namespace KFVM {
     grid[2].resize(ps.nZ,0.0);
     gridHalo[2].resize(ps.nZ + 2*ps.rad,0.0);
     for (idx_t n=0; n<ps.nZ; ++n) {
-      grid[2][n] = ps.zLo + (static_cast<double>(n) + 0.5)*ps.dz;
+      grid[2][n] = ps.zLo + (static_cast<double>(n) + 0.5)*geom.dz;
       gridHalo[2][n + ps.rad] = grid[2][n];
     }
 #endif
 
     // add in halo positions
     for (idx_t nH=1; nH<=ps.rad; nH++) {
-      gridHalo[0][ps.rad - nH]             = gridHalo[0][ps.rad] - nH*ps.dx;
-      gridHalo[0][ps.rad + ps.nX + nH - 1] = gridHalo[0][ps.rad + ps.nX - 1] + nH*ps.dx;
-      gridHalo[1][ps.rad - nH]             = gridHalo[1][ps.rad] - nH*ps.dy;
-      gridHalo[1][ps.rad + ps.nY + nH - 1] = gridHalo[1][ps.rad + ps.nY - 1] + nH*ps.dy;
+      gridHalo[0][ps.rad - nH]             = gridHalo[0][ps.rad] - nH*geom.dx;
+      gridHalo[0][ps.rad + ps.nX + nH - 1] = gridHalo[0][ps.rad + ps.nX - 1] + nH*geom.dx;
+      gridHalo[1][ps.rad - nH]             = gridHalo[1][ps.rad] - nH*geom.dy;
+      gridHalo[1][ps.rad + ps.nY + nH - 1] = gridHalo[1][ps.rad + ps.nY - 1] + nH*geom.dy;
 #if (SPACE_DIM == 3)
-      gridHalo[2][ps.rad - nH]             = gridHalo[2][ps.rad] - nH*ps.dz;
-      gridHalo[2][ps.rad + ps.nZ + nH - 1] = gridHalo[2][ps.rad + ps.nZ - 1] + nH*ps.dz;
+      gridHalo[2][ps.rad - nH]             = gridHalo[2][ps.rad] - nH*geom.dz;
+      gridHalo[2][ps.rad + ps.nZ + nH - 1] = gridHalo[2][ps.rad + ps.nZ - 1] + nH*geom.dz;
 #endif
     }
   }

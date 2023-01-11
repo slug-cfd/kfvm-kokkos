@@ -44,7 +44,7 @@ namespace KFVM {
     // Functions to test for symmetry
     template<SymType st> bool testSymP(double,double,double,double);
     template<SymType st> bool testSymP(double,double,double,double,double,double);
-    bool dblEq(double a,double b) { return std::fabs(a-b) < 1.e-3; }
+    bool dblEq(double a,double b) { return std::fabs(a-b) < 1.e-6; }
 
     // Single reflections
     template<>

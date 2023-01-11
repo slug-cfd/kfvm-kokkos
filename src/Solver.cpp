@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <limits>
 
 #include <Kokkos_Core.hpp>
 
@@ -23,15 +24,13 @@
 #include "stencil/Stencil_K.H"
 
 #include <Solver.H>
-#include <impl/Kokkos_Combined_Reducer.hpp>
-#include <limits>
 
 namespace KFVM {
   
   Solver::Solver(ProblemSetup& ps_):
     ps(ps_),
-    netCDFWriter(ps),
     geom(ps),
+    netCDFWriter(ps,geom),
     stencil(ps.gp_lFac),
     wenoSelect("WenoSelector",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     U_halo("U",KFVM_D_DECL(ps.nX + 2*ps.rad,
@@ -48,10 +47,11 @@ namespace KFVM {
     time(ps.initialTime),
     dt(ps.initialDeltaT),
     errEst(1.0),
-    wThresh(0.0),
+    wThresh(-1.0),
     lastTimeStep(false),
     nRhsEval(0),
-    nRejected(0)
+    nRejectUnphys(0),
+    nRejectThresh(0)
   {
     setIC();
     evalAuxiliary();
@@ -61,7 +61,7 @@ namespace KFVM {
     if (rkType != RK_TYPE::KETCH104) {
       Real maxVel = evalRHS(U_halo,K,time);
       // Use CFL just to pick first time step size
-      dt = ps.cfl*std::fmin(ps.dx,std::fmin(ps.dy,ps.dz))/maxVel;
+      dt = 0.01*ps.cfl*geom.dmin/maxVel;
     }
   }
 
@@ -88,7 +88,7 @@ namespace KFVM {
       }
     }
 
-    std::printf("Time stepping completed\n  %d RHS evals and %d rejected steps\n",nRhsEval,nRejected);
+    std::printf("Time stepping completed\n  %d RHS evals and %d/%d rejected (accuracy/unphysical) steps\n",nRhsEval,nRejectThresh,nRejectUnphys);
 
     Kokkos::Profiling::popRegion();
   }
@@ -130,9 +130,11 @@ namespace KFVM {
 
     // Try step with dt, and repeat as needed
     bool accepted = false;
+    Real maxVel,v;
+    wThresh = ps.fluidProp.wenoThresh*dt;
     for (int nT=0; nT<ps.rejectionLimit; nT++) {
-      wThresh = ps.fluidProp.wenoThresh*dt;
-      std::printf("  Attempt %d: dt = %e, wThresh = %e\n",nT+1,dt,wThresh);
+      maxVel = 0.0;
+      std::printf("  Attempt %d: dt = %e, wThresh = %e",nT+1,dt,wThresh);
 
       // Trim halos off
       auto U = trimCellHalo(U_halo);
@@ -140,7 +142,8 @@ namespace KFVM {
 
       // Need to reset K if this is a repeat of a rejected step
       if (nT > 0) {
-	evalRHS(Uprev_halo,K,time);
+	v = evalRHS(Uprev_halo,K,time);
+        maxVel = std::fmax(maxVel,v);
       }
 
       // First stage is special, do it outside loop
@@ -160,19 +163,21 @@ namespace KFVM {
 	betaDt = RKCoeff::beta[nS]*dt;
 
 	// Evaluate RHS on U
-	evalRHS(U_halo,K,time + cDt);
+	v = evalRHS(U_halo,K,time + cDt);
+        maxVel = std::fmax(maxVel,v);
       
 	// Update registers
 	Kokkos::parallel_for("RKStage",cellRng,Numeric::RKFSAL_Stage_K<decltype(U),decltype(K)>(U,Uhat,Utmp,Uprev,K,delta,gam1,gam2,gam3,betaDt,bhatDt));
       }
 
       // FSAL stage
-      evalRHS(U_halo,K,time + dt);
+      v = evalRHS(U_halo,K,time + dt);
+      maxVel = std::fmax(maxVel,v);
       bhatDt = RKCoeff::bhatfsal*dt;
       Kokkos::parallel_for("RKStageFSAL",cellRng,Numeric::RKFSAL_StageLast_K<decltype(K)>(Uhat,K,bhatDt));
 
       // Estimate the error and test positivity
-      Real errNew = 0.0,posFlag = 1.0,nDofs = NUM_VARS*ps.nX*ps.nY*ps.nZ;
+      Real errNew = 0.0,posFlag = 1.0,nDofs = ps.nX*ps.nY*ps.nZ*NUM_VARS;
       Kokkos::parallel_reduce("ErrorEstimate",cellRng,Numeric::RKFSAL_ErrEst_K<decltype(U),decltype(K)>(U,Uhat,ps.atol,ps.rtol),errNew,Kokkos::Min<Real>(posFlag));
       errNew = 1.0/std::sqrt(errNew/nDofs);
 
@@ -181,14 +186,23 @@ namespace KFVM {
       dtfac = 1.0 + std::atan(dtfac - 1.0);
       if (posFlag < 0.0) {
 	// Solution is unphysical, reject and reduce dt
-	std::printf("    Rejected: Unphysical\n");
+	std::printf("\n    Rejected: Unphysical\n");
 	dt /= 4.0;
-	nRejected++;
+        wThresh = -1.0; // Force full weno usage on failure
+	nRejectUnphys++;
       } else if (dtfac >= ps.rejectionThresh) {
 	// Step is accepted
+        Real cfl = dt*maxVel/geom.dmin;
+        std::printf(", cfl = %f\n",cfl);
 	accepted = true;
 	time += dt;
 	dt *= dtfac;
+
+        // Re-limit time step size
+        cfl = dt*maxVel/geom.dmin;
+        if (cfl > ps.cfl && false) {
+          dt = ps.cfl*geom.dmin/maxVel;
+        }
 	errEst = errNew;
 
 	// Update the weno selector
@@ -198,9 +212,9 @@ namespace KFVM {
 	break;
       } else {
 	// otherwise step is rejected, try again with new smaller dt
-	std::printf("    Rejected: Tolerance\n");
+	std::printf("\n    Rejected: Tolerance\n");
 	dt *= dtfac;
-	nRejected++;
+	nRejectThresh++;
       }
     }
 
@@ -237,16 +251,17 @@ namespace KFVM {
 
     // Try step with dt, and repeat as needed
     bool accepted = false;
-    Real maxVel = 0.0,v;
+    Real maxVel,v;
+    wThresh = ps.fluidProp.wenoThresh*dt; // Set threshold for weno, inner loop can override it if needed
     for (int nT=0; nT<ps.rejectionLimit; nT++) {
-      wThresh = ps.fluidProp.wenoThresh*dt;
+      maxVel = 0.0;
       std::printf("  Attempt %d: dt = %e, wThresh = %e\n",nT + 1,dt,wThresh);
 
       // Trim halos off
       auto U = trimCellHalo(U_halo);
       auto Uprev = trimCellHalo(Uprev_halo);
 
-      // Evaluate RHS of current step, or prior if just rejected
+      // Evaluate RHS of current step
       v = evalRHS(Uprev_halo,K,time);
       maxVel = std::fmax(v,maxVel);
 
@@ -257,14 +272,13 @@ namespace KFVM {
       // Loop over stages and update registers
       for (int nS=1; nS<RKCoeff::nStages - 1; nS++) {
 	// Extract RK coeffs into local vars to make dispatch happy
-	Real cDt = RKCoeff::c[nS]*dt;
 	betaDt = RKCoeff::beta[nS]*dt;
 
 	// Evaluate RHS on U
-	v = evalRHS(U_halo,K,time + cDt);
+	v = evalRHS(U_halo,K,time + RKCoeff::c[nS]*dt);
         maxVel = std::fmax(v,maxVel);
       
-	// Update registers
+	// Update register
 	Kokkos::parallel_for("RKStage",cellRng,Numeric::RKCFL_Stage_K<decltype(U),decltype(K)>(U,K,betaDt));
 
         // Special update on stage 5
@@ -284,14 +298,15 @@ namespace KFVM {
       // Accept or reject step
       if (posFlag < 0.0) {
 	// Solution is unphysical, reject and reduce dt
-	std::printf("    Rejected: Unphysical\n");
+	std::printf("    Rejected: Unphysical, pos = %e\n",posFlag);
 	dt /= 4.0;
-	nRejected++;
+        wThresh = -1.0; // Force full weno after a failure
+	nRejectUnphys++;
       } else {
 	// Step is accepted
 	accepted = true;
 	time += dt;
-        Real dtcfl = ps.cfl*std::fmin(ps.dx,std::fmin(ps.dy,ps.dz))/maxVel;
+        Real dtcfl = ps.cfl*geom.dmin/maxVel;
 	dt = std::fmin(dtcfl,1.5*dt);
 
 	// Update the weno selector
@@ -787,7 +802,6 @@ void Solver::setCellBCs(ConsDataView sol_halo,Real t)
 
     // Fill U using user specified initial condition
     auto U = trimCellHalo(U_halo);
-    auto Uprev = trimCellHalo(Uprev_halo);
     auto cellRng = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
     Kokkos::parallel_for("IntegrateIC",cellRng,Numeric::IntegrateIC_K<decltype(U)>
@@ -795,7 +809,7 @@ void Solver::setCellBCs(ConsDataView sol_halo,Real t)
 
     // Set Uprev to also be IC
     // Needed for error control in timestepper
-    Kokkos::deep_copy(Uprev,U);
+    Kokkos::deep_copy(Uprev_halo,U_halo);
 
     // First step always uses WENO everywhere
     // -> set wenoSelect to large number everywhere

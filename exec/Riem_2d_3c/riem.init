@@ -8,12 +8,11 @@ time:final 0.8
 time:initialdt 1.e-10
 time:cfl 1.5
 time:maxsteps 2500
-time:atol 1.e-4
-time:rtol 1.e-4
+time:atol 1.e-3
+time:rtol 1.e-3
 
 # Set stencil options
 stencil:lfac 24
-# stencil:bpow 2 commented out as default usually right
 
 # Set fluid properties
 properties:gamma 1.4
@@ -22,4 +21,4 @@ properties:wenothresh 20.0
 # Output settings
 output:datadir data
 output:basename Riem
-output:plotfreq 40
+output:plotfreq 10

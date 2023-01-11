@@ -43,7 +43,6 @@ namespace KFVM {
     // Domain and grid size
     idx_t nX,nY,nZ;
     Real xLo,xUp,yLo,yUp,zLo,zUp;
-    Real dx,dy,dz;
 
     // Time stepping information
     int maxTimeSteps;
@@ -74,9 +73,6 @@ namespace KFVM {
       yUp(1.0),
       zLo(0.0),
       zUp(1.0),
-      dx((xUp - xLo)/nX),
-      dy((yUp - yLo)/nY),
-      dz((zUp - zLo)/nZ),
       maxTimeSteps(1000),
       initialTime(0.0),
       finalTime(1.0),
@@ -96,15 +92,12 @@ namespace KFVM {
     {
       // Print mesh information
       std::printf("Mesh:\n");
-      std::printf("  nX: %d\n",nX);
-      std::printf("  nY: %d\n",nY);
-      std::printf("  nZ: %d\n",nZ);
+      std::printf("  nX: %ld\n",nX);
+      std::printf("  nY: %ld\n",nY);
+      std::printf("  nZ: %ld\n",nZ);
       std::printf("  x extent: %f -- %f\n",xLo,xUp);
       std::printf("  y extent: %f -- %f\n",yLo,yUp);
       std::printf("  z extent: %f -- %f\n",zLo,zUp);
-      std::printf("  dx: %f\n",dx);
-      std::printf("  dy: %f\n",dy);
-      std::printf("  dz: %f\n",dz);
       
       // Print time information
       std::printf("Time:\n");
@@ -120,7 +113,7 @@ namespace KFVM {
 
       // Print stencil information
       std::printf("Stencil:\n");
-      std::printf("  Radius: %d\n",rad);
+      std::printf("  Radius: %ld\n",rad);
       std::printf("  lfac: %f\n",gp_lFac);
       std::printf("  bpow: %f\n",gp_bpow);
 
@@ -224,11 +217,6 @@ namespace KFVM {
       } else {
 	return false;
       }
-
-      // Update cell sizes
-      dx = (xUp - xLo)/nX;
-      dy = (yUp - yLo)/nY;
-      dz = (zUp - zLo)/nZ;
 
       return true;
     }
