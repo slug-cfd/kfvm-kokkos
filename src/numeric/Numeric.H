@@ -77,22 +77,122 @@ namespace KFVM {
     template<RK_TYPE RKType> struct RKCoeff{};
 
     // SSP method, 4 stages, order 3, embedded order 2
+    // SSP(4,3) described by Kraaijevanger @ https://doi.org/10.1007/BF01933264
+    // Embedded method and PI values from Conde et. al. @ https://arxiv.org/pdf/1806.08693.pdf
     template<>
     struct RKCoeff<RK_TYPE::SSP4_3_2>
     {
       constexpr static int nStages = 4;
-      constexpr static std::array<Real,4> gam1 = {0.0,1.0,1.0/3.0,1.0};
+      constexpr static std::array<Real,4> gam1 = {0.0,
+                                                  1.0,
+                                                  1.0/3.0,
+                                                  1.0};
       constexpr static std::array<Real,4> gam2 = {0.0,0.0,0.0,0.0};
-      constexpr static std::array<Real,4> gam3 = {0.0,0.0,2.0/3.0,0.0};
+      constexpr static std::array<Real,4> gam3 = {0.0,
+                                                  0.0,
+                                                  2.0/3.0,
+                                                  0.0};
       constexpr static std::array<Real,4> delta = {0.0,0.0,0.0,0.0};
-      constexpr static std::array<Real,4> beta = {1.0/2.0,1.0/2.0,1.0/6.0,1.0/2.0};
-      constexpr static std::array<Real,4> bhat = {1.0/4.0,1.0/4.0,1.0/4.0,1.0/4.0};
+      constexpr static std::array<Real,4> beta = {1.0/2.0,
+                                                  1.0/2.0,
+                                                  1.0/6.0,
+                                                  1.0/2.0};
+      constexpr static std::array<Real,4> bhat = {1.0/4.0,
+                                                  1.0/4.0,
+                                                  1.0/4.0,
+                                                  1.0/4.0};
       constexpr static Real bhatfsal = 0.0;
-      constexpr static std::array<Real,5> c = {0.0,1.0/2.0,1.0,1.0/2.0};
+      constexpr static std::array<Real,4> c = {0.0,
+                                               1.0/2.0,
+                                               1.0,
+                                               1.0/2.0};
       constexpr static Real ep1 = 0.8/3.0;
       constexpr static Real ep2 = -0.31/3.0;
     };
 
+    // SSP method, 10 stages, order 4, embedded order 3
+    // SSP(10,4) method from Ketcheson @ https://doi.org/10.1137/07070485X
+    // Embedded method and PI values from Conde et. al. @ https://arxiv.org/pdf/1806.08693.pdf
+    template<>
+    struct RKCoeff<RK_TYPE::SSP10_4_3>
+    {
+      constexpr static int nStages = 10;
+      constexpr static std::array<Real,10> gam1 = {0.0,
+                                                   1.0,
+                                                   1.0,
+                                                   1.0,
+                                                   2.0/5.0,
+                                                   1.0,
+                                                   1.0,
+                                                   1.0,
+                                                   1.0,
+                                                   3.0/5.0};
+      constexpr static std::array<Real,10> gam2 = {0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   1.0};
+      constexpr static std::array<Real,10> gam3 = {0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   3.0/5.0,
+                                                   0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   -3.0/2.0};
+      constexpr static std::array<Real,10> delta = {0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    9.0/10.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0,
+                                                    0.0};
+      constexpr static std::array<Real,10> beta = {1.0/6.0,
+                                                   1.0/6.0,
+                                                   1.0/6.0,
+                                                   1.0/6.0,
+                                                   1.0/15.0,
+                                                   1.0/6.0,
+                                                   1.0/6.0,
+                                                   1.0/6.0,
+                                                   1.0/6.0,
+                                                   1.0/10.0};
+      constexpr static std::array<Real,10> bhat = {0.0,
+                                                   2.0/9.0,
+                                                   0.0,
+                                                   0.0,
+                                                   5.0/18.0,
+                                                   1.0/3.0,
+                                                   0.0,
+                                                   0.0,
+                                                   0.0,
+                                                   1.0/6.0};
+      constexpr static Real bhatfsal = 0.0;
+      constexpr static std::array<Real,10> c = {0.0,
+                                                1.0/6.0,
+                                                1.0/3.0,
+                                                1.0/2.0,
+                                                2.0/3.0,
+                                                1.0/3.0,
+                                                1.0/2.0,
+                                                2.0/3.0,
+                                                5.0/6.0,
+                                                1.0};
+      constexpr static Real ep1 = 0.8/3.0;
+      constexpr static Real ep2 = -0.31/3.0;
+    };
+
+    // Third order adaptive method from Ranocha et. al. @ https://doi.org/10.1007/s42967-021-00159-w
     template<>
     struct RKCoeff<RK_TYPE::ThreeStarP>
     {
@@ -137,6 +237,7 @@ namespace KFVM {
       constexpr static Real ep2 = -0.23/3.0;
     };
 
+    // Fourth order adaptive method from Ranocha et. al. @ https://doi.org/10.1007/s42967-021-00159-w
     template<>
     struct RKCoeff<RK_TYPE::FourStarP>
     {
@@ -208,32 +309,6 @@ namespace KFVM {
       constexpr static Real ep1 = 0.38/4.0;
       constexpr static Real ep2 = -0.18/4.0;
     };    
-
-    template<>
-    struct RKCoeff<RK_TYPE::KETCH104>
-    {
-      constexpr static int nStages = 10;
-      constexpr static std::array<Real,10> gam1 = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
-      constexpr static std::array<Real,10> gam2 = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
-      constexpr static std::array<Real,10> gam3 = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
-      constexpr static std::array<Real,10> delta = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
-      constexpr static std::array<Real,10> beta = {1.0/6.0,1.0/6.0,1.0/6.0,1.0/6.0,1.0/6.0,
-                                                   1.0/6.0,1.0/6.0,1.0/6.0,1.0/6.0,1.0/10.0};
-      constexpr static std::array<Real,10> bhat = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
-      constexpr static Real bhatfsal = 0.0;
-      constexpr static std::array<Real,10> c = {0.0,
-                                                1.0/6.0,
-                                                1.0/3.0,
-                                                1.0/2.0,
-                                                2.0/3.0,
-                                                1.0/3.0,
-                                                1.0/2.0,
-                                                2.0/3.0,
-                                                5.0/6.0,
-                                                1.0};
-      constexpr static Real ep1 = 0.0;
-      constexpr static Real ep2 = 0.0;
-    };
 
   } // End Numeric namespace
   

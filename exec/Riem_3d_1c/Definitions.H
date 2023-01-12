@@ -19,6 +19,6 @@
 //#define KFVM_DEBUG
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Euler;
-constexpr KFVM::RK_TYPE rkType = KFVM::RK_TYPE::ThreeStarP;
+constexpr KFVM::RK_TYPE rkType = KFVM::RK_TYPE::SSP10_4_3;
 
 #endif
