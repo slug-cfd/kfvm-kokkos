@@ -174,35 +174,44 @@ namespace KFVM {
       return sMax;
     }
 
-    KOKKOS_INLINE_FUNCTION
-    Real MHD_GLM_KEPES_X(const Real gamma,const Real ch,
-			 const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-			 Real F[NUM_VARS])
-    {
-      int vord[] = {MHD_GLM::SimVar::momx,MHD_GLM::SimVar::momy,MHD_GLM::SimVar::momz};
-      int bord[] = {MHD_GLM::SimVar::magx,MHD_GLM::SimVar::magy,MHD_GLM::SimVar::magz};
-      return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,F);
-    }
+    template<RSType rst> struct MHD_GLM_RS {};
 
-    KOKKOS_INLINE_FUNCTION
-    Real MHD_GLM_KEPES_Y(const Real gamma,const Real ch,
-			 const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-			 Real F[NUM_VARS])
+    template<>
+    struct MHD_GLM_RS<RSType::MHD_GLM_KEPES>
     {
-      int vord[] = {MHD_GLM::SimVar::momy,MHD_GLM::SimVar::momz,MHD_GLM::SimVar::momx};
-      int bord[] = {MHD_GLM::SimVar::magy,MHD_GLM::SimVar::magz,MHD_GLM::SimVar::magx};
-      return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,F);
-    }
+      static
+      KOKKOS_INLINE_FUNCTION
+      Real RiemannSolve_X(const Real gamma,const Real ch,
+                          const Real uL[NUM_VARS],const Real uR[NUM_VARS],
+                          Real F[NUM_VARS])
+      {
+        int vord[] = {MHD_GLM::SimVar::momx,MHD_GLM::SimVar::momy,MHD_GLM::SimVar::momz};
+        int bord[] = {MHD_GLM::SimVar::magx,MHD_GLM::SimVar::magy,MHD_GLM::SimVar::magz};
+        return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,F);
+      }
 
-    KOKKOS_INLINE_FUNCTION
-    Real MHD_GLM_KEPES_Z(const Real gamma,const Real ch,
-			 const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-			 Real F[NUM_VARS])
-    {
-      int vord[] = {MHD_GLM::SimVar::momz,MHD_GLM::SimVar::momx,MHD_GLM::SimVar::momy};
-      int bord[] = {MHD_GLM::SimVar::magz,MHD_GLM::SimVar::magx,MHD_GLM::SimVar::magy};
-      return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,F);
-    }
+      static
+      KOKKOS_INLINE_FUNCTION
+      Real RiemannSolve_Y(const Real gamma,const Real ch,
+                          const Real uL[NUM_VARS],const Real uR[NUM_VARS],
+                          Real F[NUM_VARS])
+      {
+        int vord[] = {MHD_GLM::SimVar::momy,MHD_GLM::SimVar::momz,MHD_GLM::SimVar::momx};
+        int bord[] = {MHD_GLM::SimVar::magy,MHD_GLM::SimVar::magz,MHD_GLM::SimVar::magx};
+        return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,F);
+      }
+
+      static
+      KOKKOS_INLINE_FUNCTION
+      Real RiemannSolve_Z(const Real gamma,const Real ch,
+                          const Real uL[NUM_VARS],const Real uR[NUM_VARS],
+                          Real F[NUM_VARS])
+      {
+        int vord[] = {MHD_GLM::SimVar::momz,MHD_GLM::SimVar::momx,MHD_GLM::SimVar::momy};
+        int bord[] = {MHD_GLM::SimVar::magz,MHD_GLM::SimVar::magx,MHD_GLM::SimVar::magy};
+        return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,F);
+      }
+    };
     
   } // end namespace Physics
   

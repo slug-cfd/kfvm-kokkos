@@ -2,6 +2,7 @@
 #define DEFINITIONS_H_
 
 #include "../../src/physics/EquationTypes.H"
+#include "../../src/physics/RSTypes.H"
 #include "../../src/numeric/RKTypes.H"
 
 // Space dimension of problem
@@ -14,9 +15,10 @@
 #define NUM_QUAD_PTS 3
 
 // Floating point precision (1 for double, 0 for single)
-#define FLOAT_PRECISION 0
+#define FLOAT_PRECISION 1
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::MHD_GLM;
-constexpr KFVM::RK_TYPE rkType = KFVM::RK_TYPE::ThreeStarP;
+constexpr KFVM::RSType rsType = KFVM::RSType::MHD_GLM_KEPES;
+constexpr KFVM::RKType rkType = KFVM::RKType::SSP4_3_2;
 
 #endif

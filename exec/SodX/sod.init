@@ -6,19 +6,19 @@ mesh:extent 0.0 1.0 0.0 0.0625 0.0 0.0625
 time:initial 0.0
 time:final 0.2
 time:initialdt 1.e-10
-time:cfl 0.1
+time:cfl 1.5
 time:maxsteps 1000
 time:atol 1.e-4
-time:rtol 1.e-4
+time:rtol 1.e-3
 
 # Set stencil options
 stencil:lfac 24
 
 # Set fluid properties
 properties:gamma 1.4
-properties:wenothresh -1.0
+properties:wenothresh 20.0
 
 # Output settings
 output:datadir data
 output:basename SodX
-output:plotfreq 40
+output:plotfreq 50

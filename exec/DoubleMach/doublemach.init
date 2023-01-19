@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 640 160 16
+mesh:resolution 1024 256 16
 mesh:extent 0.0 4.0 0.0 1.0 0.0 0.25
 
 # Set time information
@@ -8,17 +8,17 @@ time:final 0.25
 time:initialdt 1.e-10
 time:cfl 1.5
 time:maxsteps 20000
-time:atol 1.e-3
+time:atol 1.e-4
 time:rtol 1.e-3
 
 # Set stencil options
-stencil:lfac 12
+stencil:lfac 24
 
 # Set fluid properties
 properties:gamma 1.4
-properties:wenothresh 30.0
+properties:wenothresh 20.0
 
 # Output settings
 output:datadir data
 output:basename DoubleMach
-output:plotfreq 20
+output:plotfreq 50

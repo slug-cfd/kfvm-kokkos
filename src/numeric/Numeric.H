@@ -74,13 +74,13 @@ namespace KFVM {
       }
     };
 
-    template<RK_TYPE RKType> struct RKCoeff{};
+    template<RKType rkt> struct RKCoeff{};
 
     // SSP method, 4 stages, order 3, embedded order 2
     // SSP(4,3) described by Kraaijevanger @ https://doi.org/10.1007/BF01933264
     // Embedded method and PI values from Conde et. al. @ https://arxiv.org/pdf/1806.08693.pdf
     template<>
-    struct RKCoeff<RK_TYPE::SSP4_3_2>
+    struct RKCoeff<RKType::SSP4_3_2>
     {
       constexpr static int nStages = 4;
       constexpr static std::array<Real,4> gam1 = {0.0,
@@ -114,7 +114,7 @@ namespace KFVM {
     // SSP(10,4) method from Ketcheson @ https://doi.org/10.1137/07070485X
     // Embedded method and PI values from Conde et. al. @ https://arxiv.org/pdf/1806.08693.pdf
     template<>
-    struct RKCoeff<RK_TYPE::SSP10_4_3>
+    struct RKCoeff<RKType::SSP10_4_3>
     {
       constexpr static int nStages = 10;
       constexpr static std::array<Real,10> gam1 = {0.0,
@@ -194,7 +194,7 @@ namespace KFVM {
 
     // Third order adaptive method from Ranocha et. al. @ https://doi.org/10.1007/s42967-021-00159-w
     template<>
-    struct RKCoeff<RK_TYPE::ThreeStarP>
+    struct RKCoeff<RKType::ThreeStarP>
     {
       constexpr static int nStages = 5;
       constexpr static std::array<Real,5> gam1 = {0.0,
@@ -239,7 +239,7 @@ namespace KFVM {
 
     // Fourth order adaptive method from Ranocha et. al. @ https://doi.org/10.1007/s42967-021-00159-w
     template<>
-    struct RKCoeff<RK_TYPE::FourStarP>
+    struct RKCoeff<RKType::FourStarP>
     {
       constexpr static int nStages = 9;
       constexpr static std::array<Real,9> gam1 = {0.0,

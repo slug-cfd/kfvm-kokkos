@@ -296,7 +296,7 @@ namespace KFVM {
           hasNan = hasNan || isnan(u);
           err += pow((u - uhat)/(atol + rtol*fmax(fabs(u),fabs(uhat))),2);
 	}
-	Real pos = hasNan ? -1.0 : state[0];
+	Real pos = hasNan ? -1.0 : Physics::EOS<eqType>::positivity(state);
 	posFlag = posFlag > pos ? pos : posFlag;
       }
     };
@@ -317,6 +317,7 @@ namespace KFVM {
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
 	using Kokkos::Experimental::fabs;
 	using Kokkos::Experimental::fmin;
+	using Kokkos::Experimental::fmax;
 	Real u0[NUM_VARS],u1[NUM_VARS];
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  u0[nV] = Uprev(KFVM_D_DECL(i,j,k),nV);

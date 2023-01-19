@@ -4,19 +4,18 @@
 #include <cstdint>
 
 #include <Kokkos_Core.hpp>
-#include <linux/limits.h>
+#include <limits.h>
 
 #include "Definitions.H"
-
+#include "../../Dimension.H"
 #include "../../Types.H"
+#include "../../Geometry.H"
+#include "../../FluidProperties.H"
 #include "../EquationTypes.H"
-#include "Dimension.H"
-#include "Geometry.H"
+#include "../RSTypes.H"
 #include "MHD_GLM_SimVar.H"
 #include "MHD_GLM_EOS.H"
-#include "../../FluidProperties.H"
 #include "MHD_GLM_Riemann.H"
-#include "physics/Physics_K.H"
 
 namespace KFVM {
 
@@ -93,9 +92,8 @@ namespace KFVM {
         fProp(fProp_)
       {}
 
-#if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
         using MHD_GLM::SimVar;
         using MHD_GLM::AuxVar;
@@ -103,49 +101,24 @@ namespace KFVM {
 	// Try not to assume the order of SimVars
 	Real ua[NUM_VARS];
 	for (int nV=0; nV<NUM_VARS; nV++) {
-	  ua[nV] = U(i,j,nV);
+	  ua[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
         
 	// Set velocities
-	V(i,j,AuxVar::velx) = U(i,j,SimVar::momx)/U(i,j,SimVar::dens);
-	V(i,j,AuxVar::vely) = U(i,j,SimVar::momy)/U(i,j,SimVar::dens);
-	V(i,j,AuxVar::velz) = U(i,j,SimVar::momz)/U(i,j,SimVar::dens);
+	V(KFVM_D_DECL(i,j,k),AuxVar::velx) = U(KFVM_D_DECL(i,j,k),SimVar::momx)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
+	V(KFVM_D_DECL(i,j,k),AuxVar::vely) = U(KFVM_D_DECL(i,j,k),SimVar::momy)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
+	V(KFVM_D_DECL(i,j,k),AuxVar::velz) = U(KFVM_D_DECL(i,j,k),SimVar::momz)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
 
 	// Internal energy and pressure
-	V(i,j,AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(ua);
-	V(i,j,AuxVar::pres) = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,ua);
-	V(i,j,AuxVar::prsg) = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,ua);
-	V(i,j,AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(ua);
+	V(KFVM_D_DECL(i,j,k),AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(ua);
+	V(KFVM_D_DECL(i,j,k),AuxVar::pres) = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,ua);
+	V(KFVM_D_DECL(i,j,k),AuxVar::prsg) = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,ua);
+	V(KFVM_D_DECL(i,j,k),AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(ua);
       }
-#else
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,const idx_t k) const
-      {
-        using MHD_GLM::SimVar;
-        using MHD_GLM::AuxVar;
-
-	// Try not to assume the order of SimVars
-	Real ua[NUM_VARS];
-	for (int nV=0; nV<NUM_VARS; nV++) {
-	  ua[nV] = U(i,j,k,nV);
-	}
-        
-	// Set velocities
-	V(i,j,k,AuxVar::velx) = U(i,j,k,SimVar::momx)/U(i,j,k,SimVar::dens);
-	V(i,j,k,AuxVar::vely) = U(i,j,k,SimVar::momy)/U(i,j,k,SimVar::dens);
-	V(i,j,k,AuxVar::velz) = U(i,j,k,SimVar::momz)/U(i,j,k,SimVar::dens);
-
-	// Internal energy and pressure
-	V(i,j,k,AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(ua);
-	V(i,j,k,AuxVar::pres) = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,ua);
-	V(i,j,k,AuxVar::prsg) = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,ua);
-	V(i,j,k,AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(ua);
-      }
-#endif
     };
 
-    template<>
-    struct RiemannSolverX_K<EquationType::MHD_GLM>
+    template<RSType rst>
+    struct RiemannSolverX_K<EquationType::MHD_GLM,rst>
     {
       FaceDataView U;
       FluidProperties fProp;
@@ -155,59 +128,34 @@ namespace KFVM {
         fProp(fProp_)
       {}
 
-#if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,Real& maxVel) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxVel) const
       {
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+        const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
 	  Real uL[NUM_VARS],uR[NUM_VARS];
 	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    uL[nV] = U(i,j,0,nQ,nV);
-	    uR[nV] = U(i,j,1,nQ,nV);
-	  }
-
-	  // Calculate flux
-	  Real F[NUM_VARS];
-	  Real vq = MHD_GLM_KEPES_X(fProp.gamma,fProp.ch_glm,uL,uR,F);
-	  maxVel = vq > maxVel ? vq : maxVel;
-	    
-	  // Overwrite states with flux
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    U(i,j,0,nQ,nV) = F[nV];
-	    U(i,j,1,nQ,nV) = F[nV];
-	  }
-	}
-      }
-#else
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,const idx_t k,Real& maxVel) const
-      {
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // pull out states
-	  Real uL[NUM_VARS],uR[NUM_VARS];
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    uL[nV] = U(i,j,k,0,nQ,nV);
-	    uR[nV] = U(i,j,k,1,nQ,nV);
+	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
+            uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
 	  
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = MHD_GLM_KEPES_X(fProp.gamma,fProp.ch_glm,uL,uR,F);
+	  Real vq = MHD_GLM_RS<rst>::RiemannSolve_X(fProp.gamma,fProp.ch_glm,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
 	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    U(i,j,k,0,nQ,nV) = F[nV];
-	    U(i,j,k,1,nQ,nV) = F[nV];
+	    U(KFVM_D_DECL(i,j,k),0,nQ,nV) = F[nV];
+	    U(KFVM_D_DECL(i,j,k),1,nQ,nV) = F[nV];
 	  }
 	}
       }
-#endif
     };
 
-    template<>
-    struct RiemannSolverY_K<EquationType::MHD_GLM>
+    template<RSType rst>
+    struct RiemannSolverY_K<EquationType::MHD_GLM,rst>
     {
       FaceDataView U;
       FluidProperties fProp;
@@ -217,59 +165,35 @@ namespace KFVM {
         fProp(fProp_)
       {}
 
-#if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,Real& maxVel) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxVel) const
       {
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+        const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+        
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
 	  Real uL[NUM_VARS],uR[NUM_VARS];
 	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    uL[nV] = U(i,j,0,nQ,nV);
-	    uR[nV] = U(i,j,1,nQ,nV);
-	  }
-
-	  // Calculate flux
-	  Real F[NUM_VARS];
-	  Real vq = MHD_GLM_KEPES_Y(fProp.gamma,fProp.ch_glm,uL,uR,F);
-	  maxVel = vq > maxVel ? vq : maxVel;
-	    
-	  // Overwrite states with flux
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    U(i,j,0,nQ,nV) = F[nV];
-	    U(i,j,1,nQ,nV) = F[nV];
-	  }
-	}
-      }
-#else
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,const idx_t k,Real& maxVel) const
-      {
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // pull out states
-	  Real uL[NUM_VARS],uR[NUM_VARS];
-	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    uL[nV] = U(i,j,k,0,nQ,nV);
-	    uR[nV] = U(i,j,k,1,nQ,nV);
+	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
+	    uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
 	  
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = MHD_GLM_KEPES_Y(fProp.gamma,fProp.ch_glm,uL,uR,F);
+	  Real vq = MHD_GLM_RS<rst>::RiemannSolve_Y(fProp.gamma,fProp.ch_glm,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
 	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    U(i,j,k,0,nQ,nV) = F[nV];
-	    U(i,j,k,1,nQ,nV) = F[nV];
+	    U(KFVM_D_DECL(i,j,k),0,nQ,nV) = F[nV];
+            U(KFVM_D_DECL(i,j,k),1,nQ,nV) = F[nV];
 	  }
 	}
       }
-#endif
     };
 
-    template<>
-    struct RiemannSolverZ_K<EquationType::MHD_GLM>
+    template<RSType rst>
+    struct RiemannSolverZ_K<EquationType::MHD_GLM,rst>
     {
       FaceDataView U;
       FluidProperties fProp;
@@ -293,7 +217,7 @@ namespace KFVM {
 
 	  // Calculate flux
 	  Real F[NUM_VARS];
-	  Real vq = MHD_GLM_KEPES_Z(fProp.gamma,fProp.ch_glm,uL,uR,F);
+	  Real vq = MHD_GLM_RS<rst>::RiemannSolve_Z(fProp.gamma,fProp.ch_glm,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -496,7 +420,7 @@ namespace KFVM {
 	using Kokkos::Experimental::fmax;
 	using MHD_GLM::SimVar;
 
-	constexpr idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 
 	// Save reference state
 	Real refState[NUM_VARS];
@@ -506,9 +430,11 @@ namespace KFVM {
 	Real rDens = refState[SimVar::dens];
 	Real rPres = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,refState);
 	
-	// Minimum allowable density and pressure
+	// Find ranges of density, pressure, and soundspeed
+	Real maxDens = -std::numeric_limits<Real>::max();
 	Real minDens = std::numeric_limits<Real>::max();
 	Real minPres = std::numeric_limits<Real>::max();
+	Real minFms = std::numeric_limits<Real>::max();
 	for (idx_t xo=-1; xo<=1; xo++) {
 	  for (idx_t yo=-1; yo<=1; yo++) {
 #if (SPACE_DIM == 3)
@@ -518,16 +444,39 @@ namespace KFVM {
 	      for (int nV=0; nV<NUM_VARS; nV++) {
 		state[nV] = U(KFVM_D_DECL(i + xo,j + yo,k + zo),nV);
 	      }
+	      maxDens = fmax(maxDens,state[SimVar::dens]);
 	      minDens = fmin(minDens,state[SimVar::dens]);
-	      minPres = fmin(minPres,EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state));
+              Real pres = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
+              Real fms = EOS<EquationType::MHD_GLM>::soundspeed(fProp.gamma,state);
+	      minPres = fmin(minPres,pres);
+	      minFms = fmin(minFms,fms);
 #if (SPACE_DIM == 3)
 	    }
 #endif
 	  }
 	}
-	minDens *= 0.8;
-	minPres *= 0.8;
-	Real rDensDiff = rDens - minDens;
+
+        // Find size of flattener
+        Real dxU = U(KFVM_D_DECL(i + 1,j,k),SimVar::momx)/U(KFVM_D_DECL(i + 1,j,k),SimVar::dens) -
+                   U(KFVM_D_DECL(i - 1,j,k),SimVar::momx)/U(KFVM_D_DECL(i - 1,j,k),SimVar::dens);
+        Real dyV = U(KFVM_D_DECL(i,j + 1,k),SimVar::momy)/U(KFVM_D_DECL(i,j + 1,k),SimVar::dens) -
+                   U(KFVM_D_DECL(i,j - 1,k),SimVar::momy)/U(KFVM_D_DECL(i,j - 1,k),SimVar::dens);
+#if (SPACE_DIM == 3)
+        Real dzW = U(KFVM_D_DECL(i,j,k + 1),SimVar::momz)/U(KFVM_D_DECL(i,j,k + 1),SimVar::dens) -
+                   U(KFVM_D_DECL(i,j,k - 1),SimVar::momz)/U(KFVM_D_DECL(i,j,k - 1),SimVar::dens);
+#else
+        Real dzW = 0.0;
+#endif
+        Real divV = (dxU + dyV + dzW)/2.0; // Undivided difference
+        Real kappa1 = 0.2,kappa2 = 0.2;
+        Real eta = fmin(1.0,fmax(0.0,-(kappa1*minFms + divV)/(kappa1*minFms)));
+
+        // Extend density and pressure ranges
+        maxDens *= (1.0 + kappa2 - kappa2*eta);
+        minDens *= (1.0 - kappa2 + kappa2*eta);
+        minPres *= (1.0 - kappa2 + kappa2*eta);
+        
+	Real rDensDiffP = maxDens - rDens,rDensDiffM = rDens - minDens;
 	Real rPresDiff = rPres - minPres;
 
 	// Enforce positive density
@@ -535,37 +484,45 @@ namespace KFVM {
 	Real theta = 1.0;
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // West face
-	  theta = fmin(theta,fmax(1.0,
-				  rDensDiff/(rDens - rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens))));
+          Real rho = rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens);
+	  theta = rho<minDens ? fmin(theta,rDensDiffM/(rDens - rho)) : theta;
+	  theta = rho>maxDens ? fmin(theta,rDensDiffP/(rho - rDens)) : theta;
 	  // East face
-	  theta = fmin(theta,fmax(1.0,
-				  rDensDiff/(rDens - rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::dens))));
+          rho = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::dens);
+	  theta = rho<minDens ? fmin(theta,rDensDiffM/(rDens - rho)) : theta;
+	  theta = rho>maxDens ? fmin(theta,rDensDiffP/(rho - rDens)) : theta;
 	  // South face
-	  theta = fmin(theta,fmax(1.0,
-				  rDensDiff/(rDens - rsY(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens))));
+          rho = rsY(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens);
+	  theta = rho<minDens ? fmin(theta,rDensDiffM/(rDens - rho)) : theta;
+	  theta = rho>maxDens ? fmin(theta,rDensDiffP/(rho - rDens)) : theta;
 	  // North face
-	  theta = fmin(theta,fmax(1.0,
-				  rDensDiff/(rDens - rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::dens))));
+          rho = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::dens);
+	  theta = rho<minDens ? fmin(theta,rDensDiffM/(rDens - rho)) : theta;
+	  theta = rho>maxDens ? fmin(theta,rDensDiffP/(rho - rDens)) : theta;
 #if (SPACE_DIM == 3)
 	  // Bottom face
-	  theta = fmin(theta,fmax(1.0,
-				  rDensDiff/(rDens - rsZ(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens))));
+          rho = rsZ(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens);
+	  theta = rho<minDens ? fmin(theta,rDensDiffM/(rDens - rho)) : theta;
+	  theta = rho>maxDens ? fmin(theta,rDensDiffP/(rho - rDens)) : theta;
 	  // Top face
-	  theta = fmin(theta,fmax(1.0,
-				  rDensDiff/(rDens - rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::dens))));
+          rho = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::dens);
+	  theta = rho<minDens ? fmin(theta,rDensDiffM/(rDens - rho)) : theta;
+	  theta = rho>maxDens ? fmin(theta,rDensDiffP/(rho - rDens)) : theta;
 #endif
 	}
-
+	
 	// Apply mixing
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
-	  rsX(KFVM_D_DECL(i    ,j,k),1,nQ,SimVar::dens) = rDens + theta*(rsX(KFVM_D_DECL(i    ,j,k),1,nQ,SimVar::dens) - rDens);
-	  rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::dens) = rDens + theta*(rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::dens) - rDens);
-	  rsY(KFVM_D_DECL(i,j    ,k),1,nQ,SimVar::dens) = rDens + theta*(rsY(KFVM_D_DECL(i,j    ,k),1,nQ,SimVar::dens) - rDens);
-	  rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::dens) = rDens + theta*(rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::dens) - rDens);
+	  for (idx_t nV=0; nV<NUM_VARS - 1; nV++) {
+	    rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) - refState[nV]);
+	    rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) - refState[nV]);
+	    rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) = refState[nV] + theta*(rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) - refState[nV]);
+	    rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV) = refState[nV] + theta*(rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV) - refState[nV]);
 #if (SPACE_DIM == 3)
-	  rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,SimVar::dens) = rDens + theta*(rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,SimVar::dens) - rDens);
-	  rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::dens) = rDens + theta*(rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::dens) - rDens);
+	    rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) - refState[nV]);
+	    rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) - refState[nV]);
 #endif
+	  }	  
 	}
 
 	// Enforce positive pressure
@@ -578,44 +535,44 @@ namespace KFVM {
 	    state[nV] = rsX(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));	  
+	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
 	  // East face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));
+	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
 	  // South face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));	  
+	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
 	  // North face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));	  
+	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
 #if (SPACE_DIM == 3)
 	  // Bottom face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));	  
+	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
 	  // Top face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = fmin(theta,fmax(1.0,rPresDiff/(rPres - p)));
+	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
 #endif
 	}
 	
 	// Apply mixing
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
+	  for (idx_t nV=0; nV<NUM_VARS - 1; nV++) {
 	    rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) - refState[nV]);
 	    rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) - refState[nV]);
 	    rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) = refState[nV] + theta*(rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) - refState[nV]);

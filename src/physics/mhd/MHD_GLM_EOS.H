@@ -18,30 +18,33 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real ekin(const Real U[NUM_VARS])
       {
-        return 0.5*(U[MHD_GLM::SimVar::momx]*U[MHD_GLM::SimVar::momx] +
-		    U[MHD_GLM::SimVar::momy]*U[MHD_GLM::SimVar::momy] +
-		    U[MHD_GLM::SimVar::momz]*U[MHD_GLM::SimVar::momz])/U[MHD_GLM::SimVar::dens];
+        using MHD_GLM::SimVar;
+        return 0.5*(U[SimVar::momx]*U[SimVar::momx] +
+		    U[SimVar::momy]*U[SimVar::momy] +
+		    U[SimVar::momz]*U[SimVar::momz])/U[SimVar::dens];
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real prsb(const Real U[NUM_VARS])
-      {  
-        return (U[MHD_GLM::SimVar::magx]*U[MHD_GLM::SimVar::magx] +
-                U[MHD_GLM::SimVar::magy]*U[MHD_GLM::SimVar::magy] +
-                U[MHD_GLM::SimVar::magz]*U[MHD_GLM::SimVar::magz])/2.0;
+      {
+	using MHD_GLM::SimVar;
+        return 0.5*(U[SimVar::magx]*U[SimVar::magx] +
+                    U[SimVar::magy]*U[SimVar::magy] +
+                    U[SimVar::magz]*U[SimVar::magz]);
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real eint(const Real U[NUM_VARS])
       {
-        return (U[MHD_GLM::SimVar::etot] - prsb(U) - ekin(U) -
-		0.5*U[MHD_GLM::SimVar::psi]*U[MHD_GLM::SimVar::psi]);
+	using MHD_GLM::SimVar;
+        return (U[SimVar::etot] - prsb(U) - ekin(U) - 0.5*U[SimVar::psi]*U[SimVar::psi]);
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real positivity(const Real U[NUM_VARS])
       {
-        return eint(U);
+	using MHD_GLM::SimVar;
+        return Kokkos::Experimental::fmin(U[SimVar::dens],eint(U));
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -59,7 +62,8 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real soundspeed(Real gamma,const Real U[NUM_VARS])
       {
-        return Kokkos::Experimental::sqrt(gamma*prsg(gamma,U)/U[MHD_GLM::SimVar::dens]);
+	using MHD_GLM::SimVar;
+        return Kokkos::Experimental::sqrt(gamma*prsg(gamma,U)/U[SimVar::dens]);
       }
       
       KOKKOS_INLINE_FUNCTION

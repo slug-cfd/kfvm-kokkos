@@ -1,25 +1,24 @@
 # Set mesh resolution and extent
-mesh:resolution 512 512 8
+mesh:resolution 256 256 8
 mesh:extent -0.5 0.5 -0.5 0.5 0.0 0.015625
 
 # Set time information
 time:initial 0.0
 time:final 0.01
 time:initialdt 1.e-14
-time:cfl 0.1
+time:cfl 1.5
 time:maxsteps 5000
 time:atol 1.e-4
-time:rtol 1.e-4
+time:rtol 1.e-3
 
 # Set stencil options
 stencil:lfac 24
-# stencil:bpow 2 commented out as default usually right
 
 # Set fluid properties
 properties:gamma 1.4
-properties:wenothresh 5.0
+properties:wenothresh 20.0
 
 # Output settings
 output:datadir data
 output:basename MagBlast
-output:plotfreq 40
+output:plotfreq 50

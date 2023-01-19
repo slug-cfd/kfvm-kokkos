@@ -1,15 +1,15 @@
 # Set mesh resolution and extent
-mesh:resolution 32 32 32
+mesh:resolution 64 64 64
 mesh:extent 0.0 0.5 0.0 0.5 0.0 0.5
 
 # Set time information
 time:initial 0.0
 time:final 0.2
 time:initialdt 1.e-10
-time:cfl 0.1
+time:cfl 1.0
 time:maxsteps 1000
 time:atol 1.e-4
-time:rtol 1.e-4
+time:rtol 1.e-3
 
 # Set stencil options
 stencil:lfac 24
@@ -21,4 +21,4 @@ properties:wenothresh 20.0
 # Output settings
 output:datadir data
 output:basename Sedov
-output:plotfreq 40
+output:plotfreq 50

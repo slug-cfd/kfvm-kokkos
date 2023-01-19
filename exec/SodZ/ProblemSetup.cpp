@@ -26,5 +26,5 @@ std::array<KFVM::BCType,6> KFVM::ProblemSetup::bcType = {
   KFVM::BCType::periodic,
   KFVM::BCType::periodic,
   KFVM::BCType::periodic,
-  KFVM::BCType::periodic,
-  KFVM::BCType::periodic};
+  KFVM::BCType::outflow,
+  KFVM::BCType::outflow};

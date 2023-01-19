@@ -31,7 +31,9 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real positivity(const Real U[NUM_VARS])
       {
-        return eint(U);
+        using Kokkos::Experimental::fmin;
+        // Ensure that density and internal energy are positive
+        return fmin(U[EulerAdiabatic::SimVar::dens],eint(U));
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -43,7 +45,8 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real soundspeed(Real gamma,const Real U[NUM_VARS])
       {
-        return Kokkos::Experimental::sqrt(gamma*pres(gamma,U)/U[EulerAdiabatic::SimVar::dens]);
+        using Kokkos::Experimental::sqrt;
+        return sqrt(gamma*pres(gamma,U)/U[EulerAdiabatic::SimVar::dens]);
       }
       
     };

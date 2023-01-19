@@ -183,15 +183,17 @@ namespace KFVM {
       if (posFlag < 0.0) {
 	// Solution is unphysical, reject and reduce dt
         std::printf(", cfl = %f\n    Rejected: Unphysical\n",cfl);
-	dt /= 4.0;
-        wThresh = -1.0; // Force full weno usage on failure
+	dt = 0.25*ps.cfl*geom.dmin/maxVel; // limit to quarter of max cfl
+        wThresh = -std::numeric_limits<Real>::max(); // Force full weno usage on failure
 	nRejectUnphys++;
       } else if (dtfac >= ps.rejectionThresh) {
 	// Step is accepted
         std::printf(", cfl = %f\n",cfl);
 	accepted = true;
 	time += dt;
-	dt *= dtfac;
+	Real dterr = dt*dtfac;
+        Real dtcfl = ps.cfl*geom.dmin/maxVel;
+        dt = std::fmin(dterr,dtcfl); // Limit to max cfl
 	errEst = errNew;
 
 	// Update the weno selector
@@ -228,7 +230,7 @@ namespace KFVM {
     
     // Set BCs on cell averages
     setCellBCs(sol_halo,t);
-
+    
     // Reconstruct face states
     reconstructRiemannStates(sol_halo);
 
@@ -253,14 +255,14 @@ namespace KFVM {
     auto fluxRng_EW = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX + 1,ps.nY,ps.nZ)});
     Kokkos::parallel_reduce("RiemannSolver::EW",fluxRng_EW,
-			    Physics::RiemannSolverX_K<eqType>(faceVals.xDir,ps.fluidProp),
+			    Physics::RiemannSolverX_K<eqType,rsType>(faceVals.xDir,ps.fluidProp),
 			    Kokkos::Max<Real>(vEW));
 
     // North/South faces
     auto fluxRng_NS = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY + 1,ps.nZ)});
     Kokkos::parallel_reduce("RiemannSolver::NS",fluxRng_NS,
-			    Physics::RiemannSolverY_K<eqType>(faceVals.yDir,ps.fluidProp),
+			    Physics::RiemannSolverY_K<eqType,rsType>(faceVals.yDir,ps.fluidProp),
 			    Kokkos::Max<Real>(vNS));
     
 #if (SPACE_DIM == 3)
@@ -268,7 +270,7 @@ namespace KFVM {
     auto fluxRng_TB = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({0,0,0},{ps.nX,ps.nY,ps.nZ + 1});
     Kokkos::parallel_reduce("RiemannSolver::TB",fluxRng_TB,
-			    Physics::RiemannSolverZ_K<eqType>(faceVals.zDir,ps.fluidProp),
+			    Physics::RiemannSolverZ_K<eqType,rsType>(faceVals.zDir,ps.fluidProp),
 			    Kokkos::Max<Real>(vTB));
 #endif
 
@@ -281,7 +283,7 @@ namespace KFVM {
 			 (rhs,
 			  KFVM_D_DECL(faceVals.xDir,faceVals.yDir,faceVals.zDir),
 			  qr.ab,qr.wt,geom));
-
+    
     // Fill in source terms
     auto sol = trimCellHalo(sol_halo);
     Kokkos::parallel_for("SourceTerms",cellRng,
@@ -321,12 +323,12 @@ namespace KFVM {
 
     // Enforce positivity of Riemann states
     Kokkos::parallel_for("PosPres",cellRng,
-			 Physics::PositivityPreserve_K<eqType,decltype(U)>
-			 (U,
-			  KFVM_D_DECL(faceVals.xDir,
-				      faceVals.yDir,
-				      faceVals.zDir),
-			  ps.fluidProp));
+        		 Physics::PositivityPreserve_K<eqType,decltype(U)>
+        		 (U,
+        		  KFVM_D_DECL(faceVals.xDir,
+        			      faceVals.yDir,
+        			      faceVals.zDir),
+        		  ps.fluidProp));
   }
 
 void Solver::setCellBCs(ConsDataView sol_halo,Real t)

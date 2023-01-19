@@ -2,6 +2,7 @@
 #define PHYSICS_K_H_
 
 #include "EquationTypes.H"
+#include "RSTypes.H"
 #include "../Types.H"
 
 namespace KFVM {
@@ -11,9 +12,9 @@ namespace KFVM {
     // Empty primary templates for each needed functor struct
     template<EquationType ET,class UViewType> struct AuxVars {};
     template<EquationType ET,class StateType> struct VarConvert {};
-    template<EquationType ET> struct RiemannSolverX_K {};
-    template<EquationType ET> struct RiemannSolverY_K {};
-    template<EquationType ET> struct RiemannSolverZ_K {};
+    template<EquationType ET,RSType RS> struct RiemannSolverX_K {};
+    template<EquationType ET,RSType RS> struct RiemannSolverY_K {};
+    template<EquationType ET,RSType RS> struct RiemannSolverZ_K {};
     template<EquationType ET> struct SpeedEstimate_K {};
     template<EquationType ET,class UViewType,class RHSViewType> struct SourceTerms_K {};
     template<EquationType ET,class UViewType> struct PositivityPreserve_K {};

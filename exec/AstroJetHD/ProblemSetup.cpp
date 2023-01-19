@@ -24,7 +24,7 @@ std::array<std::string,KFVM::NUM_AUX> KFVM::ProblemSetup::auxVarName = {
 std::array<KFVM::BCType,6> KFVM::ProblemSetup::bcType = {
   KFVM::BCType::reflecting,
   KFVM::BCType::outflow,
-  KFVM::BCType::outflow,
+  KFVM::BCType::user,
   KFVM::BCType::outflow,
   KFVM::BCType::reflecting,
   KFVM::BCType::outflow};
