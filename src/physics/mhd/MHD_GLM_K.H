@@ -396,6 +396,61 @@ namespace KFVM {
 #endif
     };
 
+    KOKKOS_INLINE_FUNCTION
+    Real mhdPresPos(const Real gamma,const Real pmin,Real theta,
+                    const Real refState[NUM_VARS],const Real state[NUM_VARS])
+    {
+      using Kokkos::Experimental::sqrt;
+      using Kokkos::Experimental::fmin;
+      using MHD_GLM::SimVar;
+
+      Real emin = pmin/(gamma - 1.0);
+
+      Real bsq = (state[SimVar::magx]*state[SimVar::magx] +
+                  state[SimVar::magy]*state[SimVar::magy] +
+                  state[SimVar::magz]*state[SimVar::magz]);
+
+      Real brsq = (refState[SimVar::magx]*refState[SimVar::magx] +
+                   refState[SimVar::magy]*refState[SimVar::magy] +
+                   refState[SimVar::magz]*refState[SimVar::magz]);
+
+      Real bdbr = (state[SimVar::magx]*refState[SimVar::magx] +
+                   state[SimVar::magy]*refState[SimVar::magy] +
+                   state[SimVar::magz]*refState[SimVar::magz]);
+
+      Real A = bsq*(refState[SimVar::dens] - state[SimVar::dens]);
+      
+      Real B = 2.0*(state[SimVar::dens] - refState[SimVar::dens])*(state[SimVar::etot] - refState[SimVar::etot]);
+      B -= ((state[SimVar::momx] - refState[SimVar::momx])*(state[SimVar::momx] - refState[SimVar::momx]) +
+            (state[SimVar::momy] - refState[SimVar::momy])*(state[SimVar::momy] - refState[SimVar::momy]) +
+            (state[SimVar::momz] - refState[SimVar::momz])*(state[SimVar::momz] - refState[SimVar::momz]));
+      B -= (refState[SimVar::dens]*bsq +
+            2.0*(state[SimVar::dens] - refState[SimVar::dens])*bdbr);
+      
+      Real C = 2.0*(refState[SimVar::dens]*(state[SimVar::etot] - refState[SimVar::etot]) +
+                    refState[SimVar::etot]*(state[SimVar::dens] - refState[SimVar::dens]));
+      C -= 2.0*((state[SimVar::momx] - refState[SimVar::momx])*refState[SimVar::momx] +
+                (state[SimVar::momy] - refState[SimVar::momy])*refState[SimVar::momy] +
+                (state[SimVar::momz] - refState[SimVar::momz])*refState[SimVar::momz]);
+      C -= 2.0*emin*(state[SimVar::dens] - refState[SimVar::dens]);
+      C-= (2.0*refState[SimVar::dens]*bdbr + brsq*(state[SimVar::dens] - refState[SimVar::dens]));
+      
+      Real D = 2.0*refState[SimVar::dens]*(refState[SimVar::etot] - emin) - refState[SimVar::dens]*bsq;
+      D -= (refState[SimVar::momx]*refState[SimVar::momx] +
+            refState[SimVar::momy]*refState[SimVar::momy] +
+            refState[SimVar::momz]*refState[SimVar::momz]);
+
+      for (int nIter=0; nIter<4; nIter++) {
+        theta -= (A*theta*theta*theta + B*theta*theta + C*theta + D)/(3.0*A*theta*theta + 2.0*B*theta + C);
+      }
+
+      if (0.0 <= theta && theta <= 1.0) {
+        return theta;
+      } else {
+        return 0.0;
+      }
+    }
+
     template<class UDataView>
     struct PositivityPreserve_K<EquationType::MHD_GLM,UDataView>
     {
@@ -529,44 +584,50 @@ namespace KFVM {
 	// Find mixing amount
 	theta = 1.0;
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
-	  Real p,state[NUM_VARS];
+	  Real p,thEst,state[NUM_VARS];
 	  // West face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsX(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          thEst = rPresDiff/(rPres - p);
+          theta = p >= minPres ? theta : fmin(theta,mhdPresPos(fProp.gamma,minPres,thEst,refState,state));
 	  // East face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          thEst = rPresDiff/(rPres - p);
+          theta = p >= minPres ? theta : fmin(theta,mhdPresPos(fProp.gamma,minPres,thEst,refState,state));
 	  // South face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          thEst = rPresDiff/(rPres - p);
+          theta = p >= minPres ? theta : fmin(theta,mhdPresPos(fProp.gamma,minPres,thEst,refState,state));
 	  // North face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          thEst = rPresDiff/(rPres - p);
+          theta = p >= minPres ? theta : fmin(theta,mhdPresPos(fProp.gamma,minPres,thEst,refState,state));
 #if (SPACE_DIM == 3)
 	  // Bottom face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          thEst = rPresDiff/(rPres - p);
+          theta = p >= minPres ? theta : fmin(theta,mhdPresPos(fProp.gamma,minPres,thEst,refState,state));
 	  // Top face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV);
 	  }
 	  p = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          thEst = rPresDiff/(rPres - p);
+          theta = p >= minPres ? theta : fmin(theta,mhdPresPos(fProp.gamma,minPres,thEst,refState,state));
 #endif
 	}
 	

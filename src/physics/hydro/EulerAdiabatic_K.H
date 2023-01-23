@@ -266,6 +266,47 @@ namespace KFVM {
 #endif
     };
 
+    KOKKOS_INLINE_FUNCTION
+    Real eulerPresPos(const Real gamma,const Real pmin,
+                      const Real refState[NUM_VARS],const Real state[NUM_VARS])
+    {
+      using Kokkos::Experimental::sqrt;
+      using Kokkos::Experimental::fmin;
+      using EulerAdiabatic::SimVar;
+
+      Real emin = pmin/(gamma - 1.0);
+      
+      Real A = 2.0*(state[SimVar::dens] - refState[SimVar::dens])*(state[SimVar::etot] - refState[SimVar::etot]);
+      A -= ((state[SimVar::momx] - refState[SimVar::momx])*(state[SimVar::momx] - refState[SimVar::momx]) +
+            (state[SimVar::momy] - refState[SimVar::momy])*(state[SimVar::momy] - refState[SimVar::momy]) +
+            (state[SimVar::momz] - refState[SimVar::momz])*(state[SimVar::momz] - refState[SimVar::momz]));
+      
+      Real B = 2.0*(refState[SimVar::dens]*(state[SimVar::etot] - refState[SimVar::etot]) +
+                    refState[SimVar::etot]*(state[SimVar::dens] - refState[SimVar::dens]));
+      B -= 2.0*((state[SimVar::momx] - refState[SimVar::momx])*refState[SimVar::momx] +
+                (state[SimVar::momy] - refState[SimVar::momy])*refState[SimVar::momy] +
+                (state[SimVar::momz] - refState[SimVar::momz])*refState[SimVar::momz]);
+      B -= 2.0*emin*(state[SimVar::dens] - refState[SimVar::dens]);
+      
+      Real C = 2.0*refState[SimVar::dens]*(refState[SimVar::etot] - emin);
+      C -= (refState[SimVar::momx]*refState[SimVar::momx] +
+            refState[SimVar::momy]*refState[SimVar::momy] +
+            refState[SimVar::momz]*refState[SimVar::momz]);
+
+      Real disc = B*B - 4.0*A*C;
+      Real th1 = (-B + sqrt(disc))/(2.0*A),th2 = (-B - sqrt(disc))/(2.0*A);
+
+      if (0.0 <= th1 && th1 <= 1.0 && 0.0 <= th2 && th2 <= 1.0) {
+        return fmin(th1,th2);
+      } else if (0.0 <= th1 && th1 <= 1.0) {
+        return th1;
+      } else if (0.0 <= th2 && th2 <= 1.0) {
+        return th2;
+      } else {
+        return 0.0;
+      }
+    }
+
     template<class UDataView>
     struct PositivityPreserve_K<EquationType::Euler,UDataView>
     {
@@ -338,7 +379,7 @@ namespace KFVM {
         Real dzW = 0.0;
 #endif
         Real divV = (dxU + dyV + dzW)/2.0; // Undivided difference
-        Real kappa1 = 0.2,kappa2 = 0.2;
+        Real kappa1 = 0.3,kappa2 = 0.3;
         Real eta = fmin(1.0,fmax(0.0,-(kappa1*minSdSp + divV)/(kappa1*minSdSp)));
 
         // Extend density and pressure ranges
@@ -347,7 +388,6 @@ namespace KFVM {
         minPres *= (1.0 - kappa2 + kappa2*eta);
         
 	Real rDensDiffP = maxDens - rDens,rDensDiffM = rDens - minDens;
-	Real rPresDiff = rPres - minPres;
 
 	// Enforce positive density
 	// Find mixing amount
@@ -405,38 +445,38 @@ namespace KFVM {
 	    state[nV] = rsX(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
 	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
 	  // East face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV);
 	  }
 	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
 	  // South face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
 	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
 	  // North face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV);
 	  }
 	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
 #if (SPACE_DIM == 3)
 	  // Bottom face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
 	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
 	  // Top face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV);
 	  }
 	  p = EOS<EquationType::Euler>::pres(fProp.gamma,state);
-	  theta = p<minPres ? fmin(theta,rPresDiff/(rPres - p)) : theta;
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
 #endif
 	}
 	
