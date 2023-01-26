@@ -266,47 +266,6 @@ namespace KFVM {
 #endif
     };
 
-    KOKKOS_INLINE_FUNCTION
-    Real eulerPresPos(const Real gamma,const Real pmin,
-                      const Real refState[NUM_VARS],const Real state[NUM_VARS])
-    {
-      using Kokkos::Experimental::sqrt;
-      using Kokkos::Experimental::fmin;
-      using EulerAdiabatic::SimVar;
-
-      Real emin = pmin/(gamma - 1.0);
-      
-      Real A = 2.0*(state[SimVar::dens] - refState[SimVar::dens])*(state[SimVar::etot] - refState[SimVar::etot]);
-      A -= ((state[SimVar::momx] - refState[SimVar::momx])*(state[SimVar::momx] - refState[SimVar::momx]) +
-            (state[SimVar::momy] - refState[SimVar::momy])*(state[SimVar::momy] - refState[SimVar::momy]) +
-            (state[SimVar::momz] - refState[SimVar::momz])*(state[SimVar::momz] - refState[SimVar::momz]));
-      
-      Real B = 2.0*(refState[SimVar::dens]*(state[SimVar::etot] - refState[SimVar::etot]) +
-                    refState[SimVar::etot]*(state[SimVar::dens] - refState[SimVar::dens]));
-      B -= 2.0*((state[SimVar::momx] - refState[SimVar::momx])*refState[SimVar::momx] +
-                (state[SimVar::momy] - refState[SimVar::momy])*refState[SimVar::momy] +
-                (state[SimVar::momz] - refState[SimVar::momz])*refState[SimVar::momz]);
-      B -= 2.0*emin*(state[SimVar::dens] - refState[SimVar::dens]);
-      
-      Real C = 2.0*refState[SimVar::dens]*(refState[SimVar::etot] - emin);
-      C -= (refState[SimVar::momx]*refState[SimVar::momx] +
-            refState[SimVar::momy]*refState[SimVar::momy] +
-            refState[SimVar::momz]*refState[SimVar::momz]);
-
-      Real disc = B*B - 4.0*A*C;
-      Real th1 = (-B + sqrt(disc))/(2.0*A),th2 = (-B - sqrt(disc))/(2.0*A);
-
-      if (0.0 <= th1 && th1 <= 1.0 && 0.0 <= th2 && th2 <= 1.0) {
-        return fmin(th1,th2);
-      } else if (0.0 <= th1 && th1 <= 1.0) {
-        return th1;
-      } else if (0.0 <= th2 && th2 <= 1.0) {
-        return th2;
-      } else {
-        return 0.0;
-      }
-    }
-
     template<class UDataView>
     struct PositivityPreserve_K<EquationType::Euler,UDataView>
     {
@@ -492,6 +451,46 @@ namespace KFVM {
 	    rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) - refState[nV]);
 #endif
 	  }	  
+	}
+      }
+
+      KOKKOS_INLINE_FUNCTION
+      Real eulerPresPos(const Real gamma,const Real pmin,
+			const Real refState[NUM_VARS],const Real state[NUM_VARS]) const
+      {
+	using Kokkos::Experimental::sqrt;
+	using EulerAdiabatic::SimVar;
+
+	Real emin = pmin/(gamma - 1.0);
+      
+	Real A = 2.0*(state[SimVar::dens] - refState[SimVar::dens])*(state[SimVar::etot] - refState[SimVar::etot]);
+	A -= ((state[SimVar::momx] - refState[SimVar::momx])*(state[SimVar::momx] - refState[SimVar::momx]) +
+	      (state[SimVar::momy] - refState[SimVar::momy])*(state[SimVar::momy] - refState[SimVar::momy]) +
+	      (state[SimVar::momz] - refState[SimVar::momz])*(state[SimVar::momz] - refState[SimVar::momz]));
+      
+	Real B = 2.0*(refState[SimVar::dens]*(state[SimVar::etot] - refState[SimVar::etot]) +
+		      refState[SimVar::etot]*(state[SimVar::dens] - refState[SimVar::dens]));
+	B -= 2.0*((state[SimVar::momx] - refState[SimVar::momx])*refState[SimVar::momx] +
+		  (state[SimVar::momy] - refState[SimVar::momy])*refState[SimVar::momy] +
+		  (state[SimVar::momz] - refState[SimVar::momz])*refState[SimVar::momz]);
+	B -= 2.0*emin*(state[SimVar::dens] - refState[SimVar::dens]);
+      
+	Real C = 2.0*refState[SimVar::dens]*(refState[SimVar::etot] - emin);
+	C -= (refState[SimVar::momx]*refState[SimVar::momx] +
+	      refState[SimVar::momy]*refState[SimVar::momy] +
+	      refState[SimVar::momz]*refState[SimVar::momz]);
+
+	Real rtdisc = sqrt(B*B - 4.0*A*C);
+	Real th1 = (-B + rtdisc)/(2.0*A),th2 = (-B - rtdisc)/(2.0*A);
+
+	if (0.0 <= th1 && th1 <= 1.0 && 0.0 <= th2 && th2 <= 1.0) {
+	  return th1 < th2 ? th1 : th2;
+	} else if (0.0 <= th1 && th1 <= 1.0) {
+	  return th1;
+	} else if (0.0 <= th2 && th2 <= 1.0) {
+	  return th2;
+	} else {
+	  return 0.0;
 	}
       }
     };

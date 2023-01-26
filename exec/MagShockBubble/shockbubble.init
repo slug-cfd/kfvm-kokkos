@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 256 256 8
+mesh:resolution 64 64 64
 mesh:extent 0.0 1.0 0.0 1.0 0.0 1.0
 
 # Set time information
@@ -16,7 +16,7 @@ stencil:lfac 24
 
 # Set fluid properties
 properties:gamma 1.666666666666666
-properties:wenothresh 20.0
+properties:wenothresh 30.0
 
 # Output settings
 output:datadir data

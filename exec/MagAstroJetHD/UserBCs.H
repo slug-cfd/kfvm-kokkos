@@ -7,8 +7,9 @@
 // prior to reconstrution, and one to fill face values priot to calling
 // the Riemann solver
 
+#include "Definitions.H"
 #ifndef B0SQ
-#define B0SQ 20000.0
+#define B0SQ 2000.0
 #endif
 
 // Western boundary
@@ -84,7 +85,8 @@ void CellSouth(const DataViewType& U,int rad,int nY,
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
-  const Real rsq = x*x + z*z,Rsq = 0.05*0.05,b0 = sqrt(B0SQ);
+  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z;
+  const Real Rsq = 0.05*0.05,b0 = sqrt(B0SQ);
 
   if (rsq > Rsq) { // outflow
     state[0] = U(KFVM_D_DECL(i,rad + nH,k),0);
@@ -123,7 +125,8 @@ void FaceSouth(const DataViewType& U,
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
-  const Real rsq = x*x + z*z,Rsq = 0.05*0.05,b0 = sqrt(B0SQ);
+  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z;
+  const Real Rsq = 0.05*0.05,b0 = sqrt(B0SQ);
 
   if (rsq > Rsq) { // outflow
     state[0] = U(KFVM_DM_DECL(i,k),1,nQ,0);

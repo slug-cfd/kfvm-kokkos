@@ -12,10 +12,11 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   using Kokkos::Experimental::sqrt;
   
   const Real gam = 1.4,gamm = gam - 1.0;
-  const Real r0 = 0.1,r = sqrt(x*x + y*y);
-  const Real pG = r<=r0 ? 1000.0 : 0.1;
+  const Real r0sq = 0.01;
+  const Real rsq = SPACE_DIM == 2 ? x*x + y*y : x*x + y*y + z*z;
+  const Real pG = rsq<=r0sq ? 1000.0 : 0.1;
 
-  Real rho = 1.0,bx = 100.0/sqrt(4.0*M_PI);
+  Real rho = 1.0,bx = sqrt(200.0);
   
   state[SimVar::dens] = rho;
   

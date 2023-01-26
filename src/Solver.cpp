@@ -122,7 +122,7 @@ namespace KFVM {
     }
 
     // Try step with dt, and repeat as needed
-    bool accepted = false;
+    bool accepted = false,firstUnphys = true;
     Real maxVel,v;
     wThresh = ps.fluidProp.wenoThresh*dt;
     for (int nT=0; nT<ps.rejectionLimit; nT++) {
@@ -160,7 +160,8 @@ namespace KFVM {
         maxVel = std::fmax(maxVel,v);
       
 	// Update registers
-	Kokkos::parallel_for("RKStage",cellRng,Numeric::RKFSAL_Stage_K<decltype(U),decltype(K)>(U,Uhat,Utmp,Uprev,K,delta,gam1,gam2,gam3,betaDt,bhatDt));
+	Kokkos::parallel_for("RKStage",cellRng,
+			     Numeric::RKFSAL_Stage_K<decltype(U),decltype(K)>(U,Uhat,Utmp,Uprev,K,delta,gam1,gam2,gam3,betaDt,bhatDt));
       }
 
       // FSAL stage
@@ -174,7 +175,8 @@ namespace KFVM {
 
       // Estimate the error and test positivity
       Real errNew = 0.0,posFlag = 1.0,nDofs = ps.nX*ps.nY*ps.nZ*NUM_VARS;
-      Kokkos::parallel_reduce("ErrorEstimate",cellRng,Numeric::RKFSAL_ErrEst_K<decltype(U),decltype(K)>(U,Uhat,ps.atol,ps.rtol),errNew,Kokkos::Min<Real>(posFlag));
+      Kokkos::parallel_reduce("ErrorEstimate",cellRng,
+			      Numeric::RKFSAL_ErrEst_K<decltype(U),decltype(K)>(U,Uhat,ps.atol,ps.rtol),errNew,Kokkos::Min<Real>(posFlag));
       errNew = 1.0/std::sqrt(errNew/nDofs);
 
       // Set a new time step size
@@ -183,8 +185,11 @@ namespace KFVM {
       if (posFlag < 0.0) {
 	// Solution is unphysical, reject and reduce dt
         std::printf(", cfl = %f\n    Rejected: Unphysical\n",cfl);
-	dt = 0.25*ps.cfl*geom.dmin/maxVel; // limit to quarter of max cfl
-        wThresh = -std::numeric_limits<Real>::max(); // Force full weno usage on failure
+	// first set to quarter of max cfl, then start halving
+	dt = firstUnphys ? 0.25*ps.cfl*geom.dmin/maxVel : dt/2.0;
+	firstUnphys = false;
+	// Force full weno usage on failure
+        wThresh = -std::numeric_limits<Real>::max();
 	nRejectUnphys++;
       } else if (dtfac >= ps.rejectionThresh) {
 	// Step is accepted

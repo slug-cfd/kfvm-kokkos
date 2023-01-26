@@ -43,8 +43,9 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real positivity(const Real U[NUM_VARS])
       {
+	using Kokkos::Experimental::fmin;
 	using MHD_GLM::SimVar;
-        return Kokkos::Experimental::fmin(U[SimVar::dens],eint(U));
+        return fmin(U[SimVar::dens],eint(U));
       }
       
       KOKKOS_INLINE_FUNCTION
