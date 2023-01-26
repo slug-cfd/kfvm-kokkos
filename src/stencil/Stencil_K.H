@@ -83,25 +83,25 @@ namespace KFVM {
 	using Kokkos::Experimental::pow;
 
 	// Linear weights and epsilon value
-	constexpr Real eps = Real(1.e-12);
+	const Real eps = Real(1.e-12);
 #if (SPACE_DIM == 2)
-	constexpr Real gHi = 0.8,gLo = 0.75;
-	Real gamma[] = {gHi,
-			(1.0 - gHi)*gLo,
-			(1.0 - gHi)*(1.0 - gLo)/4.0,
-			(1.0 - gHi)*(1.0 - gLo)/4.0,
-			(1.0 - gHi)*(1.0 - gLo)/4.0,
-			(1.0 - gHi)*(1.0 - gLo)/4.0};
+	const Real gHi = Real(0.8),gLo = Real(0.75);
+	const Real gamma[] = {gHi,
+			      (Real(1.0) - gHi)*gLo,
+			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(4.0),
+			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(4.0),
+			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(4.0),
+			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(4.0)};
 #else
-	constexpr Real gHi = 0.75,gLo = 0.7;
-	Real gamma[] = {gHi,
-			(1.0 - gHi)*gLo,
-			(1.0 - gHi)*(1.0 - gLo)/6.0,
-			(1.0 - gHi)*(1.0 - gLo)/6.0,
-			(1.0 - gHi)*(1.0 - gLo)/6.0,
-			(1.0 - gHi)*(1.0 - gLo)/6.0,
-			(1.0 - gHi)*(1.0 - gLo)/6.0,
-			(1.0 - gHi)*(1.0 - gLo)/6.0};
+	const Real gHi = Real(0.75),gLo = Real(0.7);
+	const Real gamma[] = {gHi,
+			(Real(1.0) - gHi)*gLo,
+			(Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(6.0),
+			(Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(6.0),
+			(Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(6.0),
+			(Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(6.0),
+			(Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(6.0),
+			(Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(6.0)};
 #endif
 	
 	// Create subview slices for values on each (sub)stencil
@@ -179,7 +179,7 @@ namespace KFVM {
 	    auto dWts = Kokkos::subview(derivWeight,0,Kokkos::ALL,Kokkos::ALL);
 	    SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vf,Real(0.0),B);
 	    for (int nV=0; nV<NUM_VARS; nV++) {
-	      omega[0][nV] = 0.0;
+	      omega[0][nV] = Real(0.0);
 	      for (int nI=0; nI<nIndic; nI++) {
 		omega[0][nV] += B(nI,nV)*B(nI,nV);
 	      }
@@ -191,7 +191,7 @@ namespace KFVM {
 	    auto dWts = Kokkos::subview(derivWeight,1,Kokkos::ALL,Kokkos::make_pair(0,nCellsCtr));
 	    SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vc,Real(0.0),B);
 	    for (int nV=0; nV<NUM_VARS; nV++) {
-	      omega[1][nV] = 0.0;
+	      omega[1][nV] = Real(0.0);
 	      for (int nI=0; nI<nIndic; nI++) {
 		omega[1][nV] += B(nI,nV)*B(nI,nV);
 	      }
@@ -204,7 +204,7 @@ namespace KFVM {
 	    auto dWts = Kokkos::subview(derivWeight,nB + 2,Kokkos::ALL,Kokkos::make_pair(0,nCellsBias));
 	    SerialGemm<Trans::NoTranspose,Trans::NoTranspose,Algo::Gemm::Unblocked>::invoke(Real(1.0),dWts,Vb,Real(0.0),B);
 	    for (int nV=0; nV<NUM_VARS; nV++) {
-	      omega[nB + 2][nV] = 0.0;
+	      omega[nB + 2][nV] = Real(0.0);
 	      for (int nI=0; nI<nIndic; nI++) {
 		omega[nB + 2][nV] += B(nI,nV)*B(nI,nV);
 	      }
@@ -215,15 +215,15 @@ namespace KFVM {
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 #if (SPACE_DIM == 2)
 	    Real tau = fabs(omega[0][nV] - (omega[2][nV] + omega[3][nV] +
-					    omega[4][nV] + omega[5][nV])/4.0);
+					    omega[4][nV] + omega[5][nV])/Real(4.0));
 #else
 	    Real tau = fabs(omega[0][nV] - (omega[2][nV] + omega[3][nV] +
 					    omega[4][nV] + omega[5][nV] +
-					    omega[6][nV] + omega[7][nV])/6.0);
+					    omega[6][nV] + omega[7][nV])/Real(6.0));
 #endif
-	    Real tot = 0.0;
+	    Real tot = Real(0.0);
 	    for (int nS=0; nS<nSub; nS++) {
-	      omega[nS][nV] = gamma[nS]*(1.0 + pow(tau/(omega[nS][nV] + eps),STENCIL_RADIUS));
+	      omega[nS][nV] = gamma[nS]*(Real(1.0) + pow(tau/(omega[nS][nV] + eps),STENCIL_RADIUS));
 	      tot += omega[nS][nV];
 	    }
           
@@ -327,10 +327,10 @@ namespace KFVM {
 	  Real slY = minmod(U(i,j-1,nV),U(i,j,nV),U(i,j+1,nV));
 	  // Loop over quadrature points
 	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	    rsX(i,j,1,nQ,nV) = U(i,j,nV) - slX/2.0;
-	    rsX(i + 1,j,0,nQ,nV) = U(i,j,nV) + slX/2.0;
-	    rsY(i,j,1,nQ,nV) = U(i,j,nV) - slY/2.0;
-	    rsY(i,j + 1,0,nQ,nV) = U(i,j,nV) + slY/2.0;
+	    rsX(i,j,1,nQ,nV) = U(i,j,nV) - slX/Real(2.0);
+	    rsX(i + 1,j,0,nQ,nV) = U(i,j,nV) + slX/Real(2.0);
+	    rsY(i,j,1,nQ,nV) = U(i,j,nV) - slY/Real(2.0);
+	    rsY(i,j + 1,0,nQ,nV) = U(i,j,nV) + slY/Real(2.0);
 	  }
 	}
       }
@@ -344,12 +344,12 @@ namespace KFVM {
 	  Real slZ = minmod(U(i,j,k-1,nV),U(i,j,k,nV),U(i,j,k+1,nV));
 	  // Loop over quadrature points
 	  for (int nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	    rsX(i,j,k,1,nQ,nV) = U(i,j,k,nV) - slX/2.0;
-	    rsX(i + 1,j,k,0,nQ,nV) = U(i,j,k,nV) + slX/2.0;
-	    rsY(i,j,k,1,nQ,nV) = U(i,j,k,nV) - slY/2.0;
-	    rsY(i,j + 1,k,0,nQ,nV) = U(i,j,k,nV) + slY/2.0;
-	    rsZ(i,j,k,1,nQ,nV) = U(i,j,k,nV) - slZ/2.0;
-	    rsZ(i,j,k + 1,0,nQ,nV) = U(i,j,k,nV) + slZ/2.0;
+	    rsX(i,j,k,1,nQ,nV) = U(i,j,k,nV) - slX/Real(2.0);
+	    rsX(i + 1,j,k,0,nQ,nV) = U(i,j,k,nV) + slX/Real(2.0);
+	    rsY(i,j,k,1,nQ,nV) = U(i,j,k,nV) - slY/Real(2.0);
+	    rsY(i,j + 1,k,0,nQ,nV) = U(i,j,k,nV) + slY/Real(2.0);
+	    rsZ(i,j,k,1,nQ,nV) = U(i,j,k,nV) - slZ/Real(2.0);
+	    rsZ(i,j,k + 1,0,nQ,nV) = U(i,j,k,nV) + slZ/Real(2.0);
 	  }
 	}
       }

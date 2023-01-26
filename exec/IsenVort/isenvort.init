@@ -6,7 +6,7 @@ mesh:extent -10.0 10.0 -10.0 10.0 0.0 1.25
 time:initial 0.0
 time:final 20.0
 time:initialdt 1.e-10
-time:cfl 2.0
+time:cfl 3.0
 time:maxsteps 2500
 time:atol 1.e-5
 time:rtol 1.e-4

@@ -82,9 +82,9 @@ namespace KFVM {
       
     KOKKOS_INLINE_FUNCTION
     Real eulerHLLC(Real gamma,int ord[3],
-                  const Real uL[NUM_VARS],
-                  const Real uR[NUM_VARS],
-                  Real F[NUM_VARS])
+		   const Real uL[NUM_VARS],
+		   const Real uR[NUM_VARS],
+		   Real F[NUM_VARS])
     {
       using Kokkos::Experimental::fmax;
       using Kokkos::Experimental::fabs;
@@ -163,7 +163,7 @@ namespace KFVM {
       Real dp = pR - pL;
       
       // Wave speed estimates
-      Real sL = fmin(0.0,uTil - aTil),sR = fmax(0.0,uTil + aTil);
+      Real sL = fmin(Real(0.0),uTil - aTil),sR = fmax(Real(0.0),uTil + aTil);
 
       // Left and right fluxes
       eulerFlux(gamma,ord,uL,F);
@@ -178,14 +178,14 @@ namespace KFVM {
 
       // Roe antidiffusion
       Real pdt = dp/pTil;
-      Real pre = exp(-pdt*pdt)*sL*sR/((1.0 + mTil)*(sR - sL));
+      Real pre = exp(-pdt*pdt)*sL*sR/((Real(1.0) + mTil)*(sR - sL));
       Real AEW = pre*(drho - dp/(aTil*aTil));
       Real ASWv = pre*rTil*dv,ASWw = pre*rTil*dw;
       F[SimVar::dens] -= AEW;
       F[ord[0]] -= AEW*uTil;
       F[ord[1]] -= (AEW*vTil + ASWv);
       F[ord[2]] -= (AEW*wTil + ASWw);
-      F[SimVar::etot] -= (AEW*(uTil*uTil + vTil*vTil + wTil*wTil)/2.0 + ASWv*vTil + ASWw*wTil);
+      F[SimVar::etot] -= (AEW*(uTil*uTil + vTil*vTil + wTil*wTil)/Real(2.0) + ASWv*vTil + ASWw*wTil);
 
       return fmax(fabs(sL),fabs(sR));
     }

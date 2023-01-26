@@ -39,19 +39,19 @@ namespace KFVM {
     KOKKOS_INLINE_FUNCTION
     Real xCoord(idx_t n) const
     {
-      return dx*(Real(n) + 0.5) + xLo;
+      return dx*(Real(n) + Real(0.5)) + xLo;
     }
     
     KOKKOS_INLINE_FUNCTION
     Real yCoord(idx_t n) const
     {
-      return dy*(Real(n) + 0.5) + yLo;
+      return dy*(Real(n) + Real(0.5)) + yLo;
     }
     
     KOKKOS_INLINE_FUNCTION
     Real zCoord(idx_t n) const
     {
-      return dz*(Real(n) + 0.5) + zLo;
+      return dz*(Real(n) + Real(0.5)) + zLo;
     }
 
   private:

@@ -50,7 +50,7 @@ namespace KFVM {
 
 	// Zero out state
 	for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	  v(i,j,nV) = 0.0;
+	  v(i,j,nV) = Real(0.0);
 	}
 
 	// Loop over quadrature points and accumulate integral
@@ -80,7 +80,7 @@ namespace KFVM {
 
 	// Zero out state
 	for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	  v(i,j,k,nV) = 0.0;
+	  v(i,j,k,nV) = Real(0.0);
 	}
 
 	// Loop over quadrature points and accumulate integral
@@ -132,7 +132,7 @@ namespace KFVM {
       void operator()(const idx_t i,const idx_t j) const {
 	// Zero out RHS before accumulating fluxes
 	for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	  rhs(i,j,nV) = 0.0;
+	  rhs(i,j,nV) = Real(0.0);
 	}
 			   
 	// Loop over quadrature points and components
@@ -150,7 +150,7 @@ namespace KFVM {
       void operator()(const idx_t i,const idx_t j,const idx_t k) const {
 	// Zero out RHS before accumulating fluxes
 	for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	  rhs(i,j,k,nV) = 0.0;
+	  rhs(i,j,k,nV) = Real(0.0);
 	}
 			   
 	// Loop over quadrature points and components
@@ -296,7 +296,7 @@ namespace KFVM {
           hasNan = hasNan || isnan(u);
           err += pow((u - uhat)/(atol + rtol*fmax(fabs(u),fabs(uhat))),2);
 	}
-	Real pos = hasNan ? -1.0 : Physics::EOS<eqType>::positivity(state);
+	Real pos = hasNan ? -Real(1.0) : Physics::EOS<eqType>::positivity(state);
 	posFlag = posFlag > pos ? pos : posFlag;
       }
     };

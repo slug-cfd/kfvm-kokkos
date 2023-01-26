@@ -29,10 +29,10 @@ namespace KFVM {
       {
         using EulerAdiabatic::SimVar;
 	
-        Real gm = gam - 1.0;
+        Real gm = gam - Real(1.0);
         Real rho = ref[SimVar::dens];
         Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
-        Real vsq = (u*u + v*v + w*w)/2.0;
+        Real vsq = (u*u + v*v + w*w)/Real(2.0);
         // Doing etot first allows state to be overwritten safely
         state(SimVar::etot) = gm*(vsq*state(SimVar::dens) -
                                   u*state(SimVar::momx) - 
@@ -50,10 +50,10 @@ namespace KFVM {
       {
         using EulerAdiabatic::SimVar;
 	
-        Real gm = gam - 1.0;
+        Real gm = gam - Real(1.0);
         Real rho = ref[SimVar::dens];
         Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
-        Real vsq = (u*u + v*v + w*w)/2.0;
+        Real vsq = (u*u + v*v + w*w)/Real(2.0);
         // Doing etot first allows state to be overwritten safely
         state(SimVar::etot) = (vsq*state(SimVar::dens) +
                                rho*u*state(SimVar::momx) + 
@@ -231,8 +231,7 @@ namespace KFVM {
 
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxVel) const
-      {
-      }
+      {}
     };
 
     template<class UDataView,class RHSDataView>
@@ -328,29 +327,29 @@ namespace KFVM {
 
         // Find size of flattener
         Real dxU = U(KFVM_D_DECL(i + 1,j,k),SimVar::momx)/U(KFVM_D_DECL(i + 1,j,k),SimVar::dens) -
-                   U(KFVM_D_DECL(i - 1,j,k),SimVar::momx)/U(KFVM_D_DECL(i - 1,j,k),SimVar::dens);
+	  U(KFVM_D_DECL(i - 1,j,k),SimVar::momx)/U(KFVM_D_DECL(i - 1,j,k),SimVar::dens);
         Real dyV = U(KFVM_D_DECL(i,j + 1,k),SimVar::momy)/U(KFVM_D_DECL(i,j + 1,k),SimVar::dens) -
-                   U(KFVM_D_DECL(i,j - 1,k),SimVar::momy)/U(KFVM_D_DECL(i,j - 1,k),SimVar::dens);
+	  U(KFVM_D_DECL(i,j - 1,k),SimVar::momy)/U(KFVM_D_DECL(i,j - 1,k),SimVar::dens);
 #if (SPACE_DIM == 3)
         Real dzW = U(KFVM_D_DECL(i,j,k + 1),SimVar::momz)/U(KFVM_D_DECL(i,j,k + 1),SimVar::dens) -
-                   U(KFVM_D_DECL(i,j,k - 1),SimVar::momz)/U(KFVM_D_DECL(i,j,k - 1),SimVar::dens);
+	  U(KFVM_D_DECL(i,j,k - 1),SimVar::momz)/U(KFVM_D_DECL(i,j,k - 1),SimVar::dens);
 #else
-        Real dzW = 0.0;
+        Real dzW = Real(0.0);
 #endif
-        Real divV = (dxU + dyV + dzW)/2.0; // Undivided difference
-        Real kappa1 = 0.3,kappa2 = 0.3;
-        Real eta = fmin(1.0,fmax(0.0,-(kappa1*minSdSp + divV)/(kappa1*minSdSp)));
+        Real divV = (dxU + dyV + dzW)/Real(2.0); // Undivided difference
+        Real kappa1 = Real(0.3),kappa2 = Real(0.3);
+        Real eta = fmin(Real(1.0),fmax(Real(0.0),-(kappa1*minSdSp + divV)/(kappa1*minSdSp)));
 
         // Extend density and pressure ranges
-        maxDens *= (1.0 + kappa2 - kappa2*eta);
-        minDens *= (1.0 - kappa2 + kappa2*eta);
-        minPres *= (1.0 - kappa2 + kappa2*eta);
+        maxDens *= (Real(1.0) + kappa2 - kappa2*eta);
+        minDens *= (Real(1.0) - kappa2 + kappa2*eta);
+        minPres *= (Real(1.0) - kappa2 + kappa2*eta);
         
 	Real rDensDiffP = maxDens - rDens,rDensDiffM = rDens - minDens;
 
 	// Enforce positive density
 	// Find mixing amount
-	Real theta = 1.0;
+	Real theta = Real(1.0);
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // West face
           Real rho = rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens);
@@ -396,7 +395,7 @@ namespace KFVM {
 
 	// Enforce positive pressure
 	// Find mixing amount
-	theta = 1.0;
+	theta = Real(1.0);
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  Real p,state[NUM_VARS];
 	  // West face
@@ -461,36 +460,36 @@ namespace KFVM {
 	using Kokkos::Experimental::sqrt;
 	using EulerAdiabatic::SimVar;
 
-	Real emin = pmin/(gamma - 1.0);
+	Real emin = pmin/(gamma - Real(1.0));
       
-	Real A = 2.0*(state[SimVar::dens] - refState[SimVar::dens])*(state[SimVar::etot] - refState[SimVar::etot]);
+	Real A = Real(2.0)*(state[SimVar::dens] - refState[SimVar::dens])*(state[SimVar::etot] - refState[SimVar::etot]);
 	A -= ((state[SimVar::momx] - refState[SimVar::momx])*(state[SimVar::momx] - refState[SimVar::momx]) +
 	      (state[SimVar::momy] - refState[SimVar::momy])*(state[SimVar::momy] - refState[SimVar::momy]) +
 	      (state[SimVar::momz] - refState[SimVar::momz])*(state[SimVar::momz] - refState[SimVar::momz]));
       
-	Real B = 2.0*(refState[SimVar::dens]*(state[SimVar::etot] - refState[SimVar::etot]) +
-		      refState[SimVar::etot]*(state[SimVar::dens] - refState[SimVar::dens]));
-	B -= 2.0*((state[SimVar::momx] - refState[SimVar::momx])*refState[SimVar::momx] +
-		  (state[SimVar::momy] - refState[SimVar::momy])*refState[SimVar::momy] +
-		  (state[SimVar::momz] - refState[SimVar::momz])*refState[SimVar::momz]);
-	B -= 2.0*emin*(state[SimVar::dens] - refState[SimVar::dens]);
+	Real B = Real(2.0)*(refState[SimVar::dens]*(state[SimVar::etot] - refState[SimVar::etot]) +
+			refState[SimVar::etot]*(state[SimVar::dens] - refState[SimVar::dens]));
+	B -= Real(2.0)*((state[SimVar::momx] - refState[SimVar::momx])*refState[SimVar::momx] +
+		    (state[SimVar::momy] - refState[SimVar::momy])*refState[SimVar::momy] +
+		    (state[SimVar::momz] - refState[SimVar::momz])*refState[SimVar::momz]);
+	B -= Real(2.0)*emin*(state[SimVar::dens] - refState[SimVar::dens]);
       
-	Real C = 2.0*refState[SimVar::dens]*(refState[SimVar::etot] - emin);
+	Real C = Real(2.0)*refState[SimVar::dens]*(refState[SimVar::etot] - emin);
 	C -= (refState[SimVar::momx]*refState[SimVar::momx] +
 	      refState[SimVar::momy]*refState[SimVar::momy] +
 	      refState[SimVar::momz]*refState[SimVar::momz]);
 
-	Real rtdisc = sqrt(B*B - 4.0*A*C);
-	Real th1 = (-B + rtdisc)/(2.0*A),th2 = (-B - rtdisc)/(2.0*A);
+	Real rtdisc = sqrt(B*B - Real(4.0)*A*C);
+	Real th1 = (-B + rtdisc)/(Real(2.0)*A),th2 = (-B - rtdisc)/(Real(2.0)*A);
 
-	if (0.0 <= th1 && th1 <= 1.0 && 0.0 <= th2 && th2 <= 1.0) {
+	if (Real(0.0) <= th1 && th1 <= Real(1.0) && Real(0.0) <= th2 && th2 <= Real(1.0)) {
 	  return th1 < th2 ? th1 : th2;
-	} else if (0.0 <= th1 && th1 <= 1.0) {
+	} else if (Real(0.0) <= th1 && th1 <= Real(1.0)) {
 	  return th1;
-	} else if (0.0 <= th2 && th2 <= 1.0) {
+	} else if (Real(0.0) <= th2 && th2 <= Real(1.0)) {
 	  return th2;
 	} else {
-	  return 0.0;
+	  return Real(0.0);
 	}
       }
     };

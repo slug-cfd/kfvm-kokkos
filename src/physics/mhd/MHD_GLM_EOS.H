@@ -19,25 +19,25 @@ namespace KFVM {
       static Real ekin(const Real U[NUM_VARS])
       {
         using MHD_GLM::SimVar;
-        return 0.5*(U[SimVar::momx]*U[SimVar::momx] +
-		    U[SimVar::momy]*U[SimVar::momy] +
-		    U[SimVar::momz]*U[SimVar::momz])/U[SimVar::dens];
+        return Real(0.5)*(U[SimVar::momx]*U[SimVar::momx] +
+			  U[SimVar::momy]*U[SimVar::momy] +
+			  U[SimVar::momz]*U[SimVar::momz])/U[SimVar::dens];
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real prsb(const Real U[NUM_VARS])
       {
 	using MHD_GLM::SimVar;
-        return 0.5*(U[SimVar::magx]*U[SimVar::magx] +
-                    U[SimVar::magy]*U[SimVar::magy] +
-                    U[SimVar::magz]*U[SimVar::magz]);
+        return Real(0.5)*(U[SimVar::magx]*U[SimVar::magx] +
+			  U[SimVar::magy]*U[SimVar::magy] +
+			  U[SimVar::magz]*U[SimVar::magz]);
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real eint(const Real U[NUM_VARS])
       {
 	using MHD_GLM::SimVar;
-        return (U[SimVar::etot] - prsb(U) - ekin(U) - 0.5*U[SimVar::psi]*U[SimVar::psi]);
+        return (U[SimVar::etot] - prsb(U) - ekin(U) - Real(0.5)*U[SimVar::psi]*U[SimVar::psi]);
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -51,7 +51,7 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real prsg(Real gamma,const Real U[NUM_VARS])
       {
-        return (gamma - 1.0)*eint(U);
+        return (gamma - Real(1.0))*eint(U);
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -73,8 +73,8 @@ namespace KFVM {
 	using MHD_GLM::SimVar;
 	using Kokkos::Experimental::sqrt;
 	
-	Real asq = gamma*prsg(gamma,U)/U[SimVar::dens],bsq = 2.0*prsb(U);
-	Real cfsq = 0.5*(asq + bsq + sqrt((asq + bsq)*(asq + bsq) - 4.0*asq*bl*bl));
+	Real asq = gamma*prsg(gamma,U)/U[SimVar::dens],bsq = Real(2.0)*prsb(U);
+	Real cfsq = Real(0.5)*(asq + bsq + sqrt((asq + bsq)*(asq + bsq) - Real(4.0)*asq*bl*bl));
 	
         return sqrt(cfsq);
       }

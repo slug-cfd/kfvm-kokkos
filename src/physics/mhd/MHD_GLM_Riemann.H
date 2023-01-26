@@ -20,18 +20,18 @@ namespace KFVM {
     {
       using Kokkos::Experimental::log;
 
-      Real zeta = a/b,f = (zeta - 1.0)/(zeta + 1.0),u = f*f;
-      Real F = u < 0.01 ?
-	1.0 + u/3.0 + u*u/5.0 + u*u*u/7.0 :
-	log(zeta)/(2.0*f);
+      Real zeta = a/b,f = (zeta - Real(1.0))/(zeta + Real(1.0)),u = f*f;
+      Real F = u < Real(0.01) ?
+	Real(1.0) + u/Real(3.0) + u*u/Real(5.0) + u*u*u/Real(7.0) :
+	Real(0.5)*log(zeta)/f;
 
-      return (a + b)/(2.0*F);
+      return Real(0.5)*(a + b)/F;
     }
 
     KOKKOS_INLINE_FUNCTION
     Real arithMean(Real a,Real b)
     {
-      return (a + b)/2.0;
+      return Real(0.5)*(a + b);
     }
 
     KOKKOS_INLINE_FUNCTION
@@ -137,12 +137,12 @@ namespace KFVM {
       Real psiAv = arithMean(uL[SimVar::psi],uR[SimVar::psi]);
       Real bxPsiAv = arithMean(uL[bord[0]]*uL[SimVar::psi],uR[bord[0]]*uR[SimVar::psi]);
 
-      Real betaLn = logMean(uL[SimVar::dens]/(2.0*EOS<EquationType::MHD_GLM>::prsg(gamma,uL)),
-			    uR[SimVar::dens]/(2.0*EOS<EquationType::MHD_GLM>::prsg(gamma,uR)));
-      Real betaAv = arithMean(uL[SimVar::dens]/(2.0*EOS<EquationType::MHD_GLM>::prsg(gamma,uL)),
-			      uR[SimVar::dens]/(2.0*EOS<EquationType::MHD_GLM>::prsg(gamma,uR)));
-      Real pTil = rhoAv/(2.0*betaAv);
-      Real pHatTot = pTil + 0.5*(bxxAv + byyAv + bzzAv);
+      Real betaLn = logMean(uL[SimVar::dens]/(Real(2.0)*EOS<EquationType::MHD_GLM>::prsg(gamma,uL)),
+			    uR[SimVar::dens]/(Real(2.0)*EOS<EquationType::MHD_GLM>::prsg(gamma,uR)));
+      Real betaAv = arithMean(uL[SimVar::dens]/(Real(2.0)*EOS<EquationType::MHD_GLM>::prsg(gamma,uL)),
+			      uR[SimVar::dens]/(Real(2.0)*EOS<EquationType::MHD_GLM>::prsg(gamma,uR)));
+      Real pTil = Real(0.5)*rhoAv/betaAv;
+      Real pHatTot = pTil + Real(0.5)*(bxxAv + byyAv + bzzAv);
 
       // Fill in flux
       F[SimVar::dens] = rhoLn*uAv;
@@ -158,17 +158,17 @@ namespace KFVM {
       F[SimVar::psi] = ch*bxAv;
 
       F[SimVar::etot] =
-	(1.0/(2.0*(gamma - 1)*betaLn) - 0.5*(uuAv + vvAv + wwAv))*F[SimVar::dens] +
+	(Real(1.0)/(Real(2.0)*(gamma - Real(1.0))*betaLn) - Real(0.5)*(uuAv + vvAv + wwAv))*F[SimVar::dens] +
 	uAv*F[vord[0]] + vAv*F[vord[1]] + wAv*F[vord[2]] +
 	bxAv*F[bord[0]] + byAv*F[bord[1]] + bzAv*F[bord[2]] +
 	psiAv*F[SimVar::psi] -
-	0.5*(uBxxAv + uByyAv + uBzzAv) +
+	Real(0.5)*(uBxxAv + uByyAv + uBzzAv) +
 	bxAv*(uBxAv + vByAv + wBzAv) -
 	ch*bxPsiAv;
 
       // Add in local Lax-Friedrichs dissipation
       for (int nV=0; nV<NUM_VARS; nV++) {
-	F[nV] -= 0.5*sMax*(uR[nV] - uL[nV]);
+	F[nV] -= Real(0.5)*sMax*(uR[nV] - uL[nV]);
       }
 
       return sMax;

@@ -29,12 +29,12 @@ namespace KFVM {
       {
         using MHD_GLM::SimVar;
         
-        Real gm = gam - 1.0;
+        Real gm = gam - Real(1.0);
         Real rho = ref[SimVar::dens];
         Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
         Real bx = ref[SimVar::magx],by = ref[SimVar::magy],bz = ref[SimVar::magz];
 	Real rPsi = ref[SimVar::psi];
-        Real vsq = (u*u + v*v + w*w)/2.0;
+        Real vsq = (u*u + v*v + w*w)/Real(2.0);
         // Doing etot first allows state to be overwritten safely
         state(SimVar::etot) = gm*(vsq*state(SimVar::dens) -
                                   u*state(SimVar::momx) -
@@ -56,12 +56,12 @@ namespace KFVM {
       {
         using MHD_GLM::SimVar;
         
-        Real gm = gam - 1.0;
+        Real gm = gam - Real(1.0);
         Real rho = ref[SimVar::dens];
         Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
         Real bx = ref[SimVar::magx],by = ref[SimVar::magy],bz = ref[SimVar::magz];
 	Real rPsi = ref[SimVar::psi];
-        Real vsq = (u*u + v*v + w*w)/2.0;
+        Real vsq = (u*u + v*v + w*w)/Real(2.0);
         // Doing etot first allows state to be overwritten safely
         state(SimVar::etot) = (vsq*state(SimVar::dens) +
                                rho*u*state(SimVar::momx) + 
@@ -334,15 +334,15 @@ namespace KFVM {
       {
 	using MHD_GLM::SimVar;
 	
-	const Real divB = 0.5*(U(i + 1,j,SimVar::magx) - U(i - 1,j,SimVar::magx))/geom.dx +
-	  0.5*(U(i,j + 1,SimVar::magy) - U(i,j - 1,SimVar::magy))/geom.dy;
+	const Real divB = Real(0.5)*(U(i + 1,j,SimVar::magx) - U(i - 1,j,SimVar::magx))/geom.dx +
+	  Real(0.5)*(U(i,j + 1,SimVar::magy) - U(i,j - 1,SimVar::magy))/geom.dy;
 
 	const Real uDb = (U(i,j,SimVar::momx)*U(i,j,SimVar::magx) +
 			  U(i,j,SimVar::momy)*U(i,j,SimVar::magy) +
 			  U(i,j,SimVar::momz)*U(i,j,SimVar::magz))/U(i,j,SimVar::dens);
 
-	const Real psi_x = 0.5*(U(i + 1,j,SimVar::psi) - U(i - 1,j,SimVar::psi))/geom.dx;
-	const Real psi_y = 0.5*(U(i,j + 1,SimVar::psi) - U(i,j - 1,SimVar::psi))/geom.dy;
+	const Real psi_x = Real(0.5)*(U(i + 1,j,SimVar::psi) - U(i - 1,j,SimVar::psi))/geom.dx;
+	const Real psi_y = Real(0.5)*(U(i,j + 1,SimVar::psi) - U(i,j - 1,SimVar::psi))/geom.dy;
 
 	const Real gpsiDu = (psi_x*U(i,j,SimVar::momx) + psi_y*U(i,j,SimVar::momy))/U(i,j,SimVar::dens);
 
@@ -365,17 +365,17 @@ namespace KFVM {
 	using MHD_GLM::SimVar;
 	
 	const Real divB =
-	  0.5*(U(i + 1,j,k,SimVar::magx) - U(i - 1,j,k,SimVar::magx))/geom.dx +
-	  0.5*(U(i,j + 1,k,SimVar::magy) - U(i,j - 1,k,SimVar::magy))/geom.dy +
-	  0.5*(U(i,j,k + 1,SimVar::magz) - U(i,j,k - 1,SimVar::magz))/geom.dz;
+	  Real(0.5)*(U(i + 1,j,k,SimVar::magx) - U(i - 1,j,k,SimVar::magx))/geom.dx +
+	  Real(0.5)*(U(i,j + 1,k,SimVar::magy) - U(i,j - 1,k,SimVar::magy))/geom.dy +
+	  Real(0.5)*(U(i,j,k + 1,SimVar::magz) - U(i,j,k - 1,SimVar::magz))/geom.dz;
 
 	const Real uDb = (U(i,j,k,SimVar::momx)*U(i,j,k,SimVar::magx) +
 			  U(i,j,k,SimVar::momy)*U(i,j,k,SimVar::magy) +
 			  U(i,j,k,SimVar::momz)*U(i,j,k,SimVar::magz))/U(i,j,k,SimVar::dens);
 
-	const Real psi_x = 0.5*(U(i + 1,j,k,SimVar::psi) - U(i - 1,j,k,SimVar::psi))/geom.dx;
-	const Real psi_y = 0.5*(U(i,j + 1,k,SimVar::psi) - U(i,j - 1,k,SimVar::psi))/geom.dy;
-	const Real psi_z = 0.5*(U(i,j,k + 1,SimVar::psi) - U(i,j,k - 1,SimVar::psi))/geom.dz;
+	const Real psi_x = Real(0.5)*(U(i + 1,j,k,SimVar::psi) - U(i - 1,j,k,SimVar::psi))/geom.dx;
+	const Real psi_y = Real(0.5)*(U(i,j + 1,k,SimVar::psi) - U(i,j - 1,k,SimVar::psi))/geom.dy;
+	const Real psi_z = Real(0.5)*(U(i,j,k + 1,SimVar::psi) - U(i,j,k - 1,SimVar::psi))/geom.dz;
 
 	const Real gpsiDu = (psi_x*U(i,j,k,SimVar::momx) +
 			     psi_y*U(i,j,k,SimVar::momy) +
@@ -396,7 +396,7 @@ namespace KFVM {
 #endif
     };
 
-        template<class UDataView>
+    template<class UDataView>
     struct PositivityPreserve_K<EquationType::MHD_GLM,UDataView>
     {
       UDataView U;
@@ -458,30 +458,30 @@ namespace KFVM {
 
         // Find size of flattener
         Real dxU = U(KFVM_D_DECL(i + 1,j,k),SimVar::momx)/U(KFVM_D_DECL(i + 1,j,k),SimVar::dens) -
-                   U(KFVM_D_DECL(i - 1,j,k),SimVar::momx)/U(KFVM_D_DECL(i - 1,j,k),SimVar::dens);
+	  U(KFVM_D_DECL(i - 1,j,k),SimVar::momx)/U(KFVM_D_DECL(i - 1,j,k),SimVar::dens);
         Real dyV = U(KFVM_D_DECL(i,j + 1,k),SimVar::momy)/U(KFVM_D_DECL(i,j + 1,k),SimVar::dens) -
-                   U(KFVM_D_DECL(i,j - 1,k),SimVar::momy)/U(KFVM_D_DECL(i,j - 1,k),SimVar::dens);
+	  U(KFVM_D_DECL(i,j - 1,k),SimVar::momy)/U(KFVM_D_DECL(i,j - 1,k),SimVar::dens);
 #if (SPACE_DIM == 3)
         Real dzW = U(KFVM_D_DECL(i,j,k + 1),SimVar::momz)/U(KFVM_D_DECL(i,j,k + 1),SimVar::dens) -
-                   U(KFVM_D_DECL(i,j,k - 1),SimVar::momz)/U(KFVM_D_DECL(i,j,k - 1),SimVar::dens);
+	  U(KFVM_D_DECL(i,j,k - 1),SimVar::momz)/U(KFVM_D_DECL(i,j,k - 1),SimVar::dens);
 #else
-        Real dzW = 0.0;
+        Real dzW = Real(0.0);
 #endif
-        Real divV = (dxU + dyV + dzW)/2.0; // Undivided difference
-        Real kappa1 = 0.2,kappa2 = 0.2;
-        Real eta = fmin(1.0,fmax(0.0,-(kappa1*minFms + divV)/(kappa1*minFms)));
+        Real divV = (dxU + dyV + dzW)/Real(2.0); // Undivided difference
+        Real kappa1 = Real(0.3),kappa2 = Real(0.3);
+        Real eta = fmin(Real(1.0),fmax(Real(0.0),-(kappa1*minFms + divV)/(kappa1*minFms)));
 
         // Extend density and pressure ranges
-        maxDens *= (1.0 + kappa2 - kappa2*eta);
-        minDens *= (1.0 - kappa2 + kappa2*eta);
-        minPres *= (1.0 - kappa2 + kappa2*eta);
+        maxDens *= (Real(1.0) + kappa2 - kappa2*eta);
+        minDens *= (Real(1.0) - kappa2 + kappa2*eta);
+        minPres *= (Real(1.0) - kappa2 + kappa2*eta);
         
 	Real rDensDiffP = maxDens - rDens,rDensDiffM = rDens - minDens;
 	Real rPresDiff = rPres - minPres;
 
 	// Enforce positive density
 	// Find mixing amount
-	Real theta = 1.0;
+	Real theta = Real(1.0);
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // West face
           Real rho = rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens);
@@ -527,7 +527,7 @@ namespace KFVM {
 
 	// Enforce positive pressure
 	// Find mixing amount
-	theta = 1.0;
+	theta = Real(1.0);
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  Real p,thEst,state[NUM_VARS];
 	  // West face
@@ -599,7 +599,7 @@ namespace KFVM {
 	using Kokkos::Experimental::fmin;
 	using MHD_GLM::SimVar;
 
-	Real emin = pmin/(gamma - 1.0);
+	Real emin = pmin/(gamma - Real(1.0));
 
 	Real bsq = (state[SimVar::magx]*state[SimVar::magx] +
 		    state[SimVar::magy]*state[SimVar::magy] +
@@ -615,34 +615,34 @@ namespace KFVM {
 
 	Real A = bsq*(refState[SimVar::dens] - state[SimVar::dens]);
       
-	Real B = 2.0*(state[SimVar::dens] - refState[SimVar::dens])*(state[SimVar::etot] - refState[SimVar::etot]);
+	Real B = Real(2.0)*(state[SimVar::dens] - refState[SimVar::dens])*(state[SimVar::etot] - refState[SimVar::etot]);
 	B -= ((state[SimVar::momx] - refState[SimVar::momx])*(state[SimVar::momx] - refState[SimVar::momx]) +
 	      (state[SimVar::momy] - refState[SimVar::momy])*(state[SimVar::momy] - refState[SimVar::momy]) +
 	      (state[SimVar::momz] - refState[SimVar::momz])*(state[SimVar::momz] - refState[SimVar::momz]));
 	B -= (refState[SimVar::dens]*bsq +
-	      2.0*(state[SimVar::dens] - refState[SimVar::dens])*bdbr);
+	      Real(2.0)*(state[SimVar::dens] - refState[SimVar::dens])*bdbr);
       
-	Real C = 2.0*(refState[SimVar::dens]*(state[SimVar::etot] - refState[SimVar::etot]) +
-		      refState[SimVar::etot]*(state[SimVar::dens] - refState[SimVar::dens]));
-	C -= 2.0*((state[SimVar::momx] - refState[SimVar::momx])*refState[SimVar::momx] +
-		  (state[SimVar::momy] - refState[SimVar::momy])*refState[SimVar::momy] +
-		  (state[SimVar::momz] - refState[SimVar::momz])*refState[SimVar::momz]);
-	C -= 2.0*emin*(state[SimVar::dens] - refState[SimVar::dens]);
-	C-= (2.0*refState[SimVar::dens]*bdbr + brsq*(state[SimVar::dens] - refState[SimVar::dens]));
+	Real C = Real(2.0)*(refState[SimVar::dens]*(state[SimVar::etot] - refState[SimVar::etot]) +
+			    refState[SimVar::etot]*(state[SimVar::dens] - refState[SimVar::dens]));
+	C -= Real(2.0)*((state[SimVar::momx] - refState[SimVar::momx])*refState[SimVar::momx] +
+			(state[SimVar::momy] - refState[SimVar::momy])*refState[SimVar::momy] +
+			(state[SimVar::momz] - refState[SimVar::momz])*refState[SimVar::momz]);
+	C -= Real(2.0)*emin*(state[SimVar::dens] - refState[SimVar::dens]);
+	C-= (Real(2.0)*refState[SimVar::dens]*bdbr + brsq*(state[SimVar::dens] - refState[SimVar::dens]));
       
-	Real D = 2.0*refState[SimVar::dens]*(refState[SimVar::etot] - emin) - refState[SimVar::dens]*bsq;
+	Real D = Real(2.0)*refState[SimVar::dens]*(refState[SimVar::etot] - emin) - refState[SimVar::dens]*bsq;
 	D -= (refState[SimVar::momx]*refState[SimVar::momx] +
 	      refState[SimVar::momy]*refState[SimVar::momy] +
 	      refState[SimVar::momz]*refState[SimVar::momz]);
 
 	for (int nIter=0; nIter<4; nIter++) {
-	  theta -= (A*theta*theta*theta + B*theta*theta + C*theta + D)/(3.0*A*theta*theta + 2.0*B*theta + C);
+	  theta -= (A*theta*theta*theta + B*theta*theta + C*theta + D)/(Real(3.0)*A*theta*theta + Real(2.0)*B*theta + C);
 	}
 
-	if (0.0 <= theta && theta <= 1.0) {
+	if (Real(0.0) <= theta && theta <= Real(1.0)) {
 	  return theta;
 	} else {
-	  return 0.0;
+	  return Real(0.0);
 	}
       }
     };

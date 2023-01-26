@@ -8,6 +8,10 @@
 // the Riemann solver
 
 // Western boundary
+#include "Definitions.H"
+
+#define ASTROVEL 800
+
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
 void CellWest(const DataViewType& U,int rad,int nX,
@@ -79,7 +83,9 @@ void CellSouth(const DataViewType& U,int rad,int nY,
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
-  const Real rsq = x*x + z*z,Rsq = 0.05*0.05;
+  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z;
+  const Real Rsq = Real(0.05)*Real(0.05);
+  const Real gam = Real(1.4),gamm = Real(0.4),vel = Real(ASTROVEL);
 
   if (rsq > Rsq) { // outflow
     state[0] = U(KFVM_D_DECL(i,rad + nH,k),0);
@@ -88,11 +94,11 @@ void CellSouth(const DataViewType& U,int rad,int nY,
     state[3] = U(KFVM_D_DECL(i,rad + nH,k),3);
     state[4] = U(KFVM_D_DECL(i,rad + nH,k),4);
   } else { // Jet inflow
-    state[0] = 1.4;
-    state[1] = 0.0;
-    state[2] = 800.0*1.4;
-    state[3] = 0.0;
-    state[4] = 1.0/0.4 + 1.4*800.0*800.0/2.0;
+    state[0] = gam;
+    state[1] = Real(0.0);
+    state[2] = gam*vel;
+    state[3] = Real(0.0);
+    state[4] = Real(1.0)/gamm + gam*vel*vel/Real(2.0);
   }
 }
 
@@ -109,7 +115,9 @@ void FaceSouth(const DataViewType& U,
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
-  const Real rsq = x*x + z*z,Rsq = 0.05*0.05;
+  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z;
+  const Real Rsq = Real(0.05)*Real(0.05);
+  const Real gam = Real(1.4),gamm = Real(0.4),vel = Real(ASTROVEL);
 
   if (rsq > Rsq) { // outflow
     state[0] = U(KFVM_DM_DECL(i,k),1,nQ,0);
@@ -118,11 +126,11 @@ void FaceSouth(const DataViewType& U,
     state[3] = U(KFVM_DM_DECL(i,k),1,nQ,3);
     state[4] = U(KFVM_DM_DECL(i,k),1,nQ,4);
   } else { // Jet inflow
-    state[0] = 1.4;
-    state[1] = 0.0;
-    state[2] = 800.0*1.4;
-    state[3] = 0.0;
-    state[4] = 1.0/0.4 + 1.4*800.0*800.0/2.0;
+    state[0] = gam;
+    state[1] = Real(0.0);
+    state[2] = gam*vel;
+    state[3] = Real(0.0);
+    state[4] = Real(1.0)/gamm + gam*vel*vel/Real(2.0);
   }
 }
 

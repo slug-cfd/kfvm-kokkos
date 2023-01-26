@@ -17,36 +17,40 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real ekin(const Real U[NUM_VARS])
       {
-        return 0.5*(U[EulerAdiabatic::SimVar::momx]*U[EulerAdiabatic::SimVar::momx] +
-		    U[EulerAdiabatic::SimVar::momy]*U[EulerAdiabatic::SimVar::momy] +
-		    U[EulerAdiabatic::SimVar::momz]*U[EulerAdiabatic::SimVar::momz])/U[EulerAdiabatic::SimVar::dens];
+	using EulerAdiabatic::SimVar;
+        return Real(0.5)*(U[SimVar::momx]*U[SimVar::momx] +
+			  U[SimVar::momy]*U[SimVar::momy] +
+			  U[SimVar::momz]*U[SimVar::momz])/U[SimVar::dens];
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real eint(const Real U[NUM_VARS])
       {
-        return (U[EulerAdiabatic::SimVar::etot] - ekin(U));
+	using EulerAdiabatic::SimVar;
+        return (U[SimVar::etot] - ekin(U));
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real positivity(const Real U[NUM_VARS])
       {
+	using EulerAdiabatic::SimVar;
         using Kokkos::Experimental::fmin;
         // Ensure that density and internal energy are positive
-        return fmin(U[EulerAdiabatic::SimVar::dens],eint(U));
+        return fmin(U[SimVar::dens],eint(U));
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real pres(Real gamma,const Real U[NUM_VARS])
       {  
-        return (gamma - 1.0)*eint(U);
+        return (gamma - Real(1.0))*eint(U);
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real soundspeed(Real gamma,const Real U[NUM_VARS])
       {
+	using EulerAdiabatic::SimVar;
         using Kokkos::Experimental::sqrt;
-        return sqrt(gamma*pres(gamma,U)/U[EulerAdiabatic::SimVar::dens]);
+        return sqrt(gamma*pres(gamma,U)/U[SimVar::dens]);
       }
       
     };
