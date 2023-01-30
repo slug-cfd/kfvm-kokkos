@@ -1,0 +1,24 @@
+# Set mesh resolution and extent
+mesh:resolution 128 512 128
+mesh:extent -0.125 0.125 0.0 1.0 -0.125 0.125
+
+# Set time information
+time:initial 0.0
+time:final 1.95
+time:initialdt 1.e-8
+time:cfl 2.0
+time:maxsteps 10000
+time:atol 1.e-4
+time:rtol 1.e-3
+
+# Set stencil options
+stencil:lfac 24
+
+# Set fluid properties
+properties:gamma 1.4
+properties:wenothresh 20.0
+
+# Output settings
+output:datadir data
+output:basename MagRayleighTaylor
+output:plotfreq 50
