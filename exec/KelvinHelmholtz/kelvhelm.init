@@ -1,14 +1,14 @@
 # Set mesh resolution and extent
-mesh:resolution 80 240 80
-mesh:extent 0.0 0.5 0.0 1.5 0.0 0.5
+mesh:resolution 96 192 96
+mesh:extent 0.0 1.0 0.0 2.0 0.0 1.0
 
 # Set time information
 time:initial 0.0
-time:final 0.002
-time:initialdt 1.e-10
-time:cfl 1.0
-time:maxsteps 20000
-time:atol 1.e-3
+time:final 5.0
+time:initialdt 1.e-8
+time:cfl 3.0
+time:maxsteps 10000
+time:atol 1.e-4
 time:rtol 1.e-3
 
 # Set stencil options
@@ -20,5 +20,5 @@ properties:wenothresh 20.0
 
 # Output settings
 output:datadir data
-output:basename AstroJetHD
-output:plotfreq 10
+output:basename KelvHelm
+output:plotfreq 50

@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 256 768
+mesh:resolution 1024 3072
 mesh:extent 0.0 0.5 0.0 1.5
 
 # Set time information
@@ -21,4 +21,4 @@ properties:wenothresh 20.0
 # Output settings
 output:datadir data
 output:basename AstroJetHD
-output:plotfreq 50
+output:plotfreq 100

@@ -8,7 +8,7 @@
 // Space dimension of problem
 #define SPACE_DIM 3
 
-// Stencil radius (2-4)
+// Stencil radius (2-3)
 #define STENCIL_RADIUS 2
 
 // Number of Gauss-Legendre points on faces (1-9)
