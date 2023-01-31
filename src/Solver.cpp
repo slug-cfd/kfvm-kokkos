@@ -292,7 +292,7 @@ namespace KFVM {
     // Fill in source terms
     auto sol = trimCellHalo(sol_halo);
     Kokkos::parallel_for("SourceTerms",cellRng,
-			 Physics::SourceTerms_K<eqType,decltype(sol),decltype(rhs)>(sol,rhs,ps.fluidProp,geom));
+			 Physics::SourceTerms_K<eqType,decltype(sol),decltype(rhs)>(sol,rhs,ps.fluidProp,geom,t));
     
     Kokkos::Profiling::popRegion();
     return maxVel;

@@ -234,6 +234,10 @@ namespace KFVM {
       {}
     };
 
+    namespace EulerAdiabatic {
+#include "SourceTerms.H"
+    }
+
     template<class UDataView,class RHSDataView>
     struct SourceTerms_K<EquationType::Euler,UDataView,RHSDataView>
     {
@@ -241,28 +245,43 @@ namespace KFVM {
       RHSDataView RHS;
       FluidProperties fProp;
       Geometry geom;
+      Real t;
 
       SourceTerms_K(const UDataView& U_,const RHSDataView RHS_,
-		    const FluidProperties& fProp_,const Geometry& geom_):
+		    const FluidProperties& fProp_,const Geometry& geom_,const Real t_):
 	U(U_),
 	RHS(RHS_),
 	fProp(fProp_),
-	geom(geom_)
+	geom(geom_),
+        t(t_)
       {}
 
+      KOKKOS_INLINE_FUNCTION
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
+      {
+        Real state[NUM_VARS],force[NUM_VARS];
+
+        // extract state, zero out force
+        for (int n=0; n<NUM_VARS; n++) {
+          state[n] = U(KFVM_D_DECL(i,j,k),n);
+          force[n] = 0.0;
+        }
+
+        // Call user-defined source terms
+        Real xc = geom.xCoord(i);
+        Real yc = geom.yCoord(j);
 #if (SPACE_DIM == 2)
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j) const
-      {
-	return;
-      }
+        Real zc = geom.zCoord(0);
 #else
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,const idx_t k) const
-      {
-	return;
-      }
+        Real zc = geom.zCoord(k);
 #endif
+        EulerAdiabatic::SourceTerm(t,xc,yc,zc,state,force);
+
+        // Apply to RHS
+        for (int n=0; n<NUM_VARS; n++) {
+          RHS(KFVM_D_DECL(i,j,k),n) += force[n];
+        }
+      }
     };
 
     template<class UDataView>

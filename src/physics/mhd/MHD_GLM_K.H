@@ -312,6 +312,10 @@ namespace KFVM {
       }
     };
 
+    namespace MHD_GLM {
+#include "SourceTerms.H"
+    }
+
     template<class UDataView,class RHSDataView>
     struct SourceTerms_K<EquationType::MHD_GLM,UDataView,RHSDataView>
     {
@@ -319,81 +323,75 @@ namespace KFVM {
       RHSDataView RHS;
       FluidProperties fProp;
       Geometry geom;
+      Real t;
 
       SourceTerms_K(const UDataView& U_,const RHSDataView RHS_,
-		    const FluidProperties& fProp_,const Geometry& geom_):
+		    const FluidProperties& fProp_,const Geometry& geom_,const Real t_):
 	U(U_),
 	RHS(RHS_),
 	fProp(fProp_),
-	geom(geom_)
+	geom(geom_),
+        t(t_)
       {}
-
-#if (SPACE_DIM == 2)
+      
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j) const
-      {
-	using MHD_GLM::SimVar;
-	
-	const Real divB = Real(0.5)*(U(i + 1,j,SimVar::magx) - U(i - 1,j,SimVar::magx))/geom.dx +
-	  Real(0.5)*(U(i,j + 1,SimVar::magy) - U(i,j - 1,SimVar::magy))/geom.dy;
-
-	const Real uDb = (U(i,j,SimVar::momx)*U(i,j,SimVar::magx) +
-			  U(i,j,SimVar::momy)*U(i,j,SimVar::magy) +
-			  U(i,j,SimVar::momz)*U(i,j,SimVar::magz))/U(i,j,SimVar::dens);
-
-	const Real psi_x = Real(0.5)*(U(i + 1,j,SimVar::psi) - U(i - 1,j,SimVar::psi))/geom.dx;
-	const Real psi_y = Real(0.5)*(U(i,j + 1,SimVar::psi) - U(i,j - 1,SimVar::psi))/geom.dy;
-
-	const Real gpsiDu = (psi_x*U(i,j,SimVar::momx) + psi_y*U(i,j,SimVar::momy))/U(i,j,SimVar::dens);
-
-	RHS(i,j,SimVar::momx) -= divB*U(i,j,SimVar::magx);
-	RHS(i,j,SimVar::momy) -= divB*U(i,j,SimVar::magy);
-	RHS(i,j,SimVar::momz) -= divB*U(i,j,SimVar::magz);
-	
-	RHS(i,j,SimVar::etot) -= divB*uDb + U(i,j,SimVar::psi)*gpsiDu;
-	
-	RHS(i,j,SimVar::magx) -= divB*U(i,j,SimVar::momx)/U(i,j,SimVar::dens);
-	RHS(i,j,SimVar::magy) -= divB*U(i,j,SimVar::momy)/U(i,j,SimVar::dens);
-	RHS(i,j,SimVar::magz) -= divB*U(i,j,SimVar::momz)/U(i,j,SimVar::dens);
-	
-	RHS(i,j,SimVar::psi) -= gpsiDu;
-      }
-#else
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j,const idx_t k) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
 	using MHD_GLM::SimVar;
 	
 	const Real divB =
-	  Real(0.5)*(U(i + 1,j,k,SimVar::magx) - U(i - 1,j,k,SimVar::magx))/geom.dx +
-	  Real(0.5)*(U(i,j + 1,k,SimVar::magy) - U(i,j - 1,k,SimVar::magy))/geom.dy +
-	  Real(0.5)*(U(i,j,k + 1,SimVar::magz) - U(i,j,k - 1,SimVar::magz))/geom.dz;
+	  Real(0.5)*(U(KFVM_D_DECL(i + 1,j,k),SimVar::magx) - U(KFVM_D_DECL(i - 1,j,k),SimVar::magx))/geom.dx +
+          Real(0.5)*(U(KFVM_D_DECL(i,j + 1,k),SimVar::magy) - U(KFVM_D_DECL(i,j - 1,k),SimVar::magy))/geom.dy +
+          Real(0.5)*(U(KFVM_D_DECL(i,j,k + 1),SimVar::magz) - U(KFVM_D_DECL(i,j,k - 1),SimVar::magz))/geom.dz;
 
-	const Real uDb = (U(i,j,k,SimVar::momx)*U(i,j,k,SimVar::magx) +
-			  U(i,j,k,SimVar::momy)*U(i,j,k,SimVar::magy) +
-			  U(i,j,k,SimVar::momz)*U(i,j,k,SimVar::magz))/U(i,j,k,SimVar::dens);
+	const Real uDb = (U(KFVM_D_DECL(i,j,k),SimVar::momx)*U(KFVM_D_DECL(i,j,k),SimVar::magx) +
+                          U(KFVM_D_DECL(i,j,k),SimVar::momy)*U(KFVM_D_DECL(i,j,k),SimVar::magy) +
+			  U(KFVM_D_DECL(i,j,k),SimVar::momz)*U(KFVM_D_DECL(i,j,k),SimVar::magz))/U(KFVM_D_DECL(i,j,k),SimVar::dens);
 
-	const Real psi_x = Real(0.5)*(U(i + 1,j,k,SimVar::psi) - U(i - 1,j,k,SimVar::psi))/geom.dx;
-	const Real psi_y = Real(0.5)*(U(i,j + 1,k,SimVar::psi) - U(i,j - 1,k,SimVar::psi))/geom.dy;
-	const Real psi_z = Real(0.5)*(U(i,j,k + 1,SimVar::psi) - U(i,j,k - 1,SimVar::psi))/geom.dz;
+	const Real psi_x = Real(0.5)*(U(KFVM_D_DECL(i + 1,j,k),SimVar::psi) - U(KFVM_D_DECL(i - 1,j,k),SimVar::psi))/geom.dx;
+        const Real psi_y = Real(0.5)*(U(KFVM_D_DECL(i,j + 1,k),SimVar::psi) - U(KFVM_D_DECL(i,j - 1,k),SimVar::psi))/geom.dy;
+        const Real psi_z = Real(0.5)*(U(KFVM_D_DECL(i,j,k + 1),SimVar::psi) - U(KFVM_D_DECL(i,j,k - 1),SimVar::psi))/geom.dz;
+        
+	const Real gpsiDu = (psi_x*U(KFVM_D_DECL(i,j,k),SimVar::momx) +
+			     psi_y*U(KFVM_D_DECL(i,j,k),SimVar::momy) +
+			     psi_z*U(KFVM_D_DECL(i,j,k),SimVar::momz))/U(KFVM_D_DECL(i,j,k),SimVar::dens);
 
-	const Real gpsiDu = (psi_x*U(i,j,k,SimVar::momx) +
-			     psi_y*U(i,j,k,SimVar::momy) +
-			     psi_z*U(i,j,k,SimVar::momz))/U(i,j,k,SimVar::dens);
-
-	RHS(i,j,k,SimVar::momx) -= divB*U(i,j,k,SimVar::magx);
-	RHS(i,j,k,SimVar::momy) -= divB*U(i,j,k,SimVar::magy);
-	RHS(i,j,k,SimVar::momz) -= divB*U(i,j,k,SimVar::magz);
+	RHS(KFVM_D_DECL(i,j,k),SimVar::momx) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::magx);
+	RHS(KFVM_D_DECL(i,j,k),SimVar::momy) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::magy);
+	RHS(KFVM_D_DECL(i,j,k),SimVar::momz) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::magz);
 	
-	RHS(i,j,k,SimVar::etot) -= divB*uDb + U(i,j,k,SimVar::psi)*gpsiDu;
+	RHS(KFVM_D_DECL(i,j,k),SimVar::etot) -= divB*uDb + U(KFVM_D_DECL(i,j,k),SimVar::psi)*gpsiDu;
 	
-	RHS(i,j,k,SimVar::magx) -= divB*U(i,j,k,SimVar::momx)/U(i,j,k,SimVar::dens);
-	RHS(i,j,k,SimVar::magy) -= divB*U(i,j,k,SimVar::momy)/U(i,j,k,SimVar::dens);
-	RHS(i,j,k,SimVar::magz) -= divB*U(i,j,k,SimVar::momz)/U(i,j,k,SimVar::dens);
+	RHS(KFVM_D_DECL(i,j,k),SimVar::magx) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::momx)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
+	RHS(KFVM_D_DECL(i,j,k),SimVar::magy) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::momy)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
+	RHS(KFVM_D_DECL(i,j,k),SimVar::magz) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::momz)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
 	
-	RHS(i,j,k,SimVar::psi) -= gpsiDu;
-      }
+	RHS(KFVM_D_DECL(i,j,k),SimVar::psi) -= gpsiDu;
+
+        // Incorporate user defined terms too
+        Real state[NUM_VARS],force[NUM_VARS];
+
+        // extract state, zero out force
+        for (int n=0; n<NUM_VARS; n++) {
+          state[n] = U(KFVM_D_DECL(i,j,k),n);
+          force[n] = 0.0;
+        }
+
+        // Call user-defined source terms
+        Real xc = geom.xCoord(i);
+        Real yc = geom.yCoord(j);
+#if (SPACE_DIM == 2)
+        Real zc = geom.zCoord(0);
+#else
+        Real zc = geom.zCoord(k);
 #endif
+        MHD_GLM::SourceTerm(t,xc,yc,zc,state,force);
+
+        // Apply to RHS
+        for (int n=0; n<NUM_VARS; n++) {
+          RHS(KFVM_D_DECL(i,j,k),n) += force[n];
+        }
+      }
     };
 
     template<class UDataView>
