@@ -13,13 +13,12 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   using Kokkos::Experimental::sqrt;
   using Kokkos::Experimental::cos;
 
-  const Real r = SPACE_DIM == 2 ? fabs(x) : sqrt(x*x + z*z);
   const Real gam = 1.4,gamm = 0.4;
   const Real rho = y <= 0.5 ? 2.0 : 1.0;
   const Real p = y <= 0.5 ? 2.0*y + 1.0 : y + 1.5;
   const Real c = y <= 0.5 ? sqrt(gam*(2.0*y + 1.0)/2.0) : sqrt(gam*(y + 1.5));
-  const Real v = 0.025*c*cos(8.0*M_PI*r);
-  const Real b = 0.01;
+  const Real v = 0.025*c*cos(4.0*M_PI*x)*cos(4.0*M_PI*z);
+  const Real b = 0.005;
   
   state[SimVar::dens] = rho;
   
