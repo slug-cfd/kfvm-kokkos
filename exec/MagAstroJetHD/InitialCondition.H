@@ -24,8 +24,8 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   state[SimVar::magx] = 0.0;
   state[SimVar::magy] = b0;
   state[SimVar::magz] = 0.0;
-  state[SimVar::psi] = 0.0;
   
   state[SimVar::etot] = 1.0/gamm + b0*b0/2.0;
   
+  state[SimVar::psi] = 0.0;
 }

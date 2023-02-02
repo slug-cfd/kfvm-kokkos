@@ -20,5 +20,5 @@ properties:wenothresh 20.0
 
 # Output settings
 output:datadir data
-output:basename MagRayleighTaylor
+output:basename MagRayleighTaylorMM
 output:plotfreq 50
