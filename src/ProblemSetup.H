@@ -79,7 +79,7 @@ namespace KFVM {
       initialDeltaT(1.e-10),
       atol(1.e-4),
       rtol(1.e-4),
-      rejectionThresh(0.6),
+      rejectionThresh(0.8),
       rejectionLimit(4),
       cfl(SPACE_DIM==3 ? 0.5 : 0.75),
       dataDir("data"),
