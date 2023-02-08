@@ -10,7 +10,7 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
-  using Physics::EulerAdiabatic::SimVar;
+  using Physics::Hydro::SimVar;
 
   const Real gam = 1.4,gamm = gam - 1.0;
   const Real R = SPACE_DIM == 2 ? 4.0/256.0 : 4.0/64.0; // 4 cell radius for typical resolutions

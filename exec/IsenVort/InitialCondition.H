@@ -14,7 +14,7 @@ Real ivOmega(Real x,Real y,Real xc,Real yc,Real R,Real sig,Real beta)
 KOKKOS_INLINE_FUNCTION
 void ivAddPert(Real x,Real y,Real xc,Real yc,Real R,Real Om,Real gamma,Real Ub[NUM_VARS])
 {
-  using Physics::EulerAdiabatic::SimVar;
+  using Physics::Hydro::SimVar;
   
   Real rhoB = Ub[SimVar::dens];
   Real presB = (gamma - 1.0)*(Ub[SimVar::etot] -
@@ -32,7 +32,7 @@ void ivAddPert(Real x,Real y,Real xc,Real yc,Real R,Real Om,Real gamma,Real Ub[N
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
-  using Physics::EulerAdiabatic::SimVar;
+  using Physics::Hydro::SimVar;
   
   (void) z;
   

@@ -1,5 +1,5 @@
-#ifndef EULERADIABATIC_BCCOEFFS_H_
-#define EULERADIABATIC_BCCOEFFS_H_
+#ifndef HYDRO_BCCOEFFS_H_
+#define HYDRO_BCCOEFFS_H_
 
 #include <array>
 
@@ -12,18 +12,18 @@ namespace KFVM {
 
   namespace Physics {
 
-    namespace EulerAdiabatic_BCCoeff_LUT {
+    namespace Hydro_BCCoeff_LUT {
       static constexpr Real refX[] = {1.0,-1.0,1.0,1.0,1.0};
       static constexpr Real refY[] = {1.0,1.0,-1.0,1.0,1.0};
       static constexpr Real refZ[] = {1.0,1.0,1.0,-1.0,1.0};
     }
 
     template<>
-    struct BCCoeffs<EquationType::Euler>
+    struct BCCoeffs<EquationType::Hydro>
     {
       Kokkos::View<Real[5],MemSpace> x,y,z;
       
-      BCCoeffs<EquationType::Euler>():
+      BCCoeffs<EquationType::Hydro>():
         x("Physics::BCCoeffs::Reflect::x"),
         y("Physics::BCCoeffs::Reflect::y"),
         z("Physics::BCCoeffs::Reflect::z")
@@ -33,9 +33,9 @@ namespace KFVM {
         auto h_z = Kokkos::create_mirror(z);
         
         for (int n=0; n<5; n++) {
-          h_x(n) = EulerAdiabatic_BCCoeff_LUT::refX[n];
-          h_y(n) = EulerAdiabatic_BCCoeff_LUT::refY[n];
-          h_z(n) = EulerAdiabatic_BCCoeff_LUT::refZ[n];
+          h_x(n) = Hydro_BCCoeff_LUT::refX[n];
+          h_y(n) = Hydro_BCCoeff_LUT::refY[n];
+          h_z(n) = Hydro_BCCoeff_LUT::refZ[n];
         }
         
         Kokkos::deep_copy(x,h_x);

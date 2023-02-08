@@ -5,10 +5,10 @@
 
 namespace KFVM {
   
-  enum EquationType { Euler = 0, MHD_GLM, NUM_EQUATION_TYPES };
+  enum EquationType { Hydro = 0, MHD_GLM, SRHydro, NUM_EQUATION_TYPES };
 
-  constexpr std::array<std::size_t,NUM_EQUATION_TYPES> NUM_EQN_VARS {{5,9}};
-  constexpr std::array<std::size_t,NUM_EQUATION_TYPES> NUM_EQN_AUX {{5,7}};
+  constexpr std::array<std::size_t,NUM_EQUATION_TYPES> NUM_EQN_VARS {{5,9,5}};
+  constexpr std::array<std::size_t,NUM_EQUATION_TYPES> NUM_EQN_AUX {{5,7,5}};
   
 } // end namespace KFVM
 

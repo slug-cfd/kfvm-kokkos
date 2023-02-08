@@ -8,7 +8,7 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
-  using Physics::EulerAdiabatic::SimVar;
+  using Physics::Hydro::SimVar;
   
   (void) z;
   Real p = 1.0 + sin(M_PI*(x - y))/2.0;

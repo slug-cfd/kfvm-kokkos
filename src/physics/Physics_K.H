@@ -27,14 +27,19 @@ namespace KFVM {
 
 // Include the specific physics kernels to provide specializations of the above
 
-// Adiabatic Euler hydrodynamics
-#include "hydro/EulerAdiabatic_BCCoeffs.H"
-#include "hydro/EulerAdiabatic_EOS.H"
-#include "hydro/EulerAdiabatic_K.H"
+// Newtonian hydrodynamics (Adiabatic Euler)
+#include "hydro/Hydro_BCCoeffs.H"
+#include "hydro/Hydro_EOS.H"
+#include "hydro/Hydro_K.H"
 
 // Ideal MHD with GLM
 #include "mhd/MHD_GLM_BCCoeffs.H"
 #include "mhd/MHD_GLM_EOS.H"
 #include "mhd/MHD_GLM_K.H"
+
+// Special relativistic hydrodynamics (Adiabatic Euler)
+#include "srhydro/SRHydro_BCCoeffs.H"
+#include "srhydro/SRHydro_EOS.H"
+#include "srhydro/SRHydro_K.H"
 
 #endif

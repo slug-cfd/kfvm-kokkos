@@ -1,13 +1,13 @@
-#ifndef EULERADIABATIC_RIEMANN_H_
-#define EULERADIABATIC_RIEMANN_H_
+#ifndef HYDRO_RIEMANN_H_
+#define HYDRO_RIEMANN_H_
 
 #include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
 
 #include "../../Types.H"
-#include "EulerAdiabatic_SimVar.H"
-#include "EulerAdiabatic_EOS.H"
+#include "Hydro_SimVar.H"
+#include "Hydro_EOS.H"
 #include "../EquationTypes.H"
 #include "../Riemann.H"
 
@@ -16,11 +16,11 @@ namespace KFVM {
   namespace Physics {
 
     KOKKOS_INLINE_FUNCTION
-    void eulerFlux(Real gamma,int ord[3],const Real u[NUM_VARS],Real F[NUM_VARS])
+    void hydroFlux(Real gamma,int ord[3],const Real u[NUM_VARS],Real F[NUM_VARS])
     {
-      using EulerAdiabatic::SimVar;
+      using Hydro::SimVar;
       
-      Real p = EOS<EquationType::Euler>::pres(gamma,u);
+      Real p = EOS<EquationType::Hydro>::pres(gamma,u);
       F[SimVar::dens] = u[ord[0]];
       F[ord[0]] = u[ord[0]]*u[ord[0]]/u[SimVar::dens] + p;
       F[ord[1]] = u[ord[0]]*u[ord[1]]/u[SimVar::dens];
@@ -30,41 +30,41 @@ namespace KFVM {
       
     // Wavespeed estimates
     KOKKOS_INLINE_FUNCTION
-    void eulerSpeed(Real gamma,int lng,
+    void hydroSpeed(Real gamma,int lng,
         	    const Real uL[NUM_VARS],const Real uR[NUM_VARS],
         	    Real* sL,Real* sR)
     {
       using Kokkos::Experimental::fmax;
       using Kokkos::Experimental::fmin;
-      using EulerAdiabatic::SimVar;
+      using Hydro::SimVar;
       
-      Real a = fmax(EOS<EquationType::Euler>::soundspeed(gamma,uL),
-        	    EOS<EquationType::Euler>::soundspeed(gamma,uR));
+      Real a = fmax(EOS<EquationType::Hydro>::soundspeed(gamma,uL),
+        	    EOS<EquationType::Hydro>::soundspeed(gamma,uR));
       *sL = fmin(uL[lng]/uL[SimVar::dens],uR[lng]/uR[SimVar::dens]) - a;
       *sR = fmax(uL[lng]/uL[SimVar::dens],uR[lng]/uR[SimVar::dens]) + a;
     }
       
     KOKKOS_INLINE_FUNCTION
-    Real eulerHLL(Real gamma,int ord[3],
+    Real hydroHLL(Real gamma,int ord[3],
                   const Real uL[NUM_VARS],
                   const Real uR[NUM_VARS],
                   Real F[NUM_VARS])
     {
       using Kokkos::Experimental::fmax;
       using Kokkos::Experimental::fabs;
-      using EulerAdiabatic::SimVar;
+      using Hydro::SimVar;
       
       Real FT[NUM_VARS];
       Real sL,sR;
       
       // Wave speed estimates
-      eulerSpeed(gamma,ord[0],uL,uR,&sL,&sR);
+      hydroSpeed(gamma,ord[0],uL,uR,&sL,&sR);
       
       // Find appropriate region and fill in flux vector
       if(sR > 0) {
-        eulerFlux(gamma,ord,uL,F);
+        hydroFlux(gamma,ord,uL,F);
         if(sL <= 0) {
-          eulerFlux(gamma,ord,uR,FT);
+          hydroFlux(gamma,ord,uR,FT);
           F[SimVar::dens] = hll(sL,sR,F[SimVar::dens],FT[SimVar::dens],
                                 uL[SimVar::dens],uR[SimVar::dens]);
           F[ord[0]] = hll(sL,sR,F[ord[0]],FT[ord[0]],uL[ord[0]],uR[ord[0]]);
@@ -74,35 +74,35 @@ namespace KFVM {
                                 uL[SimVar::etot],uR[SimVar::etot]);
         }
       } else {
-        eulerFlux(gamma,ord,uR,F);
+        hydroFlux(gamma,ord,uR,F);
       }
 
       return fmax(fabs(sL),fabs(sR));
     }
       
     KOKKOS_INLINE_FUNCTION
-    Real eulerHLLC(Real gamma,int ord[3],
+    Real hydroHLLC(Real gamma,int ord[3],
 		   const Real uL[NUM_VARS],
 		   const Real uR[NUM_VARS],
 		   Real F[NUM_VARS])
     {
       using Kokkos::Experimental::fmax;
       using Kokkos::Experimental::fabs;
-      using EulerAdiabatic::SimVar;
+      using Hydro::SimVar;
       
       // Wave speed estimates
       Real sL,sR,sS;
-      Real pL = EOS<EquationType::Euler>::pres(gamma,uL);
-      Real pR = EOS<EquationType::Euler>::pres(gamma,uR);
-      eulerSpeed(gamma,ord[0],uL,uR,&sL,&sR);
+      Real pL = EOS<EquationType::Hydro>::pres(gamma,uL);
+      Real pR = EOS<EquationType::Hydro>::pres(gamma,uR);
+      hydroSpeed(gamma,ord[0],uL,uR,&sL,&sR);
       sS = hllcSStar(uL[SimVar::dens],uR[SimVar::dens],pL,pR,
                      uL[ord[0]]/uL[SimVar::dens],uR[ord[0]]/uR[SimVar::dens],sL,sR);
       
       // Find correct zone
       if(0 < sL) {
-        eulerFlux(gamma,ord,uL,F);
+        hydroFlux(gamma,ord,uL,F);
       } else if(0 <= sS) {
-        eulerFlux(gamma,ord,uL,F);
+        hydroFlux(gamma,ord,uL,F);
         Real pre = hllcPre(uL[SimVar::dens],uL[ord[0]]/uL[SimVar::dens],sL,sS);
         F[SimVar::dens] += sL*(pre - uL[SimVar::dens]);
         F[ord[0]] += sL*(pre*sS - uL[ord[0]]);
@@ -111,7 +111,7 @@ namespace KFVM {
         Real eStar = hllcEnergy(pre,uL[SimVar::dens],uL[SimVar::etot],pL,uL[ord[0]]/uL[SimVar::dens],sL,sS);
         F[SimVar::etot] += sL*(eStar - uL[SimVar::etot]);
       } else if(0 <= sR) {
-        eulerFlux(gamma,ord,uR,F);
+        hydroFlux(gamma,ord,uR,F);
         Real pre = hllcPre(uR[SimVar::dens],uR[ord[0]]/uR[SimVar::dens],sR,sS);
         F[SimVar::dens] += sR*(pre - uR[SimVar::dens]);
         F[ord[0]] += sR*(pre*sS - uR[ord[0]]);
@@ -120,7 +120,7 @@ namespace KFVM {
         Real eStar = hllcEnergy(pre,uR[SimVar::dens],uR[SimVar::etot],pR,uR[ord[0]]/uR[SimVar::dens],sR,sS);
         F[SimVar::etot] += sR*(eStar - uR[SimVar::etot]);
       } else {
-        eulerFlux(gamma,ord,uR,F);
+        hydroFlux(gamma,ord,uR,F);
       }
   
       return fmax(fabs(sL),fabs(sR));
@@ -129,7 +129,7 @@ namespace KFVM {
     // Carbuncle suppressed Roe solver
     // As given by Hu and Feng @ https://doi.org/10.1016/j.cnsns.2022.106798
     KOKKOS_INLINE_FUNCTION
-    Real eulerROE(Real gamma,int ord[3],
+    Real hydroROE(Real gamma,int ord[3],
                   const Real uL[NUM_VARS],
                   const Real uR[NUM_VARS],
                   Real F[NUM_VARS])
@@ -138,15 +138,15 @@ namespace KFVM {
       using Kokkos::Experimental::fmin;
       using Kokkos::Experimental::fabs;
       using Kokkos::Experimental::exp;
-      using EulerAdiabatic::SimVar;
+      using Hydro::SimVar;
       
       Real FT[NUM_VARS];
 
       // Soundspeed and Roe averaged values
-      Real aL = EOS<EquationType::Euler>::soundspeed(gamma,uL);
-      Real aR = EOS<EquationType::Euler>::soundspeed(gamma,uR);
-      Real pL = EOS<EquationType::Euler>::pres(gamma,uL);
-      Real pR = EOS<EquationType::Euler>::pres(gamma,uR);
+      Real aL = EOS<EquationType::Hydro>::soundspeed(gamma,uL);
+      Real aR = EOS<EquationType::Hydro>::soundspeed(gamma,uR);
+      Real pL = EOS<EquationType::Hydro>::pres(gamma,uL);
+      Real pR = EOS<EquationType::Hydro>::pres(gamma,uR);
       Real rhoL = uL[SimVar::dens],rhoR = uR[SimVar::dens],rTil = roeAvg(rhoL,rhoR,rhoL,rhoR);
       Real aTil = roeAvg(rhoL,rhoR,aL,aR);
       Real pTil = roeAvg(rhoL,rhoR,pL,pR);
@@ -166,8 +166,8 @@ namespace KFVM {
       Real sL = fmin(Real(0.0),uTil - aTil),sR = fmax(Real(0.0),uTil + aTil);
 
       // Left and right fluxes
-      eulerFlux(gamma,ord,uL,F);
-      eulerFlux(gamma,ord,uR,FT);
+      hydroFlux(gamma,ord,uL,F);
+      hydroFlux(gamma,ord,uR,FT);
 
       // Centered HLL
       F[SimVar::dens] = hll(sL,sR,F[SimVar::dens],FT[SimVar::dens],uL[SimVar::dens],uR[SimVar::dens]);
@@ -190,10 +190,10 @@ namespace KFVM {
       return fmax(fabs(sL),fabs(sR));
     }
 
-    template<RSType rst> struct EulerRS {};
+    template<RSType rst> struct HydroRS {};
 
     template<>
-    struct EulerRS<RSType::HLL>
+    struct HydroRS<RSType::HLL>
     {
       static
       KOKKOS_INLINE_FUNCTION
@@ -201,9 +201,9 @@ namespace KFVM {
                           const Real uL[NUM_VARS],const Real uR[NUM_VARS],
                           Real F[NUM_VARS])
       {
-        using EulerAdiabatic::SimVar;
+        using Hydro::SimVar;
         int ord[] = {SimVar::momx,SimVar::momy,SimVar::momz};
-        return eulerHLL(gamma,ord,uL,uR,F);
+        return hydroHLL(gamma,ord,uL,uR,F);
       }
 
       static
@@ -212,9 +212,9 @@ namespace KFVM {
                           const Real uL[NUM_VARS],const Real uR[NUM_VARS],
                           Real F[NUM_VARS])
       {
-        using EulerAdiabatic::SimVar;
+        using Hydro::SimVar;
         int ord[] = {SimVar::momy,SimVar::momz,SimVar::momx};
-        return eulerHLL(gamma,ord,uL,uR,F);
+        return hydroHLL(gamma,ord,uL,uR,F);
       }
 
       static
@@ -223,14 +223,14 @@ namespace KFVM {
                           const Real uL[NUM_VARS],const Real uR[NUM_VARS],
                           Real F[NUM_VARS])
       {
-        using EulerAdiabatic::SimVar;
+        using Hydro::SimVar;
         int ord[] = {SimVar::momz,SimVar::momx,SimVar::momy};
-        return eulerHLL(gamma,ord,uL,uR,F);
+        return hydroHLL(gamma,ord,uL,uR,F);
       }
     };
 
     template<>
-    struct EulerRS<RSType::HLLC>
+    struct HydroRS<RSType::HLLC>
     {
       static
       KOKKOS_INLINE_FUNCTION
@@ -238,9 +238,9 @@ namespace KFVM {
                           const Real uL[NUM_VARS],const Real uR[NUM_VARS],
                           Real F[NUM_VARS])
       {
-        using EulerAdiabatic::SimVar;
+        using Hydro::SimVar;
         int ord[] = {SimVar::momx,SimVar::momy,SimVar::momz};
-        return eulerHLLC(gamma,ord,uL,uR,F);
+        return hydroHLLC(gamma,ord,uL,uR,F);
       }
 
       static
@@ -249,9 +249,9 @@ namespace KFVM {
                           const Real uL[NUM_VARS],const Real uR[NUM_VARS],
                           Real F[NUM_VARS])
       {
-        using EulerAdiabatic::SimVar;
+        using Hydro::SimVar;
         int ord[] = {SimVar::momy,SimVar::momz,SimVar::momx};
-        return eulerHLLC(gamma,ord,uL,uR,F);
+        return hydroHLLC(gamma,ord,uL,uR,F);
       }
 
       static
@@ -260,14 +260,14 @@ namespace KFVM {
                           const Real uL[NUM_VARS],const Real uR[NUM_VARS],
                           Real F[NUM_VARS])
       {
-        using EulerAdiabatic::SimVar;
+        using Hydro::SimVar;
         int ord[] = {SimVar::momz,SimVar::momx,SimVar::momy};
-        return eulerHLLC(gamma,ord,uL,uR,F);
+        return hydroHLLC(gamma,ord,uL,uR,F);
       }
     };
 
     template<>
-    struct EulerRS<RSType::ROE>
+    struct HydroRS<RSType::ROE>
     {
       static
       KOKKOS_INLINE_FUNCTION
@@ -275,9 +275,9 @@ namespace KFVM {
                           const Real uL[NUM_VARS],const Real uR[NUM_VARS],
                           Real F[NUM_VARS])
       {
-        using EulerAdiabatic::SimVar;
+        using Hydro::SimVar;
         int ord[] = {SimVar::momx,SimVar::momy,SimVar::momz};
-        return eulerROE(gamma,ord,uL,uR,F);
+        return hydroROE(gamma,ord,uL,uR,F);
       }
 
       static
@@ -286,9 +286,9 @@ namespace KFVM {
                           const Real uL[NUM_VARS],const Real uR[NUM_VARS],
                           Real F[NUM_VARS])
       {
-        using EulerAdiabatic::SimVar;
+        using Hydro::SimVar;
         int ord[] = {SimVar::momy,SimVar::momz,SimVar::momx};
-        return eulerROE(gamma,ord,uL,uR,F);
+        return hydroROE(gamma,ord,uL,uR,F);
       }
 
       static
@@ -297,9 +297,9 @@ namespace KFVM {
                           const Real uL[NUM_VARS],const Real uR[NUM_VARS],
                           Real F[NUM_VARS])
       {
-        using EulerAdiabatic::SimVar;
+        using Hydro::SimVar;
         int ord[] = {SimVar::momz,SimVar::momx,SimVar::momy};
-        return eulerROE(gamma,ord,uL,uR,F);
+        return hydroROE(gamma,ord,uL,uR,F);
       }
     };
     

@@ -6,9 +6,9 @@
 #include "../../src/numeric/RKTypes.H"
 
 // Space dimension of problem
-#define SPACE_DIM 3
+#define SPACE_DIM 2
 
-// Stencil radius (2-3)
+// Stencil radius (2-4)
 #define STENCIL_RADIUS 2
 
 // Number of Gauss-Legendre points on faces (1-9)
@@ -19,8 +19,8 @@
 
 //#define KFVM_DEBUG
 
-constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
-constexpr KFVM::RSType rsType = KFVM::RSType::HLLC;
+constexpr KFVM::EquationType eqType = KFVM::EquationType::SRHydro;
+constexpr KFVM::RSType rsType = KFVM::RSType::HLL;
 constexpr KFVM::RKType rkType = KFVM::RKType::SSP4_3_2;
 
 #endif

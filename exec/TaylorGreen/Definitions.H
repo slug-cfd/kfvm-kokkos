@@ -17,7 +17,7 @@
 // Floating point precision (1 for double, 0 for single)
 #define FLOAT_PRECISION 0
 
-constexpr KFVM::EquationType eqType = KFVM::EquationType::Euler;
+constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
 constexpr KFVM::RSType rsType = KFVM::RSType::HLLC;
 constexpr KFVM::RKType rkType = KFVM::RKType::ThreeStarP;
 
