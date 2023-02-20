@@ -16,21 +16,24 @@ namespace KFVM {
   namespace Physics {
 
     KOKKOS_INLINE_FUNCTION
-    void srhydroFlux(Real gamma,int ord[3],const Real u[NUM_VARS],Real F[NUM_VARS])
+    void srhydroFlux(Real gamma,int ord[3],
+                     const Real p,const Real u[NUM_VARS],const Real v[NUM_AUX],
+                     Real F[NUM_VARS])
     {
       using SRHydro::SimVar;
+      using SRHydro::AuxVar;
       
-      Real p = EOS<EquationType::SRHydro>::pres(gamma,u);
-      F[SimVar::dens] = u[ord[0]];
-      F[ord[0]] = u[ord[0]]*u[ord[0]]/u[SimVar::dens] + p;
-      F[ord[1]] = u[ord[0]]*u[ord[1]]/u[SimVar::dens];
-      F[ord[2]] = u[ord[0]]*u[ord[2]]/u[SimVar::dens];
-      F[SimVar::etot] = u[ord[0]]*(u[SimVar::etot] + p)/u[SimVar::dens];
+      F[SimVar::dens] = u[SimVar::dens]*v[ord[0]];
+      F[ord[0]] = u[ord[0]]*v[ord[0]] + p;
+      F[ord[1]] = u[ord[1]]*v[ord[0]];
+      F[ord[2]] = u[ord[2]]*v[ord[0]];
+      F[SimVar::etot] = v[ord[0]]*(u[SimVar::etot] + p);
     }
       
     // Wavespeed estimates
     KOKKOS_INLINE_FUNCTION
     void srhydroSpeed(Real gamma,int lng,
+                      const Real pL,const Real pR,
                       const Real uL[NUM_VARS],const Real uR[NUM_VARS],
                       Real* sL,Real* sR)
     {
@@ -38,8 +41,17 @@ namespace KFVM {
       using Kokkos::Experimental::fmin;
       using SRHydro::SimVar;
       
-      Real a = fmax(EOS<EquationType::SRHydro>::soundspeed(gamma,uL),
-        	    EOS<EquationType::SRHydro>::soundspeed(gamma,uR));
+      const Real wL = EOS<EquationType::SRHydro>::lorenz(pL,uL);
+      const Real wR = EOS<EquationType::SRHydro>::lorenz(pR,uR);
+      const Real aL = EOS<EquationType::SRHydro>::soundspeed(gamma,pL,uL);
+      const Real aR = EOS<EquationType::SRHydro>::soundspeed(gamma,pR,uR);
+
+      const Real sL1 = 0;
+      const Real sR1 = 0;
+      
+      const Real sL2 = 0;
+      const Real sR2 = 0;
+      
       *sL = fmin(uL[lng]/uL[SimVar::dens],uR[lng]/uR[SimVar::dens]) - a;
       *sR = fmax(uL[lng]/uL[SimVar::dens],uR[lng]/uR[SimVar::dens]) + a;
     }

@@ -49,21 +49,6 @@ namespace KFVM {
       static void Prim2Cons(StateType& state,const Real ref[NUM_VARS],Real gam)
       {
         using SRHydro::SimVar;
-	
-        Real gm = gam - Real(1.0);
-        Real rho = ref[SimVar::dens];
-        Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
-        Real vsq = (u*u + v*v + w*w)/Real(2.0);
-        // Doing etot first allows state to be overwritten safely
-        state(SimVar::etot) = (vsq*state(SimVar::dens) +
-                               rho*u*state(SimVar::momx) + 
-                               rho*v*state(SimVar::momy) + 
-                               rho*w*state(SimVar::momz) +
-                               state(SimVar::etot)/gm);
-      
-        state(SimVar::momx) = (rho*state(SimVar::momx) + u*state(SimVar::dens));
-        state(SimVar::momy) = (rho*state(SimVar::momy) + v*state(SimVar::dens));
-        state(SimVar::momz) = (rho*state(SimVar::momz) + w*state(SimVar::dens));
       }
     };
 
@@ -87,22 +72,21 @@ namespace KFVM {
         using SRHydro::AuxVar;
 
 	// Try not to assume the order of SimVars
-	Real ua[NUM_VARS];
+	Real ua[NUM_VARS],va[NUM_AUX];
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  ua[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
-	
-	// Set velocities
-	V(KFVM_D_DECL(i,j,k),AuxVar::velx) =
-	  U(KFVM_D_DECL(i,j,k),SimVar::momx)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
-	V(KFVM_D_DECL(i,j,k),AuxVar::vely) =
-	  U(KFVM_D_DECL(i,j,k),SimVar::momy)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
-	V(KFVM_D_DECL(i,j,k),AuxVar::velz) =
-	  U(KFVM_D_DECL(i,j,k),SimVar::momz)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
 
-	// Internal energy and pressure
-	V(KFVM_D_DECL(i,j,k),AuxVar::eint) = EOS<EquationType::SRHydro>::eint(ua);
-	V(KFVM_D_DECL(i,j,k),AuxVar::pres) = EOS<EquationType::SRHydro>::pres(fProp.gamma,ua);
+        // Call EOS for full primitive state all at once
+        EOS<EquationType::SRHydro>::primVec(fProp.gamma,ua,va);
+        
+	// Copy everything back out
+	V(KFVM_D_DECL(i,j,k),AuxVar::rho) = va[AuxVar::rho];
+	V(KFVM_D_DECL(i,j,k),AuxVar::lorenz) = va[AuxVar::lorenz];
+	V(KFVM_D_DECL(i,j,k),AuxVar::velx) = va[AuxVar::velx];
+	V(KFVM_D_DECL(i,j,k),AuxVar::vely) = va[AuxVar::vely];
+	V(KFVM_D_DECL(i,j,k),AuxVar::velz) = va[AuxVar::velz];
+	V(KFVM_D_DECL(i,j,k),AuxVar::pres) = va[AuxVar::pres];
       }
     };
 
