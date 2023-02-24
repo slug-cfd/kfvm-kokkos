@@ -3,10 +3,10 @@
 	url = https://github.com/kokkos/kokkos.git
 [submodule "external/kokkos-tools"]
 	path = external/kokkos-tools
-	url = git@github.com:kokkos/kokkos-tools.git
+	url = https://github.com/kokkos/kokkos-tools.git
 [submodule "external/kokkos-kernels"]
 	path = external/kokkos-kernels
-	url = git@github.com:kokkos/kokkos-kernels.git
+	url = https://github.com/kokkos/kokkos-kernels.git
 [submodule "external/libcerf"]
 	path = external/libcerf
 	url = https://jugit.fz-juelich.de/mlz/libcerf.git
