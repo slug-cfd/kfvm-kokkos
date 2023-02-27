@@ -323,8 +323,8 @@ namespace KFVM {
 	  u0[nV] = Uprev(KFVM_D_DECL(i,j,k),nV);
 	  u1[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
-	Real e0 = Physics::EOS<eqType>::eint(u0);
-	Real e1 = Physics::EOS<eqType>::eint(u1);
+	Real e0 = Physics::EOS<eqType>::weno(u0);
+	Real e1 = Physics::EOS<eqType>::weno(u1);
 	W(KFVM_D_DECL(i,j,k)) = fabs(e1 - e0)/fmin(e0,e1);
       }
     };

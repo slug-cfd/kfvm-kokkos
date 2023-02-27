@@ -31,6 +31,13 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
+      static Real weno(const Real U[NUM_VARS])
+      {
+	using Hydro::SimVar;
+        return eint(U);
+      }
+      
+      KOKKOS_INLINE_FUNCTION
       static Real positivity(const Real U[NUM_VARS])
       {
 	using Hydro::SimVar;

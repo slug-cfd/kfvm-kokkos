@@ -12,7 +12,7 @@
 #define STENCIL_RADIUS 2
 
 // Number of Gauss-Legendre points on faces (1-9)
-#define NUM_QUAD_PTS 3
+#define NUM_QUAD_PTS 4
 
 // Floating point precision (1 for double, 0 for single)
 #define FLOAT_PRECISION 1
@@ -20,7 +20,7 @@
 //#define KFVM_DEBUG
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
-constexpr KFVM::RSType rsType = KFVM::RSType::HLL;
+constexpr KFVM::RSType rsType = KFVM::RSType::HLLC;
 constexpr KFVM::RKType rkType = KFVM::RKType::SSP4_3_2;
 
 #endif

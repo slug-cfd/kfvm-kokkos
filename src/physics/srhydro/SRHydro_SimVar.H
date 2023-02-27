@@ -7,7 +7,7 @@ namespace KFVM {
 
     namespace SRHydro {
       
-      enum SimVar { dens = 0, momx, momy, momz, etot};
+      enum SimVar { dens = 0, momx, momy, momz, tau};
       enum AuxVar { rho = 0, velx, vely, velz, lorenz, pres};
 
     } // end namespace SRHydro

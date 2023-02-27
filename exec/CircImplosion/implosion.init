@@ -1,14 +1,14 @@
 # Set mesh resolution and extent
-mesh:resolution 384 384
-mesh:extent 0.0 15.0 0.0 15.0
+mesh:resolution 1536 3072
+mesh:extent 0.0 1.0 -1.0 1.0
 
 # Set time information
 time:initial 0.0
-time:final 2.5
+time:final 0.16666666666666666
 time:initialdt 1.e-10
 time:cfl 1.5
 time:maxsteps 10000
-time:atol 1.e-4
+time:atol 1.e-3
 time:rtol 1.e-3
 
 # Set stencil options
@@ -20,5 +20,5 @@ properties:wenothresh 10.0
 
 # Output settings
 output:datadir data
-output:basename CircImplosion
-output:plotfreq 50
+output:basename CircImplosionRef
+output:plotfreq 100
