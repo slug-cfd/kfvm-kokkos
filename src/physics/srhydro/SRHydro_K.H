@@ -28,27 +28,66 @@ namespace KFVM {
       static void Cons2Prim(StateType& state,const Real ref[NUM_VARS],Real gam)
       {
         using SRHydro::SimVar;
-	
-        Real gm = gam - Real(1.0);
-        Real rho = ref[SimVar::dens];
-        Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
-        Real vsq = (u*u + v*v + w*w)/Real(2.0);
-        // Doing tau first allows state to be overwritten safely
-        state(SimVar::tau) = gm*(vsq*state(SimVar::dens) -
-                                  u*state(SimVar::momx) - 
-                                  v*state(SimVar::momy) - 
-                                  w*state(SimVar::momz) +
-                                  state(SimVar::tau));
-      
-        state(SimVar::momx) = (state(SimVar::momx) - u*state(SimVar::dens))/rho;
-        state(SimVar::momy) = (state(SimVar::momy) - v*state(SimVar::dens))/rho;
-        state(SimVar::momz) = (state(SimVar::momz) - w*state(SimVar::dens))/rho;
+
+        (void) gam;
+
+        // Jacobian evaluated on ref, zeros omitted
+        const Real dRdD = 1.0, dRdS1 = 0.0, dRdS2 = 0.0, dRdS3 = 0.0, dRdT = 0.0;
+        const Real dV1dD = 0.0,dV1dS1 = 1.0,dV1dS2 = 0.0,dV1dS3 = 0.0,dV1dT = 0.0;
+        const Real dV2dD = 0.0,dV2dS1 = 0.0,dV2dS2 = 1.0,dV2dS3 = 0.0,dV2dT = 0.0;
+        const Real dV3dD = 0.0,dV3dS1 = 0.0,dV3dS2 = 0.0,dV3dS3 = 1.0,dV3dT = 0.0;
+        const Real dPdD = 0.0, dPdS1 = 0.0, dPdS2 = 0.0, dPdS3 = 0.0, dPdT = 1.0;
+
+        // J*state
+        const Real R = dRdD*state(SimVar::dens) + dRdT*state(SimVar::tau) +
+          dRdS1*state(SimVar::momx) + dRdS2*state(SimVar::momy) + dRdS3*state(SimVar::momz);
+        const Real V1 = dV1dD*state(SimVar::dens) + dV1dT*state(SimVar::tau) +
+          dV1dS1*state(SimVar::momx) + dV1dS2*state(SimVar::momy) + dV1dS3*state(SimVar::momz);
+        const Real V2 = dV2dD*state(SimVar::dens) + dV2dT*state(SimVar::tau) +
+          dV2dS1*state(SimVar::momx) + dV2dS2*state(SimVar::momy) + dV2dS3*state(SimVar::momz);
+        const Real V3 = dV3dD*state(SimVar::dens) + dV3dT*state(SimVar::tau) +
+          dV3dS1*state(SimVar::momx) + dV3dS2*state(SimVar::momy) + dV3dS3*state(SimVar::momz);
+        const Real P = dPdD*state(SimVar::dens) + dPdT*state(SimVar::tau) +
+          dPdS1*state(SimVar::momx) + dPdS2*state(SimVar::momy) + dPdS3*state(SimVar::momz);
+
+        state(SimVar::dens) = R;
+        state(SimVar::momx) = V1;
+        state(SimVar::momy) = V2;
+        state(SimVar::momz) = V3;
+        state(SimVar::tau) = P;
       }
       
       KOKKOS_INLINE_FUNCTION
       static void Prim2Cons(StateType& state,const Real ref[NUM_VARS],Real gam)
       {
         using SRHydro::SimVar;
+
+        (void) gam;
+
+        // Jacobian evaluated on ref, zeros omitted
+        const Real dDdR = 1.0, dDdV1 = 0.0, dDdV2 = 0.0, dDdV3 = 0.0, dDdP = 0.0;
+        const Real dS1dR = 0.0,dS1dV1 = 1.0,dS1dV2 = 0.0,dS1dV3 = 0.0,dS1dP = 0.0;
+        const Real dS2dR = 0.0,dS2dV1 = 0.0,dS2dV2 = 1.0,dS2dV3 = 0.0,dS2dP = 0.0;
+        const Real dS3dR = 0.0,dS3dV1 = 0.0,dS3dV2 = 0.0,dS3dV3 = 1.0,dS3dP = 0.0;
+        const Real dTdR = 0.0, dTdV1 = 0.0, dTdV2 = 0.0, dTdV3 = 0.0, dTdP = 1.0;
+
+        // J*state
+        const Real D = dDdR*state(SimVar::dens) + dDdP*state(SimVar::tau) +
+          dDdV1*state(SimVar::momx) + dDdV2*state(SimVar::momy) + dDdV3*state(SimVar::momz);
+        const Real S1 = dS1dR*state(SimVar::dens) + dS1dP*state(SimVar::tau) +
+          dS1dV1*state(SimVar::momx) + dS1dV2*state(SimVar::momy) + dS1dV3*state(SimVar::momz);
+        const Real S2 = dS2dR*state(SimVar::dens) + dS2dP*state(SimVar::tau) +
+          dS2dV1*state(SimVar::momx) + dS2dV2*state(SimVar::momy) + dS2dV3*state(SimVar::momz);
+        const Real S3 = dS3dR*state(SimVar::dens) + dS3dP*state(SimVar::tau) +
+          dS3dV1*state(SimVar::momx) + dS3dV2*state(SimVar::momy) + dS3dV3*state(SimVar::momz);
+        const Real T = dTdR*state(SimVar::dens) + dTdP*state(SimVar::tau) +
+          dTdV1*state(SimVar::momx) + dTdV2*state(SimVar::momy) + dTdV3*state(SimVar::momz);
+
+        state(SimVar::dens) = D;
+        state(SimVar::momx) = S1;
+        state(SimVar::momy) = S2;
+        state(SimVar::momz) = S3;
+        state(SimVar::tau) = T;
       }
     };
 
