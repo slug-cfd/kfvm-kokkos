@@ -246,9 +246,9 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxCh) const
       {
-	using Kokkos::Experimental::fabs;
-	using Kokkos::Experimental::fmax;
-	using Kokkos::Experimental::fmin;
+	using Kokkos::fabs;
+	using Kokkos::fmax;
+	using Kokkos::fmin;
 	using MHD_GLM::SimVar;
 	
 	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
@@ -414,8 +414,8 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
-	using Kokkos::Experimental::fmin;
-	using Kokkos::Experimental::fmax;
+	using Kokkos::fmin;
+	using Kokkos::fmax;
 	using MHD_GLM::SimVar;
 
 	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
@@ -593,8 +593,8 @@ namespace KFVM {
       Real mhdPresPos(const Real gamma,const Real pmin,Real theta,
 		      const Real refState[NUM_VARS],const Real state[NUM_VARS]) const
       {
-	using Kokkos::Experimental::sqrt;
-	using Kokkos::Experimental::fmin;
+	using Kokkos::sqrt;
+	using Kokkos::fmin;
 	using MHD_GLM::SimVar;
 
 	Real emin = pmin/(gamma - Real(1.0));

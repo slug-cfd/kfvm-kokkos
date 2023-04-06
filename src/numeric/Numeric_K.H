@@ -283,10 +283,10 @@ namespace KFVM {
 
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& err,Real& posFlag) const {
-	using Kokkos::Experimental::fabs;
-	using Kokkos::Experimental::fmax;
-	using Kokkos::Experimental::pow;
-        using Kokkos::Experimental::isnan;
+	using Kokkos::fabs;
+	using Kokkos::fmax;
+	using Kokkos::pow;
+        using Kokkos::isnan;
 
         bool hasNan = false;
 	Real state[NUM_VARS];
@@ -315,9 +315,9 @@ namespace KFVM {
 
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
-	using Kokkos::Experimental::fabs;
-	using Kokkos::Experimental::fmin;
-	using Kokkos::Experimental::fmax;
+	using Kokkos::fabs;
+	using Kokkos::fmin;
+	using Kokkos::fmax;
 	Real u0[NUM_VARS],u1[NUM_VARS];
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  u0[nV] = Uprev(KFVM_D_DECL(i,j,k),nV);
