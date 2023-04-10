@@ -1,7 +1,10 @@
 #include <cstdio>
+#include <paraconf.h>
 #include <typeinfo>
 
 #include <Kokkos_Core.hpp>
+
+#include <pdi.h>
 
 #include <Definitions.H>
 
@@ -14,18 +17,27 @@ int main(int argc, char* argv[]) {
   {
     std::printf("Kokkos initialized with default execution space: %s\n",
 		typeid(KFVM::ExecSpace).name());
-    
-    // Create ProblemSetup object with all settings and configuration
-    KFVM::ProblemSetup ps;
-    if (argc > 1) {
+
+    if (argc > 2) {
+      // Create Problemsetup object
+      KFVM::ProblemSetup ps;
       if (ps.setFromFile(argv[1])) {
 	ps.print();
-	// Create solver object to store and advance solution
-	KFVM::Solver solver(ps);
-	solver.Solve();
       }
+
+      // Initialize PDI reading YAML file
+      PC_tree_t pdi_conf = PC_parse_path(argv[2]);
+      PDI_init(PC_get(pdi_conf,".pdi"));
+    
+      // Create solver object and run to final time
+      KFVM::Solver solver(ps);
+      solver.Solve();
+
+      // Finalize PDI and clean up
+      PDI_finalize();
+      PC_tree_destroy(&pdi_conf);
     } else {
-      std::printf("Warning!!!! Input file must be provided. Exiting now\n");
+      std::printf("Error!!!! PDI YAML file must be provided. Exiting now\n");
     }
   }
   Kokkos::finalize();

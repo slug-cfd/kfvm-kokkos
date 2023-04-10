@@ -10,6 +10,6 @@
 [submodule "external/libcerf"]
 	path = external/libcerf
 	url = https://jugit.fz-juelich.de/mlz/libcerf.git
-[submodule "external/netcdf-cxx4"]
-	path = external/netcdf-cxx4
-	url = https://github.com/Unidata/netcdf-cxx4.git
+[submodule "external/pdi"]
+	path = external/pdi
+	url = https://gitlab.maisondelasimulation.fr/pdidev/pdi.git

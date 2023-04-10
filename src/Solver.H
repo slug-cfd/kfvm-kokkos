@@ -14,10 +14,10 @@
 #include "Geometry.H"
 #include "Types.H"
 #include "ProblemSetup.H"
-#include "NetCDFWriter.H"
 #include "numeric/Numeric.H"
 #include "stencil/Stencil.H"
 #include "physics/Physics_K.H"
+#include "io/WriterPDI.H"
 
 namespace KFVM {
 
@@ -29,7 +29,7 @@ namespace KFVM {
     // Grid geometry data
     Geometry geom;
     // IO object
-    NetCDFWriter netCDFWriter;
+    IO::WriterPDI writerPDI;
     // Stencil object for Riemann state reconstruction
     Stencil::Stencil stencil;
     // Boundary condition coefficients

@@ -14,14 +14,15 @@
 #include "Dimension.H"
 #include "Types.H"
 #include "ProblemSetup.H"
+#include "Geometry.H"
 #include "BoundaryConditions_K.H"
-#include "NetCDFWriter.H"
 #include "numeric/Numeric.H"
 #include "numeric/Numeric_K.H"
 #include "numeric/RKTypes.H"
 #include "physics/EquationTypes.H"
 #include "physics/Physics_K.H"
 #include "stencil/Stencil_K.H"
+#include "io/WriterPDI.H"
 
 #include <Solver.H>
 
@@ -30,7 +31,7 @@ namespace KFVM {
   Solver::Solver(ProblemSetup& ps_):
     ps(ps_),
     geom(ps),
-    netCDFWriter(ps,geom),
+    writerPDI(ps,geom),
     stencil(ps.gp_lFac),
     wenoSelect("WenoSelector",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     U_halo("U",KFVM_D_DECL(ps.nX + 2*ps.rad,
@@ -55,7 +56,7 @@ namespace KFVM {
   {
     setIC();
     evalAuxiliary();
-    netCDFWriter.write(U_halo,U_aux,wenoSelect,0,time);
+    writerPDI.write(U_halo,U_aux,wenoSelect,0,time);
 
     // FSAL methods need one RHS eval to start
     Real maxVel = evalRHS(U_halo,K,time);
@@ -77,7 +78,7 @@ namespace KFVM {
       // Write out data file if needed
       if (nT%ps.plotFreq == 0 || lastTimeStep || nT == (ps.maxTimeSteps-1) ) {
 	evalAuxiliary();
-        netCDFWriter.write(U_halo,U_aux,wenoSelect,nT,time);
+        writerPDI.write(U_halo,U_aux,wenoSelect,nT,time);
       }
     }
 
