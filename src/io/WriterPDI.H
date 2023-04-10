@@ -21,8 +21,13 @@ namespace KFVM {
       HostAuxDataView V_host;
       HostCellDataView weno_host;
       std::string prefix;
+      std::string filename_h5;
+      std::string filename_xmf;
       
-      void writeXML();
+      void writeGrid2D(std::ofstream&);
+      void writeGrid3D(std::ofstream&);
+      void writeAttribute(std::ofstream&,const std::string&);
+      void writeXML(int);
       void writePDI(ConsDataView,AuxDataView,CellDataView,int,double);
     public:
       WriterPDI(ProblemSetup&,const Geometry&);

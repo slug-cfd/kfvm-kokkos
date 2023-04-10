@@ -1,6 +1,6 @@
 # Set mesh resolution and extent
-mesh:resolution 1024 256 16
-mesh:extent 0.0 4.0 0.0 1.0 0.0 0.25
+mesh:resolution 1024 256
+mesh:extent 0.0 4.0 0.0 1.0
 
 # Set time information
 time:initial 0.0
@@ -19,6 +19,7 @@ properties:gamma 1.4
 properties:wenothresh 20.0
 
 # Output settings
+output:pdiconf ../../user/pdi_euler_2d.yml
 output:datadir data
 output:basename DoubleMach
 output:plotfreq 50

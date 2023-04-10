@@ -24,14 +24,16 @@ namespace KFVM {
       weno_host("weno_host",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ))
     {
       // Generate base filename and make directories as needed
-      std::ostringstream os;
-      os << ps.dataDir << "/R" << ps.rad << "_NX" << ps.nX << "_NY" << ps.nY;
+      std::ostringstream oss;
+      oss << ps.dataDir << "/R" << ps.rad
+          << "_NX" << ps.nX
+          << "_NY" << ps.nY;
 #if (SPACE_DIM == 3)
-      os << "_NZ" << ps.nZ;
+      oss << "_NZ" << ps.nZ;
 #endif
-      std::filesystem::create_directories(os.str());
-      os << "/" << ps.baseName;
-      prefix = std::string(os.str());
+      std::filesystem::create_directories(oss.str());
+      oss << "/";
+      prefix = std::string(oss.str());
 
       // Gather up solution metadata and give it to PDI
       std::array<int,SPACE_DIM> ncell =
@@ -40,10 +42,6 @@ namespace KFVM {
         {KFVM_D_DECL((int)ps.rad,(int)ps.rad,(int)ps.rad)};
       std::array<int,SPACE_DIM> start_idx =
         {KFVM_D_DECL((int)ps.rad,(int)ps.rad,(int)ps.rad)};
-      std::array<Real,SPACE_DIM> origin_coord =
-        {KFVM_D_DECL(Real(0.0),Real(0.0),Real(0.0))};
-      std::array<Real,SPACE_DIM> grid_delta =
-        {KFVM_D_DECL(geom.dx,geom.dy,geom.dz)};
       
       Real time = 0.0;
       int time_step = 0;
@@ -52,8 +50,6 @@ namespace KFVM {
                        "ncell",(void*) ncell.data(),PDI_OUT,
                        "nghost",(void*) nghost.data(),PDI_OUT,
                        "start_idx",(void*) start_idx.data(),PDI_OUT,
-                       "origin_coord",(void*) origin_coord.data(),PDI_OUT,
-                       "grid_delta",(void*) grid_delta.data(),PDI_OUT,
                        "gamma",(void*) &ps.fluidProp.gamma,PDI_OUT,
                        "time",(void*) &time,PDI_OUT,
                        "time_step",(void*) &time_step,PDI_OUT,
@@ -62,12 +58,23 @@ namespace KFVM {
       PDI_event("init_pdi");
     }
 
-    void WriterPDI::writePDI(ConsDataView U,AuxDataView V,CellDataView weno,int step,double time)
+    void WriterPDI::write(ConsDataView U,AuxDataView V,CellDataView weno,
+                          int step,double time)
     {
-      // Form filename
-      std::ostringstream os;
-      os << prefix << "_" << std::setw(7) << std::setfill('0') << step << ".h5";
-      std::string filename = os.str();
+      // Form filenames
+      std::ostringstream oss;
+      oss << ps.baseName << "_" << std::setw(7) << std::setfill('0') << step;
+      filename_xmf = oss.str() + ".xmf";
+      filename_h5 = oss.str() + ".h5";
+      
+      writeXML(step);
+      writePDI(U,V,weno,step,time);
+    }
+
+    void WriterPDI::writePDI(ConsDataView U,AuxDataView V,CellDataView weno,
+                             int step,double time)
+    {
+      std::string filename = prefix + filename_h5;
       int filename_size = filename.size();
       std::cout << "Writing file: " << filename << std::endl;
 
@@ -87,9 +94,86 @@ namespace KFVM {
                        NULL);
     }
 
-    void WriterPDI::write(ConsDataView U,AuxDataView V,CellDataView weno,int step,double time)
+    void WriterPDI::writeXML(int step)
     {
-      writePDI(U,V,weno,step,time);
+      std::string filename = prefix + filename_xmf;
+      std::cout << "Writing file: " << filename << std::endl;
+
+      // Create Xdmf file
+      std::ofstream ofs(filename,std::ios::trunc);
+
+      // Write header, open Xdmf and domain
+      ofs << "<?xml version=\"1.0\" ?>\n"
+          << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n"
+          << "<Xdmf Version=\"2.0\">\n"
+          << "  <Domain>"
+          << std::endl;
+
+      // Create grid, topology, and geometry
+      if (SPACE_DIM == 2) {
+        writeGrid2D(ofs);
+      } else {
+        writeGrid3D(ofs);
+      }
+
+      // Write all data fields as attributes
+      for (int nV=0; nV<NUM_VARS; nV++) {
+        writeAttribute(ofs,ps.varName[nV]);
+      }
+      for (int nV=0; nV<NUM_AUX; nV++) {
+        writeAttribute(ofs,ps.auxVarName[nV]);
+      }
+      writeAttribute(ofs,std::string("weno"));
+
+      // Close grid, domain, Xdmf
+      ofs << "    </Grid>\n  </Domain>\n</Xdmf>" << std::endl;
+
+      // Close file
+      ofs.close();
+    }
+
+    void WriterPDI::writeGrid2D(std::ofstream& ofs)
+    {
+      ofs << "    <Grid Name=\"Structured Grid\" GridType=\"Uniform\">\n"
+          << "      <Topology TopologyType=\"2DCoRectMesh\" NumberOfElements=\""
+          << (ps.nY + 1) << " " << (ps.nX + 1) << "\"/>\n"
+          << "      <Geometry GeometryType=\"Origin_DXDY\">\n"
+          << "        <DataItem Name=\"Origin\" Dimensions=\"2\" NumberType=\"Double\" Precision=\"8\" Format=\"XML\">\n"
+          << "          " << ps.xLo << " " << ps.yLo << " " << "\n"
+          << "        </DataItem>\n"
+          << "        <DataItem Name=\"Spacing\" Dimensions=\"2\" NumberType=\"Double\" Precision=\"8\" Format=\"XML\">\n"
+          << "          " << geom.dx << " " << geom.dy << "\n"
+          << "        </DataItem>\n      </Geometry>\n"
+          << std::endl;
+    }
+
+    void WriterPDI::writeGrid3D(std::ofstream& ofs)
+    {
+      ofs << "    <Grid Name=\"Structured Grid\" GridType=\"Uniform\">\n"
+          << "      <Topology TopologyType=\"3DCoRectMesh\" NumberOfElements=\""
+          << (ps.nZ + 1) << " " << (ps.nY + 1) << " " << (ps.nX + 1) << "\"/>\n"
+          << "      <Geometry GeometryType=\"Origin_DXDYDZ\">\n"
+          << "        <DataItem Name=\"Origin\" Dimensions=\"3\" NumberType=\"Double\" Precision=\"8\" Format=\"XML\">\n"
+          << "          " << ps.xLo << " " << ps.yLo << " " << ps.zLo << "\n"
+          << "        </DataItem>\n"
+          << "        <DataItem Name=\"Spacing\" Dimensions=\"3\" NumberType=\"Double\" Precision=\"8\" Format=\"XML\">\n"
+          << "          " << geom.dx << " " << geom.dy << " " << geom.dz << "\n"
+          << "        </DataItem>\n      </Geometry>\n"
+          << std::endl;
+    }
+    
+    void WriterPDI::writeAttribute(std::ofstream& ofs,const std::string& varName)
+    {
+      ofs << "      <Attribute Name=\"" << varName << "\" AttributeType=\"Scalar\" Center=\"Cell\">\n"
+          << "        <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
+#if (SPACE_DIM == 3)        
+          << ps.nZ << " "
+#endif
+          << ps.nY << " "
+          << ps.nX << "\">\n"
+          << "          " << filename_h5 << ":/" << varName << "\n"
+          << "        </DataItem>\n      </Attribute>\n"
+          << std::endl;
     }
     
   } // end namespace IO
