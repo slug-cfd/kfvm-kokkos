@@ -1,6 +1,9 @@
 #ifndef WRITERPDI_H_
 #define WRITERPDI_H_
 
+#include <vector>
+#include <string>
+
 #include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
@@ -20,21 +23,18 @@ namespace KFVM {
       HostConsDataView U_host;
       HostAuxDataView V_host;
       HostCellDataView weno_host;
+      std::vector<Real> xCoord,yCoord,zCoord;
       std::string prefix;
       std::string filename_h5;
       std::string filename_xmf;
       
-      void writeGrid2D(std::ofstream&);
-      void writeGrid3D(std::ofstream&);
       void writeAttributeScalar(std::ofstream&,const char*);
       void writeAttributeVector(std::ofstream&,const char*,const char*,const char*,const char*);
-      void writeAttributeVector2D(std::ofstream&,const char*,const char*,const char*,const char*);
-      void writeAttributeVector3D(std::ofstream&,const char*,const char*,const char*,const char*);
-      void writeXML(int);
-      void writePDI(ConsDataView,AuxDataView,CellDataView,int,double);
+      void writeXML(int,Real);
+      void writePDI(ConsDataView,AuxDataView,CellDataView,int,Real);
     public:
       WriterPDI(ProblemSetup&,const Geometry&);
-      void write(ConsDataView,AuxDataView,CellDataView,int,double);
+      void write(ConsDataView,AuxDataView,CellDataView,int,Real);
     };
 
   } // end namespace IO

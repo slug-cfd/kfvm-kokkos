@@ -4,17 +4,11 @@ fld_datasets: &fld_datasets
   momy: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
   momz: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
   etot: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  magx: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  magy: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  magz: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  psi: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]']}
   velx: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]']}
   vely: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
   velz: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
   eint: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
   pres: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  prsg: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  prsb: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
   weno: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
 
 fld_dataset_selection: &fld_dataset_selection
@@ -55,34 +49,6 @@ etot_description: &etot_description
     size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
     start: [4, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
   dataset_selection: *fld_dataset_selection
-
-magx_description: &magx_description
-  dataset: magx
-  memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [5, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
-  dataset_selection: *fld_dataset_selection
-
-magy_description: &magy_description
-  dataset: magy
-  memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [6, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
-  dataset_selection: *fld_dataset_selection
-
-magz_description: &magz_description
-  dataset: magz
-  memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [7, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
-  dataset_selection: *fld_dataset_selection
-
-psi_description: &psi_description
-  dataset: psi
-  memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [8, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
-  dataset_selection: *fld_dataset_selection
   
 velx_description: &velx_description
   dataset: velx
@@ -119,20 +85,6 @@ pres_description: &pres_description
     start: [4, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
-prsg_description: &prsg_description
-  dataset: prsg
-  memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [5, 0, 0, 0]
-  dataset_selection: *fld_dataset_selection
-
-prsb_description: &prsb_description
-  dataset: prsb
-  memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [6, 0, 0, 0]
-  dataset_selection: *fld_dataset_selection
-
 weno_description: &weno_description
   dataset: weno
   memory_selection:
@@ -145,6 +97,9 @@ pdi:
     ncell: { type: array, subtype: int, size: 3 }
     nghost: { type: array, subtype: int, size: 3 }
     start_idx: { type: array, subtype: int, size: 3 }
+    xcoord: { type: array, subtype: double, size: '$ncell[0] + 1' }
+    ycoord: { type: array, subtype: double, size: '$ncell[1] + 1' }
+    zcoord: { type: array, subtype: double, size: '$ncell[2] + 1' }
     gamma: double
     time: double
     time_step: int
@@ -154,11 +109,11 @@ pdi:
     cons_field:
       type: array
       subtype: double
-      size: [9, '$ncell[2] + 2*$nghost[2]', '$ncell[1] + 2*$nghost[1]', '$ncell[0] + 2*$nghost[0]']
+      size: [5, '$ncell[2] + 2*$nghost[2]', '$ncell[1] + 2*$nghost[1]', '$ncell[0] + 2*$nghost[0]']
     aux_field:
       type: array
       subtype: double
-      size: [7, '$ncell[2]', '$ncell[1]', '$ncell[0]']
+      size: [5, '$ncell[2]', '$ncell[1]', '$ncell[0]']
     weno_field:
       type: array
       subtype: double
@@ -173,6 +128,9 @@ pdi:
       write:
         time:
         time_step:
+        xcoord:
+        ycoord:
+        zcoord:
         gamma:
         cons_field:
           - *dens_description
@@ -180,17 +138,11 @@ pdi:
           - *momy_description
           - *momz_description
           - *etot_description
-          - *magx_description
-          - *magy_description
-          - *magz_description
-          - *psi_description
         aux_field:
           - *velx_description
           - *vely_description
           - *velz_description
           - *eint_description
           - *pres_description
-          - *prsg_description
-          - *prsb_description
         weno_field:
           - *weno_description

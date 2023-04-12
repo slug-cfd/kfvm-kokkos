@@ -21,7 +21,10 @@ namespace KFVM {
                                   ps.nY + 2*ps.rad,
                                   ps.nZ + 2*ps.rad)),
       V_host("V_host",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
-      weno_host("weno_host",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ))
+      weno_host("weno_host",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
+      xCoord(ps.nX + 1,Real(0.0)),
+      yCoord(ps.nX + 1,Real(0.0)),
+      zCoord(ps.nX + 1,Real(0.0))
     {
       // Generate base filename and make directories as needed
       std::ostringstream oss;
@@ -35,13 +38,26 @@ namespace KFVM {
       oss << "/";
       prefix = std::string(oss.str());
 
+      // Fill coordinate arrays (including z even in 2D)
+      // Note that these are nodal, hence one longer than number of cells
+      for (int n=0; n<=ps.nX; n++) {
+        xCoord[n] = n*geom.dx;
+      }
+      for (int n=0; n<=ps.nY; n++) {
+        yCoord[n] = n*geom.dy;
+      }
+      Real dz = (SPACE_DIM == 2 ? geom.dmin : geom.dz);
+      for (int n=0; n<=ps.nZ; n++) {
+        zCoord[n] = n*dz;
+      }
+
       // Gather up solution metadata and give it to PDI
-      std::array<int,SPACE_DIM> ncell =
-        {KFVM_D_DECL((int)ps.nX,(int)ps.nY,(int)ps.nZ)};
-      std::array<int,SPACE_DIM> nghost =
-        {KFVM_D_DECL((int)ps.rad,(int)ps.rad,(int)ps.rad)};
-      std::array<int,SPACE_DIM> start_idx =
-        {KFVM_D_DECL((int)ps.rad,(int)ps.rad,(int)ps.rad)};
+      // These are all size 3, even in 2D
+      int ngZ = (SPACE_DIM==2 ? 0 : (int)ps.rad);
+      int siZ = (SPACE_DIM==2 ? 0 : (int)ps.rad);
+      std::array<int,3> ncell = {(int)ps.nX,(int)ps.nY,(int)ps.nZ};
+      std::array<int,3> nghost = {(int)ps.rad,(int)ps.rad,ngZ};
+      std::array<int,3> start_idx = {(int)ps.rad,(int)ps.rad,siZ};
       
       Real time = 0.0;
       int time_step = 0;
@@ -50,6 +66,9 @@ namespace KFVM {
                        "ncell",(void*) ncell.data(),PDI_OUT,
                        "nghost",(void*) nghost.data(),PDI_OUT,
                        "start_idx",(void*) start_idx.data(),PDI_OUT,
+                       "xcoord",(void*) xCoord.data(),PDI_OUT,
+                       "ycoord",(void*) yCoord.data(),PDI_OUT,
+                       "zcoord",(void*) zCoord.data(),PDI_OUT,
                        "gamma",(void*) &ps.fluidProp.gamma,PDI_OUT,
                        "time",(void*) &time,PDI_OUT,
                        "time_step",(void*) &time_step,PDI_OUT,
@@ -59,7 +78,7 @@ namespace KFVM {
     }
 
     void WriterPDI::write(ConsDataView U,AuxDataView V,CellDataView weno,
-                          int step,double time)
+                          int step,Real time)
     {
       // Form filenames
       std::ostringstream oss;
@@ -67,12 +86,12 @@ namespace KFVM {
       filename_xmf = oss.str() + ".xmf";
       filename_h5 = oss.str() + ".h5";
       
-      writeXML(step);
+      writeXML(step,time);
       writePDI(U,V,weno,step,time);
     }
 
     void WriterPDI::writePDI(ConsDataView U,AuxDataView V,CellDataView weno,
-                             int step,double time)
+                             int step,Real time)
     {
       std::string filename = prefix + filename_h5;
       int filename_size = filename.size();
@@ -94,7 +113,7 @@ namespace KFVM {
                        NULL);
     }
 
-    void WriterPDI::writeXML(int step)
+    void WriterPDI::writeXML(int step,Real time)
     {
       std::string filename = prefix + filename_xmf;
       std::cout << "Writing file: " << filename << std::endl;
@@ -109,12 +128,22 @@ namespace KFVM {
           << "  <Domain>"
           << std::endl;
 
-      // Create grid, topology, and geometry
-      if (SPACE_DIM == 2) {
-        writeGrid2D(ofs);
-      } else {
-        writeGrid3D(ofs);
-      }
+      // Create grid, topology, and geometry      
+      ofs << "    <Grid Name=\"Structured Grid\" GridType=\"Uniform\">\n"
+          << "      <Time Value=\"" << time << "\" />\n"
+          << "      <Topology TopologyType=\"3DRectMesh\" NumberOfElements=\""
+          << (ps.nZ + 1) << " " << (ps.nY + 1) << " " << (ps.nX + 1) << "\"/>\n"
+          << "      <Geometry GeometryType=\"VxVyVz\">\n"
+          << "        <DataItem Name=\"Vx\" Dimensions=\"" << (ps.nX + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
+          << "          " << filename_h5 << ":/xcoord\n"
+          << "        </DataItem>\n"
+          << "        <DataItem Name=\"Vy\" Dimensions=\"" << (ps.nY + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
+          << "          " << filename_h5 << ":/ycoord\n"
+          << "        </DataItem>\n"
+          << "        <DataItem Name=\"Vz\" Dimensions=\"" << (ps.nZ + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
+          << "          " << filename_h5 << ":/zcoord\n"
+          << "        </DataItem>\n      </Geometry>\n"
+          << std::endl;
 
       // Write all data fields as attributes
       writeAttributeScalar(ofs,"dens");
@@ -138,46 +167,12 @@ namespace KFVM {
       // Close file
       ofs.close();
     }
-
-    void WriterPDI::writeGrid2D(std::ofstream& ofs)
-    {
-      ofs << "    <Grid Name=\"Structured Grid\" GridType=\"Uniform\">\n"
-          << "      <Topology TopologyType=\"2DCoRectMesh\" NumberOfElements=\""
-          << (ps.nY + 1) << " " << (ps.nX + 1) << "\"/>\n"
-          << "      <Geometry GeometryType=\"Origin_DxDy\">\n"
-          << "        <DataItem Name=\"Origin\" Dimensions=\"2\" NumberType=\"Double\" Precision=\"8\" Format=\"XML\">\n"
-          << "          " << ps.xLo << " " << ps.yLo << " " << "\n"
-          << "        </DataItem>\n"
-          << "        <DataItem Name=\"Spacing\" Dimensions=\"2\" NumberType=\"Double\" Precision=\"8\" Format=\"XML\">\n"
-          << "          " << geom.dx << " " << geom.dy << "\n"
-          << "        </DataItem>\n      </Geometry>\n"
-          << std::endl;
-    }
-
-    void WriterPDI::writeGrid3D(std::ofstream& ofs)
-    {
-      ofs << "    <Grid Name=\"Structured Grid\" GridType=\"Uniform\">\n"
-          << "      <Topology TopologyType=\"3DCoRectMesh\" NumberOfElements=\""
-          << (ps.nZ + 1) << " " << (ps.nY + 1) << " " << (ps.nX + 1) << "\"/>\n"
-          << "      <Geometry GeometryType=\"Origin_DxDyDz\">\n"
-          << "        <DataItem Name=\"Origin\" Dimensions=\"3\" NumberType=\"Double\" Precision=\"8\" Format=\"XML\">\n"
-          << "          " << ps.xLo << " " << ps.yLo << " " << ps.zLo << "\n"
-          << "        </DataItem>\n"
-          << "        <DataItem Name=\"Spacing\" Dimensions=\"3\" NumberType=\"Double\" Precision=\"8\" Format=\"XML\">\n"
-          << "          " << geom.dx << " " << geom.dy << " " << geom.dz << "\n"
-          << "        </DataItem>\n      </Geometry>\n"
-          << std::endl;
-    }
     
     void WriterPDI::writeAttributeScalar(std::ofstream& ofs,const char *varName)
     {
       ofs << "      <Attribute Name=\"" << varName << "\" AttributeType=\"Scalar\" Center=\"Cell\">\n"
           << "        <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
-#if (SPACE_DIM == 2)
-          << ps.nY << " " << ps.nX << "\">\n"
-#else
           << ps.nZ << " " << ps.nY << " " << ps.nX << "\">\n"
-#endif
           << "          " << filename_h5 << ":/" << varName << "\n"
           << "        </DataItem>\n      </Attribute>\n"
           << std::endl;
@@ -185,48 +180,6 @@ namespace KFVM {
     
     void WriterPDI::writeAttributeVector(std::ofstream& ofs,const char *vecName,
                                          const char *vecX,const char *vecY,const char *vecZ)
-    {
-      if (SPACE_DIM == 2) {
-        writeAttributeVector2D(ofs,vecName,vecX,vecY,vecZ);
-      } else {
-        writeAttributeVector3D(ofs,vecName,vecX,vecY,vecZ);
-      }
-    }
-
-    // **Note**
-    // This function permutes the vector components to undo a bug in the xdmf library
-    // This hack should be temporary, but until Paraview and Visit work or xdmf is fixed
-    // it will stay...
-    void WriterPDI::writeAttributeVector2D(std::ofstream& ofs,const char *vecName,
-                                           const char *vecX,const char *vecY,const char *vecZ)
-    {
-      ofs << "      <Attribute Name=\"" << vecName << "\" AttributeType=\"Vector\" Center=\"Cell\">\n"
-          << "        <DataItem ItemType=\"Function\" Function=\"JOIN($0, $1, $2)\" Dimensions=\""
-          << ps.nY << " " << ps.nX << " 3\">\n"
-        // x-component (permutes to the Z component)
-          << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
-          << ps.nY << " " << ps.nX << "\">\n"
-          << "            " << filename_h5 << ":/" << vecZ << "\n"
-          << "          </DataItem>\n"
-        // y-component (permutes to the x component)
-          << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
-          << ps.nY << " " << ps.nX << "\">\n"
-          << "            " << filename_h5 << ":/" << vecX << "\n"
-          << "          </DataItem>\n"
-        // z-component (permutes to the y component)
-          << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
-          << ps.nY << " " << ps.nX << "\">\n"
-          << "            " << filename_h5 << ":/" << vecY << "\n"
-          << "          </DataItem>\n"
-        
-          << "        </DataItem>\n      </Attribute>\n"
-          << std::endl;
-    }
-
-    // **Note**
-    // The 3D case does not have the weird permutation bug, this function does what you'd hope.
-    void WriterPDI::writeAttributeVector3D(std::ofstream& ofs,const char *vecName,
-                                           const char *vecX,const char *vecY,const char *vecZ)
     {
       ofs << "      <Attribute Name=\"" << vecName << "\" AttributeType=\"Vector\" Center=\"Cell\">\n"
           << "        <DataItem ItemType=\"Function\" Function=\"JOIN($0, $1, $2)\" Dimensions=\""

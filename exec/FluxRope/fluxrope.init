@@ -19,6 +19,7 @@ properties:gamma 1.4
 properties:wenothresh 20.0
 
 # Output settings
+output:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 output:datadir data
 output:basename FluxRope
 output:plotfreq 50
