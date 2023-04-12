@@ -1,13 +1,13 @@
 # Set mesh resolution and extent
-mesh:resolution 1024 256 16
-mesh:extent 0.0 4.0 0.0 1.0 0.0 0.25
+mesh:resolution 128 128
+mesh:extent 0.0 1.0 0.0 1.0
 
 # Set time information
 time:initial 0.0
-time:final 0.25
+time:final 0.8
 time:initialdt 1.e-10
 time:cfl 1.5
-time:maxsteps 20000
+time:maxsteps 2500
 time:atol 1.e-4
 time:rtol 1.e-3
 
@@ -19,6 +19,7 @@ properties:gamma 1.4
 properties:wenothresh 20.0
 
 # Output settings
+output:pdiconf ../../user/pdi_euler_xdmf.yml
 output:datadir data
-output:basename DoubleMach
+output:basename Riem
 output:plotfreq 50

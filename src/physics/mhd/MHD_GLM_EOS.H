@@ -50,7 +50,7 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real positivity(const Real U[NUM_VARS])
       {
-	using Kokkos::Experimental::fmin;
+	using Kokkos::fmin;
 	using MHD_GLM::SimVar;
         return fmin(U[SimVar::dens],eint(U));
       }
@@ -71,14 +71,14 @@ namespace KFVM {
       static Real soundspeed(Real gamma,const Real U[NUM_VARS])
       {
 	using MHD_GLM::SimVar;
-        return Kokkos::Experimental::sqrt(gamma*prsg(gamma,U)/U[SimVar::dens]);
+        return Kokkos::sqrt(gamma*prsg(gamma,U)/U[SimVar::dens]);
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real fastMagSonic(Real gamma,const Real U[NUM_VARS],Real bl)
       {
 	using MHD_GLM::SimVar;
-	using Kokkos::Experimental::sqrt;
+	using Kokkos::sqrt;
 	
 	Real asq = gamma*prsg(gamma,U)/U[SimVar::dens],bsq = Real(2.0)*prsb(U);
 	Real cfsq = Real(0.5)*(asq + bsq + sqrt((asq + bsq)*(asq + bsq) - Real(4.0)*asq*bl*bl));

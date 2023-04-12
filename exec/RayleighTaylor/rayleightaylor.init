@@ -19,6 +19,7 @@ properties:gamma 1.4
 properties:wenothresh 20.0
 
 # Output settings
+output:pdiconf ../../user/pdi_euler_xdmf.yml
 output:datadir data
 output:basename RayleighTaylor
 output:plotfreq 50

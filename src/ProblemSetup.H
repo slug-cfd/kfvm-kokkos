@@ -53,7 +53,7 @@ namespace KFVM {
     Real cfl;
 
     // File output information
-    std::string dataDir,baseName;
+    std::string pdiConf,dataDir,baseName;
     int plotFreq;
 
     // Fluid properties object
@@ -82,6 +82,7 @@ namespace KFVM {
       rejectionThresh(0.8),
       rejectionLimit(4),
       cfl(SPACE_DIM==3 ? 0.5 : 0.75),
+      pdiConf(""),
       dataDir("data"),
       baseName("default"),
       plotFreq(100)
@@ -124,6 +125,7 @@ namespace KFVM {
 
       // Print output information
       std::printf("Output:\n");
+      std::printf("  pdiconf: %s\n",pdiConf.c_str());
       std::printf("  datadir: %s\n",dataDir.c_str());
       std::printf("  basename: %s\n",baseName.c_str());
       std::printf("  plotfreq: %d\n",plotFreq);
@@ -318,6 +320,8 @@ namespace KFVM {
 	plotFreq = std::stoi(value,&pos);
       } else if (category == "basename") {
 	std::getline(lStream,baseName);
+      } else if (category == "pdiconf") {
+	std::getline(lStream,pdiConf);
       } else if (category == "datadir") {
 	std::getline(lStream,dataDir);
       } else {

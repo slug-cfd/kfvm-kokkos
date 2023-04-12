@@ -18,7 +18,7 @@ namespace KFVM {
     KOKKOS_INLINE_FUNCTION
     Real logMean(Real a,Real b)
     {
-      using Kokkos::Experimental::log;
+      using Kokkos::log;
 
       Real zeta = a/b,f = (zeta - Real(1.0))/(zeta + Real(1.0)),u = f*f;
       Real F = u < Real(0.01) ?
@@ -66,8 +66,8 @@ namespace KFVM {
 		     const Real ch,Real* sL,Real* sR)
     {
       using MHD_GLM::SimVar;
-      using Kokkos::Experimental::fmax;
-      using Kokkos::Experimental::fmin;
+      using Kokkos::fmax;
+      using Kokkos::fmin;
       
       const Real cfL = EOS<EquationType::MHD_GLM>::fastMagSonic(gamma,uL,uL[bord[0]]);
       const Real cfR = EOS<EquationType::MHD_GLM>::fastMagSonic(gamma,uR,uR[bord[0]]);
@@ -87,9 +87,9 @@ namespace KFVM {
 		     Real F[NUM_VARS])
     {
       using MHD_GLM::SimVar;
-      using Kokkos::Experimental::fmax;
-      using Kokkos::Experimental::fabs;
-      using Kokkos::Experimental::sqrt;
+      using Kokkos::fmax;
+      using Kokkos::fabs;
+      using Kokkos::sqrt;
       
       Real sL,sR,sMax;
       

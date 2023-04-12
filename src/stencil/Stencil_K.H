@@ -79,8 +79,8 @@ namespace KFVM {
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
 	using namespace KokkosBatched;
-	using Kokkos::Experimental::fabs;
-	using Kokkos::Experimental::pow;
+	using Kokkos::fabs;
+	using Kokkos::pow;
 
 	// Linear weights and epsilon value
 	const Real eps = Real(1.e-12);
@@ -315,7 +315,7 @@ namespace KFVM {
 
       KOKKOS_INLINE_FUNCTION
       Real minmod(Real ul,Real uc,Real ur) const {
-	using Kokkos::Experimental::fabs;
+	using Kokkos::fabs;
 	return fabs(ur - uc)<fabs(uc - ul) ? (ur - uc) : (uc - ul);
       }
 #if (SPACE_DIM == 2)

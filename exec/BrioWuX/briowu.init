@@ -1,6 +1,6 @@
 # Set mesh resolution and extent
-mesh:resolution 512 8 8
-mesh:extent -1.0 1.0 0.0 0.03125 0.0 0.03125
+mesh:resolution 256 8 8
+mesh:extent 0.0 1.0 0.0 0.03125 0.0 0.03125
 
 # Set time information
 time:initial 0.0
@@ -19,6 +19,7 @@ properties:gamma 2.0
 properties:wenothresh 20.0
 
 # Output settings
+output:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 output:datadir data
 output:basename BrioWuX
 output:plotfreq 50

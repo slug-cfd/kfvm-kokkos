@@ -14,7 +14,7 @@ namespace KFVM {
     KOKKOS_INLINE_FUNCTION
     Real roeAvg(Real rhoL,Real rhoR,Real qL,Real qR)
     {
-      using Kokkos::Experimental::sqrt;
+      using Kokkos::sqrt;
       return (qL*sqrt(rhoL) + qR*sqrt(rhoR))/(sqrt(rhoL) + sqrt(rhoR));
     }
 

@@ -19,6 +19,7 @@ vgcore.*
 python/__pycache__
 *.ex
 *.h5
+*.xmf
 *.nvvp
 compile_commands.json
 .cache
