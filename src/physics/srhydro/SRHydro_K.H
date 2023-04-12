@@ -327,8 +327,8 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
-	using Kokkos::Experimental::fmin;
-	using Kokkos::Experimental::fmax;
+	using Kokkos::fmin;
+	using Kokkos::fmax;
 	using SRHydro::SimVar;
       }
 
@@ -336,7 +336,7 @@ namespace KFVM {
       Real eulerPresPos(const Real gamma,const Real pmin,
 			const Real refState[NUM_VARS],const Real state[NUM_VARS]) const
       {
-	using Kokkos::Experimental::sqrt;
+	using Kokkos::sqrt;
 	using SRHydro::SimVar;
 	return Real(0.0);
       }

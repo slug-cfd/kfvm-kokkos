@@ -41,7 +41,7 @@ namespace KFVM {
       static Real positivity(const Real U[NUM_VARS])
       {
 	using Hydro::SimVar;
-        using Kokkos::Experimental::fmin;
+        using Kokkos::fmin;
         // Ensure that density and internal energy are positive
         return fmin(U[SimVar::dens],eint(U));
       }
@@ -56,7 +56,7 @@ namespace KFVM {
       static Real soundspeed(Real gamma,const Real U[NUM_VARS])
       {
 	using Hydro::SimVar;
-        using Kokkos::Experimental::sqrt;
+        using Kokkos::sqrt;
         return sqrt(gamma*pres(gamma,U)/U[SimVar::dens]);
       }
       

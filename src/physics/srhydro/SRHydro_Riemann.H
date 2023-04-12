@@ -36,9 +36,9 @@ namespace KFVM {
                       const Real vL[NUM_AUX],const Real vR[NUM_AUX],
                       Real* sL,Real* sR)
     {
-      using Kokkos::Experimental::fmax;
-      using Kokkos::Experimental::fmin;
-      using Kokkos::Experimental::sqrt;
+      using Kokkos::fmax;
+      using Kokkos::fmin;
+      using Kokkos::sqrt;
       using SRHydro::AuxVar;
 
       // Get soundspeeds
@@ -82,8 +82,8 @@ namespace KFVM {
                     const Real uR[NUM_VARS],
                     Real F[NUM_VARS])
     {
-      using Kokkos::Experimental::fmax;
-      using Kokkos::Experimental::fabs;
+      using Kokkos::fmax;
+      using Kokkos::fabs;
       using SRHydro::SimVar;
       
       Real FT[NUM_VARS];

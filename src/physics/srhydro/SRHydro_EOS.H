@@ -20,7 +20,7 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real presGuess(const Real U[NUM_VARS])
       {
-	using Kokkos::Experimental::sqrt;
+	using Kokkos::sqrt;
 	using SRHydro::SimVar;
 
 	const Real S = sqrt(U[SimVar::momx]*U[SimVar::momx] +
@@ -45,8 +45,8 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       static Real pres(const Real gam,const Real U[NUM_VARS])
       {
-	using Kokkos::Experimental::fabs;
-	using Kokkos::Experimental::sqrt;
+	using Kokkos::fabs;
+	using Kokkos::sqrt;
 	using SRHydro::SimVar;
 
 	// Set tolerances
@@ -93,7 +93,7 @@ namespace KFVM {
       static Real lorenz(const Real p,const Real U[NUM_VARS])
       {
 	using SRHydro::SimVar;
-        using Kokkos::Experimental::sqrt;
+        using Kokkos::sqrt;
 
 	const Real etot = U[SimVar::tau] + U[SimVar::dens];
         const Real msq =
@@ -130,7 +130,7 @@ namespace KFVM {
       static Real soundspeed(const Real gam,const Real p,const Real U[NUM_VARS])
       {
 	using SRHydro::SimVar;
-        using Kokkos::Experimental::sqrt;
+        using Kokkos::sqrt;
 
         const Real W = lorenz(p,U),rho = U[SimVar::dens]/W;
         const Real ei = eint(gam,p,U),h = Real(1.0) + gam*ei;
@@ -142,7 +142,7 @@ namespace KFVM {
       static Real soundspeed(const Real gam,const Real V[NUM_AUX])
       {
 	using SRHydro::AuxVar;
-        using Kokkos::Experimental::sqrt;
+        using Kokkos::sqrt;
 
         const Real ei = eint(gam,V);
 	const Real h = Real(1.0) + gam*ei;
@@ -198,7 +198,7 @@ namespace KFVM {
       static Real positivity(const Real U[NUM_VARS])
       {
 	using SRHydro::SimVar;
-        using Kokkos::Experimental::fmin;
+        using Kokkos::fmin;
         
         // Ensure that density and pressure are positive
         // Note that this interface does *not* have access to gamma

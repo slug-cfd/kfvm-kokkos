@@ -34,8 +34,8 @@ namespace KFVM {
         	    const Real uL[NUM_VARS],const Real uR[NUM_VARS],
         	    Real* sL,Real* sR)
     {
-      using Kokkos::Experimental::fmax;
-      using Kokkos::Experimental::fmin;
+      using Kokkos::fmax;
+      using Kokkos::fmin;
       using Hydro::SimVar;
       
       Real a = fmax(EOS<EquationType::Hydro>::soundspeed(gamma,uL),
@@ -50,8 +50,8 @@ namespace KFVM {
                   const Real uR[NUM_VARS],
                   Real F[NUM_VARS])
     {
-      using Kokkos::Experimental::fmax;
-      using Kokkos::Experimental::fabs;
+      using Kokkos::fmax;
+      using Kokkos::fabs;
       using Hydro::SimVar;
       
       Real FT[NUM_VARS];
@@ -86,8 +86,8 @@ namespace KFVM {
 		   const Real uR[NUM_VARS],
 		   Real F[NUM_VARS])
     {
-      using Kokkos::Experimental::fmax;
-      using Kokkos::Experimental::fabs;
+      using Kokkos::fmax;
+      using Kokkos::fabs;
       using Hydro::SimVar;
       
       // Wave speed estimates
@@ -134,10 +134,10 @@ namespace KFVM {
                   const Real uR[NUM_VARS],
                   Real F[NUM_VARS])
     {
-      using Kokkos::Experimental::fmax;
-      using Kokkos::Experimental::fmin;
-      using Kokkos::Experimental::fabs;
-      using Kokkos::Experimental::exp;
+      using Kokkos::fmax;
+      using Kokkos::fmin;
+      using Kokkos::fabs;
+      using Kokkos::exp;
       using Hydro::SimVar;
       
       Real FT[NUM_VARS];
