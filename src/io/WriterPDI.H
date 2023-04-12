@@ -26,7 +26,10 @@ namespace KFVM {
       
       void writeGrid2D(std::ofstream&);
       void writeGrid3D(std::ofstream&);
-      void writeAttribute(std::ofstream&,const std::string&);
+      void writeAttributeScalar(std::ofstream&,const char*);
+      void writeAttributeVector(std::ofstream&,const char*,const char*,const char*,const char*);
+      void writeAttributeVector2D(std::ofstream&,const char*,const char*,const char*,const char*);
+      void writeAttributeVector3D(std::ofstream&,const char*,const char*,const char*,const char*);
       void writeXML(int);
       void writePDI(ConsDataView,AuxDataView,CellDataView,int,double);
     public:

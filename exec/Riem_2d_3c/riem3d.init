@@ -1,13 +1,13 @@
 # Set mesh resolution and extent
-mesh:resolution 256 8 8
-mesh:extent 0.0 1.0 0.0 0.03125 0.0 0.03125
+mesh:resolution 128 128 8
+mesh:extent 0.0 1.0 0.0 1.0 0.0 0.0625
 
 # Set time information
 time:initial 0.0
-time:final 0.2
+time:final 0.8
 time:initialdt 1.e-10
 time:cfl 1.5
-time:maxsteps 1000
+time:maxsteps 2500
 time:atol 1.e-4
 time:rtol 1.e-3
 
@@ -21,5 +21,5 @@ properties:wenothresh 20.0
 # Output settings
 output:pdiconf ../../user/pdi_euler_3d.yml
 output:datadir data
-output:basename SodX
+output:basename Riem
 output:plotfreq 50

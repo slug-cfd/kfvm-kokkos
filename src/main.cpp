@@ -32,6 +32,7 @@ int main(int argc, char* argv[]) {
       // Create solver object and run to final time
       KFVM::Solver solver(ps);
       solver.Solve();
+      //solver.TakeStep();
 
       // Finalize PDI and clean up
       PDI_finalize();

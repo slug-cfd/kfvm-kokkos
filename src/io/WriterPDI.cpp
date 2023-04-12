@@ -117,13 +117,20 @@ namespace KFVM {
       }
 
       // Write all data fields as attributes
-      for (int nV=0; nV<NUM_VARS; nV++) {
-        writeAttribute(ofs,ps.varName[nV]);
+      writeAttributeScalar(ofs,"dens");
+      writeAttributeVector(ofs,"mom","momx","momy","momz");
+      if (eqType == EquationType::MHD_GLM) {
+        writeAttributeVector(ofs,"mag","magx","magy","magz");
       }
-      for (int nV=0; nV<NUM_AUX; nV++) {
-        writeAttribute(ofs,ps.auxVarName[nV]);
+      writeAttributeScalar(ofs,"etot");
+      writeAttributeVector(ofs,"vel","velx","vely","velz");
+      writeAttributeScalar(ofs,"eint");
+      writeAttributeScalar(ofs,"pres");
+      if (eqType == EquationType::MHD_GLM) {
+        writeAttributeScalar(ofs,"prsg");
+        writeAttributeScalar(ofs,"prsb");
       }
-      writeAttribute(ofs,std::string("weno"));
+      writeAttributeScalar(ofs,"weno");
 
       // Close grid, domain, Xdmf
       ofs << "    </Grid>\n  </Domain>\n</Xdmf>" << std::endl;
@@ -137,7 +144,7 @@ namespace KFVM {
       ofs << "    <Grid Name=\"Structured Grid\" GridType=\"Uniform\">\n"
           << "      <Topology TopologyType=\"2DCoRectMesh\" NumberOfElements=\""
           << (ps.nY + 1) << " " << (ps.nX + 1) << "\"/>\n"
-          << "      <Geometry GeometryType=\"Origin_DXDY\">\n"
+          << "      <Geometry GeometryType=\"Origin_DxDy\">\n"
           << "        <DataItem Name=\"Origin\" Dimensions=\"2\" NumberType=\"Double\" Precision=\"8\" Format=\"XML\">\n"
           << "          " << ps.xLo << " " << ps.yLo << " " << "\n"
           << "        </DataItem>\n"
@@ -152,7 +159,7 @@ namespace KFVM {
       ofs << "    <Grid Name=\"Structured Grid\" GridType=\"Uniform\">\n"
           << "      <Topology TopologyType=\"3DCoRectMesh\" NumberOfElements=\""
           << (ps.nZ + 1) << " " << (ps.nY + 1) << " " << (ps.nX + 1) << "\"/>\n"
-          << "      <Geometry GeometryType=\"Origin_DXDYDZ\">\n"
+          << "      <Geometry GeometryType=\"Origin_DxDyDz\">\n"
           << "        <DataItem Name=\"Origin\" Dimensions=\"3\" NumberType=\"Double\" Precision=\"8\" Format=\"XML\">\n"
           << "          " << ps.xLo << " " << ps.yLo << " " << ps.zLo << "\n"
           << "        </DataItem>\n"
@@ -162,16 +169,84 @@ namespace KFVM {
           << std::endl;
     }
     
-    void WriterPDI::writeAttribute(std::ofstream& ofs,const std::string& varName)
+    void WriterPDI::writeAttributeScalar(std::ofstream& ofs,const char *varName)
     {
       ofs << "      <Attribute Name=\"" << varName << "\" AttributeType=\"Scalar\" Center=\"Cell\">\n"
           << "        <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
-#if (SPACE_DIM == 3)        
-          << ps.nZ << " "
+#if (SPACE_DIM == 2)
+          << ps.nY << " " << ps.nX << "\">\n"
+#else
+          << ps.nZ << " " << ps.nY << " " << ps.nX << "\">\n"
 #endif
-          << ps.nY << " "
-          << ps.nX << "\">\n"
           << "          " << filename_h5 << ":/" << varName << "\n"
+          << "        </DataItem>\n      </Attribute>\n"
+          << std::endl;
+    }
+    
+    void WriterPDI::writeAttributeVector(std::ofstream& ofs,const char *vecName,
+                                         const char *vecX,const char *vecY,const char *vecZ)
+    {
+      if (SPACE_DIM == 2) {
+        writeAttributeVector2D(ofs,vecName,vecX,vecY,vecZ);
+      } else {
+        writeAttributeVector3D(ofs,vecName,vecX,vecY,vecZ);
+      }
+    }
+
+    // **Note**
+    // This function permutes the vector components to undo a bug in the xdmf library
+    // This hack should be temporary, but until Paraview and Visit work or xdmf is fixed
+    // it will stay...
+    void WriterPDI::writeAttributeVector2D(std::ofstream& ofs,const char *vecName,
+                                           const char *vecX,const char *vecY,const char *vecZ)
+    {
+      ofs << "      <Attribute Name=\"" << vecName << "\" AttributeType=\"Vector\" Center=\"Cell\">\n"
+          << "        <DataItem ItemType=\"Function\" Function=\"JOIN($0, $1, $2)\" Dimensions=\""
+          << ps.nY << " " << ps.nX << " 3\">\n"
+        // x-component (permutes to the Z component)
+          << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
+          << ps.nY << " " << ps.nX << "\">\n"
+          << "            " << filename_h5 << ":/" << vecZ << "\n"
+          << "          </DataItem>\n"
+        // y-component (permutes to the x component)
+          << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
+          << ps.nY << " " << ps.nX << "\">\n"
+          << "            " << filename_h5 << ":/" << vecX << "\n"
+          << "          </DataItem>\n"
+        // z-component (permutes to the y component)
+          << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
+          << ps.nY << " " << ps.nX << "\">\n"
+          << "            " << filename_h5 << ":/" << vecY << "\n"
+          << "          </DataItem>\n"
+        
+          << "        </DataItem>\n      </Attribute>\n"
+          << std::endl;
+    }
+
+    // **Note**
+    // The 3D case does not have the weird permutation bug, this function does what you'd hope.
+    void WriterPDI::writeAttributeVector3D(std::ofstream& ofs,const char *vecName,
+                                           const char *vecX,const char *vecY,const char *vecZ)
+    {
+      ofs << "      <Attribute Name=\"" << vecName << "\" AttributeType=\"Vector\" Center=\"Cell\">\n"
+          << "        <DataItem ItemType=\"Function\" Function=\"JOIN($0, $1, $2)\" Dimensions=\""
+          << ps.nZ << " " << ps.nY << " " << ps.nX << " 3\">\n"
+        // x-component (permutes to the  component)
+          << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
+          << ps.nZ << " " << ps.nY << " " << ps.nX << "\">\n"
+          << "            " << filename_h5 << ":/" << vecX << "\n"
+          << "          </DataItem>\n"
+        // y-component (permutes to the  component)
+          << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
+          << ps.nZ << " " << ps.nY << " " << ps.nX << "\">\n"
+          << "            " << filename_h5 << ":/" << vecY << "\n"
+          << "          </DataItem>\n"
+        // z-component (permutes to the  component)
+          << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
+          << ps.nZ << " " << ps.nY << " " << ps.nX << "\">\n"
+          << "            " << filename_h5 << ":/" << vecZ << "\n"
+          << "          </DataItem>\n"
+        
           << "        </DataItem>\n      </Attribute>\n"
           << std::endl;
     }
