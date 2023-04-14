@@ -1,10 +1,10 @@
 # Set mesh resolution and extent
 mesh:resolution 256 8 8
-mesh:extent 0.0 1.0 0.0 0.0625 0.0 0.0625
+mesh:extent 0.0 1.0 0.0 0.03125 0.0 0.03125
 
 # Set time information
 time:initial 0.0
-time:final 0.2
+time:final 0.4
 time:initialdt 1.e-10
 time:cfl 1.5
 time:maxsteps 1000
@@ -15,10 +15,11 @@ time:rtol 1.e-3
 stencil:lfac 24
 
 # Set fluid properties
-properties:gamma 1.4
-properties:wenothresh 20.0
+properties:gamma 1.333333333333
+properties:wenothresh -1.0
 
 # Output settings
+output:pdiconf ../../user/pdi_srhydro_xdmf.yml
 output:datadir data
 output:basename SRShockTube
-output:plotfreq 50
+output:plotfreq 5

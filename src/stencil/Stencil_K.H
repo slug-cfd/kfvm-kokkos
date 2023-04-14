@@ -137,7 +137,7 @@ namespace KFVM {
 	}
 	for (int nC=0; nC<nCellsFull; nC++) {
 	  auto state = Kokkos::subview(Vf,nC,Kokkos::ALL);
-          Physics::VarConvert<eqType,decltype(state)>::Cons2Prim(state,refState,fProp.gamma);
+          Physics::VarConvert<eqType,decltype(state)>::cons2LinPrim(state,refState,fProp.gamma);
 	}
 
 	// Pull Riemann states subviews out into array
@@ -158,6 +158,18 @@ namespace KFVM {
 	  Kokkos::subview(rsZ,i,j,k + 1,0,Kokkos::ALL,Kokkos::ALL)
 	};
 #endif
+
+        // DEBUG!!!!
+        // reduce to FOG temporarily
+	for (int nF=0; nF<2*SPACE_DIM; nF++) {
+	  for (int nV=0; nV<NUM_VARS; nV++) {
+	    auto rsFV = Kokkos::subview(rsFace[nF],Kokkos::ALL,nV);
+            for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+              rsFV(nQ) = refState[nV];
+            }
+          }
+	}
+        return;
 	
 	// Fill Riemann states using gemv one face at a time
 	for (int nF=0; nF<2*SPACE_DIM; nF++) {
@@ -279,7 +291,7 @@ namespace KFVM {
 	for (int nF=0; nF<2*SPACE_DIM; nF++) {
 	  for (int nQ=0; nQ<nqFace_d; nQ++) {
 	    auto state = Kokkos::subview(rsFace[nF],nQ,Kokkos::ALL);
-	    Physics::VarConvert<eqType,decltype(state)>::Prim2Cons(state,refState,fProp.gamma);
+	    Physics::VarConvert<eqType,decltype(state)>::linPrim2Cons(state,refState,fProp.gamma);
 	  }
 	}
       }

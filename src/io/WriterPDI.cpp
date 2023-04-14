@@ -146,18 +146,15 @@ namespace KFVM {
           << std::endl;
 
       // Write all data fields as attributes
-      writeAttributeScalar(ofs,"dens");
-      writeAttributeVector(ofs,"mom","momx","momy","momz");
-      if (eqType == EquationType::MHD_GLM) {
-        writeAttributeVector(ofs,"mag","magx","magy","magz");
-      }
-      writeAttributeScalar(ofs,"etot");
-      writeAttributeVector(ofs,"vel","velx","vely","velz");
-      writeAttributeScalar(ofs,"eint");
-      writeAttributeScalar(ofs,"pres");
-      if (eqType == EquationType::MHD_GLM) {
-        writeAttributeScalar(ofs,"prsg");
-        writeAttributeScalar(ofs,"prsb");
+      switch (eqType) {
+      case EquationType::MHD_GLM:
+        writeAttrMHD_GLM(ofs);
+        break;
+      case EquationType::SRHydro:
+        writeAttrSRHydro(ofs);
+        break;
+      default:
+        writeAttrHydro(ofs);
       }
       writeAttributeScalar(ofs,"weno");
 
@@ -166,6 +163,40 @@ namespace KFVM {
 
       // Close file
       ofs.close();
+    }
+
+    void WriterPDI::writeAttrHydro(std::ofstream& ofs)
+    {    
+      writeAttributeScalar(ofs,"dens");
+      writeAttributeVector(ofs,"mom","momx","momy","momz");
+      writeAttributeScalar(ofs,"etot");
+      writeAttributeVector(ofs,"vel","velx","vely","velz");
+      writeAttributeScalar(ofs,"eint");
+      writeAttributeScalar(ofs,"pres");
+    }
+
+    void WriterPDI::writeAttrMHD_GLM(std::ofstream& ofs)
+    {
+      writeAttributeScalar(ofs,"dens");
+      writeAttributeVector(ofs,"mom","momx","momy","momz");
+      writeAttributeVector(ofs,"mag","magx","magy","magz");
+      writeAttributeScalar(ofs,"etot");
+      writeAttributeVector(ofs,"vel","velx","vely","velz");
+      writeAttributeScalar(ofs,"eint");
+      writeAttributeScalar(ofs,"pres");
+      writeAttributeScalar(ofs,"prsg");
+      writeAttributeScalar(ofs,"prsb");
+    }
+
+    void WriterPDI::writeAttrSRHydro(std::ofstream& ofs)
+    {
+      writeAttributeScalar(ofs,"dens");
+      writeAttributeVector(ofs,"mom","momx","momy","momz");
+      writeAttributeScalar(ofs,"tau");
+      writeAttributeScalar(ofs,"rho");
+      writeAttributeVector(ofs,"vel","velx","vely","velz");
+      writeAttributeScalar(ofs,"lorz");
+      writeAttributeScalar(ofs,"pres");
     }
     
     void WriterPDI::writeAttributeScalar(std::ofstream& ofs,const char *varName)

@@ -5,6 +5,7 @@
 
 #include <Kokkos_Core.hpp>
 #include <limits>
+#include <math.h>
 
 #include "Definitions.H"
 #include "../../Dimension.H"
@@ -25,14 +26,14 @@ namespace KFVM {
     struct VarConvert<EquationType::Hydro,StateType>
     {
       KOKKOS_INLINE_FUNCTION
-      static void Cons2Prim(StateType& state,const Real ref[NUM_VARS],Real gam)
+      static void cons2LinPrim(StateType& state,const Hydro::ConsVec ref,Real gam)
       {
         using Hydro::SimVar;
 	
         Real gm = gam - Real(1.0);
         Real rho = ref[SimVar::dens];
         Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
-        Real vsq = (u*u + v*v + w*w)/Real(2.0);
+        Real vsq = Real(0.5)*(u*u + v*v + w*w);
         // Doing etot first allows state to be overwritten safely
         state(SimVar::etot) = gm*(vsq*state(SimVar::dens) -
                                   u*state(SimVar::momx) - 
@@ -46,7 +47,7 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static void Prim2Cons(StateType& state,const Real ref[NUM_VARS],Real gam)
+      static void linPrim2Cons(StateType& state,const Hydro::ConsVec ref,Real gam)
       {
         using Hydro::SimVar;
 	
@@ -85,9 +86,10 @@ namespace KFVM {
       {
         using Hydro::SimVar;
         using Hydro::AuxVar;
+        using Hydro::ConsVec;
 
 	// Try not to assume the order of SimVars
-	Real ua[NUM_VARS];
+        ConsVec ua;
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  ua[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
@@ -120,18 +122,24 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxVel) const
       {
+        using Hydro::ConsVec;
+        using Hydro::PrimVec;
+        
 	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 	
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
-	  // pull out states
-	  Real uL[NUM_VARS],uR[NUM_VARS],F[NUM_VARS];
+	  // pull out states and convert to primitive
+          ConsVec uL,uR,F;
+          PrimVec vL,vR;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
 	    uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
+          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uL,vL);
+          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uR,vR);
 
 	  // Calculate flux
-	  Real vq = HydroRS<rst>::RiemannSolve_X(fProp.gamma,uL,uR,F);
+	  Real vq = HydroRS<rst>::RiemannSolve_X(fProp.gamma,uL,uR,vL,vR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -157,17 +165,23 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxVel) const
       {
+        using Hydro::ConsVec;
+        using Hydro::PrimVec;
+        
 	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
-	  // pull out states
-	  Real uL[NUM_VARS],uR[NUM_VARS],F[NUM_VARS];
+	  // pull out states and convert to primitive
+          ConsVec uL,uR,F;
+          PrimVec vL,vR;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
 	    uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-
+          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uL,vL);
+          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uR,vR);
+          
 	  // Calculate flux
-	  Real vq = HydroRS<rst>::RiemannSolve_Y(fProp.gamma,uL,uR,F);
+	  Real vq = HydroRS<rst>::RiemannSolve_Y(fProp.gamma,uL,uR,vL,vR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	  
 	  // Overwrite states with flux
@@ -194,16 +208,22 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j,const idx_t k,Real& maxVel) const
       {
+        using Hydro::ConsVec;
+        using Hydro::PrimVec;
+        
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // pull out states
-	  Real uL[NUM_VARS],uR[NUM_VARS],F[NUM_VARS];
+	  // pull out states and convert to primitive
+          ConsVec uL,uR,F;
+          PrimVec vL,vR;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    uL[nV] = U(i,j,k,0,nQ,nV);
-	    uR[nV] = U(i,j,k,1,nQ,nV);
+	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
+	    uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
+          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uL,vL);
+          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uR,vR);
 	  
 	  // Calculate flux
-	  Real vq = HydroRS<rst>::RiemannSolve_Z(fProp.gamma,uL,uR,F);
+	  Real vq = HydroRS<rst>::RiemannSolve_Z(fProp.gamma,uL,uR,vL,vR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	  
 	  // Overwrite states with flux
@@ -259,7 +279,7 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
-        Real state[NUM_VARS],force[NUM_VARS];
+        Hydro::ConsVec state,force;
 
         // extract state, zero out force
         for (int n=0; n<NUM_VARS; n++) {
@@ -307,11 +327,12 @@ namespace KFVM {
 	using Kokkos::fmin;
 	using Kokkos::fmax;
 	using Hydro::SimVar;
+	using Hydro::ConsVec;
 
 	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 
 	// Save reference state
-	Real refState[NUM_VARS];
+        ConsVec refState;
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  refState[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
@@ -328,7 +349,7 @@ namespace KFVM {
 #if (SPACE_DIM == 3)
 	    for (idx_t zo=-1; zo<=1; zo++) {
 #endif
-	      Real state[NUM_VARS];
+	      ConsVec state;
 	      for (int nV=0; nV<NUM_VARS; nV++) {
 		state[nV] = U(KFVM_D_DECL(i + xo,j + yo,k + zo),nV);
 	      }
@@ -416,7 +437,8 @@ namespace KFVM {
 	// Find mixing amount
 	theta = Real(1.0);
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
-	  Real p,state[NUM_VARS];
+          ConsVec state;
+	  Real p;
 	  // West face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsX(KFVM_D_DECL(i,j,k),1,nQ,nV);
@@ -474,7 +496,7 @@ namespace KFVM {
 
       KOKKOS_INLINE_FUNCTION
       Real eulerPresPos(const Real gamma,const Real pmin,
-			const Real refState[NUM_VARS],const Real state[NUM_VARS]) const
+			const Hydro::ConsVec refState,const Hydro::ConsVec state) const
       {
 	using Kokkos::sqrt;
 	using Hydro::SimVar;

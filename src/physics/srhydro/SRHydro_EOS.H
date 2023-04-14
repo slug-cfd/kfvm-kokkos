@@ -15,10 +15,58 @@ namespace KFVM {
     template<>
     struct EOS<EquationType::SRHydro>
     {
+      // Construction of primitives is not trivial
+      // -> Elevate this into EOS to ensure that the
+      //    expensive part is only done once
+      // Maximum iterations explicitly passed to allow
+      // some calling methods to use loose approximations
+      // when appropriate
+      KOKKOS_INLINE_FUNCTION
+      static void cons2prim(const Real gam,const int maxIt,
+                            const SRHydro::ConsVec U,SRHydro::PrimVec V)
+      {
+        using SRHydro::SimVar;
+        using SRHydro::PrimVar;
+        
+        // Single expensive solve can be done for pressure,
+        // do it first and pass result to other EOS routines
+        const Real p = pres(gam,maxIt,U);
+
+        // Get remaining quantities cheaply
+        const Real W = lorenz(p,U);
+        const Real rho = U[SimVar::dens]/W,ei = eint(gam,p,U),h = Real(1.0) + gam*ei;
+	
+	// Get velocities and fill everything in
+	V[PrimVar::rho] = rho;
+	V[PrimVar::velx] = U[SimVar::momx]/(rho*W*W*h);
+	V[PrimVar::vely] = U[SimVar::momy]/(rho*W*W*h);
+	V[PrimVar::velz] = U[SimVar::momz]/(rho*W*W*h);
+        V[PrimVar::lorz] = W;
+	V[PrimVar::pres] = p;
+      }
+
+      // Conservative from primitive is easy
+      KOKKOS_INLINE_FUNCTION
+      static void prim2cons(const Real gam,const SRHydro::PrimVec V,SRHydro::ConsVec U)
+      {
+        using SRHydro::SimVar;
+        using SRHydro::PrimVar;
+
+	// Get enthalpy
+	const Real ei = eint(gam,V),h = Real(1.0) + gam*ei;
+        const Real W = V[PrimVar::lorz];
+
+	U[SimVar::dens] = V[PrimVar::rho]*W;
+	U[SimVar::momx] = U[SimVar::dens]*W*h*V[PrimVar::velx];
+	U[SimVar::momy] = U[SimVar::dens]*W*h*V[PrimVar::vely];
+	U[SimVar::momz] = U[SimVar::dens]*W*h*V[PrimVar::velz];
+	U[SimVar::tau] = U[SimVar::dens]*(W*h - Real(1.0)) - V[PrimVar::pres];
+      }
+      
       // Generate initial guess as center of bracket range
       // using eq. D.32 in Relativistic Hydrodynamics
       KOKKOS_INLINE_FUNCTION
-      static Real presGuess(const Real U[NUM_VARS])
+      static Real presGuess(const Real gam,const SRHydro::ConsVec U)
       {
 	using Kokkos::sqrt;
 	using SRHydro::SimVar;
@@ -34,16 +82,17 @@ namespace KFVM {
 	const Real zc = (zm + zp)/Real(2.0);
 
 	// This gives estimate of Lorenz factor and enthalpy
-	const Real W = sqrt(Real(1.0) + zc*zc);
+	const Real Wsq = Real(1.0) + zc*zc;
 
 	// convert that to pressure and return
-        return S*S/(W*W - Real(1.0)) - U[SimVar::tau] - U[SimVar::dens];
+        const Real gRatio = gam/(gam - Real(1.0));
+        return (U[SimVar::tau] + U[SimVar::dens])/(Wsq*gRatio - Real(1.0));
       }
 
       // Get pressure by NR process
       // Consult appendix D of Relativistic Hydrodynamics
       KOKKOS_INLINE_FUNCTION
-      static Real pres(const Real gam,const Real U[NUM_VARS])
+      static Real pres(const Real gam,const int maxIt,const SRHydro::ConsVec U)
       {
 	using Kokkos::fabs;
 	using Kokkos::sqrt;
@@ -60,10 +109,10 @@ namespace KFVM {
 			 U[SimVar::momz]*U[SimVar::momz]);
 	
 	// Use bracket to get decent initial guess
-	Real p = presGuess(U);
+	Real p = presGuess(gam,U);
 
 	// Do NR iteration to tolerance
-	for (int n=0; n<5; n++) {
+	for (int n=0; n<maxIt; n++) {
 	  // get rho and internal energy from U and current p
 	  const Real tpd = D + T + p;
 	  const Real rt = sqrt(tpd*tpd - SS);
@@ -90,124 +139,71 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real lorenz(const Real p,const Real U[NUM_VARS])
+      static Real lorenz(const Real p,const SRHydro::ConsVec U)
       {
 	using SRHydro::SimVar;
         using Kokkos::sqrt;
 
-	const Real etot = U[SimVar::tau] + U[SimVar::dens];
+	const Real DhW = U[SimVar::tau] + p + U[SimVar::dens];
+        const Real DhWsq = DhW*DhW;
         const Real msq =
           U[SimVar::momx]*U[SimVar::momx] +
           U[SimVar::momy]*U[SimVar::momy] +
           U[SimVar::momz]*U[SimVar::momz];
-        const Real epsq = (etot + p)*(etot + p);
-        return Real(1.0)/sqrt(Real(1.0) + msq/epsq);
+        return Real(1.0)/sqrt(Real(1.0) - msq/DhWsq);
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real weno(const Real U[NUM_VARS])
+      static Real eint(const Real gam,const Real p,const SRHydro::ConsVec U)
       {
 	using SRHydro::SimVar;
-        return pres(Real(4.0/3.0),U);
-      }
-      
-      KOKKOS_INLINE_FUNCTION
-      static Real eint(const Real gam,const Real p,const Real U[NUM_VARS])
-      {
-	using SRHydro::SimVar;
+        
         const Real rho = U[SimVar::dens]/lorenz(p,U);
         return p/((gam - Real(1.0))*rho);
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real eint(const Real gam,const Real V[NUM_AUX])
+      static Real eint(const Real gam,const SRHydro::PrimVec V)
       {
-	using SRHydro::AuxVar;
-        return V[AuxVar::pres]/((gam - Real(1.0))*V[AuxVar::rho]);
+	using SRHydro::PrimVar;
+        
+        return V[PrimVar::pres]/((gam - Real(1.0))*V[PrimVar::rho]);
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real soundspeed(const Real gam,const Real p,const Real U[NUM_VARS])
+      static Real weno(const SRHydro::ConsVec U)
       {
 	using SRHydro::SimVar;
-        using Kokkos::sqrt;
-
-        const Real W = lorenz(p,U),rho = U[SimVar::dens]/W;
-        const Real ei = eint(gam,p,U),h = Real(1.0) + gam*ei;
         
-        return sqrt(gam*p/(rho*h));
+        return pres(Real(4.0/3.0),0,U);
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real soundspeed(const Real gam,const Real V[NUM_AUX])
+      static Real soundspeed(const Real gam,const SRHydro::PrimVec V)
       {
-	using SRHydro::AuxVar;
+	using SRHydro::PrimVar;
         using Kokkos::sqrt;
 
         const Real ei = eint(gam,V);
 	const Real h = Real(1.0) + gam*ei;
         
-        return sqrt(gam*V[AuxVar::pres]/(V[AuxVar::rho]*h));
-      }
-
-      // Construction of primitives is not trivial
-      // -> Elevate this into EOS to ensure that the
-      //    expensive part is only done once
-      KOKKOS_INLINE_FUNCTION
-      static void primvec(const Real gam,const Real U[NUM_VARS],Real V[NUM_AUX])
-      {
-        using SRHydro::SimVar;
-        using SRHydro::AuxVar;
-        
-        // Single expensive solve can be done for pressure,
-        // do it first and pass result to other EOS routines
-        const Real p = pres(gam,U);
-
-        // Get remaining quantities cheaply
-        const Real W = lorenz(p,U),rho = U[SimVar::dens]/W;
-        const Real ei = eint(gam,p,U),h = Real(1.0) + gam*ei;
-	
-	// Get velocities and fill everything in
-	V[AuxVar::rho] = rho;
-	V[AuxVar::lorenz] = W;
-	V[AuxVar::velx] = U[SimVar::momx]/(rho*W*W*h);
-	V[AuxVar::vely] = U[SimVar::momy]/(rho*W*W*h);
-	V[AuxVar::velz] = U[SimVar::momz]/(rho*W*W*h);
-	V[AuxVar::pres] = p;
-      }
-
-      // Conservative from primitive is easy but tedious
-      KOKKOS_INLINE_FUNCTION
-      static void consvec(const Real gam,const Real V[NUM_AUX],Real U[NUM_VARS])
-      {
-        using SRHydro::SimVar;
-        using SRHydro::AuxVar;
-
-	// unpack slightly for clarity and get enthalpy
-	const Real rho = V[AuxVar::rho],W = V[AuxVar::lorenz],p = V[AuxVar::pres];
-	const Real ei = eint(gam,V),h = Real(1.0) + gam*ei;
-
-	U[SimVar::dens] = rho*W;
-	U[SimVar::momx] = rho*W*W*h*V[AuxVar::velx];
-	U[SimVar::momy] = rho*W*W*h*V[AuxVar::vely];
-	U[SimVar::momz] = rho*W*W*h*V[AuxVar::velz];
-	U[SimVar::tau] = rho*W*W*h - p - U[SimVar::dens];
+        return sqrt(gam*V[PrimVar::pres]/(V[PrimVar::rho]*h));
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real positivity(const Real U[NUM_VARS])
+      static Real positivity(const SRHydro::ConsVec U)
       {
-	using SRHydro::SimVar;
         using Kokkos::fmin;
+	using SRHydro::SimVar;
         
         // Ensure that density and pressure are positive
         // Note that this interface does *not* have access to gamma
         // however, we can use any placeholder gamma here regardless
         // (minor hack, and can we really?)
-        const Real p = pres(Real(4.0)/Real(3.0),U);
+        const Real p = pres(Real(4.0)/Real(3.0),0,U);
 
         // This should also check that velocities are bounded by 1...
-        return fmin(U[SimVar::dens],p);
+        return fmin(fmin(U[SimVar::dens],U[SimVar::tau]),p);
       }
     };
     

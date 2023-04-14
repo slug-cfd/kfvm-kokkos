@@ -22,4 +22,4 @@ properties:wenothresh 20.0
 output:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 output:datadir data
 output:basename BrioWuX
-output:plotfreq 50
+output:plotfreq 10

@@ -9,7 +9,6 @@
 #include "MHD_GLM_SimVar.H"
 #include "MHD_GLM_EOS.H"
 #include "../EquationTypes.H"
-#include "../Riemann.H"
 
 namespace KFVM {
 
@@ -36,81 +35,83 @@ namespace KFVM {
 
     KOKKOS_INLINE_FUNCTION
     void mhdGlmFlux(Real gamma,Real ch,int vord[3],int bord[3],
-		    const Real u[NUM_VARS],Real F[NUM_VARS])
+		    const MHD_GLM::ConsVec U,const MHD_GLM::PrimVec V,
+                    MHD_GLM::ConsVec F)
     {
       using MHD_GLM::SimVar;
+      using MHD_GLM::PrimVar;
 
-      const Real p = EOS<EquationType::MHD_GLM>::pres(gamma,u);
-      const Real uDb = (u[SimVar::momx]*u[SimVar::magx] +
-			u[SimVar::momy]*u[SimVar::magy] +
-			u[SimVar::momz]*u[SimVar::magz])/u[SimVar::dens];
+      const Real p = V[PrimVar::pres];
+      const Real uDb = (V[PrimVar::velx]*U[SimVar::magx] +
+			V[PrimVar::vely]*U[SimVar::magy] +
+			V[PrimVar::velz]*U[SimVar::magz]);
       
-      F[SimVar::dens] = u[vord[0]];
+      F[SimVar::dens] = U[vord[0]];
       
-      F[vord[0]] = u[vord[0]]*u[vord[0]]/u[SimVar::dens] - u[bord[0]]*u[bord[0]] + p;
-      F[vord[1]] = u[vord[0]]*u[vord[1]]/u[SimVar::dens] - u[bord[0]]*u[bord[1]];
-      F[vord[2]] = u[vord[0]]*u[vord[2]]/u[SimVar::dens] - u[bord[0]]*u[bord[2]];
+      F[vord[0]] = U[vord[0]]*V[vord[0]] - U[bord[0]]*U[bord[0]] + p;
+      F[vord[1]] = U[vord[0]]*V[vord[1]] - U[bord[0]]*U[bord[1]];
+      F[vord[2]] = U[vord[0]]*V[vord[2]] - U[bord[0]]*U[bord[2]];
       
-      F[SimVar::etot] = u[vord[0]]*(u[SimVar::etot] + p)/u[SimVar::dens] + u[bord[0]]*(ch*u[SimVar::psi] - uDb);
+      F[SimVar::etot] = V[vord[0]]*(U[SimVar::etot] + p) + U[bord[0]]*(ch*U[SimVar::psi] - uDb);
       
-      F[bord[0]] = ch*u[SimVar::psi];
-      F[bord[1]] = (u[vord[0]]*u[bord[1]] - u[vord[1]]*u[bord[0]])/u[SimVar::dens];
-      F[bord[2]] = (u[vord[0]]*u[bord[2]] - u[vord[2]]*u[bord[0]])/u[SimVar::dens];
+      F[bord[0]] = ch*U[SimVar::psi];
+      F[bord[1]] = (V[vord[0]]*U[bord[1]] - V[vord[1]]*U[bord[0]]);
+      F[bord[2]] = (V[vord[0]]*U[bord[2]] - V[vord[2]]*U[bord[0]]);
       
-      F[SimVar::psi] = ch*u[bord[0]];
+      F[SimVar::psi] = ch*U[bord[0]];
     }      
 
     KOKKOS_INLINE_FUNCTION
     void mhdGlmSpeed(Real gamma,int lng,int bord[3],
-                     const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-		     const Real ch,Real* sL,Real* sR)
+                     const MHD_GLM::ConsVec uL,const MHD_GLM::ConsVec uR,
+                     const MHD_GLM::PrimVec vL,const MHD_GLM::PrimVec vR,
+		     const Real ch,Real& sL,Real& sR)
     {
-      using MHD_GLM::SimVar;
       using Kokkos::fmax;
       using Kokkos::fmin;
+      using MHD_GLM::SimVar;
       
       const Real cfL = EOS<EquationType::MHD_GLM>::fastMagSonic(gamma,uL,uL[bord[0]]);
       const Real cfR = EOS<EquationType::MHD_GLM>::fastMagSonic(gamma,uR,uR[bord[0]]);
 
-      const Real slMs = fmin(uL[lng]/uL[SimVar::dens] - cfL,uR[lng]/uR[SimVar::dens] - cfR);
-      const Real slCh = fmin(uL[lng]/uL[SimVar::dens] - ch,uR[lng]/uR[SimVar::dens] - ch);
-      const Real srMs = fmax(uL[lng]/uL[SimVar::dens] + cfL,uR[lng]/uR[SimVar::dens] + cfR);
-      const Real srCh = fmax(uL[lng]/uL[SimVar::dens] + ch,uR[lng]/uR[SimVar::dens] + ch);
+      const Real slMs = fmin(vL[lng] - cfL,vR[lng] - cfR);
+      const Real slCh = fmin(vL[lng] - ch ,vR[lng] - ch);
+      const Real srMs = fmax(vL[lng] + cfL,vR[lng] + cfR);
+      const Real srCh = fmax(vL[lng] + ch ,vR[lng] + ch);
       
-      *sL = fmin(slMs,slCh);
-      *sR = fmax(srMs,srCh);
+      sL = fmin(slMs,slCh);
+      sR = fmax(srMs,srCh);
     }
     
     KOKKOS_INLINE_FUNCTION
     Real mhdGlmKEPES(Real gamma,Real ch,int vord[3],int bord[3],
-		     const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-		     Real F[NUM_VARS])
+                     const MHD_GLM::ConsVec uL,const MHD_GLM::ConsVec uR,
+                     const MHD_GLM::PrimVec vL,const MHD_GLM::PrimVec vR,
+		     MHD_GLM::ConsVec F)
     {
-      using MHD_GLM::SimVar;
       using Kokkos::fmax;
       using Kokkos::fabs;
       using Kokkos::sqrt;
+      using MHD_GLM::SimVar;
+      using MHD_GLM::PrimVar;
       
       Real sL,sR,sMax;
       
       // Wave speed estimates
-      mhdGlmSpeed(gamma,vord[0],bord,uL,uR,ch,&sL,&sR);
+      mhdGlmSpeed(gamma,vord[0],bord,uL,uR,vL,vR,ch,sL,sR);
       sMax = fmax(fabs(sL),fabs(sR));
 
       // Find far too many mean quantites
       Real rhoLn = logMean(uL[SimVar::dens],uR[SimVar::dens]);
       Real rhoAv = arithMean(uL[SimVar::dens],uR[SimVar::dens]);
       
-      Real uAv = arithMean(uL[vord[0]]/uL[SimVar::dens],uR[vord[0]]/uR[SimVar::dens]);
-      Real vAv = arithMean(uL[vord[1]]/uL[SimVar::dens],uR[vord[1]]/uR[SimVar::dens]);
-      Real wAv = arithMean(uL[vord[2]]/uL[SimVar::dens],uR[vord[2]]/uR[SimVar::dens]);
+      Real uAv = arithMean(vL[vord[0]],vR[vord[0]]);
+      Real vAv = arithMean(vL[vord[1]],vR[vord[1]]);
+      Real wAv = arithMean(vL[vord[2]],vR[vord[2]]);
       
-      Real uuAv = arithMean(uL[vord[0]]*uL[vord[0]]/(uL[SimVar::dens]*uL[SimVar::dens]),
-			    uR[vord[0]]*uR[vord[0]]/(uR[SimVar::dens]*uR[SimVar::dens]));
-      Real vvAv = arithMean(uL[vord[1]]*uL[vord[1]]/(uL[SimVar::dens]*uL[SimVar::dens]),
-			    uR[vord[1]]*uR[vord[1]]/(uR[SimVar::dens]*uR[SimVar::dens]));
-      Real wwAv = arithMean(uL[vord[2]]*uL[vord[2]]/(uL[SimVar::dens]*uL[SimVar::dens]),
-			    uR[vord[2]]*uR[vord[2]]/(uR[SimVar::dens]*uR[SimVar::dens]));
+      Real uuAv = arithMean(vL[vord[0]]*vL[vord[0]],vR[vord[0]]*vR[vord[0]]);
+      Real vvAv = arithMean(vL[vord[1]]*vL[vord[1]],vR[vord[1]]*vR[vord[1]]);
+      Real wwAv = arithMean(vL[vord[2]]*vL[vord[2]],vR[vord[2]]*vR[vord[2]]);
       
       Real bxAv = arithMean(uL[bord[0]],uR[bord[0]]);
       Real byAv = arithMean(uL[bord[1]],uR[bord[1]]);
@@ -120,19 +121,13 @@ namespace KFVM {
       Real byyAv = arithMean(uL[bord[1]]*uL[bord[1]],uR[bord[1]]*uR[bord[1]]);
       Real bzzAv = arithMean(uL[bord[2]]*uL[bord[2]],uR[bord[2]]*uR[bord[2]]);
       
-      Real uBxAv = arithMean(uL[vord[0]]*uL[bord[0]]/uL[SimVar::dens],
-			     uR[vord[0]]*uR[bord[0]]/uR[SimVar::dens]);
-      Real vByAv = arithMean(uL[vord[1]]*uL[bord[1]]/uL[SimVar::dens],
-			     uR[vord[1]]*uR[bord[1]]/uR[SimVar::dens]);
-      Real wBzAv = arithMean(uL[vord[2]]*uL[bord[2]]/uL[SimVar::dens],
-			     uR[vord[2]]*uR[bord[2]]/uR[SimVar::dens]);
+      Real uBxAv = arithMean(vL[vord[0]]*uL[bord[0]],vR[vord[0]]*uR[bord[0]]);
+      Real vByAv = arithMean(vL[vord[1]]*uL[bord[1]],vR[vord[1]]*uR[bord[1]]);
+      Real wBzAv = arithMean(vL[vord[2]]*uL[bord[2]],vR[vord[2]]*uR[bord[2]]);
       
-      Real uBxxAv = arithMean(uL[vord[0]]*uL[bord[0]]*uL[bord[0]]/uL[SimVar::dens],
-			      uR[vord[0]]*uR[bord[0]]*uR[bord[0]]/uR[SimVar::dens]);
-      Real uByyAv = arithMean(uL[vord[0]]*uL[bord[1]]*uL[bord[1]]/uL[SimVar::dens],
-			      uR[vord[0]]*uR[bord[1]]*uR[bord[1]]/uR[SimVar::dens]);
-      Real uBzzAv = arithMean(uL[vord[0]]*uL[bord[2]]*uL[bord[2]]/uL[SimVar::dens],
-			      uR[vord[0]]*uR[bord[2]]*uR[bord[2]]/uR[SimVar::dens]);
+      Real uBxxAv = arithMean(vL[vord[0]]*uL[bord[0]]*uL[bord[0]],vR[vord[0]]*uR[bord[0]]*uR[bord[0]]);
+      Real uByyAv = arithMean(vL[vord[0]]*uL[bord[1]]*uL[bord[1]],vR[vord[0]]*uR[bord[1]]*uR[bord[1]]);
+      Real uBzzAv = arithMean(vL[vord[0]]*uL[bord[2]]*uL[bord[2]],vR[vord[0]]*uR[bord[2]]*uR[bord[2]]);
       
       Real psiAv = arithMean(uL[SimVar::psi],uR[SimVar::psi]);
       Real bxPsiAv = arithMean(uL[bord[0]]*uL[SimVar::psi],uR[bord[0]]*uR[SimVar::psi]);
@@ -182,34 +177,37 @@ namespace KFVM {
       static
       KOKKOS_INLINE_FUNCTION
       Real RiemannSolve_X(const Real gamma,const Real ch,
-                          const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-                          Real F[NUM_VARS])
+                          const MHD_GLM::ConsVec uL,const MHD_GLM::ConsVec uR,
+                          const MHD_GLM::PrimVec vL,const MHD_GLM::PrimVec vR,
+                          MHD_GLM::ConsVec F)
       {
         int vord[] = {MHD_GLM::SimVar::momx,MHD_GLM::SimVar::momy,MHD_GLM::SimVar::momz};
         int bord[] = {MHD_GLM::SimVar::magx,MHD_GLM::SimVar::magy,MHD_GLM::SimVar::magz};
-        return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,F);
+        return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,vL,vR,F);
       }
 
       static
       KOKKOS_INLINE_FUNCTION
       Real RiemannSolve_Y(const Real gamma,const Real ch,
-                          const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-                          Real F[NUM_VARS])
+                          const MHD_GLM::ConsVec uL,const MHD_GLM::ConsVec uR,
+                          const MHD_GLM::PrimVec vL,const MHD_GLM::PrimVec vR,
+                          MHD_GLM::ConsVec F)
       {
         int vord[] = {MHD_GLM::SimVar::momy,MHD_GLM::SimVar::momz,MHD_GLM::SimVar::momx};
         int bord[] = {MHD_GLM::SimVar::magy,MHD_GLM::SimVar::magz,MHD_GLM::SimVar::magx};
-        return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,F);
+        return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,vL,vR,F);
       }
 
       static
       KOKKOS_INLINE_FUNCTION
       Real RiemannSolve_Z(const Real gamma,const Real ch,
-                          const Real uL[NUM_VARS],const Real uR[NUM_VARS],
-                          Real F[NUM_VARS])
+                          const MHD_GLM::ConsVec uL,const MHD_GLM::ConsVec uR,
+                          const MHD_GLM::PrimVec vL,const MHD_GLM::PrimVec vR,
+                          MHD_GLM::ConsVec F)
       {
         int vord[] = {MHD_GLM::SimVar::momz,MHD_GLM::SimVar::momx,MHD_GLM::SimVar::momy};
         int bord[] = {MHD_GLM::SimVar::magz,MHD_GLM::SimVar::magx,MHD_GLM::SimVar::magy};
-        return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,F);
+        return mhdGlmKEPES(gamma,ch,vord,bord,uL,uR,vL,vR,F);
       }
     };
     

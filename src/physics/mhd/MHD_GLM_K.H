@@ -25,7 +25,7 @@ namespace KFVM {
     struct VarConvert<EquationType::MHD_GLM,StateType>
     {      
       KOKKOS_INLINE_FUNCTION
-      static void Cons2Prim(StateType& state,const Real ref[NUM_VARS],Real gam)
+      static void cons2LinPrim(StateType& state,const MHD_GLM::ConsVec ref,Real gam)
       {
         using MHD_GLM::SimVar;
         
@@ -52,7 +52,7 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static void Prim2Cons(StateType& state,const Real ref[NUM_VARS],Real gam)
+      static void linPrim2Cons(StateType& state,const MHD_GLM::ConsVec ref,Real gam)
       {
         using MHD_GLM::SimVar;
         
@@ -95,13 +95,14 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
+        using MHD_GLM::ConsVec;
         using MHD_GLM::SimVar;
         using MHD_GLM::AuxVar;
 
 	// Try not to assume the order of SimVars
-	Real ua[NUM_VARS];
+	ConsVec u;
 	for (int nV=0; nV<NUM_VARS; nV++) {
-	  ua[nV] = U(KFVM_D_DECL(i,j,k),nV);
+	  u[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
         
 	// Set velocities
@@ -110,10 +111,10 @@ namespace KFVM {
 	V(KFVM_D_DECL(i,j,k),AuxVar::velz) = U(KFVM_D_DECL(i,j,k),SimVar::momz)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
 
 	// Internal energy and pressure
-	V(KFVM_D_DECL(i,j,k),AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(ua);
-	V(KFVM_D_DECL(i,j,k),AuxVar::pres) = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,ua);
-	V(KFVM_D_DECL(i,j,k),AuxVar::prsg) = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,ua);
-	V(KFVM_D_DECL(i,j,k),AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(ua);
+	V(KFVM_D_DECL(i,j,k),AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(u);
+	V(KFVM_D_DECL(i,j,k),AuxVar::pres) = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,u);
+	V(KFVM_D_DECL(i,j,k),AuxVar::prsg) = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,u);
+	V(KFVM_D_DECL(i,j,k),AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(u);
       }
     };
 
@@ -131,18 +132,23 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxVel) const
       {
+        using MHD_GLM::ConsVec;
+        using MHD_GLM::PrimVec;
+        
         const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
-	  // pull out states
-	  Real uL[NUM_VARS],uR[NUM_VARS];
+	  // Pull out states and convert to primitive
+	  ConsVec uL,uR,F;
+          PrimVec vL,vR;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
             uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
+          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uL,vL);
+          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uR,vR);
 	  
 	  // Calculate flux
-	  Real F[NUM_VARS];
-	  Real vq = MHD_GLM_RS<rst>::RiemannSolve_X(fProp.gamma,fProp.ch_glm,uL,uR,F);
+	  Real vq = MHD_GLM_RS<rst>::RiemannSolve_X(fProp.gamma,fProp.ch_glm,uL,uR,vL,vR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -168,19 +174,23 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxVel) const
       {
-        const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+        using MHD_GLM::ConsVec;
+        using MHD_GLM::PrimVec;
         
+        const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
-	  // pull out states
-	  Real uL[NUM_VARS],uR[NUM_VARS];
+	  // Pull out states and convert to primitive
+	  ConsVec uL,uR,F;
+          PrimVec vL,vR;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
-	    uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
+            uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-	  
+          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uL,vL);
+          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uR,vR);
+          
 	  // Calculate flux
-	  Real F[NUM_VARS];
-	  Real vq = MHD_GLM_RS<rst>::RiemannSolve_Y(fProp.gamma,fProp.ch_glm,uL,uR,F);
+	  Real vq = MHD_GLM_RS<rst>::RiemannSolve_Y(fProp.gamma,fProp.ch_glm,uL,uR,vL,vR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -207,17 +217,22 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j,const idx_t k,Real& maxVel) const
       {
+        using MHD_GLM::ConsVec;
+        using MHD_GLM::PrimVec;
+        
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // pull out states
-	  Real uL[NUM_VARS],uR[NUM_VARS];
+	  // Pull out states and convert to primitive
+	  ConsVec uL,uR,F;
+          PrimVec vL,vR;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
-	    uL[nV] = U(i,j,k,0,nQ,nV);
-	    uR[nV] = U(i,j,k,1,nQ,nV);
+	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
+            uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-
+          EOS<::EquationType::MHD_GLM>::cons2prim(fProp.gamma,uL,vL);
+          EOS<::EquationType::MHD_GLM>::cons2prim(fProp.gamma,uR,vR);
+          
 	  // Calculate flux
-	  Real F[NUM_VARS];
-	  Real vq = MHD_GLM_RS<rst>::RiemannSolve_Z(fProp.gamma,fProp.ch_glm,uL,uR,F);
+	  Real vq = MHD_GLM_RS<rst>::RiemannSolve_Z(fProp.gamma,fProp.ch_glm,uL,uR,vL,vR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -250,6 +265,7 @@ namespace KFVM {
 	using Kokkos::fmax;
 	using Kokkos::fmin;
 	using MHD_GLM::SimVar;
+	using MHD_GLM::ConsVec;
 	
 	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 	const Real pf = 0.99;
@@ -258,7 +274,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
 	  Real cfVel;
-	  Real uM[NUM_VARS],uP[NUM_VARS];
+	  ConsVec uM,uP;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uM[nV] = rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV);
 	    uP[nV] = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV);
@@ -276,7 +292,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
 	  Real cfVel;
-	  Real uM[NUM_VARS],uP[NUM_VARS];
+	  ConsVec uM,uP;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uM[nV] = rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV);
 	    uP[nV] = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV);
@@ -295,7 +311,7 @@ namespace KFVM {
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
 	  Real cfVel;
-	  Real uM[NUM_VARS],uP[NUM_VARS];
+	  ConsVec uM,uP;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uM[nV] = rsZ(i,j,k    ,1,nQ,nV);
 	    uP[nV] = rsZ(i,j,k + 1,0,nQ,nV);
@@ -338,6 +354,7 @@ namespace KFVM {
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
 	using MHD_GLM::SimVar;
+	using MHD_GLM::ConsVec;
 	
 	const Real divB =
 	  Real(0.5)*(U(KFVM_D_DECL(i + 1,j,k),SimVar::magx) - U(KFVM_D_DECL(i - 1,j,k),SimVar::magx))/geom.dx +
@@ -369,7 +386,7 @@ namespace KFVM {
 	RHS(KFVM_D_DECL(i,j,k),SimVar::psi) -= gpsiDu;
 
         // Incorporate user defined terms too
-        Real state[NUM_VARS],force[NUM_VARS];
+        ConsVec state,force;
 
         // extract state, zero out force
         for (int n=0; n<NUM_VARS; n++) {
@@ -417,11 +434,12 @@ namespace KFVM {
 	using Kokkos::fmin;
 	using Kokkos::fmax;
 	using MHD_GLM::SimVar;
+	using MHD_GLM::ConsVec;
 
 	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 
 	// Save reference state
-	Real refState[NUM_VARS];
+	ConsVec refState;
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  refState[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
@@ -438,7 +456,7 @@ namespace KFVM {
 #if (SPACE_DIM == 3)
 	    for (idx_t zo=-1; zo<=1; zo++) {
 #endif
-	      Real state[NUM_VARS];
+	      ConsVec state;
 	      for (int nV=0; nV<NUM_VARS; nV++) {
 		state[nV] = U(KFVM_D_DECL(i + xo,j + yo,k + zo),nV);
 	      }
@@ -527,7 +545,8 @@ namespace KFVM {
 	// Find mixing amount
 	theta = Real(1.0);
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
-	  Real p,thEst,state[NUM_VARS];
+	  Real p,thEst;
+          ConsVec state;
 	  // West face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsX(KFVM_D_DECL(i,j,k),1,nQ,nV);
@@ -591,7 +610,7 @@ namespace KFVM {
 
       KOKKOS_INLINE_FUNCTION
       Real mhdPresPos(const Real gamma,const Real pmin,Real theta,
-		      const Real refState[NUM_VARS],const Real state[NUM_VARS]) const
+		      const MHD_GLM::ConsVec refState,const MHD_GLM::ConsVec state) const
       {
 	using Kokkos::sqrt;
 	using Kokkos::fmin;

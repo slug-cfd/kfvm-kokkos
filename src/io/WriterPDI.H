@@ -27,7 +27,10 @@ namespace KFVM {
       std::string prefix;
       std::string filename_h5;
       std::string filename_xmf;
-      
+
+      void writeAttrHydro(std::ofstream&);
+      void writeAttrMHD_GLM(std::ofstream&);
+      void writeAttrSRHydro(std::ofstream&);
       void writeAttributeScalar(std::ofstream&,const char*);
       void writeAttributeVector(std::ofstream&,const char*,const char*,const char*,const char*);
       void writeXML(int,Real);
