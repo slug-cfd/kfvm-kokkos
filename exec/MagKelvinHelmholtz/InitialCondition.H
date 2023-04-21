@@ -9,6 +9,9 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
+  using Kokkos::tanh;
+  using Kokkos::sin;
+  using Kokkos::exp;
   using Physics::MHD_GLM::SimVar;
   
   (void) z;

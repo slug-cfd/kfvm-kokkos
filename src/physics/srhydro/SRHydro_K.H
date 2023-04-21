@@ -16,6 +16,7 @@
 #include "SRHydro_SimVar.H"
 #include "SRHydro_EOS.H"
 #include "SRHydro_Riemann.H"
+#include "physics/Physics_K.H"
 
 #define KFVM_MAX_SR_ITER 10
 
@@ -24,100 +25,140 @@ namespace KFVM {
   namespace Physics {
 
     template<class StateType>
-    struct VarConvert<EquationType::SRHydro,StateType>
+    class VarConvert<EquationType::SRHydro,StateType>
     {
-      // KOKKOS_INLINE_FUNCTION
-      // static void cons2LinPrim(StateType& state,const SRHydro::ConsVec ref,Real gam)
-      // {
-      //   using SRHydro::SimVar;
-
-      //   (void) gam;
-
-      //   // Jacobian evaluated on ref, zeros omitted
-      //   const Real dRdD = 1.0, dRdS1 = 0.0, dRdS2 = 0.0, dRdS3 = 0.0, dRdT = 0.0;
-      //   const Real dV1dD = 0.0,dV1dS1 = 1.0,dV1dS2 = 0.0,dV1dS3 = 0.0,dV1dT = 0.0;
-      //   const Real dV2dD = 0.0,dV2dS1 = 0.0,dV2dS2 = 1.0,dV2dS3 = 0.0,dV2dT = 0.0;
-      //   const Real dV3dD = 0.0,dV3dS1 = 0.0,dV3dS2 = 0.0,dV3dS3 = 1.0,dV3dT = 0.0;
-      //   const Real dPdD = 0.0, dPdS1 = 0.0, dPdS2 = 0.0, dPdS3 = 0.0, dPdT = 1.0;
-
-      //   // J*state
-      //   const Real R = dRdD*state(SimVar::dens) + dRdT*state(SimVar::tau) +
-      //     dRdS1*state(SimVar::momx) + dRdS2*state(SimVar::momy) + dRdS3*state(SimVar::momz);
-      //   const Real V1 = dV1dD*state(SimVar::dens) + dV1dT*state(SimVar::tau) +
-      //     dV1dS1*state(SimVar::momx) + dV1dS2*state(SimVar::momy) + dV1dS3*state(SimVar::momz);
-      //   const Real V2 = dV2dD*state(SimVar::dens) + dV2dT*state(SimVar::tau) +
-      //     dV2dS1*state(SimVar::momx) + dV2dS2*state(SimVar::momy) + dV2dS3*state(SimVar::momz);
-      //   const Real V3 = dV3dD*state(SimVar::dens) + dV3dT*state(SimVar::tau) +
-      //     dV3dS1*state(SimVar::momx) + dV3dS2*state(SimVar::momy) + dV3dS3*state(SimVar::momz);
-      //   const Real P = dPdD*state(SimVar::dens) + dPdT*state(SimVar::tau) +
-      //     dPdS1*state(SimVar::momx) + dPdS2*state(SimVar::momy) + dPdS3*state(SimVar::momz);
-
-      //   state(SimVar::dens) = R;
-      //   state(SimVar::momx) = V1;
-      //   state(SimVar::momy) = V2;
-      //   state(SimVar::momz) = V3;
-      //   state(SimVar::tau) = P;
-      // }
+      const Real gRatio;
+      Real rho,W,Vx,Vy,Vz,p;
+      Real D,Sx,Sy,Sz,tau;
+      SRHydro::PrimVec primRef;
       
-      // KOKKOS_INLINE_FUNCTION
-      // static void linPrim2Cons(StateType& state,const SRHydro::ConsVec ref,const Real gam)
-      // {
-      //   using SRHydro::SimVar;
-
-      //   (void) gam;
-
-      //   // Jacobian evaluated on ref, zeros omitted
-      //   const Real dDdR = 1.0, dDdV1 = 0.0, dDdV2 = 0.0, dDdV3 = 0.0, dDdP = 0.0;
-      //   const Real dS1dR = 0.0,dS1dV1 = 1.0,dS1dV2 = 0.0,dS1dV3 = 0.0,dS1dP = 0.0;
-      //   const Real dS2dR = 0.0,dS2dV1 = 0.0,dS2dV2 = 1.0,dS2dV3 = 0.0,dS2dP = 0.0;
-      //   const Real dS3dR = 0.0,dS3dV1 = 0.0,dS3dV2 = 0.0,dS3dV3 = 1.0,dS3dP = 0.0;
-      //   const Real dTdR = 0.0, dTdV1 = 0.0, dTdV2 = 0.0, dTdV3 = 0.0, dTdP = 1.0;
-
-      //   // J*state
-      //   const Real D = dDdR*state(SimVar::dens) + dDdP*state(SimVar::tau) +
-      //     dDdV1*state(SimVar::momx) + dDdV2*state(SimVar::momy) + dDdV3*state(SimVar::momz);
-      //   const Real S1 = dS1dR*state(SimVar::dens) + dS1dP*state(SimVar::tau) +
-      //     dS1dV1*state(SimVar::momx) + dS1dV2*state(SimVar::momy) + dS1dV3*state(SimVar::momz);
-      //   const Real S2 = dS2dR*state(SimVar::dens) + dS2dP*state(SimVar::tau) +
-      //     dS2dV1*state(SimVar::momx) + dS2dV2*state(SimVar::momy) + dS2dV3*state(SimVar::momz);
-      //   const Real S3 = dS3dR*state(SimVar::dens) + dS3dP*state(SimVar::tau) +
-      //     dS3dV1*state(SimVar::momx) + dS3dV2*state(SimVar::momy) + dS3dV3*state(SimVar::momz);
-      //   const Real T = dTdR*state(SimVar::dens) + dTdP*state(SimVar::tau) +
-      //     dTdV1*state(SimVar::momx) + dTdV2*state(SimVar::momy) + dTdV3*state(SimVar::momz);
-
-      //   state(SimVar::dens) = D;
-      //   state(SimVar::momx) = S1;
-      //   state(SimVar::momy) = S2;
-      //   state(SimVar::momz) = S3;
-      //   state(SimVar::tau) = T;
-      // }
+    public:
+      Real J[5][5];
+      Real Jinv[5][5];
       
       KOKKOS_INLINE_FUNCTION
-      static void cons2LinPrim(StateType& state,const SRHydro::ConsVec ref,Real gam)
+      VarConvert(const SRHydro::ConsVec ref_,Real gam_):
+	gRatio(gam_/(gam_ - Real(1.0)))
       {
+	using Kokkos::sqrt;
+	
         using SRHydro::SimVar;
+        using SRHydro::PrimVar;
 
-        (void) gam;
-        
-        state(SimVar::dens) = ref[SimVar::dens];
-        state(SimVar::momx) = ref[SimVar::momx];
-        state(SimVar::momy) = ref[SimVar::momy];
-        state(SimVar::momz) = ref[SimVar::momz];
-        state(SimVar::tau) = ref[SimVar::tau];
+	// Convert to primitive
+	EOS<EquationType::SRHydro>::cons2prim(gam_,KFVM_MAX_SR_ITER,ref_,primRef);
+	
+	// Unpack reference vectors
+	rho = primRef[PrimVar::rho];
+	W = primRef[PrimVar::lorz];
+	Vx = primRef[PrimVar::velx];
+	Vy = primRef[PrimVar::vely];
+	Vz = primRef[PrimVar::velz];
+	p = primRef[PrimVar::pres];
+	
+	D = ref_[SimVar::dens];
+	Sx = ref_[SimVar::momx];
+	Sy = ref_[SimVar::momy];
+	Sz = ref_[SimVar::momz];
+	tau = ref_[SimVar::tau];
+
+	// Intermediate quantites
+	const Real Wsq = W*W,rWsq = rho*Wsq,h = Real(1.0) + gRatio*p/rho,hW = h*W;
+	const Real Ssq = Sx*Sx + Sy*Sy + Sz*Sz;
+	const Real A = D + tau + p,Bsq = A*A - Ssq,B = sqrt(Bsq);
+	const Real X = 2*gRatio*p*Wsq*W*Ssq/(rho*A*A*A) + B*Ssq,Xtil = D*(gRatio*W/rho - X);
+	const Real Y = 2*gRatio*W*p/(rho*Bsq) + Wsq*W*B*D/(rho*A*A*A);
+
+	// Pressure derivatives
+	const Real dpdD = (W - D*X - Real(1.0))/(Real(1.0) - Xtil);
+	const Real dpdSx = D*Y*Sx/(Real(1.0) - Xtil);
+	const Real dpdSy = D*Y*Sy/(Real(1.0) - Xtil);
+	const Real dpdSz = D*Y*Sz/(Real(1.0) - Xtil);
+	const Real dpdT = (D*X + Real(1.0))/(Xtil - Real(1.0));
+
+	// Lorenz derivatives
+	const Real dWidD = Ssq*(dpdD + Real(1.0))/(A*A*B);
+	const Real dWidSx = (Ssq*dpdSx - A*Sx)/(A*A*B);
+	const Real dWidSy = (Ssq*dpdSy - A*Sy)/(A*A*B);
+	const Real dWidSz = (Ssq*dpdSz - A*Sz)/(A*A*B);
+	const Real dWidT = Ssq*(dpdT + Real(1.0))/(A*A*B);
+
+	// Density derivatives
+	const Real drdD = Real(1.0)/W + D*dWidD;
+	const Real drdSx = D*dWidSx;
+	const Real drdSy = D*dWidSy;
+	const Real drdSz = D*dWidSz;
+	const Real drdT = D*dWidT;
+
+	// Enthalpy derivatives
+	const Real hidhdD = gRatio*(rho*dpdD - p*drdD)/(rho*rho*h);
+	const Real hidhdSx = gRatio*(rho*dpdSx - p*drdSx)/(rho*rho*h);
+	const Real hidhdSy = gRatio*(rho*dpdSy - p*drdSy)/(rho*rho*h);
+	const Real hidhdSz = gRatio*(rho*dpdSz - p*drdSz)/(rho*rho*h);
+	const Real hidhdT = gRatio*(rho*dpdT - p*drdT)/(rho*rho*h);
+
+	const Real dhdr = -gRatio*p/(rho*rho),dhdp = gRatio/rho;
+
+	// Velocity intermediates
+	const Real vd = Real(1.0)/D + hidhdD + W*dWidD;
+	const Real vs = Real(1.0)/(D*hW);
+	const Real vt = W*dWidT - hidhdT;
+	
+	J[0][0] = drdD;   J[0][1] = drdSx;                        J[0][2] = drdSy;                        J[0][3] = drdSz;                        J[0][4] = drdT;
+	J[1][0] = -Vx*vd; J[1][1] = vs + Vx*(W*dWidSx - hidhdSx); J[1][2] = Vx*(W*dWidSy - hidhdSy);      J[1][3] = Vx*(W*dWidSz - hidhdSz);      J[1][4] = Vx*vt;
+	J[2][0] = -Vy*vd; J[2][1] = Vy*(W*dWidSx - hidhdSx);      J[2][2] = vs + Vy*(W*dWidSy - hidhdSy); J[2][3] = Vy*(W*dWidSz - hidhdSz);      J[2][4] = Vy*vt;
+	J[3][0] = -Vz*vd; J[3][1] = Vz*(W*dWidSx - hidhdSx);      J[3][2] = Vz*(W*dWidSy - hidhdSy);      J[3][3] = vs + Vz*(W*dWidSz - hidhdSz); J[3][4] = Vz*vt;
+	J[4][0] = dpdD;   J[4][1] = dpdSx;                        J[4][2] = dpdSy;                        J[4][3] = dpdSz;                        J[4][4] = dpdT;
+	
+        // Jacobian evaluated on reference
+	const Real Dv = Wsq*(h + rho*dhdr);
+	Jinv[0][0] = W;                           Jinv[0][1] = D*Wsq*Vx;                     Jinv[0][2] = D*Wsq*Vy;                      Jinv[0][3] = D*Wsq*Vz;                     Jinv[0][4] = 0.0;
+	Jinv[1][0] = Vx*Dv;                       Jinv[1][1] = D*hW + 2*rho*h*Vx*Vx*Wsq*Wsq; Jinv[1][2] = 2*rho*h*Vx*Vy*Wsq*Wsq;         Jinv[1][3] = 2*rho*h*Vx*Vz*Wsq*Wsq;        Jinv[1][4] = rWsq*Vx*dhdp;
+	Jinv[2][0] = Vy*Dv;                       Jinv[2][1] = 2*rho*h*Vy*Vx*Wsq*Wsq;        Jinv[2][2] = D*hW + 2*rho*h*Vy*Vy*Wsq*Wsq;  Jinv[2][3] = 2*rho*h*Vy*Vz*Wsq*Wsq;        Jinv[2][4] = rWsq*Vy*dhdp;
+	Jinv[3][0] = Vz*Dv;                       Jinv[3][1] = 2*rho*h*Vz*Vx*Wsq*Wsq;        Jinv[3][2] = 2*rho*h*Vz*Vy*Wsq*Wsq;         Jinv[3][3] = D*hW + 2*rho*h*Vz*Vz*Wsq*Wsq; Jinv[3][4] = rWsq*Vz*dhdp;
+	Jinv[4][0] = W*(D*dhdr + hW - Real(1.0)); Jinv[4][1] = 2*rho*h*Wsq*Wsq*Vx;           Jinv[4][2] = 2*rho*h*Wsq*Wsq*Vy;            Jinv[4][3] = 2*rho*h*Wsq*Wsq*Vz;           Jinv[4][4] = rWsq*dhdp - Real(1.0);
       }
       
       KOKKOS_INLINE_FUNCTION
-      static void linPrim2Cons(StateType& state,const SRHydro::ConsVec ref,const Real gam)
+      void cons2LinPrim(StateType& state)
       {
         using SRHydro::SimVar;
+	
+        // J*state
+	SRHydro::ConsVec lprim;
+	for (int i=0; i<5; i++) {
+	  lprim[i] = 0;
+	  for (int j=0; j<5; j++) {
+	    lprim[i] += J[i][j]*state(j);
+	  }
+	}
 
-        (void) gam;
-        
-        state(SimVar::dens) = ref[SimVar::dens];
-        state(SimVar::momx) = ref[SimVar::momx];
-        state(SimVar::momy) = ref[SimVar::momy];
-        state(SimVar::momz) = ref[SimVar::momz];
-        state(SimVar::tau) = ref[SimVar::tau];
+        state(SimVar::dens) = lprim[SimVar::dens];
+        state(SimVar::momx) = lprim[SimVar::momx];
+        state(SimVar::momy) = lprim[SimVar::momy];
+        state(SimVar::momz) = lprim[SimVar::momz];
+        state(SimVar::tau) = lprim[SimVar::tau];
+      }
+      
+      KOKKOS_INLINE_FUNCTION
+      void linPrim2Cons(StateType& state)
+      {
+        using SRHydro::SimVar;
+	
+        // Jinv*state
+	SRHydro::ConsVec cons;
+	for (int i=0; i<5; i++) {
+	  cons[i] = 0;
+	  for (int j=0; j<5; j++) {
+	    cons[i] += Jinv[i][j]*state(j);
+	  }
+	}
+
+        state(SimVar::dens) = cons[SimVar::dens];
+        state(SimVar::momx) = cons[SimVar::momx];
+        state(SimVar::momy) = cons[SimVar::momy];
+        state(SimVar::momz) = cons[SimVar::momz];
+        state(SimVar::tau) = cons[SimVar::tau];
       }
     };
 

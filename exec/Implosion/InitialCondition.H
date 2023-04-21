@@ -5,7 +5,7 @@ KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
   using Physics::Hydro::SimVar;
-  using Kokkos::Experimental::fabs;
+  using Kokkos::fabs;
   
   if ((fabs(x) + fabs(y) + fabs(z)) <= 0.15) {
     state[SimVar::dens] = 0.125;

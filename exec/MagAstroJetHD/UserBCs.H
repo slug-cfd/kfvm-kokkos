@@ -78,7 +78,7 @@ void CellSouth(const DataViewType& U,int rad,int nY,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
 {
-  using Kokkos::Experimental::sqrt;
+  using Kokkos::sqrt;
   // Void casts to ignore unused parameter warnings
   (void) U; (void) rad; (void) nY;
   (void) i; (void) k; (void) nH;
@@ -118,7 +118,7 @@ void FaceSouth(const DataViewType& U,
 	       Real x,Real y,Real z,Real t,
 	       Real state[NUM_VARS])
 {
-  using Kokkos::Experimental::sqrt;
+  using Kokkos::sqrt;
   // Void casts to ignore unused parameter warnings
   (void) U;
   (void) i; (void) k; (void) nQ;

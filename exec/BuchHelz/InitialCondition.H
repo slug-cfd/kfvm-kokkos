@@ -8,6 +8,8 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
+  using Kokkos::cos;
+  using Kokkos::sin;
   using Physics::Hydro::SimVar;
   
   (void) z;

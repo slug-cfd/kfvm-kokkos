@@ -1,0 +1,108 @@
+\documentclass{article}
+\usepackage{amsmath,amssymb,amsfonts}
+
+\begin{document}
+
+\section{Helper derivatives}
+Let $A = (D + \tau + p)$ and $B^2=A^2 - S^2$.
+\subsection{$W^{-1}$}
+\begin{align*}
+  \frac{\partial W^{-1}}{\partial D} &= \frac{S^{2}}{A^{2} B} \left(\frac{\partial p}{\partial D} + 1\right)\\
+  \frac{\partial W^{-1}}{\partial S_i} &= \frac{S^{2} \frac{\partial p}{\partial S_i} - A S_i }{A^{2} B}\\
+  \frac{\partial W^{-1}}{\partial \tau} &= \frac{S^{2}}{A^{2} B} \left(\frac{\partial p}{\partial \tau} + 1\right)
+\end{align*}
+
+\subsection{$hW$}
+\begin{align*}
+  \frac{\partial (hW)}{\partial D} &= \frac{A^{2} \left(B^{2} D \widetilde{\Gamma} \frac{\partial p}{\partial D} - B^{2} \widetilde{\Gamma} p\right) + A \left(- 2 D S^{2} \widetilde{\Gamma} p \frac{\partial p}{\partial D} - 2 D S^{2} \widetilde{\Gamma} p\right) - B D^{2} S^{2} \frac{\partial p}{\partial D} - B D^{2} S^{2}}{B^{4} D^{2}}\\
+  \frac{\partial (hW)}{\partial S_i} &= \frac{A^{2} \left(B^{2} \widetilde{\Gamma} \frac{\partial p}{\partial S_i} + 2 S_i \widetilde{\Gamma} p\right) + A \left(B D S_i - 2 S^{2} \widetilde{\Gamma} p \frac{\partial p}{\partial S_i}\right) - B D S^{2} \frac{\partial p}{\partial S_i}}{B^{4} D}\\
+  \frac{\partial (hW)}{\partial \tau} &= \frac{A^{2} B^{2} \widetilde{\Gamma} \frac{\partial p}{\partial \tau} + A \left(- 2 S^{2} \widetilde{\Gamma} p \frac{\partial p}{\partial \tau} - 2 S^{2} \widetilde{\Gamma} p\right) - B D S^{2} \frac{\partial p}{\partial \tau} - B D S^{2}}{B^{4} D}
+\end{align*}
+Split
+\begin{align*}
+  \frac{\partial (hW)}{\partial D} &= \frac{\widetilde{\Gamma} A^{2}}{B^2 D^{2}} \left(D \frac{\partial p}{\partial D} - p\right) - \frac{2 \widetilde{\Gamma} p A S^2}{B^{4} D} \left(\frac{\partial p}{\partial D} + 1\right) - \frac{S^{2}}{B^3}\left(\frac{\partial p}{\partial D} + 1\right)\\
+  \frac{\partial (hW)}{\partial S_i} &= \frac{\widetilde{\Gamma} A^{2}}{B^{4} D} \left(B^{2}  \frac{\partial p}{\partial S_i} + 2 S_i p\right) + \frac{A}{B^{4} D} \left(B D S_i - 2 S^{2} \widetilde{\Gamma} p \frac{\partial p}{\partial S_i}\right) - \frac{S^{2}}{B^3} \frac{\partial p}{\partial S_i}\\
+  \frac{\partial (hW)}{\partial \tau} &= \frac{A^{2} \widetilde{\Gamma}}{B^2 D} \frac{\partial p}{\partial \tau} - \frac{2 \widetilde{\Gamma} p A S^2}{B^{4} D} \left(\frac{\partial p}{\partial \tau} + 1\right) - \frac{S^{2}}{B^3} \left(\frac{\partial p}{\partial \tau} + 1\right)
+\end{align*}
+Substitute Lorenz factor back in using $W^2 = \frac{A^2}{B^2}$.
+\begin{align*}
+  \frac{\partial (hW)}{\partial D} &= \frac{\widetilde{\Gamma} W^{2}}{D^{2}} \left(D \frac{\partial p}{\partial D} - p\right) - \frac{2 \widetilde{\Gamma} p W^4 S^2}{D A^3} \left(\frac{\partial p}{\partial D} + 1\right) - \frac{W^2 S^{2}}{A^2 B}\left(\frac{\partial p}{\partial D} + 1\right)\\
+  \frac{\partial (hW)}{\partial S_i} &= \frac{\widetilde{\Gamma} W^2}{B^2 D} \left(B^{2}  \frac{\partial p}{\partial S_i} + 2 S_i p\right) + \frac{W^4}{D A^3} \left(B D S_i - 2 S^{2} \widetilde{\Gamma} p \frac{\partial p}{\partial S_i}\right) - \frac{W^2 S^{2}}{A^2 B} \frac{\partial p}{\partial S_i}\\
+  \frac{\partial (hW)}{\partial \tau} &= \frac{\widetilde{\Gamma} W^2}{D} \frac{\partial p}{\partial \tau} - \frac{2 \widetilde{\Gamma} p W^4 S^2}{D A^3} \left(\frac{\partial p}{\partial \tau} + 1\right) - \frac{W^2 S^{2}}{A^2 B} \left(\frac{\partial p}{\partial \tau} + 1\right)
+\end{align*}
+Substitute rest mass density back in using $\rho = \frac{D}{W}$.
+\begin{align*}
+  \frac{\partial (hW)}{\partial D} &= \frac{\widetilde{\Gamma}}{\rho^{2}} \left(D \frac{\partial p}{\partial D} - p\right) - \frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} \left(\frac{\partial p}{\partial D} + 1\right) - \frac{W^2 S^{2}}{A^2 B}\left(\frac{\partial p}{\partial D} + 1\right)\\
+  \frac{\partial (hW)}{\partial S_i} &= \frac{\widetilde{\Gamma} W}{\rho B^2} \left(B^{2}  \frac{\partial p}{\partial S_i} + 2 S_i p\right) + \frac{W^3}{\rho A^3} \left(B D S_i - 2 S^{2} \widetilde{\Gamma} p \frac{\partial p}{\partial S_i}\right) - \frac{W^2 S^{2}}{A^2 B} \frac{\partial p}{\partial S_i}\\
+  \frac{\partial (hW)}{\partial \tau} &= \frac{\widetilde{\Gamma} W}{\rho} \frac{\partial p}{\partial \tau} - \frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} \left(\frac{\partial p}{\partial \tau} + 1\right) - \frac{W^2 S^{2}}{A^2 B} \left(\frac{\partial p}{\partial \tau} + 1\right)
+\end{align*}
+Remove powers of $B$ with $B^2 = \frac{W^2}{A^2}$.
+\begin{align*}
+  \frac{\partial (hW)}{\partial D} &= \frac{\widetilde{\Gamma}}{\rho^{2}} \left(D \frac{\partial p}{\partial D} - p\right) - \frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} \left(\frac{\partial p}{\partial D} + 1\right) - B S^2\left(\frac{\partial p}{\partial D} + 1\right)\\
+  \frac{\partial (hW)}{\partial S_i} &= \frac{\widetilde{\Gamma} W}{\rho B^2} \left(B^{2}  \frac{\partial p}{\partial S_i} + 2 S_i p\right) + \frac{W^3}{\rho A^3} \left(B D S_i - 2 S^{2} \widetilde{\Gamma} p \frac{\partial p}{\partial S_i}\right) - B S^2 \frac{\partial p}{\partial S_i}\\
+  \frac{\partial (hW)}{\partial \tau} &= \frac{\widetilde{\Gamma} W}{\rho} \frac{\partial p}{\partial \tau} - \frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} \left(\frac{\partial p}{\partial \tau} + 1\right) - B S^2 \left(\frac{\partial p}{\partial \tau} + 1\right)
+\end{align*}
+Regroup
+\begin{align*}
+  \frac{\partial (hW)}{\partial D} &= \frac{\widetilde{\Gamma} W}{\rho} \left(\frac{\partial p}{\partial D} - \frac{p}{D}\right) - \left(\frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} + B S^2 \right) \left(\frac{\partial p}{\partial D} + 1\right)\\
+  \frac{\partial (hW)}{\partial S_i} &= \frac{\widetilde{\Gamma} W}{\rho} \left(\frac{\partial p}{\partial S_i} + 2 p \frac{S_i}{B^2}\right) - \frac{2 \widetilde{\Gamma} p W^3 S^{2}}{\rho A^3} \left(\frac{\partial p}{\partial S_i} - \frac{B D S_i}{2 S^{2} \widetilde{\Gamma} p}\right) - B S^2 \frac{\partial p}{\partial S_i}\\
+  \frac{\partial (hW)}{\partial \tau} &= \frac{\widetilde{\Gamma} W}{\rho} \frac{\partial p}{\partial \tau} - \left(\frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} + B S^2\right) \left(\frac{\partial p}{\partial \tau} + 1\right)
+\end{align*}
+Isolate pressure derivatives
+\begin{align*}
+  \frac{\partial (hW)}{\partial D} &= \left(\frac{\widetilde{\Gamma} W}{\rho} - \frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} - B S^2\right)\frac{\partial p}{\partial D} - \left(\frac{\widetilde{\Gamma} p}{\rho^2} + \frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} + B S^2\right)\\
+  \frac{\partial (hW)}{\partial S_i} &= \left(\frac{\widetilde{\Gamma} W}{\rho} - \frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} - B S^2\right)\frac{\partial p}{\partial S_i} + S_i\left(\frac{2 \widetilde{\Gamma} W p}{\rho B^2} + \frac{W^3B D}{\rho A^3}\right)\\
+  \frac{\partial (hW)}{\partial \tau} &= \left(\frac{\widetilde{\Gamma} W}{\rho} - \frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} - B S^2\right)\frac{\partial p}{\partial \tau} - \left(\frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} + B S^2\right)
+\end{align*}
+Define $X = \left(\frac{2 \widetilde{\Gamma} p W^3 S^2}{\rho A^3} + B S^2\right)$, $\widetilde{X} = D\left(\frac{\widetilde{\Gamma} W}{\rho} - X\right)$, and $Y = \left(\frac{2 \widetilde{\Gamma} W p}{\rho B^2} + \frac{W^3B D}{\rho A^3}\right)$
+\begin{align*}
+  \frac{\partial (hW)}{\partial D} &= \frac{\widetilde{X}}{D}\frac{\partial p}{\partial D} - \left(\frac{\widetilde{\Gamma} p}{\rho^2} + X\right)\\
+  \frac{\partial (hW)}{\partial S_i} &= \frac{\widetilde{X}}{D}\frac{\partial p}{\partial S_i} + S_i Y\\
+  \frac{\partial (hW)}{\partial \tau} &= \frac{\widetilde{X}}{D}\frac{\partial p}{\partial \tau} - X
+\end{align*}
+
+\section{Pressure derivatives}
+Substitute above into the pressure derivatives
+\begin{align*}
+  \frac{\partial p}{\partial D} &= D\frac{\partial (hW)}{\partial D} + \left(hW - 1\right)\\
+  \frac{\partial p}{\partial S_i} &= D\frac{\partial (hW)}{\partial S_i}\\
+  \frac{\partial p}{\partial \tau} &= D\frac{\partial (hW)}{\partial \tau} - 1
+\end{align*}
+to find
+\begin{align*}
+  \frac{\partial p}{\partial D} &= \widetilde{X}\frac{\partial p}{\partial D} - D\left(\frac{\widetilde{\Gamma} p}{\rho^2} + X\right) + \left(hW - 1\right)\\
+  \frac{\partial p}{\partial S_i} &= \widetilde{X}\frac{\partial p}{\partial S_i} + D Y S_i\\
+  \frac{\partial p}{\partial \tau} &= \widetilde{X}\frac{\partial p}{\partial \tau} - D X - 1
+\end{align*}
+Finally yielding
+\begin{align*}
+  \frac{\partial p}{\partial D} &= \frac{\left(hW - 1\right) - D\left(\frac{\widetilde{\Gamma} p}{\rho^2} + X\right)}{1 - \widetilde{X}} = \frac{W - D X - 1}{1 - \widetilde{X}}\\
+  \frac{\partial p}{\partial S_i} &= \frac{D Y S_i}{1 - \widetilde{X}}\\
+  \frac{\partial p}{\partial \tau} &= \frac{D X + 1}{\widetilde{X} - 1}
+\end{align*}
+
+\section{Remaining primitives}
+\subsection{Rest mass density}
+We have $\rho = D W^{-1}$ so,
+\begin{align*}
+  \frac{\partial \rho}{\partial D} &= W^{-1} + D\frac{\partial W^{-1}}{\partial D}\\
+  \frac{\partial \rho}{\partial S_i} &= D\frac{\partial W^{-1}}{\partial S_i}\\
+  \frac{\partial \rho}{\partial \tau} &= D\frac{\partial W^{-1}}{\partial \tau}
+\end{align*}
+
+\subsection{Velocity}
+We have $V_i = S_i D^{-1}h^{-1}W^{-1}$ so,
+\begin{align*}
+  \frac{\partial V_i}{\partial D} &= -V_i \left(\frac{1}{D} + \frac{1}{h} \frac{\partial h}{\partial D} + W \frac{\partial W^{-1}}{\partial D}\right)\\
+  \frac{\partial V_i}{\partial S_i} &= \frac{1}{DhW} + V_i \left(W\frac{\partial W^{-1}}{\partial S_i} - \frac{1}{h}\frac{\partial h}{\partial S_i}\right)\\
+  \frac{\partial V_i}{\partial S_j} &= V_i \left(W\frac{\partial W^{-1}}{\partial S_j} - \frac{1}{h}\frac{\partial h}{\partial S_j}\right)\\
+  \frac{\partial V_i}{\partial \tau} &= V_i \left(W\frac{\partial W^{-1}}{\partial \tau} - \frac{1}{h}\frac{\partial h}{\partial \tau}\right)
+\end{align*}
+which relies on the enthalpy derivatives from $h = 1 + \widetilde{\Gamma}\frac{p}{\rho}$
+\begin{align*}
+  \frac{\partial h}{\partial D} &= \widetilde{\Gamma}\frac{\partial}{\partial D}\left(\frac{p}{\rho}\right) = \frac{\widetilde{\Gamma}}{\rho^2}\left(\rho\frac{\partial p}{\partial D} - p\frac{\partial \rho}{\partial D}\right) \\
+  \frac{\partial h}{\partial S_i} &= \widetilde{\Gamma}\frac{\partial}{\partial S_i}\left(\frac{p}{\rho}\right) = \frac{\widetilde{\Gamma}}{\rho^2}\left(\rho\frac{\partial p}{\partial S_i} - p\frac{\partial \rho}{\partial S_i}\right) \\
+  \frac{\partial h}{\partial \tau} &= \widetilde{\Gamma}\frac{\partial}{\partial \tau}\left(\frac{p}{\rho}\right) = \frac{\widetilde{\Gamma}}{\rho^2}\left(\rho\frac{\partial p}{\partial \tau} - p\frac{\partial \rho}{\partial \tau}\right)
+\end{align*}
+
+\end{document}

@@ -8,6 +8,7 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
+  using Kokkos::sin;
   using Physics::MHD_GLM::SimVar;
   
   const Real gam = 5.0/3.0,gamm = gam - 1.0;

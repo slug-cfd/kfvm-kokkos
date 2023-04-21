@@ -9,7 +9,7 @@ KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
   using Physics::MHD_GLM::SimVar;
-  using Kokkos::Experimental::sqrt;
+  using Kokkos::sqrt;
   
   (void) x; (void) y; (void) z;
   

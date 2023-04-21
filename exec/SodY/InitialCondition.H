@@ -8,7 +8,7 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   
   (void) x;
   (void) z;
-  Real ay = Kokkos::Experimental::fabs(y);
+  Real ay = Kokkos::fabs(y);
   state[SimVar::dens] = ay<0.5 ? 1.0 : 0.125;
   state[SimVar::momx] = 0.0;
   state[SimVar::momy] = 0.0;

@@ -9,7 +9,7 @@ KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
   using Physics::MHD_GLM::SimVar;
-  using Kokkos::Experimental::sqrt;
+  using Kokkos::sqrt;
   
   const Real gam = 1.4,gamm = gam - 1.0;
   const Real rho = 1.0,p = 1.0,A0 = 0.001;

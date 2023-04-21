@@ -23,23 +23,34 @@ namespace KFVM {
   namespace Physics {
 
     template<class StateType>
-    struct VarConvert<EquationType::Hydro,StateType>
+    class VarConvert<EquationType::Hydro,StateType>
     {
+      const Real gamm;
+      const Real rho,u,v,w,vsq;
+      
+    public:
       KOKKOS_INLINE_FUNCTION
-      static void cons2LinPrim(StateType& state,const Hydro::ConsVec ref,Real gam)
+      VarConvert(const Hydro::ConsVec ref_,Real gam_):
+	gamm(gam_ - Real(1.0)),
+        rho(ref_[Hydro::SimVar::dens]),
+        u(ref_[Hydro::SimVar::momx]/rho),
+	v(ref_[Hydro::SimVar::momy]/rho),
+	w(ref_[Hydro::SimVar::momz]/rho),
+	vsq(Real(0.5)*(u*u + v*v + w*w))
+      {}
+	
+      
+      KOKKOS_INLINE_FUNCTION
+      void cons2LinPrim(StateType& state)
       {
         using Hydro::SimVar;
 	
-        Real gm = gam - Real(1.0);
-        Real rho = ref[SimVar::dens];
-        Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
-        Real vsq = Real(0.5)*(u*u + v*v + w*w);
         // Doing etot first allows state to be overwritten safely
-        state(SimVar::etot) = gm*(vsq*state(SimVar::dens) -
-                                  u*state(SimVar::momx) - 
-                                  v*state(SimVar::momy) - 
-                                  w*state(SimVar::momz) +
-                                  state(SimVar::etot));
+        state(SimVar::etot) = gamm*(vsq*state(SimVar::dens) -
+				    u*state(SimVar::momx) - 
+				    v*state(SimVar::momy) - 
+				    w*state(SimVar::momz) +
+				    state(SimVar::etot));
       
         state(SimVar::momx) = (state(SimVar::momx) - u*state(SimVar::dens))/rho;
         state(SimVar::momy) = (state(SimVar::momy) - v*state(SimVar::dens))/rho;
@@ -47,20 +58,16 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static void linPrim2Cons(StateType& state,const Hydro::ConsVec ref,Real gam)
+      void linPrim2Cons(StateType& state)
       {
         using Hydro::SimVar;
 	
-        Real gm = gam - Real(1.0);
-        Real rho = ref[SimVar::dens];
-        Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
-        Real vsq = (u*u + v*v + w*w)/Real(2.0);
         // Doing etot first allows state to be overwritten safely
         state(SimVar::etot) = (vsq*state(SimVar::dens) +
                                rho*u*state(SimVar::momx) + 
                                rho*v*state(SimVar::momy) + 
                                rho*w*state(SimVar::momz) +
-                               state(SimVar::etot)/gm);
+                               state(SimVar::etot)/gamm);
       
         state(SimVar::momx) = (rho*state(SimVar::momx) + u*state(SimVar::dens));
         state(SimVar::momy) = (rho*state(SimVar::momy) + v*state(SimVar::dens));

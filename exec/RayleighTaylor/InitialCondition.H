@@ -9,8 +9,8 @@ KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
   using Physics::Hydro::SimVar;
-  using Kokkos::Experimental::sqrt;
-  using Kokkos::Experimental::cos;
+  using Kokkos::sqrt;
+  using Kokkos::cos;
 
   const Real gam = 1.4,gamm = 0.4;
   const Real rho = y <= 0.5 ? 2.0 : 1.0;

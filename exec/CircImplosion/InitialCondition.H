@@ -5,9 +5,9 @@ KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
   using Physics::Hydro::SimVar;
-  using Kokkos::Experimental::pow;
-  using Kokkos::Experimental::cos;
-  using Kokkos::Experimental::atan2;
+  using Kokkos::pow;
+  using Kokkos::cos;
+  using Kokkos::atan2;
 
   const Real th = atan2(x,y),a0 = Real(1.0/120.0),m = 47.0;
   const Real Rsq1 = pow(Real(2.0/3.0) + a0*cos(m*th),2),Rsq2 = 0.64;

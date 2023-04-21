@@ -23,3 +23,6 @@ python/__pycache__
 *.nvvp
 compile_commands.json
 .cache
+*.pdf
+*.aux
+*.log

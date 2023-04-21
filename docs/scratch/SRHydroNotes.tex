@@ -1,0 +1,100 @@
+\documentclass{article}
+\usepackage{amsmath,amssymb,amsfonts}
+
+\begin{document}
+\section{Variables used}
+There are a variety of choices for the variables in (special) relativistic hydrodynamics. In particular, various choices of conservative variables are in use. All of these are theoretically equivalent but have different numerical characteristics.
+
+\subsection{Primitive and thermal variables}
+The primitive variables are the rest mass density $\rho$, components of the $3-$velocity $v_j$, and pressure $p$. Additionally there is the Lorenz factor
+\begin{equation}
+  W = \frac{1}{\sqrt{1 - v^2},}
+\end{equation}
+where $v^2 = v_jv_j$, the specific internal energy $e$, and the specific enthalpy
+\begin{equation}
+  h = 1 + e + \frac{p}{\rho}.
+\end{equation}
+The rest mass density, pressure, and specific internal energy are not all indepedent so some equation of state $p = p(\rho,e)$ must be specified.
+
+\subsubsection{Ideal EOS}
+If we additionally have an ideal $\Gamma-$law equation of state the pressure becomes
+\begin{equation}
+  p = \left(\Gamma - 1\right)\rho e
+\end{equation}
+and the specific enthalpy can be expressed as
+\begin{equation}
+  h = 1 + \Gamma e = 1 + \left(\frac{\Gamma}{\Gamma - 1}\right)\frac{p}{\rho}.
+\end{equation}
+
+\subsection{Ryu, Chattopadhyay, and Choi (RC) EOS}
+The RC EOS proposed by Ryu et. al. approximates Synge's exact relativistic EOS for perfect fluids. This EOS is written in terms of the internal energy (not specific) with rest mass energy density included. To avoid collision with the remainder of this document this will be denoted $\hat{e}$. As such we have
+\begin{align}
+  \hat{e} &= \rho e + \rho \\
+  h &= \frac{\hat{e} + p}{\rho} \\
+  \Theta &= \frac{p}{\rho},
+\end{align}
+where $\Theta$ is a temperature-like variable.
+
+The RC EOS can either be written in terms of the pressure as
+\begin{align}
+  \frac{p}{\hat{e} - \rho} = \frac{3p + 2\rho}{9p + 3\rho} \\
+  \frac{p}{\rho e} = \frac{3p + 2\rho}{9p + 3\rho},
+\end{align}
+or the specific enthalpy as
+\begin{equation}
+  h = 2\frac{6\Theta^2 + 4\Theta + 1}{3\Theta + 2}.
+\end{equation}
+
+\subsection{Conservative variables}
+This work follows the conservative variables proposed in (somewhere). They are
+\begin{align}
+  D &= \rho W \\
+  S_j &= \rho h W^2 v_j \\
+  \tau &= E - D = \rho h W^2 - \rho W
+\end{align}
+
+\subsection{Recovery of primitive variables}
+The conservative variables can be written rather simply in terms of the primitive variables. On the other hand, there is no closed form expression for the primitive variables in terms of the conservative variables. Instead some nonlinear equation must be solved.
+
+\subsubsection{Ideal EOS}
+
+\subsubsection{RC EOS}
+For the RC EOS we solve for the Lorenz factor from
+\begin{align}
+  0 = F(W) & = M\sqrt{W^2 - 1}\left[3EW\left(8W^2 - 1\right) + 2D\left(1 - 4W^2\right)\right] \nonumber \\
+           & - 3W^2\left[4\left(M^2 + E^2\right)W^2 - \left(M^2 + 4E^2\right)\right] \\
+           & - 2D\left(4EW - D\right)\left(W^2 - 1\right), \nonumber
+\end{align}
+which reportedly can be reliably obtained from a few NR iterations using the initial guess $W^{(0)} = 1$.
+
+\section{Governing equations}
+
+\section{Prim2Cons and Cons2Prim Jacobians}
+
+\subsection{Prim2Cons}
+The $D$ row is:
+\begin{equation}
+  \begin{pmatrix}W & - V_x W^{3} \rho & - V_y W^{3} \rho & - V_z W^{3} \rho & 0\end{pmatrix}
+\end{equation}
+
+The $\tau$ row is:
+\begin{equation}
+  \begin{pmatrix}\frac{3 W^{2} \Theta h}{3 \Theta + 2} + W^{2} h + \frac{W^{2} \rho \left(- \frac{24 \Theta^{2}}{\rho} - \frac{8 \Theta}{\rho}\right)}{3 \Theta + 2} - W \\ - 2 V_{x} W^{4} h \rho + V_{x} W^{3} \rho \\ - 2 V_{y} W^{4} h \rho + V_{y} W^{3} \rho \\ - 2 V_{z} W^{4} h \rho + V_{z} W^{3} \rho \\ - \frac{3 W^{2} h}{3 \Theta + 2} + \frac{W^{2} \rho \left(\frac{24 \Theta}{\rho} + \frac{8}{\rho}\right)}{3 \Theta + 2}\end{pmatrix}^T
+\end{equation}
+
+The $S_x$ row is:
+\begin{equation}
+  \begin{pmatrix}\frac{3 V_{x} W^{2} \Theta h}{3 \Theta + 2} + V_{x} W^{2} h + \frac{V_{x} W^{2} \rho \left(- \frac{24 \Theta^{2}}{\rho} - \frac{8 \Theta}{\rho}\right)}{3 \Theta + 2} \\ - 2 V_{x}^{2} W^{4} h \rho + W^{2} h \rho \\ - 2 V_{x} V_{y} W^{4} h \rho \\ - 2 V_{x} V_{z} W^{4} h \rho \\ - \frac{3 V_{x} W^{2} h}{3 \Theta + 2} + \frac{V_{x} W^{2} \rho \left(\frac{24 \Theta}{\rho} + \frac{8}{\rho}\right)}{3 \Theta + 2}\end{pmatrix}^T
+\end{equation}
+
+The $S_y$ row is:
+\begin{equation}
+  \begin{pmatrix}\frac{3 V_{y} W^{2} \Theta h}{3 \Theta + 2} + V_{y} W^{2} h + \frac{V_{y} W^{2} \rho \left(- \frac{24 \Theta^{2}}{\rho} - \frac{8 \Theta}{\rho}\right)}{3 \Theta + 2} \\ - 2 V_{x} V_{y} W^{4} h \rho \\ - 2 V_{y}^{2} W^{4} h \rho + W^{2} h \rho \\ - 2 V_{y} V_{z} W^{4} h \rho \\ - \frac{3 V_{y} W^{2} h}{3 \Theta + 2} + \frac{V_{y} W^{2} \rho \left(\frac{24 \Theta}{\rho} + \frac{8}{\rho}\right)}{3 \Theta + 2}\end{pmatrix}^T
+\end{equation}
+
+The $S_z$ row is:
+\begin{equation}
+  \begin{pmatrix}\frac{3 V_{z} W^{2} \Theta h}{3 \Theta + 2} + V_{z} W^{2} h + \frac{V_{z} W^{2} \rho \left(- \frac{24 \Theta^{2}}{\rho} - \frac{8 \Theta}{\rho}\right)}{3 \Theta + 2} \\ - 2 V_{x} V_{z} W^{4} h \rho \\ - 2 V_{y} V_{z} W^{4} h \rho \\ - 2 V_{z}^{2} W^{4} h \rho + W^{2} h \rho \\ - \frac{3 V_{z} W^{2} h}{3 \Theta + 2} + \frac{V_{z} W^{2} \rho \left(\frac{24 \Theta}{\rho} + \frac{8}{\rho}\right)}{3 \Theta + 2}\end{pmatrix}^T
+\end{equation}
+
+\end{document}

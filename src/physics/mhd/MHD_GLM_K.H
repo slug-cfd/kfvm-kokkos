@@ -22,46 +22,52 @@ namespace KFVM {
   namespace Physics {
 
     template<class StateType>
-    struct VarConvert<EquationType::MHD_GLM,StateType>
-    {      
+    class VarConvert<EquationType::MHD_GLM,StateType>
+    {
+      const Real gamm;
+      const Real rho,u,v,w,bx,by,bz,rPsi,vsq;
+      
+    public:
       KOKKOS_INLINE_FUNCTION
-      static void cons2LinPrim(StateType& state,const MHD_GLM::ConsVec ref,Real gam)
+      VarConvert(const MHD_GLM::ConsVec ref_,Real gam_):
+	gamm(gam_ - Real(1.0)),
+        rho(ref_[MHD_GLM::SimVar::dens]),
+        u(ref_[MHD_GLM::SimVar::momx]/rho),
+	v(ref_[MHD_GLM::SimVar::momy]/rho),
+	w(ref_[MHD_GLM::SimVar::momz]/rho),
+        bx(ref_[MHD_GLM::SimVar::magx]),
+	by(ref_[MHD_GLM::SimVar::magy]),
+	bz(ref_[MHD_GLM::SimVar::magz]),
+	rPsi(ref_[MHD_GLM::SimVar::psi]),
+	vsq((u*u + v*v + w*w)/Real(2.0))
+      {}
+      
+      KOKKOS_INLINE_FUNCTION
+      void cons2LinPrim(StateType& state)
       {
         using MHD_GLM::SimVar;
         
-        Real gm = gam - Real(1.0);
-        Real rho = ref[SimVar::dens];
-        Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
-        Real bx = ref[SimVar::magx],by = ref[SimVar::magy],bz = ref[SimVar::magz];
-	Real rPsi = ref[SimVar::psi];
-        Real vsq = (u*u + v*v + w*w)/Real(2.0);
         // Doing etot first allows state to be overwritten safely
-        state(SimVar::etot) = gm*(vsq*state(SimVar::dens) -
-                                  u*state(SimVar::momx) -
-                                  v*state(SimVar::momy) -
-                                  w*state(SimVar::momz) -
-                                  bx*state(SimVar::magx) -
-                                  by*state(SimVar::magy) -
-                                  bz*state(SimVar::magz) +
-                                  state(SimVar::etot) -
-				  rPsi*state(SimVar::psi));
-      
+        state(SimVar::etot) = gamm*(vsq*state(SimVar::dens) -
+				    u*state(SimVar::momx) -
+				    v*state(SimVar::momy) -
+				    w*state(SimVar::momz) -
+				    bx*state(SimVar::magx) -
+				    by*state(SimVar::magy) -
+				    bz*state(SimVar::magz) +
+				    state(SimVar::etot) -
+				    rPsi*state(SimVar::psi));
+	
         state(SimVar::momx) = (state(SimVar::momx) - u*state(SimVar::dens))/rho;
         state(SimVar::momy) = (state(SimVar::momy) - v*state(SimVar::dens))/rho;
         state(SimVar::momz) = (state(SimVar::momz) - w*state(SimVar::dens))/rho;
       }
       
       KOKKOS_INLINE_FUNCTION
-      static void linPrim2Cons(StateType& state,const MHD_GLM::ConsVec ref,Real gam)
+      void linPrim2Cons(StateType& state)
       {
         using MHD_GLM::SimVar;
         
-        Real gm = gam - Real(1.0);
-        Real rho = ref[SimVar::dens];
-        Real u = ref[SimVar::momx]/rho,v = ref[SimVar::momy]/rho,w = ref[SimVar::momz]/rho;
-        Real bx = ref[SimVar::magx],by = ref[SimVar::magy],bz = ref[SimVar::magz];
-	Real rPsi = ref[SimVar::psi];
-        Real vsq = (u*u + v*v + w*w)/Real(2.0);
         // Doing etot first allows state to be overwritten safely
         state(SimVar::etot) = (vsq*state(SimVar::dens) +
                                rho*u*state(SimVar::momx) + 
@@ -70,7 +76,7 @@ namespace KFVM {
                                bx*state(SimVar::magx) + 
                                by*state(SimVar::magy) + 
                                bz*state(SimVar::magz) +
-                               state(SimVar::etot)/gm +
+                               state(SimVar::etot)/gamm +
 			       rPsi*state(SimVar::psi));
       
         state(SimVar::momx) = (rho*state(SimVar::momx) + u*state(SimVar::dens));
