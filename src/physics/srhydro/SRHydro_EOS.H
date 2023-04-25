@@ -95,11 +95,12 @@ namespace KFVM {
       static Real pres(const Real gam,const int maxIt,const SRHydro::ConsVec U)
       {
 	using Kokkos::fabs;
+	using Kokkos::fmax;
 	using Kokkos::sqrt;
 	using SRHydro::SimVar;
 
 	// Set tolerances
-	const Real rtol = Real(1.e-5),atol = Real(1.e-12);
+	const Real rtol = Real(1.e-10);
 
 	// Pull out useful quantities
 	const Real gamm = gam - Real(1.0);
@@ -123,7 +124,7 @@ namespace KFVM {
 	  const Real phat = gamm*rho*ei;
 
 	  // test p for convergence
-	  if (rtol > (atol + fabs(p - phat))) {
+	  if (rtol > fabs(p - phat)/fmax(p,phat)) {
 	    break;
 	  }
 

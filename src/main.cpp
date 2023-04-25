@@ -45,7 +45,8 @@ int main(int argc, char* argv[]) {
       }
 
       // debug
-      KFVM::Real vx = 0.5,vy = 0.0,vz = 0.0,W = 1.0/Kokkos::sqrt(1.0 - (vx*vx + vy*vy + vz*vz));
+      KFVM::Real vx = 0.1,vy = 0.2,vz = -0.15,W = 1.0/Kokkos::sqrt(1.0 - (vx*vx + vy*vy + vz*vz));
+      std::printf("W = %lf\n",W);
       KFVM::Physics::SRHydro::PrimVec prim = {1.0,vx,vy,vz,W,1.0};
       KFVM::Physics::SRHydro::ConsVec cons;
       KFVM::Physics::EOS<KFVM::EquationType::SRHydro>::prim2cons(4.0/3.0,prim,cons);
@@ -56,12 +57,18 @@ int main(int argc, char* argv[]) {
 		  varConv.J[2][0],varConv.J[2][1],varConv.J[2][2],varConv.J[2][3],varConv.J[2][4],
 		  varConv.J[3][0],varConv.J[3][1],varConv.J[3][2],varConv.J[3][3],varConv.J[3][4],
 		  varConv.J[4][0],varConv.J[4][1],varConv.J[4][2],varConv.J[4][3],varConv.J[4][4]);
-      std::printf("Jinv = np.array([[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e]]); J @ Jinv\n",
+      std::printf("Jinv = np.array([[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e]]); ",
 		  varConv.Jinv[0][0],varConv.Jinv[0][1],varConv.Jinv[0][2],varConv.Jinv[0][3],varConv.Jinv[0][4],
 		  varConv.Jinv[1][0],varConv.Jinv[1][1],varConv.Jinv[1][2],varConv.Jinv[1][3],varConv.Jinv[1][4],
 		  varConv.Jinv[2][0],varConv.Jinv[2][1],varConv.Jinv[2][2],varConv.Jinv[2][3],varConv.Jinv[2][4],
 		  varConv.Jinv[3][0],varConv.Jinv[3][1],varConv.Jinv[3][2],varConv.Jinv[3][3],varConv.Jinv[3][4],
 		  varConv.Jinv[4][0],varConv.Jinv[4][1],varConv.Jinv[4][2],varConv.Jinv[4][3],varConv.Jinv[4][4]);
+      std::printf("Jt = np.array([[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e]])\n",
+		  varConv.Jt[0][0],varConv.Jt[0][1],varConv.Jt[0][2],varConv.Jt[0][3],varConv.Jt[0][4],
+		  varConv.Jt[1][0],varConv.Jt[1][1],varConv.Jt[1][2],varConv.Jt[1][3],varConv.Jt[1][4],
+		  varConv.Jt[2][0],varConv.Jt[2][1],varConv.Jt[2][2],varConv.Jt[2][3],varConv.Jt[2][4],
+		  varConv.Jt[3][0],varConv.Jt[3][1],varConv.Jt[3][2],varConv.Jt[3][3],varConv.Jt[3][4],
+		  varConv.Jt[4][0],varConv.Jt[4][1],varConv.Jt[4][2],varConv.Jt[4][3],varConv.Jt[4][4]);
 
       // Initialize PDI reading YAML file
       PC_tree_t pdi_conf = PC_parse_path(ps.pdiConf.c_str());

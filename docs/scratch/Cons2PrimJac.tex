@@ -105,4 +105,24 @@ which relies on the enthalpy derivatives from $h = 1 + \widetilde{\Gamma}\frac{p
   \frac{\partial h}{\partial \tau} &= \widetilde{\Gamma}\frac{\partial}{\partial \tau}\left(\frac{p}{\rho}\right) = \frac{\widetilde{\Gamma}}{\rho^2}\left(\rho\frac{\partial p}{\partial \tau} - p\frac{\partial \rho}{\partial \tau}\right)
 \end{align*}
 
+\section{Pressure derivatives (SymPy)}
+Cosmetic changes,
+\begin{align*}
+  \frac{\partial p}{\partial D} &= \frac{A^{3} \left(- W^{4} + W^{3} + W^{2} \widetilde{\Gamma} \frac{\partial p}{\partial D}\right) - D S^{2} W \frac{\partial p}{\partial D} - D S^{2} W - 2 S^{2} \widetilde{\Gamma} p \frac{\partial p}{\partial D} - 2 S^{2} \widetilde{\Gamma} p}{A^{3} W^{4}} \\
+  \frac{\partial p}{\partial S_x} &= \frac{\widetilde{\Gamma} \left(A^{3} W^{2} \frac{\partial p}{\partial S_{x}} + \left(A S_{x} - S^{2} \frac{\partial p}{\partial S_{x}}\right) p\right) + \left(A S_{x} - S^{2} \frac{\partial p}{\partial S_{x}}\right) \left(D W + \widetilde{\Gamma} p\right)}{A^{3} W^{4}} \\
+  \frac{\partial p}{\partial \tau} &= \frac{- A^{3} W^{4} - S^{2} \left(D W + \widetilde{\Gamma} p\right) \left(\frac{\partial p}{\partial \tau} + 1\right) + \widetilde{\Gamma} \left(A^{3} W^{2} \frac{\partial p}{\partial \tau} - S^{2} \left(\frac{\partial p}{\partial \tau} + 1\right) p\right)}{A^{3} W^{4}}
+\end{align*}
+Gather like terms and split up fractions,
+\begin{align*}
+  \frac{\partial p}{\partial D} &= \frac{\widetilde{\Gamma}}{W^2} \frac{\partial p}{\partial D} + \frac{1 - W}{W} - \frac{\left(D S^{2} W  + 2 S^{2} \widetilde{\Gamma} p\right)}{A^{3} W^{4}}\left(\frac{\partial p}{\partial D} + 1\right) \\
+  \frac{\partial p}{\partial S_x} &= \frac{\widetilde{\Gamma}}{W^2}\frac{\partial p}{\partial S_{x}} + \frac{\left(D W + 2 \widetilde{\Gamma} p\right)}{A^{3} W^{4}}\left(A S_{x} - S^{2} \frac{\partial p}{\partial S_{x}}\right) \\
+  \frac{\partial p}{\partial \tau} &= \frac{\widetilde{\Gamma}}{W^2}\frac{\partial p}{\partial \tau} - \frac{\left(D W S^2 + 2\widetilde{\Gamma} p S^2\right)}{A^{3} W^{4}}\left(\frac{\partial p}{\partial \tau} + 1\right) - 1
+\end{align*}
+Define $X = 1 + \frac{\left(D S^{2} W  + 2 S^{2} \widetilde{\Gamma} p\right)}{A^{3} W^{4}}$ and $Y = \frac{\left(D W + 2 \widetilde{\Gamma} p\right)}{A^{3} W^{4}}$, then isolate pressure derivatives,
+\begin{align*}
+  \frac{\partial p}{\partial D} &= \frac{W^{-1} - X}{X - \frac{\widetilde{\Gamma}}{W^2}} \\
+  \frac{\partial p}{\partial S_x} &= \frac{Y A S_{x}}{1 + S^2 Y - \frac{\widetilde{\Gamma}}{W^2}} \\
+  \frac{\partial p}{\partial \tau} &= -\frac{X}{X - \frac{\widetilde{\Gamma}}{W^2}}
+\end{align*}
+
 \end{document}
