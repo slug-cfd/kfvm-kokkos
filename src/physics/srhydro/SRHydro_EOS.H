@@ -6,6 +6,7 @@
 
 #include "SRHydro_SimVar.H"
 #include "../../Types.H"
+#include "../../FluidProperties.H"
 #include "../EquationTypes.H"
 
 namespace KFVM {
@@ -172,11 +173,11 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real weno(const SRHydro::ConsVec U)
+      static Real weno(const SRHydro::ConsVec U,const FluidProperties& fProp)
       {
 	using SRHydro::SimVar;
         
-        return pres(Real(5.0/3.0),0,U);
+        return pres(fProp.gamma,10,U);
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -195,16 +196,18 @@ namespace KFVM {
       static Real positivity(const SRHydro::ConsVec U)
       {
         using Kokkos::fmin;
+        using Kokkos::sqrt;
 	using SRHydro::SimVar;
-        
-        // Ensure that density and pressure are positive
-        // Note that this interface does *not* have access to gamma
-        // however, we can use any placeholder gamma here regardless
-        // (minor hack, and can we really?)
-        const Real p = pres(Real(5.0)/Real(3.0),0,U);
 
-        // This should also check that velocities are bounded by 1...
-        return fmin(fmin(U[SimVar::dens],U[SimVar::tau]),p);
+        // Calculate lower bound on tau
+        const Real tauMin = sqrt(U[SimVar::dens]*U[SimVar::dens] +
+                                 U[SimVar::momx]*U[SimVar::momx] +
+                                 U[SimVar::momy]*U[SimVar::momy] +
+                                 U[SimVar::momz]*U[SimVar::momz]) - U[SimVar::dens];
+
+        // Note that the bound on tau also guarantees positive pressure
+        // and subluminal velocities
+        return fmin(U[SimVar::dens],U[SimVar::tau] - tauMin);
       }
     };
     

@@ -510,6 +510,8 @@ namespace KFVM {
 #endif
 	  }
 	}
+
+        // This hard floor on tau is overly restrictive, unsure how to remove though...
         minTau = fmax(minTau,1.0001*(sqrt(U(KFVM_D_DECL(i,j,k),SimVar::dens)*U(KFVM_D_DECL(i,j,k),SimVar::dens) +
 					  U(KFVM_D_DECL(i,j,k),SimVar::momx)*U(KFVM_D_DECL(i,j,k),SimVar::momx) +
 					  U(KFVM_D_DECL(i,j,k),SimVar::momy)*U(KFVM_D_DECL(i,j,k),SimVar::momy) +

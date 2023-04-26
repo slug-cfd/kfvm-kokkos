@@ -234,8 +234,8 @@ namespace KFVM {
 	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
             uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-          EOS<::EquationType::MHD_GLM>::cons2prim(fProp.gamma,uL,vL);
-          EOS<::EquationType::MHD_GLM>::cons2prim(fProp.gamma,uR,vR);
+          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uL,vL);
+          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uR,vR);
           
 	  // Calculate flux
 	  Real vq = MHD_GLM_RS<rst>::RiemannSolve_Z(fProp.gamma,fProp.ch_glm,uL,uR,vL,vR,F);

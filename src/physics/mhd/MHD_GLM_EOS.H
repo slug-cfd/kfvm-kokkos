@@ -4,6 +4,7 @@
 #include <Kokkos_Core.hpp>
 
 #include "../../Types.H"
+#include "../../FluidProperties.H"
 #include "MHD_GLM_SimVar.H"
 #include "../EquationTypes.H"
 
@@ -77,10 +78,10 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real weno(const MHD_GLM::ConsVec U)
+      static Real weno(const MHD_GLM::ConsVec U,const FluidProperties& fProp)
       {
 	using MHD_GLM::SimVar;
-        return eint(U);
+        return prsg(fProp.gamma,U);
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -92,26 +93,26 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real prsg(Real gamma,const MHD_GLM::ConsVec U)
+      static Real prsg(const Real gamma,const MHD_GLM::ConsVec U)
       {
         return (gamma - Real(1.0))*eint(U);
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real pres(Real gamma,const MHD_GLM::ConsVec U)
+      static Real pres(const Real gamma,const MHD_GLM::ConsVec U)
       {  
         return prsg(gamma,U) + prsb(U);
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real soundspeed(Real gamma,const MHD_GLM::ConsVec U)
+      static Real soundspeed(const Real gamma,const MHD_GLM::ConsVec U)
       {
 	using MHD_GLM::SimVar;
         return Kokkos::sqrt(gamma*prsg(gamma,U)/U[SimVar::dens]);
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real fastMagSonic(Real gamma,const MHD_GLM::ConsVec U,Real bl)
+      static Real fastMagSonic(const Real gamma,const MHD_GLM::ConsVec U,Real bl)
       {
 	using MHD_GLM::SimVar;
 	using Kokkos::sqrt;
@@ -123,19 +124,19 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real fastMagSonicX(Real gamma,const MHD_GLM::ConsVec U)
+      static Real fastMagSonicX(const Real gamma,const MHD_GLM::ConsVec U)
       {
         return fastMagSonic(gamma,U,U[MHD_GLM::SimVar::magx]);
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real fastMagSonicY(Real gamma,const MHD_GLM::ConsVec U)
+      static Real fastMagSonicY(const Real gamma,const MHD_GLM::ConsVec U)
       {
         return fastMagSonic(gamma,U,U[MHD_GLM::SimVar::magy]);
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real fastMagSonicZ(Real gamma,const MHD_GLM::ConsVec U)
+      static Real fastMagSonicZ(const Real gamma,const MHD_GLM::ConsVec U)
       {
         return fastMagSonic(gamma,U,U[MHD_GLM::SimVar::magz]);
       }

@@ -305,13 +305,17 @@ namespace KFVM {
     struct RK_WenoSelect_K {
       UViewType U,Uprev;
       WViewType W;
+      FluidProperties fProp;
 
       RK_WenoSelect_K(const UViewType& U_,
 		      const UViewType& Uprev_,
-		      const WViewType& W_):
+		      const WViewType& W_,
+                      const FluidProperties& fProp_):
 	U(U_),
 	Uprev(Uprev_),
-	W(W_) {}
+	W(W_),
+        fProp(fProp_)
+      {}
 
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
@@ -323,9 +327,9 @@ namespace KFVM {
 	  u0[nV] = Uprev(KFVM_D_DECL(i,j,k),nV);
 	  u1[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
-	Real e0 = Physics::EOS<eqType>::weno(u0);
-	Real e1 = Physics::EOS<eqType>::weno(u1);
-	W(KFVM_D_DECL(i,j,k)) = fabs(e1 - e0)/fmin(e0,e1);
+	Real w0 = Physics::EOS<eqType>::weno(u0,fProp);
+	Real w1 = Physics::EOS<eqType>::weno(u1,fProp);
+	W(KFVM_D_DECL(i,j,k)) = fabs(w1 - w0)/fmin(w0,w1);
       }
     };
     

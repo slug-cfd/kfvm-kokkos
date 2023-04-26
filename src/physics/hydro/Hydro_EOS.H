@@ -5,6 +5,7 @@
 
 #include "Hydro_SimVar.H"
 #include "../../Types.H"
+#include "../../FluidProperties.H"
 #include "../EquationTypes.H"
 
 namespace KFVM {
@@ -60,10 +61,10 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real weno(const Hydro::ConsVec U)
+      static Real weno(const Hydro::ConsVec U,const FluidProperties& fProp)
       {
 	using Hydro::SimVar;
-        return eint(U);
+        return pres(fProp.gamma,U);
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -76,13 +77,13 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real pres(Real gamma,const Hydro::ConsVec U)
+      static Real pres(const Real gamma,const Hydro::ConsVec U)
       {  
         return (gamma - Real(1.0))*eint(U);
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real soundspeed(Real gamma,const Hydro::ConsVec U)
+      static Real soundspeed(const Real gamma,const Hydro::ConsVec U)
       {
 	using Hydro::SimVar;
         using Kokkos::sqrt;

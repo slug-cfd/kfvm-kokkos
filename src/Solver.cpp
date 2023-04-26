@@ -203,7 +203,8 @@ namespace KFVM {
 	errEst = errNew;
 
 	// Update the weno selector
-	Kokkos::parallel_for("WenoSelector",cellRng,Numeric::RK_WenoSelect_K<decltype(U),decltype(wenoSelect)>(U,Uprev,wenoSelect));
+	Kokkos::parallel_for("WenoSelector",cellRng,
+                             Numeric::RK_WenoSelect_K<decltype(U),decltype(wenoSelect)>(U,Uprev,wenoSelect,ps.fluidProp));
 	
 	Kokkos::deep_copy(Uprev,U);
 	break;

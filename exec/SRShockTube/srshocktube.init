@@ -16,7 +16,7 @@ stencil:lfac 24
 
 # Set fluid properties
 properties:gamma 1.333333333333
-properties:wenothresh -1.0
+properties:wenothresh 10.0
 
 # Output settings
 output:pdiconf ../../user/pdi_srhydro_xdmf.yml
