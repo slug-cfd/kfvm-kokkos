@@ -45,30 +45,36 @@ int main(int argc, char* argv[]) {
       }
 
       // debug
-      KFVM::Real vx = 0.1,vy = 0.2,vz = -0.15,W = 1.0/Kokkos::sqrt(1.0 - (vx*vx + vy*vy + vz*vz));
-      std::printf("W = %lf\n",W);
-      KFVM::Physics::SRHydro::PrimVec prim = {1.0,vx,vy,vz,W,1.0};
-      KFVM::Physics::SRHydro::ConsVec cons;
-      KFVM::Physics::EOS<KFVM::EquationType::SRHydro>::prim2cons(4.0/3.0,prim,cons);
-      KFVM::Physics::VarConvert<KFVM::EquationType::SRHydro,CallVec> varConv(cons,4.0/3.0);
-      std::printf("\nJ = np.array([[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e]]); ",
-		  varConv.J[0][0],varConv.J[0][1],varConv.J[0][2],varConv.J[0][3],varConv.J[0][4],
-		  varConv.J[1][0],varConv.J[1][1],varConv.J[1][2],varConv.J[1][3],varConv.J[1][4],
-		  varConv.J[2][0],varConv.J[2][1],varConv.J[2][2],varConv.J[2][3],varConv.J[2][4],
-		  varConv.J[3][0],varConv.J[3][1],varConv.J[3][2],varConv.J[3][3],varConv.J[3][4],
-		  varConv.J[4][0],varConv.J[4][1],varConv.J[4][2],varConv.J[4][3],varConv.J[4][4]);
-      std::printf("Jinv = np.array([[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e]]); ",
-		  varConv.Jinv[0][0],varConv.Jinv[0][1],varConv.Jinv[0][2],varConv.Jinv[0][3],varConv.Jinv[0][4],
-		  varConv.Jinv[1][0],varConv.Jinv[1][1],varConv.Jinv[1][2],varConv.Jinv[1][3],varConv.Jinv[1][4],
-		  varConv.Jinv[2][0],varConv.Jinv[2][1],varConv.Jinv[2][2],varConv.Jinv[2][3],varConv.Jinv[2][4],
-		  varConv.Jinv[3][0],varConv.Jinv[3][1],varConv.Jinv[3][2],varConv.Jinv[3][3],varConv.Jinv[3][4],
-		  varConv.Jinv[4][0],varConv.Jinv[4][1],varConv.Jinv[4][2],varConv.Jinv[4][3],varConv.Jinv[4][4]);
-      std::printf("Jt = np.array([[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e]])\n",
-		  varConv.Jt[0][0],varConv.Jt[0][1],varConv.Jt[0][2],varConv.Jt[0][3],varConv.Jt[0][4],
-		  varConv.Jt[1][0],varConv.Jt[1][1],varConv.Jt[1][2],varConv.Jt[1][3],varConv.Jt[1][4],
-		  varConv.Jt[2][0],varConv.Jt[2][1],varConv.Jt[2][2],varConv.Jt[2][3],varConv.Jt[2][4],
-		  varConv.Jt[3][0],varConv.Jt[3][1],varConv.Jt[3][2],varConv.Jt[3][3],varConv.Jt[3][4],
-		  varConv.Jt[4][0],varConv.Jt[4][1],varConv.Jt[4][2],varConv.Jt[4][3],varConv.Jt[4][4]);
+      // KFVM::Real vx = 0.1,vy = 0.2,vz = -0.15,W = 1.0/Kokkos::sqrt(1.0 - (vx*vx + vy*vy + vz*vz));
+      // std::printf("W = %lf\n",W);
+      // KFVM::Physics::SRHydro::PrimVec prim = {1.0,vx,vy,vz,W,1.0};
+      // KFVM::Physics::SRHydro::ConsVec cons;
+      // KFVM::Physics::EOS<KFVM::EquationType::SRHydro>::prim2cons(4.0/3.0,prim,cons);
+      // KFVM::Physics::VarConvert<KFVM::EquationType::SRHydro,CallVec> varConv(cons,4.0/3.0);
+      // std::printf("\np2c = np.array([[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e]]); ",
+      // 		  varConv.p2c[0][0],varConv.p2c[0][1],varConv.p2c[0][2],varConv.p2c[0][3],varConv.p2c[0][4],
+      // 		  varConv.p2c[1][0],varConv.p2c[1][1],varConv.p2c[1][2],varConv.p2c[1][3],varConv.p2c[1][4],
+      // 		  varConv.p2c[2][0],varConv.p2c[2][1],varConv.p2c[2][2],varConv.p2c[2][3],varConv.p2c[2][4],
+      // 		  varConv.p2c[3][0],varConv.p2c[3][1],varConv.p2c[3][2],varConv.p2c[3][3],varConv.p2c[3][4],
+      // 		  varConv.p2c[4][0],varConv.p2c[4][1],varConv.p2c[4][2],varConv.p2c[4][3],varConv.p2c[4][4]);
+      // std::printf("c2p = np.array([[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e]]); ",
+      // 		  varConv.c2p[0][0],varConv.c2p[0][1],varConv.c2p[0][2],varConv.c2p[0][3],varConv.c2p[0][4],
+      // 		  varConv.c2p[1][0],varConv.c2p[1][1],varConv.c2p[1][2],varConv.c2p[1][3],varConv.c2p[1][4],
+      // 		  varConv.c2p[2][0],varConv.c2p[2][1],varConv.c2p[2][2],varConv.c2p[2][3],varConv.c2p[2][4],
+      // 		  varConv.c2p[3][0],varConv.c2p[3][1],varConv.c2p[3][2],varConv.c2p[3][3],varConv.c2p[3][4],
+      // 		  varConv.c2p[4][0],varConv.c2p[4][1],varConv.c2p[4][2],varConv.c2p[4][3],varConv.c2p[4][4]);
+      // std::printf("p2ci = np.array([[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e]])\n",
+      // 		  varConv.p2ci[0][0],varConv.p2ci[0][1],varConv.p2ci[0][2],varConv.p2ci[0][3],varConv.p2ci[0][4],
+      // 		  varConv.p2ci[1][0],varConv.p2ci[1][1],varConv.p2ci[1][2],varConv.p2ci[1][3],varConv.p2ci[1][4],
+      // 		  varConv.p2ci[2][0],varConv.p2ci[2][1],varConv.p2ci[2][2],varConv.p2ci[2][3],varConv.p2ci[2][4],
+      // 		  varConv.p2ci[3][0],varConv.p2ci[3][1],varConv.p2ci[3][2],varConv.p2ci[3][3],varConv.p2ci[3][4],
+      // 		  varConv.p2ci[4][0],varConv.p2ci[4][1],varConv.p2ci[4][2],varConv.p2ci[4][3],varConv.p2ci[4][4]);
+      // std::printf("c2pi = np.array([[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e],[%e,%e,%e,%e,%e]])\n",
+      // 		  varConv.c2pi[0][0],varConv.c2pi[0][1],varConv.c2pi[0][2],varConv.c2pi[0][3],varConv.c2pi[0][4],
+      // 		  varConv.c2pi[1][0],varConv.c2pi[1][1],varConv.c2pi[1][2],varConv.c2pi[1][3],varConv.c2pi[1][4],
+      // 		  varConv.c2pi[2][0],varConv.c2pi[2][1],varConv.c2pi[2][2],varConv.c2pi[2][3],varConv.c2pi[2][4],
+      // 		  varConv.c2pi[3][0],varConv.c2pi[3][1],varConv.c2pi[3][2],varConv.c2pi[3][3],varConv.c2pi[3][4],
+      // 		  varConv.c2pi[4][0],varConv.c2pi[4][1],varConv.c2pi[4][2],varConv.c2pi[4][3],varConv.c2pi[4][4]);
 
       // Initialize PDI reading YAML file
       PC_tree_t pdi_conf = PC_parse_path(ps.pdiConf.c_str());

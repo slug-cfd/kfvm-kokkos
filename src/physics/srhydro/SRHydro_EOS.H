@@ -176,7 +176,7 @@ namespace KFVM {
       {
 	using SRHydro::SimVar;
         
-        return pres(Real(4.0/3.0),0,U);
+        return pres(Real(5.0/3.0),0,U);
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -201,7 +201,7 @@ namespace KFVM {
         // Note that this interface does *not* have access to gamma
         // however, we can use any placeholder gamma here regardless
         // (minor hack, and can we really?)
-        const Real p = pres(Real(4.0)/Real(3.0),0,U);
+        const Real p = pres(Real(5.0)/Real(3.0),0,U);
 
         // This should also check that velocities are bounded by 1...
         return fmin(fmin(U[SimVar::dens],U[SimVar::tau]),p);

@@ -30,28 +30,94 @@ namespace KFVM {
       const Real gRatio;
       Real rho,W,Vx,Vy,Vz,p;
       Real D,Sx,Sy,Sz,tau;
-      SRHydro::PrimVec primRef;
 
       KOKKOS_INLINE_FUNCTION
-      void luInvert()
+      void fillP2C()
       {
-        // Copy Jinv into temporary matrix, replace Jt with eye
+	const Real W2 = W*W,W3 = W*W2,W4 = W2*W2,gWsq = gRatio*W2,rgp = rho + gRatio*p;
+	const Real vsf = W2*rgp,vdf = 2*W4*rgp,tf = W3*(2*W*rgp - rho);
+	
+	p2c[0][0] = W;         p2c[0][1] = rho*W3*Vx;            p2c[0][2] = rho*W3*Vy;            p2c[0][3] = rho*W3*Vz;            p2c[0][4] = 0;
+	p2c[1][0] = W2*Vx;     p2c[1][1] = vsf*(1 + 2*W2*Vx*Vx); p2c[1][2] = vdf*Vx*Vy;            p2c[1][3] = vdf*Vx*Vz;            p2c[1][4] = gWsq*Vx;
+	p2c[2][0] = W2*Vy;     p2c[2][1] = vdf*Vy*Vx;            p2c[2][2] = vsf*(1 + 2*W2*Vy*Vy); p2c[2][3] = vdf*Vy*Vz;            p2c[2][4] = gWsq*Vy;
+	p2c[3][0] = W2*Vz;     p2c[3][1] = vdf*Vz*Vx;            p2c[3][2] = vdf*Vz*Vy;            p2c[3][3] = vsf*(1 + 2*W2*Vz*Vz); p2c[3][4] = gWsq*Vz;
+	p2c[4][0] = W*(W - 1); p2c[4][1] = tf*Vx;                p2c[4][2] = tf*Vy;                p2c[4][3] = tf*Vz;                p2c[4][4] = gWsq - 1;
+      }
+
+      // KOKKOS_INLINE_FUNCTION
+      // void fillC2P()
+      // {
+      // 	// Intermediate quantites
+      // 	const Real Wsq = W*W,rWsq = rho*Wsq,Wi = Real(1.0)/W;
+      //   const Real h = Real(1.0) + gRatio*p/rho,hW = h*W;
+      // 	const Real Ssq = Sx*Sx + Sy*Sy + Sz*Sz;
+      // 	const Real A = D + tau + p,B = sqrt(A*A - Ssq),A3W4 = A*A*A*Wsq*Wsq;
+      // 	const Real X = Real(1.0) + (D*Ssq*W + 2*gRatio*Ssq*p)/A3W4;
+      // 	const Real Y = (D*W + 2*gRatio*p)/A3W4;
+      //   const Real Ytil = Real(1.0) + Ssq*Y - gRatio/Wsq;
+
+      // 	// Pressure derivatives
+      // 	const Real dpdD = (Wi - X)/(X - gRatio/Wsq);
+      // 	const Real dpdSx = Y*A*Sx/Ytil;
+      // 	const Real dpdSy = Y*A*Sy/Ytil;
+      // 	const Real dpdSz = Y*A*Sz/Ytil;
+      // 	const Real dpdT = -X/(X - gRatio/Wsq);
+
+      // 	// Lorenz derivatives
+      // 	const Real dWidD = Ssq*(dpdD + Real(1.0))/(A*A*B);
+      // 	const Real dWidSx = (Ssq*dpdSx - A*Sx)/(A*A*B);
+      // 	const Real dWidSy = (Ssq*dpdSy - A*Sy)/(A*A*B);
+      // 	const Real dWidSz = (Ssq*dpdSz - A*Sz)/(A*A*B);
+      // 	const Real dWidT = Ssq*(dpdT + Real(1.0))/(A*A*B);
+
+      // 	// Density derivatives
+      // 	const Real drdD = Wi + D*dWidD;
+      // 	const Real drdSx = D*dWidSx;
+      // 	const Real drdSy = D*dWidSy;
+      // 	const Real drdSz = D*dWidSz;
+      // 	const Real drdT = D*dWidT;
+
+      // 	// Enthalpy derivatives
+      // 	const Real hidhdD = gRatio*(rho*dpdD - p*drdD)/(rho*rho*h);
+      // 	const Real hidhdSx = gRatio*(rho*dpdSx - p*drdSx)/(rho*rho*h);
+      // 	const Real hidhdSy = gRatio*(rho*dpdSy - p*drdSy)/(rho*rho*h);
+      // 	const Real hidhdSz = gRatio*(rho*dpdSz - p*drdSz)/(rho*rho*h);
+      // 	const Real hidhdT = gRatio*(rho*dpdT - p*drdT)/(rho*rho*h);
+
+      // 	const Real dhdr = -gRatio*p/(rho*rho),dhdp = gRatio/rho;
+
+      // 	// Velocity intermediates
+      // 	const Real vd = Real(1.0)/D + hidhdD - dWidD/(W*Wsq);
+      // 	const Real vs = Real(1.0)/(D*hW);
+      // 	const Real vt = W*dWidT - hidhdT;
+	
+      // 	c2p[0][0] = drdD;   c2p[0][1] = drdSx;                        c2p[0][2] = drdSy;                        c2p[0][3] = drdSz;                        c2p[0][4] = drdT;
+      // 	c2p[1][0] = -Vx*vd; c2p[1][1] = vs - Vx*(hidhdSx - dWidSx/(W*Wsq)); c2p[1][2] = -Vx*(hidhdSy - dWidSy/(W*Wsq));      c2p[1][3] = -Vx*(hidhdSz - dWidSz/(W*Wsq));      c2p[1][4] = Vx*vt;
+      // 	c2p[2][0] = -Vy*vd; c2p[2][1] = -Vy*(hidhdSx - dWidSx/(W*Wsq));      c2p[2][2] = vs - Vy*(hidhdSy - dWidSy/(W*Wsq)); c2p[2][3] = -Vy*(hidhdSz - dWidSz/(W*Wsq));      c2p[2][4] = Vy*vt;
+      // 	c2p[3][0] = -Vz*vd; c2p[3][1] = -Vz*(hidhdSx - dWidSx/(W*Wsq));      c2p[3][2] = -Vz*(hidhdSy - dWidSy/(W*Wsq));      c2p[3][3] = vs - Vz*(hidhdSz - dWidSz/(W*Wsq)); c2p[3][4] = Vz*vt;
+      // 	c2p[4][0] = dpdD;   c2p[4][1] = dpdSx;                        c2p[4][2] = dpdSy;                        c2p[4][3] = dpdSz;                        c2p[4][4] = dpdT;
+      // }
+
+      KOKKOS_INLINE_FUNCTION
+      void luInvert(const Real Ar[5][5],Real Ai[5][5])
+      {
+        // Copy Ar into temporary matrix, init Ai to eye
         Real A[5][5];
         for (int i=0; i<5; i++) {
           for (int j=0; j<5; j++) {
-            A[i][j] = J[i][j];
-            Jt[i][j] = i == j ? 1.0 : 0.0;
+            A[i][j] = Ar[i][j];
+            Ai[i][j] = i == j ? 1.0 : 0.0;
           }
         }
 
-        // Forward sweep on A and Jt
+        // Forward sweep on A and Ai
         for (int j=0; j<4; j++) {
           for (int i=j+1; i<5; i++) {
             Real pf = A[i][j]/A[j][j];
             // Reduce A
             for (int k=0; k<5; k++) { A[i][k] -= pf*A[j][k]; }
-            // Update Jt
-            for (int k=0; k<5; k++) { Jt[i][k] -= pf*Jt[j][k]; }
+            // Update Ai
+            for (int k=0; k<5; k++) { Ai[i][k] -= pf*Ai[j][k]; }
           }
         }
 
@@ -61,19 +127,20 @@ namespace KFVM {
             Real pf = A[i][j]/A[j][j];
             // Reduce A
             for (int k=0; k<5; k++) { A[i][k] -= pf*A[j][k]; }
-            // Update Jt
-            for (int k=0; k<5; k++) { Jt[i][k] -= pf*Jt[j][k]; }
+            // Update Ai
+            for (int k=0; k<5; k++) { Ai[i][k] -= pf*Ai[j][k]; }
           }
           // Scale row
-          for (int k=0; k<5; k++) { Jt[j][k] /= A[j][j]; }
+          for (int k=0; k<5; k++) { Ai[j][k] /= A[j][j]; }
           A[j][j] = 1.0;
         }
       }
       
     public:
-      Real Jt[5][5];
-      Real J[5][5];
-      Real Jinv[5][5];
+      // Real c2p[5][5];
+      Real p2c[5][5];
+      // Real c2pi[5][5];
+      Real p2ci[5][5];
       
       KOKKOS_INLINE_FUNCTION
       VarConvert(const SRHydro::ConsVec ref_,Real gam_):
@@ -85,6 +152,7 @@ namespace KFVM {
         using SRHydro::PrimVar;
 
 	// Convert to primitive
+	SRHydro::PrimVec primRef;
 	EOS<EquationType::SRHydro>::cons2prim(gam_,KFVM_MAX_SR_ITER,ref_,primRef);
 	
 	// Unpack reference vectors
@@ -101,66 +169,12 @@ namespace KFVM {
 	Sz = ref_[SimVar::momz];
 	tau = ref_[SimVar::tau];
 
-	// Intermediate quantites
-	const Real Wsq = W*W,rWsq = rho*Wsq,Wi = Real(1.0)/W;
-        const Real h = Real(1.0) + gRatio*p/rho,hW = h*W;
-	const Real Ssq = Sx*Sx + Sy*Sy + Sz*Sz;
-	const Real A = D + tau + p,B = sqrt(A*A - Ssq),A3W4 = A*A*A*Wsq*Wsq;
-	const Real X = Real(1.0) + (D*Ssq*W + 2*gRatio*Ssq*p)/A3W4;
-	const Real Y = (D*W + 2*gRatio*p)/A3W4;
-        const Real Ytil = Real(1.0) + Ssq*Y - gRatio/Wsq;
+	// Fill in Jacobians
+	fillP2C();
+	// fillC2P();
 
-	// Pressure derivatives
-	const Real dpdD = (Wi - X)/(X - gRatio/Wsq);
-	const Real dpdSx = Y*A*Sx/Ytil;
-	const Real dpdSy = Y*A*Sy/Ytil;
-	const Real dpdSz = Y*A*Sz/Ytil;
-	const Real dpdT = -X/(X - gRatio/Wsq);
-
-	// Lorenz derivatives
-	const Real dWidD = Ssq*(dpdD + Real(1.0))/(A*A*B);
-	const Real dWidSx = (Ssq*dpdSx - A*Sx)/(A*A*B);
-	const Real dWidSy = (Ssq*dpdSy - A*Sy)/(A*A*B);
-	const Real dWidSz = (Ssq*dpdSz - A*Sz)/(A*A*B);
-	const Real dWidT = Ssq*(dpdT + Real(1.0))/(A*A*B);
-
-	// Density derivatives
-	const Real drdD = Wi + D*dWidD;
-	const Real drdSx = D*dWidSx;
-	const Real drdSy = D*dWidSy;
-	const Real drdSz = D*dWidSz;
-	const Real drdT = D*dWidT;
-
-	// Enthalpy derivatives
-	const Real hidhdD = gRatio*(rho*dpdD - p*drdD)/(rho*rho*h);
-	const Real hidhdSx = gRatio*(rho*dpdSx - p*drdSx)/(rho*rho*h);
-	const Real hidhdSy = gRatio*(rho*dpdSy - p*drdSy)/(rho*rho*h);
-	const Real hidhdSz = gRatio*(rho*dpdSz - p*drdSz)/(rho*rho*h);
-	const Real hidhdT = gRatio*(rho*dpdT - p*drdT)/(rho*rho*h);
-
-	const Real dhdr = -gRatio*p/(rho*rho),dhdp = gRatio/rho;
-
-	// Velocity intermediates
-	const Real vd = Real(1.0)/D + hidhdD - dWidD/(W*Wsq);
-	const Real vs = Real(1.0)/(D*hW);
-	const Real vt = W*dWidT - hidhdT;
-	
-	J[0][0] = drdD;   J[0][1] = drdSx;                        J[0][2] = drdSy;                        J[0][3] = drdSz;                        J[0][4] = drdT;
-	J[1][0] = -Vx*vd; J[1][1] = vs - Vx*(hidhdSx - dWidSx/(W*Wsq)); J[1][2] = -Vx*(hidhdSy - dWidSy/(W*Wsq));      J[1][3] = -Vx*(hidhdSz - dWidSz/(W*Wsq));      J[1][4] = Vx*vt;
-	J[2][0] = -Vy*vd; J[2][1] = -Vy*(hidhdSx - dWidSx/(W*Wsq));      J[2][2] = vs - Vy*(hidhdSy - dWidSy/(W*Wsq)); J[2][3] = -Vy*(hidhdSz - dWidSz/(W*Wsq));      J[2][4] = Vy*vt;
-	J[3][0] = -Vz*vd; J[3][1] = -Vz*(hidhdSx - dWidSx/(W*Wsq));      J[3][2] = -Vz*(hidhdSy - dWidSy/(W*Wsq));      J[3][3] = vs - Vz*(hidhdSz - dWidSz/(W*Wsq)); J[3][4] = Vz*vt;
-	J[4][0] = dpdD;   J[4][1] = dpdSx;                        J[4][2] = dpdSy;                        J[4][3] = dpdSz;                        J[4][4] = dpdT;
-	
-        // Jacobian evaluated on reference
-	const Real Dv = Wsq*(h + rho*dhdr);
-	Jinv[0][0] = W;                           Jinv[0][1] = D*Wsq*Vx;                     Jinv[0][2] = D*Wsq*Vy;                      Jinv[0][3] = D*Wsq*Vz;                     Jinv[0][4] = 0.0;
-	Jinv[1][0] = Vx*Dv;                       Jinv[1][1] = D*hW + 2*rho*h*Vx*Vx*Wsq*Wsq; Jinv[1][2] = 2*rho*h*Vx*Vy*Wsq*Wsq;         Jinv[1][3] = 2*rho*h*Vx*Vz*Wsq*Wsq;        Jinv[1][4] = rWsq*Vx*dhdp;
-	Jinv[2][0] = Vy*Dv;                       Jinv[2][1] = 2*rho*h*Vy*Vx*Wsq*Wsq;        Jinv[2][2] = D*hW + 2*rho*h*Vy*Vy*Wsq*Wsq;  Jinv[2][3] = 2*rho*h*Vy*Vz*Wsq*Wsq;        Jinv[2][4] = rWsq*Vy*dhdp;
-	Jinv[3][0] = Vz*Dv;                       Jinv[3][1] = 2*rho*h*Vz*Vx*Wsq*Wsq;        Jinv[3][2] = 2*rho*h*Vz*Vy*Wsq*Wsq;         Jinv[3][3] = D*hW + 2*rho*h*Vz*Vz*Wsq*Wsq; Jinv[3][4] = rWsq*Vz*dhdp;
-	Jinv[4][0] = W*(D*dhdr + hW - Real(1.0)); Jinv[4][1] = 2*rho*h*Wsq*Wsq*Vx;           Jinv[4][2] = 2*rho*h*Wsq*Wsq*Vy;            Jinv[4][3] = 2*rho*h*Wsq*Wsq*Vz;           Jinv[4][4] = rWsq*dhdp - Real(1.0);
-
-        // Temporarily replace Jinv by LU inverse of J
-        luInvert();
+        luInvert(p2c,p2ci);
+        // luInvert(c2p,c2pi);
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -173,7 +187,7 @@ namespace KFVM {
 	for (int i=0; i<5; i++) {
 	  lprim[i] = 0;
 	  for (int j=0; j<5; j++) {
-	    lprim[i] += J[i][j]*state(j);
+	    lprim[i] += p2ci[i][j]*state(j);
 	  }
 	}
 
@@ -194,7 +208,7 @@ namespace KFVM {
 	for (int i=0; i<5; i++) {
 	  cons[i] = 0;
 	  for (int j=0; j<5; j++) {
-	    cons[i] += Jt[i][j]*state(j);
+	    cons[i] += p2c[i][j]*state(j);
 	  }
 	}
 
@@ -465,16 +479,128 @@ namespace KFVM {
       {
 	using Kokkos::fmin;
 	using Kokkos::fmax;
-	using SRHydro::SimVar;
-      }
-
-      KOKKOS_INLINE_FUNCTION
-      Real eulerPresPos(const Real gamma,const Real pmin,
-			const Real refState[NUM_VARS],const Real state[NUM_VARS]) const
-      {
 	using Kokkos::sqrt;
 	using SRHydro::SimVar;
-	return Real(0.0);
+	using SRHydro::ConsVec;
+
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+
+	// Save reference state
+        ConsVec refState;
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  refState[nV] = U(KFVM_D_DECL(i,j,k),nV);
+	}
+	Real rDens = refState[SimVar::dens];
+	Real rTau = refState[SimVar::tau];
+	
+	// Find ranges of density, pressure, and soundspeed
+	Real maxDens = -std::numeric_limits<Real>::max();
+	Real minDens = std::numeric_limits<Real>::max();
+	Real minTau = std::numeric_limits<Real>::max();
+	for (idx_t xo=-1; xo<=1; xo++) {
+	  for (idx_t yo=-1; yo<=1; yo++) {
+#if (SPACE_DIM == 3)
+	    for (idx_t zo=-1; zo<=1; zo++) {
+#endif
+	      maxDens = fmax(maxDens,U(KFVM_D_DECL(i + xo,j + yo,k + zo),SimVar::dens));
+	      minDens = fmin(minDens,U(KFVM_D_DECL(i + xo,j + yo,k + zo),SimVar::dens));
+	      minTau = fmin(minTau,U(KFVM_D_DECL(i + xo,j + yo,k + zo),SimVar::tau));
+#if (SPACE_DIM == 3)
+	    }
+#endif
+	  }
+	}
+        minTau = fmax(minTau,1.0001*(sqrt(U(KFVM_D_DECL(i,j,k),SimVar::dens)*U(KFVM_D_DECL(i,j,k),SimVar::dens) +
+					  U(KFVM_D_DECL(i,j,k),SimVar::momx)*U(KFVM_D_DECL(i,j,k),SimVar::momx) +
+					  U(KFVM_D_DECL(i,j,k),SimVar::momy)*U(KFVM_D_DECL(i,j,k),SimVar::momy) +
+					  U(KFVM_D_DECL(i,j,k),SimVar::momz)*U(KFVM_D_DECL(i,j,k),SimVar::momz)) -
+				     U(KFVM_D_DECL(i,j,k),SimVar::dens)));
+	
+	// Enforce positive density
+	Real rDensDiffP = maxDens - rDens,rDensDiffM = rDens - minDens;
+	Real theta = Real(1.0);
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
+	  // West face
+          Real D = rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens);
+	  theta = D<minDens ? fmin(theta,rDensDiffM/(rDens - D)) : theta;
+	  theta = D>maxDens ? fmin(theta,rDensDiffP/(D - rDens)) : theta;
+	  // East face
+          D = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::dens);
+	  theta = D<minDens ? fmin(theta,rDensDiffM/(rDens - D)) : theta;
+	  theta = D>maxDens ? fmin(theta,rDensDiffP/(D - rDens)) : theta;
+	  // South face
+          D = rsY(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens);
+	  theta = D<minDens ? fmin(theta,rDensDiffM/(rDens - D)) : theta;
+	  theta = D>maxDens ? fmin(theta,rDensDiffP/(D - rDens)) : theta;
+	  // North face
+          D = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::dens);
+	  theta = D<minDens ? fmin(theta,rDensDiffM/(rDens - D)) : theta;
+	  theta = D>maxDens ? fmin(theta,rDensDiffP/(D - rDens)) : theta;
+#if (SPACE_DIM == 3)
+	  // Bottom face
+          D = rsZ(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens);
+	  theta = D<minDens ? fmin(theta,rDensDiffM/(rDens - D)) : theta;
+	  theta = D>maxDens ? fmin(theta,rDensDiffP/(D - rDens)) : theta;
+	  // Top face
+          D = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::dens);
+	  theta = D<minDens ? fmin(theta,rDensDiffM/(rDens - D)) : theta;
+	  theta = D>maxDens ? fmin(theta,rDensDiffP/(D - rDens)) : theta;
+#endif
+	}
+	
+	// Apply mixing
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
+	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
+	    rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) - refState[nV]);
+	    rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) - refState[nV]);
+	    rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) = refState[nV] + theta*(rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) - refState[nV]);
+	    rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV) = refState[nV] + theta*(rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV) - refState[nV]);
+#if (SPACE_DIM == 3)
+	    rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) - refState[nV]);
+	    rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) - refState[nV]);
+#endif
+	  }	  
+	}
+	
+	// Enforce bounds on tau
+	Real rTauDiffM = rTau - minTau;
+	theta = Real(1.0);
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
+	  // West face
+          Real tau = rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
+	  theta = tau < minTau ? fmin(theta,rTauDiffM/(rTau - tau)) : theta;
+	  // East face
+          tau = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::tau);
+	  theta = tau < minTau ? fmin(theta,rTauDiffM/(rTau - tau)) : theta;
+	  // South face
+          tau = rsY(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
+	  theta = tau < minTau ? fmin(theta,rTauDiffM/(rTau - tau)) : theta;
+	  // North face
+          tau = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::tau);
+	  theta = tau < minTau ? fmin(theta,rTauDiffM/(rTau - tau)) : theta;
+#if (SPACE_DIM == 3)
+	  // Bottom face
+          tau = rsZ(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
+	  theta = tau < minTau ? fmin(theta,rTauDiffM/(rTau - tau)) : theta;
+	  // Top face
+          tau = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::tau);
+	  theta = tau < minTau ? fmin(theta,rTauDiffM/(rTau - tau)) : theta;
+#endif
+	}
+	
+	// Apply mixing
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
+	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
+	    rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) - refState[nV]);
+	    rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) - refState[nV]);
+	    rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) = refState[nV] + theta*(rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) - refState[nV]);
+	    rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV) = refState[nV] + theta*(rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV) - refState[nV]);
+#if (SPACE_DIM == 3)
+	    rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) - refState[nV]);
+	    rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) - refState[nV]);
+#endif
+	  }	  
+	}
       }
     };
     
