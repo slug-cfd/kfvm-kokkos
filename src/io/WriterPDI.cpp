@@ -23,8 +23,8 @@ namespace KFVM {
       V_host("V_host",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
       weno_host("weno_host",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
       xCoord(ps.nX + 1,Real(0.0)),
-      yCoord(ps.nX + 1,Real(0.0)),
-      zCoord(ps.nX + 1,Real(0.0))
+      yCoord(ps.nY + 1,Real(0.0)),
+      zCoord(ps.nZ + 1,Real(0.0))
     {
       // Generate base filename and make directories as needed
       std::ostringstream oss;

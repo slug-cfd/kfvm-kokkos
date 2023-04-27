@@ -520,7 +520,7 @@ namespace KFVM {
 	
 	// Enforce positive density
 	Real rDensDiffP = maxDens - rDens,rDensDiffM = rDens - minDens;
-	Real theta = Real(1.0);
+	Real theta = Real(0.0);
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // West face
           Real D = rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens);

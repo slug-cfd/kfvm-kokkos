@@ -105,7 +105,9 @@ namespace KFVM {
 
       return fmax(fabs(sL),fabs(sR));
     }
-      
+
+    // Refer to Mignone and Bodo doi:10.1111/j.1365-2966.2005.09546.x
+    // Implementation based on Pluto code
     KOKKOS_INLINE_FUNCTION
     Real srhydroHLLC(Real gamma,int ord[3],
                     const SRHydro::ConsVec uL,
@@ -116,6 +118,7 @@ namespace KFVM {
     {
       using Kokkos::fmax;
       using Kokkos::fabs;
+      using Kokkos::sqrt;
       using SRHydro::SimVar;
       using SRHydro::PrimVar;
       using SRHydro::ConsVec;
@@ -140,19 +143,45 @@ namespace KFVM {
       srhydroFlux(gamma,ord,uL,vL,F);
       srhydroFlux(gamma,ord,uR,vR,FT);
 
-      // Get HLL states and fluxes for total energy and longitudinal momentum
-      const Real Eh = hllState(sL,sR,F[SimVar::tau] + F[SimVar::dens],FT[SimVar::tau] + F[SimVar::dens],
-                               uL[SimVar::tau] + uL[SimVar::dens],uR[SimVar::tau] + uR[SimVar::dens]);
-      const Real Mh = hllState(sL,sR,F[ord[0]],FT[ord[0]],uL[ord[0]],uR[ord[0]]);
-      const Real FEh = hll(sL,sR,F[SimVar::tau],FT[SimVar::tau],uL[SimVar::tau],uR[SimVar::tau]) +
-        hll(sL,sR,F[SimVar::dens],FT[SimVar::dens],uL[SimVar::dens],uR[SimVar::dens]);
-      const Real FMh = hll(sL,sR,F[ord[0]],FT[ord[0]],uL[ord[0]],uR[ord[0]]);
-
       // Solve for contact speed and pressure
-      const Real sS = ((Eh + FMh) - sqrt((Eh + FMh)*(Eh + FMh) - Real(4.0)*FEh*Mh))/(Real(2.0)*FEh);
-      const Real pS = 
+      const Real eL = uL[SimVar::tau] + uL[SimVar::dens],feL = F[SimVar::tau] + F[SimVar::dens];
+      const Real eR = uR[SimVar::tau] + uR[SimVar::dens],feR = FT[SimVar::tau] + FT[SimVar::dens];
+
+      const Real aL = sL*eL - feL,aR = sR*eR - feR;
+      const Real bL = sL*uL[ord[0]] - F[ord[0]] - vL[PrimVar::pres];
+      const Real bR = sR*uR[ord[0]] - FT[ord[0]] - vR[PrimVar::pres];
+
+      const Real a = aR*sL - aL*sR,b = aL - aR + bL*sR - bR*sL,c = bR - bL;
+      const Real sb = b>0 ? Real(1.0) : -Real(1.0);
+      const Real sS = -Real(2.0)*c/(b + sb*sqrt(b*b - Real(4.0)*a*c));
+      const Real pS = (aL*sS - bL)/(Real(1.0) - sS*sL);
 
       // Test which side we are on and fill in flux
+      if (sS > 0) {
+	const Real pf = (sL - vL[ord[0]])/(sL - sS);
+	const Real Ds = pf*uL[SimVar::dens];
+	const Real Ms0 = sS*(sL*(eL + pS) - uL[ord[0]])/(sL - sS);
+	const Real Es = eL + (Ms0 - uL[ord[0]])/sL;
+	const Real Ms1 = pf*uL[ord[1]],Ms2 = pf*uL[ord[2]];
+	F[SimVar::dens] = F[SimVar::dens] + sL*(Ds  - uL[SimVar::dens]);
+	F[ord[0]]       = F[ord[0]]       + sL*(Ms0 - uL[ord[0]]      );
+	F[ord[1]]       = F[ord[1]]       + sL*(Ms1 - uL[ord[1]]      );
+	F[ord[2]]       = F[ord[2]]       + sL*(Ms2 - uL[ord[2]]      );
+	const Real feS  = feL             + sL*(Es  - eL              );
+	F[SimVar::tau] = feS - F[SimVar::dens];
+      } else {
+	const Real pf = (sR - vR[ord[0]])/(sR - sS);
+	const Real Ds = pf*uR[SimVar::dens];
+	const Real Ms0 = sS*(sR*(eR + pS) - uR[ord[0]])/(sR - sS);
+	const Real Es = eR + (Ms0 - uR[ord[0]])/sR;
+	const Real Ms1 = pf*uR[ord[1]],Ms2 = pf*uR[ord[2]];
+	F[SimVar::dens] = F[SimVar::dens] + sR*(Ds  - uR[SimVar::dens]);
+	F[ord[0]]       = F[ord[0]]       + sR*(Ms0 - uR[ord[0]]      );
+	F[ord[1]]       = F[ord[1]]       + sR*(Ms1 - uR[ord[1]]      );
+	F[ord[2]]       = F[ord[2]]       + sR*(Ms2 - uR[ord[2]]      );
+	const Real feS  = feR             + sR*(Es  - eR              );
+	F[SimVar::tau] = feS - F[SimVar::dens];
+      }
 
       return fmax(fabs(sL),fabs(sR));
     }
