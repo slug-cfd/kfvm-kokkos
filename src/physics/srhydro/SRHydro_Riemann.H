@@ -105,6 +105,57 @@ namespace KFVM {
 
       return fmax(fabs(sL),fabs(sR));
     }
+      
+    KOKKOS_INLINE_FUNCTION
+    Real srhydroHLLC(Real gamma,int ord[3],
+                    const SRHydro::ConsVec uL,
+                    const SRHydro::ConsVec uR,
+                    const SRHydro::PrimVec vL,
+                    const SRHydro::PrimVec vR,
+                    SRHydro::ConsVec F)
+    {
+      using Kokkos::fmax;
+      using Kokkos::fabs;
+      using SRHydro::SimVar;
+      using SRHydro::PrimVar;
+      using SRHydro::ConsVec;
+      
+      Real sL,sR;
+      
+      // Wave speed estimates
+      srhydroSpeed(gamma,ord[0],vL,vR,sL,sR);
+
+      // Bail early if possible
+      if (sL > 0) {
+        srhydroFlux(gamma,ord,uL,vL,F);
+        return fmax(fabs(sL),fabs(sR));
+      } else if (sR < 0) {
+        srhydroFlux(gamma,ord,uR,vR,F);
+        return fmax(fabs(sL),fabs(sR));
+      }
+
+      // Must be in the intermediate region
+      // Evaluate flux for each state
+      ConsVec FT;
+      srhydroFlux(gamma,ord,uL,vL,F);
+      srhydroFlux(gamma,ord,uR,vR,FT);
+
+      // Get HLL states and fluxes for total energy and longitudinal momentum
+      const Real Eh = hllState(sL,sR,F[SimVar::tau] + F[SimVar::dens],FT[SimVar::tau] + F[SimVar::dens],
+                               uL[SimVar::tau] + uL[SimVar::dens],uR[SimVar::tau] + uR[SimVar::dens]);
+      const Real Mh = hllState(sL,sR,F[ord[0]],FT[ord[0]],uL[ord[0]],uR[ord[0]]);
+      const Real FEh = hll(sL,sR,F[SimVar::tau],FT[SimVar::tau],uL[SimVar::tau],uR[SimVar::tau]) +
+        hll(sL,sR,F[SimVar::dens],FT[SimVar::dens],uL[SimVar::dens],uR[SimVar::dens]);
+      const Real FMh = hll(sL,sR,F[ord[0]],FT[ord[0]],uL[ord[0]],uR[ord[0]]);
+
+      // Solve for contact speed and pressure
+      const Real sS = ((Eh + FMh) - sqrt((Eh + FMh)*(Eh + FMh) - Real(4.0)*FEh*Mh))/(Real(2.0)*FEh);
+      const Real pS = 
+
+      // Test which side we are on and fill in flux
+
+      return fmax(fabs(sL),fabs(sR));
+    }
 
     template<RSType rst> struct SRHydroRS {};
 
@@ -145,6 +196,46 @@ namespace KFVM {
         using SRHydro::SimVar;
         int ord[] = {SimVar::momz,SimVar::momx,SimVar::momy};
         return srhydroHLL(gamma,ord,uL,uR,vL,vR,F);
+      }
+    };
+
+    template<>
+    struct SRHydroRS<RSType::HLLC>
+    {
+      static
+      KOKKOS_INLINE_FUNCTION
+      Real RiemannSolve_X(const Real gamma,
+                          const SRHydro::ConsVec uL,const SRHydro::ConsVec uR,
+                          const SRHydro::PrimVec vL,const SRHydro::PrimVec vR,
+                          SRHydro::ConsVec F)
+      {
+        using SRHydro::SimVar;
+        int ord[] = {SimVar::momx,SimVar::momy,SimVar::momz};
+        return srhydroHLLC(gamma,ord,uL,uR,vL,vR,F);
+      }
+
+      static
+      KOKKOS_INLINE_FUNCTION
+      Real RiemannSolve_Y(const Real gamma,
+                          const SRHydro::ConsVec uL,const SRHydro::ConsVec uR,
+                          const SRHydro::PrimVec vL,const SRHydro::PrimVec vR,
+                          SRHydro::ConsVec F)
+      {
+        using SRHydro::SimVar;
+        int ord[] = {SimVar::momy,SimVar::momz,SimVar::momx};
+        return srhydroHLLC(gamma,ord,uL,uR,vL,vR,F);
+      }
+
+      static
+      KOKKOS_INLINE_FUNCTION
+      Real RiemannSolve_Z(const Real gamma,
+                          const SRHydro::ConsVec uL,const SRHydro::ConsVec uR,
+                          const SRHydro::PrimVec vL,const SRHydro::PrimVec vR,
+                          SRHydro::ConsVec F)
+      {
+        using SRHydro::SimVar;
+        int ord[] = {SimVar::momz,SimVar::momx,SimVar::momy};
+        return srhydroHLLC(gamma,ord,uL,uR,vL,vR,F);
       }
     };
     
