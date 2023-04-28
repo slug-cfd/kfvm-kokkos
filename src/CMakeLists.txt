@@ -7,12 +7,10 @@ add_subdirectory(physics)
 add_subdirectory(stencil)
 add_subdirectory(io)
 
-# add_executable(kfvm.ex main.cpp ${USER_DIR}/ProblemSetup.cpp NetCDFWriter.cpp Solver.cpp)
 add_executable(kfvm.ex main.cpp ${USER_DIR}/ProblemSetup.cpp Solver.cpp)
 
-target_include_directories(kfvm.ex PUBLIC ${USER_DIR} ${NetCDF_INCLUDE_DIRS})
+target_include_directories(kfvm.ex PUBLIC ${USER_DIR})
 
-#target_link_libraries(kfvm.ex numeric stencil Kokkos::kokkoskernels Kokkos::kokkos cerf::cerf NetCDF::NetCDF netCDF::netcdf-cxx4 LAPACK::LAPACK)
-target_link_libraries(kfvm.ex numeric stencil io Kokkos::kokkoskernels Kokkos::kokkos cerf::cerf PDI::PDI_C LAPACK::LAPACK)
+target_link_libraries(kfvm.ex numeric stencil io Kokkos::kokkoskernels Kokkos::kokkos cerf::cerf PDI::PDI_C LAPACK::LAPACK MPI::MPI_CXX)
 
 target_compile_options(kfvm.ex PRIVATE -Wno-deprecated-gpu-targets)

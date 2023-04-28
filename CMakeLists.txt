@@ -10,13 +10,12 @@ set (CMAKE_MODULE_PATH ${KFVM_ROOT}/CMakeModules)
 
 set (CMAKE_CXX_EXTENSIONS OFF)
 
+find_package (MPI REQUIRED)
 find_package (Kokkos REQUIRED)
 find_package (KokkosKernels REQUIRED)
 find_package (cerf REQUIRED)
 find_package (PDI REQUIRED)
 find_package (LAPACK REQUIRED)
-
-message (${CMAKE_CXX_COMPILER})
 
 set (USER_DIR ${CMAKE_BINARY_DIR})
 

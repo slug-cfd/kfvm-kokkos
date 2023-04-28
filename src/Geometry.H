@@ -12,22 +12,27 @@
 #include "ProblemSetup.H"
 
 namespace KFVM {
-  
+
+  // Store local geometry information
+  //   e.g. xLo is the lower bound for this rank's x-coordinate
   struct Geometry
   {
-    // Bounding box
-    const Real xLo,xUp,yLo,yUp,zLo,zUp;
     // Grid spacing
     const Real dx,dy,dz,dmin;
+    // Bounding box
+    const Real xLo,xUp,yLo,yUp,zLo,zUp;
 
     // Construct from Problemsetup object
     Geometry(const ProblemSetup& ps):
-      xLo(ps.xLo),xUp(ps.xUp),
-      yLo(ps.yLo),yUp(ps.yUp),
-      zLo(ps.zLo),zUp(ps.zUp),
-      dx((xUp-xLo)/ps.nX),
-      dy((yUp-yLo)/ps.nY),
-      dz((zUp-zLo)/ps.nZ),
+      dx((ps.xUp_g - ps.xLo_g)/(ps.nX*ps.nbX)),
+      dy((ps.yUp_g - ps.yLo_g)/(ps.nY*ps.nbY)),
+      dz((ps.zUp_g - ps.zLo_g)/(ps.nZ*ps.nbZ)),
+      xLo(ps.xLo_g + dx*ps.layoutMPI.bxLo),
+      xUp(ps.xLo_g + dx*ps.layoutMPI.bxUp),
+      yLo(ps.yLo_g + dy*ps.layoutMPI.byLo),
+      yUp(ps.yLo_g + dy*ps.layoutMPI.byUp),
+      zLo(ps.zLo_g + dz*ps.layoutMPI.bzLo),
+      zUp(ps.zLo_g + dz*ps.layoutMPI.bzUp),
 #if (SPACE_DIM == 2)
       dmin(std::fmin(dx,dy))
 #else

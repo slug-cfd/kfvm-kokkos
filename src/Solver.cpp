@@ -304,7 +304,7 @@ namespace KFVM {
   {
     // Subviews of cell data and Riemann states to simplify indexing
     auto U = trimCellHalo(sol_halo);
-
+    
     // Allocate views for stencil values and smoothness indicators
     Stencil::WorkView stenWork("StenWork",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ));
     
@@ -338,71 +338,105 @@ namespace KFVM {
         		  ps.fluidProp));
   }
 
-void Solver::setCellBCs(ConsDataView sol_halo,Real t)
+  
+  void Solver::setCellBCs(ConsDataView sol_halo,Real t)
+  {
+    Kokkos::Profiling::pushRegion("Solver::setCellBCs");
+    
+    // First set all exterior boundaries
+    Kokkos::Profiling::pushRegion("Solver::setCellBCs(External)");
+    if (ps.layoutMPI.nbrRank[FaceLabel::west] == -1) {
+      setWestBCExt(sol_halo,t);
+    }
+    if (ps.layoutMPI.nbrRank[FaceLabel::east] == -1) {
+      setEastBCExt(sol_halo,t);
+    }
+    if (ps.layoutMPI.nbrRank[FaceLabel::south] == -1) {
+      setSouthBCExt(sol_halo,t);
+    }
+    if (ps.layoutMPI.nbrRank[FaceLabel::north] == -1) {
+      setNorthBCExt(sol_halo,t);
+    }
+#if (SPACE_DIM == 3)
+    if (ps.layoutMPI.nbrRank[FaceLabel::bottom] == -1) {
+      setBottomBCExt(sol_halo,t);
+    }
+    if (ps.layoutMPI.nbrRank[FaceLabel::top] == -1) {
+      setTopBCExt(sol_halo,t);
+    }
+#endif
+    Kokkos::Profiling::popRegion();
+    
+    // Then do all MPI comms on interior boundaries
+    Kokkos::Profiling::pushRegion("Solver::setCellBCs(Internal)");
+    Kokkos::Profiling::popRegion();
+    
+    Kokkos::Profiling::popRegion();
+  }
+
+  void Solver::setWestBCExt(ConsDataView sol_halo,Real t)
   {
     using BoundaryConditions::CellBcWest_K;
-    using BoundaryConditions::CellBcEast_K;
-    using BoundaryConditions::CellBcSouth_K;
-    using BoundaryConditions::CellBcNorth_K;
-    using BoundaryConditions::CellBcBottom_K;
-    using BoundaryConditions::CellBcTop_K;
     
-    Kokkos::Profiling::pushRegion("Solver::setCellBCs");
-
 #if (SPACE_DIM == 2)
-    auto bndRng_EW = Kokkos::RangePolicy<ExecSpace,Kokkos::IndexType<idx_t>>
+    auto bndRng = Kokkos::RangePolicy<ExecSpace,Kokkos::IndexType<idx_t>>
       ({ps.rad,ps.rad + ps.nY});
-    auto bndRng_NS = Kokkos::RangePolicy<ExecSpace,Kokkos::IndexType<idx_t>>
-      ({0,ps.nX + 2*ps.rad});
 #else
-    auto bndRng_EW = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,Kokkos::IndexType<idx_t>>
+    auto bndRng = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,Kokkos::IndexType<idx_t>>
       ({ps.rad,ps.rad},{ps.nY + ps.rad,ps.nZ + ps.rad});
-    auto bndRng_NS = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,Kokkos::IndexType<idx_t>>
-      ({0,ps.rad},{ps.nX + 2*ps.rad,ps.nZ + ps.rad});
-    auto bndRng_TB = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,Kokkos::IndexType<idx_t>>
-      ({0,0},{ps.nX + 2*ps.rad,ps.nY + 2*ps.rad});
 #endif
-
-    // Western Boundary
+    
     switch (ps.bcType[FaceLabel::west]) {
     case BCType::outflow:
-      Kokkos::parallel_for("CellBCs::West",bndRng_EW,
+      Kokkos::parallel_for("CellBCs::West",bndRng,
 			   CellBcWest_K<decltype(sol_halo),BCType::outflow>
 			   (sol_halo,ps.rad,ps.nX));
       break;
     case BCType::reflecting:
-      Kokkos::parallel_for("CellBCs::West",bndRng_EW,
+      Kokkos::parallel_for("CellBCs::West",bndRng,
 			   CellBcWest_K<decltype(sol_halo),BCType::reflecting,decltype(bcCoeff.x)>
 			   (sol_halo,bcCoeff.x,ps.rad,ps.nX));
       break;
     case BCType::periodic:
-      Kokkos::parallel_for("CellBCs::West",bndRng_EW,
+      Kokkos::parallel_for("CellBCs::West",bndRng,
 			   CellBcWest_K<decltype(sol_halo),BCType::periodic>
 			   (sol_halo,ps.rad,ps.nX));
       break;
     case BCType::user:
-      Kokkos::parallel_for("CellBCs::West",bndRng_EW,
+      Kokkos::parallel_for("CellBCs::West",bndRng,
 			   CellBcWest_K<decltype(sol_halo),BCType::user>
 			   (sol_halo,geom,ps.rad,ps.nX,t));
       break;
     default:
       std::printf("Warning: Western cell BC undefined. How did this even compile?\n");
     }
+  }
 
-    // Eastern Boundary
+  void Solver::setEastBCExt(ConsDataView sol_halo,Real t)
+  {
+    using BoundaryConditions::CellBcEast_K;
+    
+#if (SPACE_DIM == 2)
+    auto bndRng = Kokkos::RangePolicy<ExecSpace,Kokkos::IndexType<idx_t>>
+      ({ps.rad,ps.rad + ps.nY});
+#else
+    auto bndRng = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,Kokkos::IndexType<idx_t>>
+      ({ps.rad,ps.rad},{ps.nY + ps.rad,ps.nZ + ps.rad});
+#endif
+
     switch (ps.bcType[FaceLabel::east]) {
     case BCType::outflow:
-      Kokkos::parallel_for("CellBCs::East",bndRng_EW,
+      Kokkos::parallel_for("CellBCs::East",bndRng,
 			   CellBcEast_K<decltype(sol_halo),BCType::outflow>
 			   (sol_halo,ps.rad,ps.nX));
       break;
     case BCType::reflecting:
-      Kokkos::parallel_for("CellBCs::East",bndRng_EW,
+      Kokkos::parallel_for("CellBCs::East",bndRng,
 			   CellBcEast_K<decltype(sol_halo),BCType::reflecting,decltype(bcCoeff.x)>
 			   (sol_halo,bcCoeff.x,ps.rad,ps.nX));
       break;
     case BCType::user:
-      Kokkos::parallel_for("CellBCs::East",bndRng_EW,
+      Kokkos::parallel_for("CellBCs::East",bndRng,
 			   CellBcEast_K<decltype(sol_halo),BCType::user>
 			   (sol_halo,geom,ps.rad,ps.nX,t));
       break;
@@ -410,48 +444,72 @@ void Solver::setCellBCs(ConsDataView sol_halo,Real t)
       if (ps.bcType[FaceLabel::east] != BCType::periodic) {
 	std::printf("Warning: Eastern cell BC undefined. Is west set to periodic and east not?\n");
       }
-    }
+    }    
+  }
 
-    // Southern Boundary
+  void Solver::setSouthBCExt(ConsDataView sol_halo,Real t)
+  {
+    using BoundaryConditions::CellBcSouth_K;
+    
+#if (SPACE_DIM == 2)
+    auto bndRng = Kokkos::RangePolicy<ExecSpace,Kokkos::IndexType<idx_t>>
+      ({0,ps.nX + 2*ps.rad});
+#else
+    auto bndRng = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,Kokkos::IndexType<idx_t>>
+      ({0,ps.rad},{ps.nX + 2*ps.rad,ps.nZ + ps.rad});
+#endif
+
     switch (ps.bcType[FaceLabel::south]) {
     case BCType::periodic :
-      Kokkos::parallel_for("CellBCs::South",bndRng_NS,
+      Kokkos::parallel_for("CellBCs::South",bndRng,
 			   CellBcSouth_K<decltype(sol_halo),BCType::periodic>
 			   (sol_halo,ps.rad,ps.nY));
       break;
     case BCType::outflow :
-      Kokkos::parallel_for("CellBCs::South",bndRng_NS,
+      Kokkos::parallel_for("CellBCs::South",bndRng,
 			   CellBcSouth_K<decltype(sol_halo),BCType::outflow>
 			   (sol_halo,ps.rad,ps.nY));
       break;
     case BCType::reflecting :
-      Kokkos::parallel_for("CellBCs::South",bndRng_NS,
+      Kokkos::parallel_for("CellBCs::South",bndRng,
 			   CellBcSouth_K<decltype(sol_halo),BCType::reflecting,decltype(bcCoeff.y)>
 			   (sol_halo,bcCoeff.y,ps.rad,ps.nY));
       break;
     case BCType::user :
-      Kokkos::parallel_for("CellBCs::South",bndRng_NS,
+      Kokkos::parallel_for("CellBCs::South",bndRng,
 			   CellBcSouth_K<decltype(sol_halo),BCType::user>
 			   (sol_halo,geom,ps.rad,ps.nY,t));
       break;
     default:
       std::printf("Warning: Southern cell BC undefined. How did this even compile?\n");
-    }
+    }    
+  }
 
-    // Northern Boundary
+  void Solver::setNorthBCExt(ConsDataView sol_halo,Real t)
+  {
+    using BoundaryConditions::CellBcNorth_K;
+    
+#if (SPACE_DIM == 2)
+    auto bndRng = Kokkos::RangePolicy<ExecSpace,Kokkos::IndexType<idx_t>>
+      ({0,ps.nX + 2*ps.rad});
+#else
+    auto bndRng = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,Kokkos::IndexType<idx_t>>
+      ({0,ps.rad},{ps.nX + 2*ps.rad,ps.nZ + ps.rad});
+#endif
+
     switch (ps.bcType[FaceLabel::north]) {
     case BCType::outflow:
-      Kokkos::parallel_for("CellBCs::North",bndRng_NS,
+      Kokkos::parallel_for("CellBCs::North",bndRng,
 			   CellBcNorth_K<decltype(sol_halo),BCType::outflow>
 			   (sol_halo,ps.rad,ps.nY));
       break;
     case BCType::reflecting:
-      Kokkos::parallel_for("CellBCs::North",bndRng_NS,
+      Kokkos::parallel_for("CellBCs::North",bndRng,
 			   CellBcNorth_K<decltype(sol_halo),BCType::reflecting,decltype(bcCoeff.y)>
 			   (sol_halo,bcCoeff.y,ps.rad,ps.nY));
       break;
     case BCType::user:
-      Kokkos::parallel_for("CellBCs::North",bndRng_NS,
+      Kokkos::parallel_for("CellBCs::North",bndRng,
 			   CellBcNorth_K<decltype(sol_halo),BCType::user>
 			   (sol_halo,geom,ps.rad,ps.nY,t));
       break;
@@ -459,49 +517,63 @@ void Solver::setCellBCs(ConsDataView sol_halo,Real t)
       if (ps.bcType[FaceLabel::north] != BCType::periodic) {
 	std::printf("Warning: Northern cell BC undefined. Is south set to periodic and north not?\n");
       }
-    }
-    
+    }    
+  }
+
 #if (SPACE_DIM == 3)
-    // Bottom Boundary
+  void Solver::setBottomBCExt(ConsDataView sol_halo,Real t)
+  {
+    using BoundaryConditions::CellBcBottom_K;
+    
+    auto bndRng = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,Kokkos::IndexType<idx_t>>
+      ({0,0},{ps.nX + 2*ps.rad,ps.nY + 2*ps.rad});
+    
     switch (ps.bcType[FaceLabel::bottom]) {
     case BCType::periodic :
-      Kokkos::parallel_for("CellBCs::Bottom",bndRng_TB,
+      Kokkos::parallel_for("CellBCs::Bottom",bndRng,
 			   CellBcBottom_K<decltype(sol_halo),BCType::periodic>
 			   (sol_halo,ps.rad,ps.nZ));
       break;
     case BCType::outflow :
-      Kokkos::parallel_for("CellBCs::Bottom",bndRng_TB,
+      Kokkos::parallel_for("CellBCs::Bottom",bndRng,
 			   CellBcBottom_K<decltype(sol_halo),BCType::outflow>
 			   (sol_halo,ps.rad,ps.nZ));
       break;
     case BCType::reflecting :
-      Kokkos::parallel_for("CellBCs::Bottom",bndRng_TB,
+      Kokkos::parallel_for("CellBCs::Bottom",bndRng,
 			   CellBcBottom_K<decltype(sol_halo),BCType::reflecting,decltype(bcCoeff.z)>
 			   (sol_halo,bcCoeff.z,ps.rad,ps.nZ));
       break;
     case BCType::user :
-      Kokkos::parallel_for("CellBCs::Bottom",bndRng_TB,
+      Kokkos::parallel_for("CellBCs::Bottom",bndRng,
 			   CellBcBottom_K<decltype(sol_halo),BCType::user>
 			   (sol_halo,geom,ps.rad,ps.nZ,t));
       break;
     default:
       std::printf("Warning: Bottom? cell BC undefined. How did this even compile?\n");
     }
+  }
+  
+  void Solver::setTopBCExt(ConsDataView sol_halo,Real t)
+  {
+    using BoundaryConditions::CellBcTop_K;
+    
+    auto bndRng = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,Kokkos::IndexType<idx_t>>
+      ({0,0},{ps.nX + 2*ps.rad,ps.nY + 2*ps.rad});
 
-    // Top Boundary
     switch (ps.bcType[FaceLabel::top]) {
     case BCType::outflow:
-      Kokkos::parallel_for("CellBCs::Top",bndRng_TB,
+      Kokkos::parallel_for("CellBCs::Top",bndRng,
 			   CellBcTop_K<decltype(sol_halo),BCType::outflow>
 			   (sol_halo,ps.rad,ps.nZ));
       break;
     case BCType::reflecting:
-      Kokkos::parallel_for("CellBCs::Top",bndRng_TB,
+      Kokkos::parallel_for("CellBCs::Top",bndRng,
 			   CellBcTop_K<decltype(sol_halo),BCType::reflecting,decltype(bcCoeff.z)>
 			   (sol_halo,bcCoeff.z,ps.rad,ps.nZ));
       break;
     case BCType::user:
-      Kokkos::parallel_for("CellBCs::Top",bndRng_TB,
+      Kokkos::parallel_for("CellBCs::Top",bndRng,
 			   CellBcTop_K<decltype(sol_halo),BCType::user>
 			   (sol_halo,geom,ps.rad,ps.nZ,t));
       break;
@@ -510,10 +582,8 @@ void Solver::setCellBCs(ConsDataView sol_halo,Real t)
 	std::printf("Warning: Top cell BC undefined. Is bottom set to periodic and top not?\n");
       }
     }
-#endif
-
-    Kokkos::Profiling::popRegion();
   }
+#endif
 
   void Solver::setFaceBCs(Real t)
   {

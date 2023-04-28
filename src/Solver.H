@@ -38,15 +38,40 @@ namespace KFVM {
     CellDataView wenoSelect;
     // Cell-based data
     ConsDataView U_halo,Uhat,Uprev_halo,Utmp,K;
+    // Buffers for boundary communication
+//     struct BdyData {
+// #if (SPACE_DIM == 3)
+//       ConsDataView bottomSrc,nottomDst,topSrc,topDst;
+// #endif
+//       ConsDataView westSrc,westDst,eastSrc,eastDst;
+//       ConsDataView southSrc,southDst,northSrc,northDst;
+//       bdyData(const ProblemSetup& ps_):
+// #if (SPACE_DIM == 3)
+// 	bottomSrc("Solver::BdyData::bottomSrc",KFVM_D_DECL(ps_.nX,ps_.nY,ps_.rad + 1)),
+// 	bottomDst("Solver::BdyData::bottomDst",KFVM_D_DECL(ps_.nX,ps_.nY,ps_.rad + 1)),
+// 	topSrc("Solver::BdyData::topSrc",KFVM_D_DECL(ps_.nX,ps_.nY,ps_.rad + 1)),
+// 	topDst("Solver::BdyData::topDst",KFVM_D_DECL(ps_.nX,ps_.nY,ps_.rad + 1)),
+// #endif
+// 	westSrc("Solver::BdyData::westSrc",KFVM_D_DECL(ps_.rad + 1,ps_.nY,ps_.nZ)),
+// 	westDst("Solver::BdyData::westDst",KFVM_D_DECL(ps_.rad + 1,ps_.nY,ps_.nZ)),
+// 	eastSrc("Solver::BdyData::eastSrc",KFVM_D_DECL(ps_.rad + 1,ps_.nY,ps_.nZ)),
+// 	eastDst("Solver::BdyData::eastDst",KFVM_D_DECL(ps_.rad + 1,ps_.nY,ps_.nZ)),
+// 	southSrc("Solver::BdyData::southSrc",KFVM_D_DECL(ps_.nX,ps_.rad + 1,ps_.nZ)),
+// 	southDst("Solver::BdyData::southDst",KFVM_D_DECL(ps_.nX,ps_.rad + 1,ps_.nZ)),
+// 	northSrc("Solver::BdyData::northSrc",KFVM_D_DECL(ps_.nX,ps_.rad + 1,ps_.nZ)),
+// 	northDst("Solver::BdyData::northDst",KFVM_D_DECL(ps_.nX,ps_.rad + 1,ps_.nZ)),
+//       {}
+//     };
+//     BdyData bdyData;
     // Auxiliary data (cell-based but different number of components)
     AuxDataView U_aux;
     // Face-based data
     struct FaceVals {
       FaceDataView KFVM_D_DECL(xDir,yDir,zDir);
       FaceVals(const ProblemSetup& ps_):
-	KFVM_D_DECL(xDir("FaceVals::xDir",KFVM_D_DECL(ps_.nX + 1,ps_.nY,ps_.nZ)),
-		    yDir("FaceVals::xDir",KFVM_D_DECL(ps_.nX,ps_.nY + 1,ps_.nZ)),
-		    zDir("FaceVals::xDir",KFVM_D_DECL(ps_.nX,ps_.nY,ps_.nZ + 1)))
+	KFVM_D_DECL(xDir("Solver::FaceVals::xDir",KFVM_D_DECL(ps_.nX + 1,ps_.nY,ps_.nZ)),
+		    yDir("Solver::FaceVals::yDir",KFVM_D_DECL(ps_.nX,ps_.nY + 1,ps_.nZ)),
+		    zDir("Solver::FaceVals::zDir",KFVM_D_DECL(ps_.nX,ps_.nY,ps_.nZ + 1)))
       {}
     };
     FaceVals faceVals;
@@ -77,6 +102,12 @@ namespace KFVM {
     void reconstructRiemannStates(ConsDataView);
     Real findFluxes();
     void setCellBCs(ConsDataView,Real);
+    void setWestBCExt(ConsDataView,Real);
+    void setEastBCExt(ConsDataView,Real);
+    void setSouthBCExt(ConsDataView,Real);
+    void setNorthBCExt(ConsDataView,Real);
+    void setBottomBCExt(ConsDataView,Real);
+    void setTopBCExt(ConsDataView,Real);
     void setFaceBCs(Real);
   };
 

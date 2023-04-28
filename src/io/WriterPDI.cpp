@@ -53,11 +53,11 @@ namespace KFVM {
 
       // Gather up solution metadata and give it to PDI
       // These are all size 3, even in 2D
-      int ngZ = (SPACE_DIM==2 ? 0 : (int)ps.rad);
-      int siZ = (SPACE_DIM==2 ? 0 : (int)ps.rad);
-      std::array<int,3> ncell = {(int)ps.nX,(int)ps.nY,(int)ps.nZ};
-      std::array<int,3> nghost = {(int)ps.rad,(int)ps.rad,ngZ};
-      std::array<int,3> start_idx = {(int)ps.rad,(int)ps.rad,siZ};
+      int ngZ = (SPACE_DIM==2 ? 0 : (int) ps.rad);
+      int siZ = (SPACE_DIM==2 ? 0 : (int) ps.rad);
+      std::array<int,3> ncell = {(int) ps.nX,(int) ps.nY,(int) ps.nZ};
+      std::array<int,3> nghost = {(int) ps.rad,(int) ps.rad,ngZ};
+      std::array<int,3> start_idx = {(int) ps.rad,(int) ps.rad,siZ};
       
       Real time = 0.0;
       int time_step = 0;

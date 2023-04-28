@@ -11,10 +11,13 @@
 #include <sstream>
 #include <cstdio>
 
+#include <mpi.h>
+
 #include <Definitions.H>
 
 #include "Dimension.H"
 #include "Types.H"
+#include "LayoutMPI.H"
 #include "physics/EquationTypes.H"
 #include "FluidProperties.H"
 
@@ -26,7 +29,7 @@
 namespace KFVM {
 
   struct ProblemSetup
-  {
+  { 
     // Static members to be set by the user
     // Names for variables used in the solution files
     static std::array<std::string,NUM_VARS> varName;
@@ -35,14 +38,20 @@ namespace KFVM {
     // Array of boundary conditions
     // Note: always 6 entries (2*3) even in 2D
     static std::array<BCType,6> bcType;
+
+    // MPI information
+    LayoutMPI layoutMPI;
     
     // Stencil settings
     const idx_t rad;
     Real gp_lFac,gp_bpow;
     
-    // Domain and grid size
+    // Number of blocks and size of each
+    idx_t nbX,nbY,nbZ;
     idx_t nX,nY,nZ;
-    Real xLo,xUp,yLo,yUp,zLo,zUp;
+
+    // Global domain size
+    Real xLo_g,xUp_g,yLo_g,yUp_g,zLo_g,zUp_g;
 
     // Time stepping information
     int maxTimeSteps;
@@ -62,17 +71,21 @@ namespace KFVM {
     // Simple constructor setting many default values
     ProblemSetup():
       rad(STENCIL_RADIUS),
+      layoutMPI(),
       gp_lFac(20.0),
       gp_bpow(Real(STENCIL_RADIUS)),
       nX(1),
       nY(1),
       nZ(1),
-      xLo(0.0),
-      xUp(1.0),
-      yLo(0.0),
-      yUp(1.0),
-      zLo(0.0),
-      zUp(1.0),
+      nbX(1),
+      nbY(1),
+      nbZ(1),
+      xLo_g(0.0),
+      xUp_g(1.0),
+      yLo_g(0.0),
+      yUp_g(1.0),
+      zLo_g(0.0),
+      zUp_g(1.0),
       maxTimeSteps(1000),
       initialTime(0.0),
       finalTime(1.0),
@@ -87,7 +100,6 @@ namespace KFVM {
       baseName("default"),
       plotFreq(100)
     {}
-
     
     void print()
     {
@@ -96,9 +108,12 @@ namespace KFVM {
       std::printf("  nX: %ld\n",nX);
       std::printf("  nY: %ld\n",nY);
       std::printf("  nZ: %ld\n",nZ);
-      std::printf("  x extent: %f -- %f\n",xLo,xUp);
-      std::printf("  y extent: %f -- %f\n",yLo,yUp);
-      std::printf("  z extent: %f -- %f\n",zLo,zUp);
+      std::printf("  nbX: %ld\n",nbX);
+      std::printf("  nbY: %ld\n",nbY);
+      std::printf("  nbZ: %ld\n",nbZ);
+      std::printf("  x extent: %f -- %f\n",xLo_g,xUp_g);
+      std::printf("  y extent: %f -- %f\n",yLo_g,yUp_g);
+      std::printf("  z extent: %f -- %f\n",zLo_g,zUp_g);
       
       // Print time information
       std::printf("Time:\n");
@@ -140,7 +155,7 @@ namespace KFVM {
       if (opened) {
 	std::printf("Setting options from input file: %s\n",fname);
       } else {
-	std::printf("Warning!!!! Could not open input file: %s\n",fname);
+	std::printf("Error!!!! Could not open input file: %s\n",fname);
 	return false;
       }
 
@@ -179,6 +194,14 @@ namespace KFVM {
 	  std::cout << "Warning!!!! Line could not be parsed: " << line << std::endl;
 	}
       }
+
+      // setup the MPI layout, add better error handling later
+      if (!layoutMPI.distributeBlocks(nbX,nbY,nbZ,bcType)) {
+	std::printf("Error!!!! Number of blocks must equal number of MPI ranks, have: %ld*%ld*%ld != %d\n",
+		    nbX,nbY,nbZ,layoutMPI.mpiSize);
+	return false;
+      }
+      
       return true;
     }
 
@@ -203,18 +226,18 @@ namespace KFVM {
 #endif
       } else if (category == "extent") {
 	std::getline(lStream,value,' ');
-	xLo = std::stof(value,&pos);
+	xLo_g = std::stof(value,&pos);
 	std::getline(lStream,value,' ');
-	xUp = std::stof(value,&pos);
+	xUp_g = std::stof(value,&pos);
 	std::getline(lStream,value,' ');
-	yLo = std::stof(value,&pos);
+	yLo_g = std::stof(value,&pos);
 	std::getline(lStream,value,' ');
-	yUp = std::stof(value,&pos);
+	yUp_g = std::stof(value,&pos);
 #if (SPACE_DIM == 3)
 	std::getline(lStream,value,' ');
-	zLo = std::stof(value,&pos);
+	zLo_g = std::stof(value,&pos);
 	std::getline(lStream,value,' ');
-	zUp = std::stof(value,&pos);
+	zUp_g = std::stof(value,&pos);
 #endif
       } else {
 	return false;
