@@ -7,12 +7,16 @@
 
 #include <mpi.h>
 
+#include <Definitions.H>
+
 #include "Types.H"
 
 namespace KFVM {
   
   struct LayoutMPI
   {
+    const MPI_Datatype datatype;
+    
     int mpiSize,mpiRank;
 
     // Number of blocks in global domain
@@ -28,7 +32,8 @@ namespace KFVM {
     // Ranks of neighboring blocks
     std::array<int,6> nbrRank;
 
-    LayoutMPI()
+    LayoutMPI():
+      datatype(FLOAT_PRECISION == 0 ? MPI_FLOAT : MPI_DOUBLE)
     {
       MPI_Comm_size(MPI_COMM_WORLD,&mpiSize);
       MPI_Comm_rank(MPI_COMM_WORLD,&mpiRank);
