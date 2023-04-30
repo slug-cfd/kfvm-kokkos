@@ -103,47 +103,49 @@ namespace KFVM {
     
     void print()
     {
-      // Print mesh information
-      std::printf("Mesh:\n");
-      std::printf("  nX: %ld\n",nX);
-      std::printf("  nY: %ld\n",nY);
-      std::printf("  nZ: %ld\n",nZ);
-      std::printf("  nbX: %ld\n",nbX);
-      std::printf("  nbY: %ld\n",nbY);
-      std::printf("  nbZ: %ld\n",nbZ);
-      std::printf("  x extent: %f -- %f\n",xLo_g,xUp_g);
-      std::printf("  y extent: %f -- %f\n",yLo_g,yUp_g);
-      std::printf("  z extent: %f -- %f\n",zLo_g,zUp_g);
+      if (layoutMPI.rank == 0) {
+	// Print mesh information
+	std::printf("Mesh:\n");
+	std::printf("  nX: %ld\n",nX);
+	std::printf("  nY: %ld\n",nY);
+	std::printf("  nZ: %ld\n",nZ);
+	std::printf("  nbX: %ld\n",nbX);
+	std::printf("  nbY: %ld\n",nbY);
+	std::printf("  nbZ: %ld\n",nbZ);
+	std::printf("  x extent: %f -- %f\n",xLo_g,xUp_g);
+	std::printf("  y extent: %f -- %f\n",yLo_g,yUp_g);
+	std::printf("  z extent: %f -- %f\n",zLo_g,zUp_g);
       
-      // Print time information
-      std::printf("Time:\n");
-      std::printf("  initial: %f\n",initialTime);
-      std::printf("  final: %f\n",finalTime);
-      std::printf("  initial dt: %e\n",initialDeltaT);
-      std::printf("  atol: %e\n",atol);
-      std::printf("  rtol: %e\n",rtol);
-      std::printf("  rejectionlimit: %d\n",rejectionLimit);
-      std::printf("  rejectionthresh: %f\n",rejectionThresh);
-      std::printf("  cfl: %f\n",cfl);
-      std::printf("  maxsteps: %d\n",maxTimeSteps);
+	// Print time information
+	std::printf("Time:\n");
+	std::printf("  initial: %f\n",initialTime);
+	std::printf("  final: %f\n",finalTime);
+	std::printf("  initial dt: %e\n",initialDeltaT);
+	std::printf("  atol: %e\n",atol);
+	std::printf("  rtol: %e\n",rtol);
+	std::printf("  rejectionlimit: %d\n",rejectionLimit);
+	std::printf("  rejectionthresh: %f\n",rejectionThresh);
+	std::printf("  cfl: %f\n",cfl);
+	std::printf("  maxsteps: %d\n",maxTimeSteps);
 
-      // Print stencil information
-      std::printf("Stencil:\n");
-      std::printf("  Radius: %ld\n",rad);
-      std::printf("  lfac: %f\n",gp_lFac);
-      std::printf("  bpow: %f\n",gp_bpow);
+	// Print stencil information
+	std::printf("Stencil:\n");
+	std::printf("  Radius: %ld\n",rad);
+	std::printf("  lfac: %f\n",gp_lFac);
+	std::printf("  bpow: %f\n",gp_bpow);
 
-      // Print fluid properties
-      std::printf("Properties:\n");
-      std::printf("  gamma: %f\n",fluidProp.gamma);
-      std::printf("  wenothresh: %f\n",fluidProp.wenoThresh);
+	// Print fluid properties
+	std::printf("Properties:\n");
+	std::printf("  gamma: %f\n",fluidProp.gamma);
+	std::printf("  wenothresh: %f\n",fluidProp.wenoThresh);
 
-      // Print output information
-      std::printf("Output:\n");
-      std::printf("  pdiconf: %s\n",pdiConf.c_str());
-      std::printf("  datadir: %s\n",dataDir.c_str());
-      std::printf("  basename: %s\n",baseName.c_str());
-      std::printf("  plotfreq: %d\n",plotFreq);
+	// Print output information
+	std::printf("Output:\n");
+	std::printf("  pdiconf: %s\n",pdiConf.c_str());
+	std::printf("  datadir: %s\n",dataDir.c_str());
+	std::printf("  basename: %s\n",baseName.c_str());
+	std::printf("  plotfreq: %d\n",plotFreq);
+      }
     }
 
     bool setFromFile(const char* fname)
@@ -196,9 +198,9 @@ namespace KFVM {
       }
 
       // setup the MPI layout, add better error handling later
-      if (!layoutMPI.distributeBlocks(nbX,nbY,nbZ,bcType)) {
+      if (!layoutMPI.distributeBlocks(nbX,nbY,nbZ,nX,nY,nZ,bcType)) {
 	std::printf("Error!!!! Number of blocks must equal number of MPI ranks, have: %ld*%ld*%ld != %d\n",
-		    nbX,nbY,nbZ,layoutMPI.mpiSize);
+		    nbX,nbY,nbZ,layoutMPI.size);
 	return false;
       }
       
@@ -223,6 +225,15 @@ namespace KFVM {
 #if (SPACE_DIM == 3)
 	std::getline(lStream,value,' ');
 	nZ = std::stoi(value,&pos);
+#endif
+      } else if (category == "numblocks") {
+	std::getline(lStream,value,' ');
+	nbX = std::stoi(value,&pos);
+	std::getline(lStream,value,' ');
+	nbY = std::stoi(value,&pos);
+#if (SPACE_DIM == 3)
+	std::getline(lStream,value,' ');
+	nbZ = std::stoi(value,&pos);
 #endif
       } else if (category == "extent") {
 	std::getline(lStream,value,' ');

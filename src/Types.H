@@ -19,6 +19,7 @@ namespace KFVM {
   // Set floating point precision for solver
 #if (FLOAT_PRECISION == 0)
   typedef float Real;
+#error Single precision temporarily unsupported.
 #else
   typedef double Real;
 #endif

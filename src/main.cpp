@@ -17,28 +17,9 @@
 #include "physics/Physics_K.H"
 #include "physics/srhydro/SRHydro_SimVar.H"
 
-struct CallVec {
-  KFVM::Physics::SRHydro::ConsVec cons;
-  CallVec(KFVM::Physics::SRHydro::ConsVec cons_)
-  {
-    cons[0] = cons_[0];
-    cons[1] = cons_[1];
-    cons[2] = cons_[2];
-    cons[3] = cons_[3];
-    cons[4] = cons_[4];
-  }
-  KFVM::Real operator()(int n)
-  {
-    return cons[n];
-  }
-};    
-
 int main(int argc, char* argv[]) {
   MPI_Init(&argc,&argv); {
     Kokkos::initialize(argc, argv); {
-      std::printf("Kokkos initialized with default execution space: %s\n",
-		  typeid(KFVM::ExecSpace).name());
-
       if (argc > 1) {
 	// Create Problemsetup object
 	KFVM::ProblemSetup ps;

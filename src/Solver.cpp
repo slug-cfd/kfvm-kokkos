@@ -11,12 +11,13 @@
 
 #include <Definitions.H>
 
-#include "BoundaryData.H"
 #include "Dimension.H"
 #include "Types.H"
 #include "ProblemSetup.H"
+#include "PrinterMPI.H"
 #include "Geometry.H"
 #include "BoundaryConditions_K.H"
+#include "BoundaryData.H"
 #include "numeric/Numeric.H"
 #include "numeric/Numeric_K.H"
 #include "numeric/RKTypes.H"
@@ -77,7 +78,7 @@ namespace KFVM {
     // Evolve in time, recording solutions as needed
     // Start at nT=1 since IC is step 0
     for (int nT=1; nT<ps.maxTimeSteps && !lastTimeStep; ++nT) {
-      std::printf("Step %d: time = %e\n",nT,time);
+      PrintSingle(ps,"Step %d: time = %e\n",nT,time);
       TakeStep();
 
       // Write out data file if needed
@@ -87,7 +88,7 @@ namespace KFVM {
       }
     }
 
-    std::printf("Time stepping completed\n  %d RHS evals and %d/%d rejected (accuracy/unphysical) steps\n",nRhsEval,nRejectThresh,nRejectUnphys);
+    PrintSingle(ps,"Time stepping completed\n  %d RHS evals and %d/%d rejected (accuracy/unphysical) steps\n",nRhsEval,nRejectThresh,nRejectUnphys);
 
     Kokkos::Profiling::popRegion();
   }
@@ -129,11 +130,11 @@ namespace KFVM {
 
     // Try step with dt, and repeat as needed
     bool accepted = false,firstUnphys = true;
-    Real maxVel,v;
+    Real maxVelLoc,v;
     wThresh = ps.fluidProp.wenoThresh*dt;
     for (int nT=0; nT<ps.rejectionLimit; nT++) {
-      maxVel = 0.0;
-      std::printf("  Attempt %d: dt = %e, wThresh = %e",nT+1,dt,wThresh);
+      maxVelLoc = 0.0;
+      PrintSingle(ps,"  Attempt %d: dt = %e, wThresh = %e",nT+1,dt,wThresh);
 
       // Trim halos off
       auto U = trimCellHalo(U_halo);
@@ -142,7 +143,7 @@ namespace KFVM {
       // Need to reset K if this is a repeat of a rejected step
       if (nT > 0) {
 	v = evalRHS(Uprev_halo,K,time);
-        maxVel = std::fmax(maxVel,v);
+        maxVelLoc = std::fmax(maxVelLoc,v);
       }
 
       // First stage is special, do it outside loop
@@ -163,7 +164,7 @@ namespace KFVM {
 
 	// Evaluate RHS on U
 	v = evalRHS(U_halo,K,time + cDt);
-        maxVel = std::fmax(maxVel,v);
+        maxVelLoc = std::fmax(maxVelLoc,v);
       
 	// Update registers
 	Kokkos::parallel_for("RKStage",cellRng,
@@ -172,39 +173,57 @@ namespace KFVM {
 
       // FSAL stage
       v = evalRHS(U_halo,K,time + dt);
-      maxVel = std::fmax(maxVel,v);
+      maxVelLoc = std::fmax(maxVelLoc,v);
       bhatDt = RKCoeff::bhatfsal*dt;
       Kokkos::parallel_for("RKStageFSAL",cellRng,Numeric::RKFSAL_StageLast_K<decltype(K)>(Uhat,K,bhatDt));
+
+      // Get global max velocity
+      Real maxVel = timeStepMaxVelComm(maxVelLoc);
 
       // Calculate CFL that ended up being used
       Real cfl = dt*maxVel/geom.dmin;
 
       // Estimate the error and test positivity
-      Real errNew = 0.0,posFlag = 1.0,nDofs = ps.nX*ps.nY*ps.nZ*NUM_VARS;
+      Real errNewLoc = 0.0,posFlag = 1.0;
+      const Real nDofs = ps.nX*ps.nY*ps.nZ*ps.nbX*ps.nbY*ps.nbZ*NUM_VARS;
       Kokkos::parallel_reduce("ErrorEstimate",cellRng,
-			      Numeric::RKFSAL_ErrEst_K<decltype(U),decltype(K)>(U,Uhat,ps.atol,ps.rtol),errNew,Kokkos::Min<Real>(posFlag));
+			      Numeric::RKFSAL_ErrEst_K<decltype(U),decltype(K)>
+			      (U,Uhat,ps.atol,ps.rtol),errNewLoc,Kokkos::Min<Real>(posFlag));
+      Real errNew = timeStepErrEstComm(errNewLoc);
       errNew = 1.0/std::sqrt(errNew/nDofs);
 
       // Set a new time step size
       Real dtfac = std::pow(errNew,RKCoeff::ep1)*std::pow(errEst,RKCoeff::ep2);
       dtfac = 1.0 + std::atan(dtfac - 1.0);
+
+      // Figure out status of this step
+      int lStat,gStat;
       if (posFlag < 0.0) {
+	lStat = TS_UNPHYSICAL;
+      } else if (dtfac >= ps.rejectionThresh) {
+	lStat = TS_ACCEPTED;
+      } else {
+	lStat = TS_TOLERANCE;
+      }
+      gStat = timeStepStatusComm(lStat);
+      
+      if (gStat == TS_UNPHYSICAL) {
 	// Solution is unphysical, reject and reduce dt
-        std::printf(", cfl = %f\n    Rejected: Unphysical\n",cfl);
+        PrintSingle(ps,", cfl = %f\n    Rejected: Unphysical\n",cfl);
 	// first set to quarter of max cfl, then start halving
 	dt = firstUnphys ? 0.25*ps.cfl*geom.dmin/maxVel : dt/2.0;
 	firstUnphys = false;
 	// Force full weno usage on failure
         wThresh = -std::numeric_limits<Real>::max();
 	nRejectUnphys++;
-      } else if (dtfac >= ps.rejectionThresh) {
+      } else if (gStat == TS_ACCEPTED) {
 	// Step is accepted
-        std::printf(", cfl = %f\n",cfl);
+        PrintSingle(ps,", cfl = %f\n",cfl);
 	accepted = true;
 	time += dt;
-	Real dterr = dt*dtfac;
-        Real dtcfl = ps.cfl*geom.dmin/maxVel;
-        dt = std::fmin(dterr,dtcfl); // Limit to max cfl
+	Real dterr = dt*dtfac,dtcfl = ps.cfl*geom.dmin/maxVel;
+	Real ldt = std::fmin(dterr,dtcfl); // Limit to max cfl
+	dt = timeStepSizeComm(ldt); // coordinate all ranks to smallest dt
 	errEst = errNew;
 
 	// Update the weno selector
@@ -213,25 +232,74 @@ namespace KFVM {
 	
 	Kokkos::deep_copy(Uprev,U);
 	break;
-      } else {
+      } else if (gStat == TS_TOLERANCE) {
 	// otherwise step is rejected, try again with new smaller dt
-        std::printf(", cfl = %f\n    Rejected: Tolerance\n",cfl);
-	dt *= dtfac;
+        PrintSingle(ps,", cfl = %f\n    Rejected: Tolerance\n",cfl);
+	Real ldt = dt*dtfac;
+	dt = timeStepSizeComm(ldt); // coordinate all ranks to smallest dt
 	nRejectThresh++;
+      } else {
+	PrintSingle(ps,"Warning: Unknown time step status\n");
+	lastTimeStep = true;
+	break;
       }
     }
 
     // Error out if step was rejected too many times or has stagnated
     if (!accepted) {
-      std::printf("Warning: Time step was rejected too many times\n");
+      PrintSingle(ps,"Warning: Time step was rejected too many times\n");
       lastTimeStep = true;
     }
     if (dt < ps.initialDeltaT) {
-      std::printf("Warning: Time step stagnated\n");
+      PrintSingle(ps,"Warning: Time step stagnated\n");
       lastTimeStep = true;
     }
 
     Kokkos::Profiling::popRegion();
+  }
+
+  int Solver::timeStepStatusComm(int lStat)
+  {
+    if (ps.layoutMPI.size == 1) {
+      return lStat;
+    }
+    
+    int gStat;
+    MPI_Allreduce(&lStat,&gStat,1,MPI_INT,MPI_MAX,ps.layoutMPI.commWorld);
+    return gStat;
+  }
+
+  Real Solver::timeStepSizeComm(Real ldt)
+  {
+    if (ps.layoutMPI.size == 1) {
+      return ldt;
+    }
+
+    Real gdt;
+    MPI_Allreduce(&ldt,&gdt,1,ps.layoutMPI.realType,MPI_MIN,ps.layoutMPI.commWorld);
+    return gdt;
+  }
+
+  Real Solver::timeStepMaxVelComm(Real lV)
+  {
+    if (ps.layoutMPI.size == 1) {
+      return lV;
+    }
+
+    Real gV;
+    MPI_Allreduce(&lV,&gV,1,ps.layoutMPI.realType,MPI_MAX,ps.layoutMPI.commWorld);
+    return gV;
+  }
+
+  Real Solver::timeStepErrEstComm(Real lEst)
+  {
+    if (ps.layoutMPI.size == 1) {
+      return lEst;
+    }
+
+    Real gEst;
+    MPI_Allreduce(&lEst,&gEst,1,ps.layoutMPI.realType,MPI_SUM,ps.layoutMPI.commWorld);
+    return gEst;
   }
   
   Real Solver::evalRHS(ConsDataView sol_halo,ConsDataView rhs,Real t)
@@ -348,39 +416,36 @@ namespace KFVM {
     Kokkos::Profiling::pushRegion("Solver::setCellBCs");
 
     // Do W <=> E comms and set external boundaries
-    if (ps.layoutMPI.nbrRank[FaceLabel::west] >= 0 ||
-	ps.layoutMPI.nbrRank[FaceLabel::east] >= 0) {
+    if (ps.layoutMPI.hasEWComm) {
       commCellBCsEW(sol_halo);
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::west] == -1) {
+    if (ps.layoutMPI.wDst == MPI_PROC_NULL) {
       setWestBCExt(sol_halo,t);
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::east] == -1) {
+    if (ps.layoutMPI.eDst == MPI_PROC_NULL) {
       setEastBCExt(sol_halo,t);
-    }    
+    }
 
     // Do S <=> N comms and set external boundaries
-    if (ps.layoutMPI.nbrRank[FaceLabel::south] >= 0 ||
-	ps.layoutMPI.nbrRank[FaceLabel::north] >= 0) {
+    if (ps.layoutMPI.hasNSComm) {
       commCellBCsNS(sol_halo);
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::south] == -1) {
+    if (ps.layoutMPI.sDst == MPI_PROC_NULL) {
       setSouthBCExt(sol_halo,t);
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::north] == -1) {
+    if (ps.layoutMPI.nDst == MPI_PROC_NULL) {
       setNorthBCExt(sol_halo,t);
     }
     
 #if (SPACE_DIM == 3)
     // Do B <=> T comms and set external boundaries
-    if (ps.layoutMPI.nbrRank[FaceLabel::bottom] >= 0 ||
-	ps.layoutMPI.nbrRank[FaceLabel::top] >= 0) {
+    if (ps.layoutMPI.hasTBComm) {
       commCellBCsTB(sol_halo);
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::bottom] == -1) {
+    if (ps.layoutMPI.bDst == MPI_PROC_NULL) {
       setBottomBCExt(sol_halo,t);
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::top] == -1) {
+    if (ps.layoutMPI.tDst == MPI_PROC_NULL) {
       setTopBCExt(sol_halo,t);
     }
 #endif
@@ -393,39 +458,36 @@ namespace KFVM {
     Kokkos::Profiling::pushRegion("Solver::setFaceBCs");
 
     // Do W <=> E comms and set external boundaries
-    if (ps.layoutMPI.nbrRank[FaceLabel::west] >= 0 ||
-	ps.layoutMPI.nbrRank[FaceLabel::east] >= 0) {
+    if (ps.layoutMPI.hasEWComm) {
       commFaceBCsEW();
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::west] == -1) {
+    if (ps.layoutMPI.wDst == MPI_PROC_NULL) {
       setWestBCExt(t);
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::east] == -1) {
+    if (ps.layoutMPI.eDst == MPI_PROC_NULL) {
       setEastBCExt(t);
-    }    
+    }
 
     // Do S <=> N comms and set external boundaries
-    if (ps.layoutMPI.nbrRank[FaceLabel::south] >= 0 ||
-	ps.layoutMPI.nbrRank[FaceLabel::north] >= 0) {
+    if (ps.layoutMPI.hasNSComm) {
       commFaceBCsNS();
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::south] == -1) {
+    if (ps.layoutMPI.sDst == MPI_PROC_NULL) {
       setSouthBCExt(t);
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::north] == -1) {
+    if (ps.layoutMPI.nDst == MPI_PROC_NULL) {
       setNorthBCExt(t);
     }
     
 #if (SPACE_DIM == 3)
     // Do B <=> T comms and set external boundaries
-    if (ps.layoutMPI.nbrRank[FaceLabel::bottom] >= 0 ||
-	ps.layoutMPI.nbrRank[FaceLabel::top] >= 0) {
+    if (ps.layoutMPI.hasTBComm) {
       commFaceBCsTB();
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::bottom] == -1) {
+    if (ps.layoutMPI.bDst == MPI_PROC_NULL) {
       setBottomBCExt(t);
     }
-    if (ps.layoutMPI.nbrRank[FaceLabel::top] == -1) {
+    if (ps.layoutMPI.tDst == MPI_PROC_NULL) {
       setTopBCExt(t);
     }
 #endif
@@ -435,87 +497,90 @@ namespace KFVM {
 
   void Solver::commCellBCsEW(ConsDataView sol_halo)
   {
-    // Overall order: send west, recv east, send east, recv west
+    // Overall order: pack , sendrecv W -> E, sendrecv E -> W, unpack
 
     // MDRange for (un)packing buffers
     auto bdyRange = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.rad,ps.nY,ps.nZ)});
 
     // Subviews of sol_halo to pack from/unpack to
-    auto wSrcSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.wCellSrcLo[0],bdyData.wCellSrcUp[0]),
-							Kokkos::make_pair(bdyData.wCellSrcLo[1],bdyData.wCellSrcUp[1]),
-							Kokkos::make_pair(bdyData.wCellSrcLo[2],bdyData.wCellSrcUp[2])),
-				   Kokkos::ALL);
-    auto wDstSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.wCellDstLo[0],bdyData.wCellDstUp[0]),
-							Kokkos::make_pair(bdyData.wCellDstLo[1],bdyData.wCellDstUp[1]),
-							Kokkos::make_pair(bdyData.wCellDstLo[2],bdyData.wCellDstUp[2])),
-				   Kokkos::ALL);
-    auto eSrcSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.eCellSrcLo[0],bdyData.eCellSrcUp[0]),
-							Kokkos::make_pair(bdyData.eCellSrcLo[1],bdyData.eCellSrcUp[1]),
-							Kokkos::make_pair(bdyData.eCellSrcLo[2],bdyData.eCellSrcUp[2])),
-				   Kokkos::ALL);
-    auto eDstSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.eCellDstLo[0],bdyData.eCellDstUp[0]),
-							Kokkos::make_pair(bdyData.eCellDstLo[1],bdyData.eCellDstUp[1]),
-							Kokkos::make_pair(bdyData.eCellDstLo[2],bdyData.eCellDstUp[2])),
-				   Kokkos::ALL);
+    auto wSendSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.wCellSendLo[0],bdyData.wCellSendUp[0]),
+							 Kokkos::make_pair(bdyData.wCellSendLo[1],bdyData.wCellSendUp[1]),
+							 Kokkos::make_pair(bdyData.wCellSendLo[2],bdyData.wCellSendUp[2])),
+				    Kokkos::ALL);
+    auto wRecvSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.wCellRecvLo[0],bdyData.wCellRecvUp[0]),
+							 Kokkos::make_pair(bdyData.wCellRecvLo[1],bdyData.wCellRecvUp[1]),
+							 Kokkos::make_pair(bdyData.wCellRecvLo[2],bdyData.wCellRecvUp[2])),
+				    Kokkos::ALL);
+    auto eSendSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.eCellSendLo[0],bdyData.eCellSendUp[0]),
+							 Kokkos::make_pair(bdyData.eCellSendLo[1],bdyData.eCellSendUp[1]),
+							 Kokkos::make_pair(bdyData.eCellSendLo[2],bdyData.eCellSendUp[2])),
+				    Kokkos::ALL);
+    auto eRecvSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.eCellRecvLo[0],bdyData.eCellRecvUp[0]),
+							 Kokkos::make_pair(bdyData.eCellRecvLo[1],bdyData.eCellRecvUp[1]),
+							 Kokkos::make_pair(bdyData.eCellRecvLo[2],bdyData.eCellRecvUp[2])),
+				    Kokkos::ALL);
 
     // Communication buffers
-    auto wSrc = bdyData.wCellSrc;
-    auto wDst = bdyData.wCellDst;
-    auto eSrc = bdyData.eCellSrc;
-    auto eDst = bdyData.eCellDst;
+    auto wSend = bdyData.wCellSend;
+    auto wRecv = bdyData.wCellRecv;
+    auto eSend = bdyData.eCellSend;
+    auto eRecv = bdyData.eCellRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.nbrRank[FaceLabel::west] == ps.layoutMPI.nbrRank[FaceLabel::east]) {
+    if (ps.layoutMPI.wDst == ps.layoutMPI.eSrc) {
       Kokkos::parallel_for("Solver::commCellBCsEW(copy)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       eDstSub(KFVM_D_DECL(i,j,k),nV) = wSrcSub(KFVM_D_DECL(i,j,k),nV);
-			       wDstSub(KFVM_D_DECL(i,j,k),nV) = eSrcSub(KFVM_D_DECL(i,j,k),nV);
+			       eRecvSub(KFVM_D_DECL(i,j,k),nV) = wSendSub(KFVM_D_DECL(i,j,k),nV);
+			       wRecvSub(KFVM_D_DECL(i,j,k),nV) = eSendSub(KFVM_D_DECL(i,j,k),nV);
 			     }
 			   });
       return;
     }
     
-    // Pack and send west src buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::west] >= 0) {
+    // Pack send buffers
+    if (ps.layoutMPI.wDst != MPI_PROC_NULL) {
       Kokkos::parallel_for("Solver::commCellBCsEW(pack west)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       wSrc(KFVM_D_DECL(i,j,k),nV) = wSrcSub(KFVM_D_DECL(i,j,k),nV);
+			       wSend(KFVM_D_DECL(i,j,k),nV) = wSendSub(KFVM_D_DECL(i,j,k),nV);
 			     }
 			   });
-      
-      MPI_Send(wSrc.data(),int(wSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::west],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
-
-    // recv east buffer, unpack, pack, send
-    if (ps.layoutMPI.nbrRank[FaceLabel::east] >= 0) {
-      MPI_Recv(eDst.data(),int(eDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::east],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-      Kokkos::parallel_for("Solver::commCellBCsEW(pack/unpack east)",bdyRange,
+    if (ps.layoutMPI.eDst != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commCellBCsEW(pack east)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       eDstSub(KFVM_D_DECL(i,j,k),nV) = eDst(KFVM_D_DECL(i,j,k),nV);
-			       eSrc(KFVM_D_DECL(i,j,k),nV) = eSrcSub(KFVM_D_DECL(i,j,k),nV);
+			       eSend(KFVM_D_DECL(i,j,k),nV) = eSendSub(KFVM_D_DECL(i,j,k),nV);
 			     }
 			   });
-      
-      MPI_Send(eSrc.data(),int(eSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::east],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
+
+    // Communicate W -> E face
+     MPI_Sendrecv(wSend.data(),int(wSend.size()),ps.layoutMPI.realType,ps.layoutMPI.wDst,0,
+		  eRecv.data(),int(eRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.eSrc,0,
+		  ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
-    // recv and unpack west buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::west] >= 0) {
-      MPI_Recv(wDst.data(),int(wDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::west],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-      Kokkos::parallel_for("Solver::commCellBCsEW(pack west)",bdyRange,
+    // Communicate E -> W face
+    MPI_Sendrecv(eSend.data(),int(eSend.size()),ps.layoutMPI.realType,ps.layoutMPI.eDst,1,
+		 wRecv.data(),int(wRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.wSrc,1,
+		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
+    
+    // Unpack recv buffers
+    if (ps.layoutMPI.eSrc != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commCellBCsEW(unpack east)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       wDstSub(KFVM_D_DECL(i,j,k),nV) = wDst(KFVM_D_DECL(i,j,k),nV);
+			       eRecvSub(KFVM_D_DECL(i,j,k),nV) = eRecv(KFVM_D_DECL(i,j,k),nV);
+			     }
+			   });
+    }
+    if (ps.layoutMPI.wSrc != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commCellBCsEW(unpack west)",bdyRange,
+			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
+			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
+			       wRecvSub(KFVM_D_DECL(i,j,k),nV) = wRecv(KFVM_D_DECL(i,j,k),nV);
 			     }
 			   });
     }
@@ -523,98 +588,105 @@ namespace KFVM {
 
   void Solver::commFaceBCsEW()
   {
-    // Overall order: send west, recv east, send east, recv west
-
+    // Overall order: recv east, send west, wait, unpack,
+    //                recv west, send east, wait, unpack
+    
     // MDRange for (un)packing buffers
 #if (SPACE_DIM == 2)
     auto bdyRange = Kokkos::RangePolicy<ExecSpace,Kokkos::IndexType<idx_t>>({0,ps.nY});
 #else
-    auto bdyRange = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM - 1>,Kokkos::IndexType<idx_t>>
+    auto bdyRange = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<2>,Kokkos::IndexType<idx_t>>
       ({0,0},{ps.nY,ps.nZ});
 #endif
 
     // Subviews of faceVals to pack from/unpack to
-    auto wSrcSub = Kokkos::subview(faceVals.xDir,
-				   KFVM_D_DECL(0,Kokkos::ALL,Kokkos::ALL),
-				   1,Kokkos::ALL,Kokkos::ALL);
-    auto wDstSub = Kokkos::subview(faceVals.xDir,
-				   KFVM_D_DECL(0,Kokkos::ALL,Kokkos::ALL),
-				   0,Kokkos::ALL,Kokkos::ALL);
-    auto eSrcSub = Kokkos::subview(faceVals.xDir,
-				   KFVM_D_DECL(ps.nX,Kokkos::ALL,Kokkos::ALL),
-				   0,Kokkos::ALL,Kokkos::ALL);
-    auto eDstSub = Kokkos::subview(faceVals.xDir,
-				   KFVM_D_DECL(ps.nX,Kokkos::ALL,Kokkos::ALL),
-				   1,Kokkos::ALL,Kokkos::ALL);
+    auto wSendSub = Kokkos::subview(faceVals.xDir,
+				    KFVM_D_DECL(0,Kokkos::ALL,Kokkos::ALL),
+				    1,Kokkos::ALL,Kokkos::ALL);
+    auto wRecvSub = Kokkos::subview(faceVals.xDir,
+				    KFVM_D_DECL(0,Kokkos::ALL,Kokkos::ALL),
+				    0,Kokkos::ALL,Kokkos::ALL);
+    auto eSendSub = Kokkos::subview(faceVals.xDir,
+				    KFVM_D_DECL(ps.nX,Kokkos::ALL,Kokkos::ALL),
+				    0,Kokkos::ALL,Kokkos::ALL);
+    auto eRecvSub = Kokkos::subview(faceVals.xDir,
+				    KFVM_D_DECL(ps.nX,Kokkos::ALL,Kokkos::ALL),
+				    1,Kokkos::ALL,Kokkos::ALL);
 
     // Communication buffers
-    auto wSrc = bdyData.wFaceSrc;
-    auto wDst = bdyData.wFaceDst;
-    auto eSrc = bdyData.eFaceSrc;
-    auto eDst = bdyData.eFaceDst;
+    auto wSend = bdyData.wFaceSend;
+    auto wRecv = bdyData.wFaceRecv;
+    auto eSend = bdyData.eFaceSend;
+    auto eRecv = bdyData.eFaceRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.nbrRank[FaceLabel::west] == ps.layoutMPI.nbrRank[FaceLabel::east]) {
+    if (ps.layoutMPI.wDst == ps.layoutMPI.eSrc) {
       Kokkos::parallel_for("Solver::commFaceBCsEW(copy)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t j,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 eDstSub(KFVM_DM_DECL(j,k),nQ,nV) = wSrcSub(KFVM_DM_DECL(j,k),nQ,nV);
-				 wDstSub(KFVM_DM_DECL(j,k),nQ,nV) = eSrcSub(KFVM_DM_DECL(j,k),nQ,nV);
+				 eRecvSub(KFVM_DM_DECL(j,k),nQ,nV) = wSendSub(KFVM_DM_DECL(j,k),nQ,nV);
+				 wRecvSub(KFVM_DM_DECL(j,k),nQ,nV) = eSendSub(KFVM_DM_DECL(j,k),nQ,nV);
 			       }
 			     }
 			   });
       return;
     }
     
-    // Pack and send west src buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::west] >= 0) {
+    // Pack send buffers
+    if (ps.layoutMPI.wDst != MPI_PROC_NULL) {
       Kokkos::parallel_for("Solver::commFaceBCsEW(pack west)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t j,const idx_t k)) {
-			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
+			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 wSrc(KFVM_DM_DECL(j,k),nQ,nV) = wSrcSub(KFVM_DM_DECL(j,k),nQ,nV);
+				 wSend(KFVM_DM_DECL(j,k),nQ,nV) = wSendSub(KFVM_DM_DECL(j,k),nQ,nV);
 			       }
 			     }
 			   });
-      
-      MPI_Send(wSrc.data(),int(wSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::west],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
-
-    // recv east buffer, unpack, pack, send
-    if (ps.layoutMPI.nbrRank[FaceLabel::east] >= 0) {
-      MPI_Recv(eDst.data(),int(eDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::east],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-      Kokkos::parallel_for("Solver::commFaceBCsEW(pack/unpack east)",bdyRange,
+    if (ps.layoutMPI.eDst != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commFaceBCsEW(pack east)",bdyRange,
+			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t j,const idx_t k)) {
+			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
+			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
+				 eSend(KFVM_DM_DECL(j,k),nQ,nV) = eSendSub(KFVM_DM_DECL(j,k),nQ,nV);
+			       }
+			     }
+			   });
+    }
+    
+    // Communicate W -> E face
+    MPI_Sendrecv(wSend.data(),int(wSend.size()),ps.layoutMPI.realType,ps.layoutMPI.wDst,2,
+		 eRecv.data(),int(eRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.eSrc,2,
+		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
+    
+    // Communicate E -> W face
+    MPI_Sendrecv(eSend.data(),int(eSend.size()),ps.layoutMPI.realType,ps.layoutMPI.eDst,3,
+		 wRecv.data(),int(wRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.wSrc,3,
+		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
+    
+    // Unpack recv buffers
+    if (ps.layoutMPI.eSrc != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commFaceBCsEW(unpack east)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t j,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 eDstSub(KFVM_DM_DECL(j,k),nQ,nV) = eDst(KFVM_DM_DECL(j,k),nQ,nV);
-				 eSrc(KFVM_DM_DECL(j,k),nQ,nV) = eSrcSub(KFVM_DM_DECL(j,k),nQ,nV);
+				 eRecvSub(KFVM_DM_DECL(j,k),nQ,nV) = eRecv(KFVM_DM_DECL(j,k),nQ,nV);
 			       }
 			     }
 			   });
-      
-      MPI_Send(eSrc.data(),int(eSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::east],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
-    
-    // recv and unpack west buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::west] >= 0) {
-      MPI_Recv(wDst.data(),int(wDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::west],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
+    if (ps.layoutMPI.wSrc != MPI_PROC_NULL) {
       Kokkos::parallel_for("Solver::commFaceBCsEW(unpack west)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t j,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 wDstSub(KFVM_DM_DECL(j,k),nQ,nV) = wDst(KFVM_DM_DECL(j,k),nQ,nV);
+				 wRecvSub(KFVM_DM_DECL(j,k),nQ,nV) = wRecv(KFVM_DM_DECL(j,k),nQ,nV);
 			       }
 			     }
 			   });
@@ -630,80 +702,83 @@ namespace KFVM {
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX + 2*ps.rad,ps.rad,ps.nZ)});
 
     // Subviews of sol_halo to pack from/unpack to
-    auto sSrcSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.sCellSrcLo[0],bdyData.sCellSrcUp[0]),
-							Kokkos::make_pair(bdyData.sCellSrcLo[1],bdyData.sCellSrcUp[1]),
-							Kokkos::make_pair(bdyData.sCellSrcLo[2],bdyData.sCellSrcUp[2])),
-				   Kokkos::ALL);
-    auto sDstSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.sCellDstLo[0],bdyData.sCellDstUp[0]),
-							Kokkos::make_pair(bdyData.sCellDstLo[1],bdyData.sCellDstUp[1]),
-							Kokkos::make_pair(bdyData.sCellDstLo[2],bdyData.sCellDstUp[2])),
-				   Kokkos::ALL);
-    auto nSrcSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.nCellSrcLo[0],bdyData.nCellSrcUp[0]),
-							Kokkos::make_pair(bdyData.nCellSrcLo[1],bdyData.nCellSrcUp[1]),
-							Kokkos::make_pair(bdyData.nCellSrcLo[2],bdyData.nCellSrcUp[2])),
-				   Kokkos::ALL);
-    auto nDstSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.nCellDstLo[0],bdyData.nCellDstUp[0]),
-							Kokkos::make_pair(bdyData.nCellDstLo[1],bdyData.nCellDstUp[1]),
-							Kokkos::make_pair(bdyData.nCellDstLo[2],bdyData.nCellDstUp[2])),
-				   Kokkos::ALL);
+    auto sSendSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.sCellSendLo[0],bdyData.sCellSendUp[0]),
+							 Kokkos::make_pair(bdyData.sCellSendLo[1],bdyData.sCellSendUp[1]),
+							 Kokkos::make_pair(bdyData.sCellSendLo[2],bdyData.sCellSendUp[2])),
+				    Kokkos::ALL);
+    auto sRecvSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.sCellRecvLo[0],bdyData.sCellRecvUp[0]),
+							 Kokkos::make_pair(bdyData.sCellRecvLo[1],bdyData.sCellRecvUp[1]),
+							 Kokkos::make_pair(bdyData.sCellRecvLo[2],bdyData.sCellRecvUp[2])),
+				    Kokkos::ALL);
+    auto nSendSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.nCellSendLo[0],bdyData.nCellSendUp[0]),
+							 Kokkos::make_pair(bdyData.nCellSendLo[1],bdyData.nCellSendUp[1]),
+							 Kokkos::make_pair(bdyData.nCellSendLo[2],bdyData.nCellSendUp[2])),
+				    Kokkos::ALL);
+    auto nRecvSub = Kokkos::subview(sol_halo,KFVM_D_DECL(Kokkos::make_pair(bdyData.nCellRecvLo[0],bdyData.nCellRecvUp[0]),
+							 Kokkos::make_pair(bdyData.nCellRecvLo[1],bdyData.nCellRecvUp[1]),
+							 Kokkos::make_pair(bdyData.nCellRecvLo[2],bdyData.nCellRecvUp[2])),
+				    Kokkos::ALL);
 
     // Communication buffers
-    auto sSrc = bdyData.sCellSrc;
-    auto sDst = bdyData.sCellDst;
-    auto nSrc = bdyData.nCellSrc;
-    auto nDst = bdyData.nCellDst;
+    auto sSend = bdyData.sCellSend;
+    auto sRecv = bdyData.sCellRecv;
+    auto nSend = bdyData.nCellSend;
+    auto nRecv = bdyData.nCellRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.nbrRank[FaceLabel::south] == ps.layoutMPI.nbrRank[FaceLabel::north]) {
+    if (ps.layoutMPI.sDst == ps.layoutMPI.nSrc) {
       Kokkos::parallel_for("Solver::commCellBCsNS(copy)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       nDstSub(KFVM_D_DECL(i,j,k),nV) = sSrcSub(KFVM_D_DECL(i,j,k),nV);
-			       sDstSub(KFVM_D_DECL(i,j,k),nV) = nSrcSub(KFVM_D_DECL(i,j,k),nV);
+			       nRecvSub(KFVM_D_DECL(i,j,k),nV) = sSendSub(KFVM_D_DECL(i,j,k),nV);
+			       sRecvSub(KFVM_D_DECL(i,j,k),nV) = nSendSub(KFVM_D_DECL(i,j,k),nV);
 			     }
 			   });
       return;
     }
     
-    // Pack and send south src buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::south] >= 0) {
+    // Pack send buffers
+    if (ps.layoutMPI.sDst != MPI_PROC_NULL) {
       Kokkos::parallel_for("Solver::commCellBCsNS(pack south)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       sSrc(KFVM_D_DECL(i,j,k),nV) = sSrcSub(KFVM_D_DECL(i,j,k),nV);
+			       sSend(KFVM_D_DECL(i,j,k),nV) = sSendSub(KFVM_D_DECL(i,j,k),nV);
 			     }
 			   });
-      
-      MPI_Send(sSrc.data(),int(sSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::south],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
-
-    // recv north buffer, unpack, pack, send
-    if (ps.layoutMPI.nbrRank[FaceLabel::north] >= 0) {
-      MPI_Recv(nDst.data(),int(nDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::north],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-      Kokkos::parallel_for("Solver::commCellBCsNS(pack/unpack north)",bdyRange,
+    if (ps.layoutMPI.nDst != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commCellBCsNS(pack north)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       nDstSub(KFVM_D_DECL(i,j,k),nV) = nDst(KFVM_D_DECL(i,j,k),nV);
-			       nSrc(KFVM_D_DECL(i,j,k),nV) = nSrcSub(KFVM_D_DECL(i,j,k),nV);
+			       nSend(KFVM_D_DECL(i,j,k),nV) = nSendSub(KFVM_D_DECL(i,j,k),nV);
 			     }
 			   });
-      
-      MPI_Send(nSrc.data(),int(nSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::north],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
+
+    // Communicate W -> E face
+     MPI_Sendrecv(sSend.data(),int(sSend.size()),ps.layoutMPI.realType,ps.layoutMPI.sDst,0,
+		  nRecv.data(),int(nRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.nSrc,0,
+		  ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
-    // recv and unpack south buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::south] >= 0) {
-      MPI_Recv(sDst.data(),int(sDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::south],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-      Kokkos::parallel_for("Solver::commCellBCsNS(pack south)",bdyRange,
+    // Communicate E -> W face
+    MPI_Sendrecv(nSend.data(),int(nSend.size()),ps.layoutMPI.realType,ps.layoutMPI.nDst,1,
+		 sRecv.data(),int(sRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.sSrc,1,
+		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
+    
+    // Unpack recv buffers
+    if (ps.layoutMPI.nSrc != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commCellBCsNS(unpack north)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       sDstSub(KFVM_D_DECL(i,j,k),nV) = sDst(KFVM_D_DECL(i,j,k),nV);
+			       nRecvSub(KFVM_D_DECL(i,j,k),nV) = nRecv(KFVM_D_DECL(i,j,k),nV);
+			     }
+			   });
+    }
+    if (ps.layoutMPI.sSrc != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commCellBCsNS(unpack south)",bdyRange,
+			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
+			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
+			       sRecvSub(KFVM_D_DECL(i,j,k),nV) = sRecv(KFVM_D_DECL(i,j,k),nV);
 			     }
 			   });
     }
@@ -712,7 +787,6 @@ namespace KFVM {
   void Solver::commFaceBCsNS()
   {
     // Overall order: send south, recv north, send north, recv south
-
     // MDRange for (un)packing buffers
 #if (SPACE_DIM == 2)
     auto bdyRange = Kokkos::RangePolicy<ExecSpace,Kokkos::IndexType<idx_t>>({0,ps.nX});
@@ -722,87 +796,93 @@ namespace KFVM {
 #endif
 
     // Subviews of faceVals to pack from/unpack to
-    auto sSrcSub = Kokkos::subview(faceVals.yDir,
-				   KFVM_D_DECL(Kokkos::ALL,0,Kokkos::ALL),
-				   1,Kokkos::ALL,Kokkos::ALL);
-    auto sDstSub = Kokkos::subview(faceVals.yDir,
-				   KFVM_D_DECL(Kokkos::ALL,0,Kokkos::ALL),
-				   0,Kokkos::ALL,Kokkos::ALL);
-    auto nSrcSub = Kokkos::subview(faceVals.yDir,
-				   KFVM_D_DECL(Kokkos::ALL,ps.nY,Kokkos::ALL),
-				   0,Kokkos::ALL,Kokkos::ALL);
-    auto nDstSub = Kokkos::subview(faceVals.yDir,
-				   KFVM_D_DECL(Kokkos::ALL,ps.nY,Kokkos::ALL),
-				   1,Kokkos::ALL,Kokkos::ALL);
+    auto sSendSub = Kokkos::subview(faceVals.yDir,
+				    KFVM_D_DECL(Kokkos::ALL,0,Kokkos::ALL),
+				    1,Kokkos::ALL,Kokkos::ALL);
+    auto sRecvSub = Kokkos::subview(faceVals.yDir,
+				    KFVM_D_DECL(Kokkos::ALL,0,Kokkos::ALL),
+				    0,Kokkos::ALL,Kokkos::ALL);
+    auto nSendSub = Kokkos::subview(faceVals.yDir,
+				    KFVM_D_DECL(Kokkos::ALL,ps.nY,Kokkos::ALL),
+				    0,Kokkos::ALL,Kokkos::ALL);
+    auto nRecvSub = Kokkos::subview(faceVals.yDir,
+				    KFVM_D_DECL(Kokkos::ALL,ps.nY,Kokkos::ALL),
+				    1,Kokkos::ALL,Kokkos::ALL);
 
     // Communication buffers
-    auto sSrc = bdyData.sFaceSrc;
-    auto sDst = bdyData.sFaceDst;
-    auto nSrc = bdyData.nFaceSrc;
-    auto nDst = bdyData.nFaceDst;
+    auto sSend = bdyData.sFaceSend;
+    auto sRecv = bdyData.sFaceRecv;
+    auto nSend = bdyData.nFaceSend;
+    auto nRecv = bdyData.nFaceRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.nbrRank[FaceLabel::south] == ps.layoutMPI.nbrRank[FaceLabel::north]) {
+    if (ps.layoutMPI.sDst == ps.layoutMPI.nSrc) {
       Kokkos::parallel_for("Solver::commFaceBCsNS(copy)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 nDstSub(KFVM_DM_DECL(i,k),nQ,nV) = sSrcSub(KFVM_DM_DECL(i,k),nQ,nV);
-				 sDstSub(KFVM_DM_DECL(i,k),nQ,nV) = nSrcSub(KFVM_DM_DECL(i,k),nQ,nV);
+				 nRecvSub(KFVM_DM_DECL(i,k),nQ,nV) = sSendSub(KFVM_DM_DECL(i,k),nQ,nV);
+				 sRecvSub(KFVM_DM_DECL(i,k),nQ,nV) = nSendSub(KFVM_DM_DECL(i,k),nQ,nV);
 			       }
 			     }
 			   });
       return;
     }
     
-    // Pack and send south src buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::south] >= 0) {
+    // Pack send buffers
+    if (ps.layoutMPI.sDst != MPI_PROC_NULL) {
       Kokkos::parallel_for("Solver::commFaceBCsNS(pack south)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
-			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
+			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 sSrc(KFVM_DM_DECL(i,k),nQ,nV) = sSrcSub(KFVM_DM_DECL(i,k),nQ,nV);
+				 sSend(KFVM_DM_DECL(i,k),nQ,nV) = sSendSub(KFVM_DM_DECL(i,k),nQ,nV);
 			       }
 			     }
 			   });
-      
-      MPI_Send(sSrc.data(),int(sSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::south],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
-
-    // recv north buffer, unpack, pack, send
-    if (ps.layoutMPI.nbrRank[FaceLabel::north] >= 0) {
-      MPI_Recv(nDst.data(),int(nDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::north],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-      Kokkos::parallel_for("Solver::commFaceBCsNS(pack/unpack north)",bdyRange,
+    if (ps.layoutMPI.nDst != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commFaceBCsNS(pack north)",bdyRange,
+			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
+			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
+			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
+				 nSend(KFVM_DM_DECL(i,k),nQ,nV) = nSendSub(KFVM_DM_DECL(i,k),nQ,nV);
+			       }
+			     }
+			   });
+    }
+    
+    // Communicate W -> E face
+    MPI_Sendrecv(sSend.data(),int(sSend.size()),ps.layoutMPI.realType,ps.layoutMPI.sDst,2,
+		 nRecv.data(),int(nRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.nSrc,2,
+		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
+    
+    // Communicate E -> W face
+    MPI_Sendrecv(nSend.data(),int(nSend.size()),ps.layoutMPI.realType,ps.layoutMPI.nDst,3,
+		 sRecv.data(),int(sRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.sSrc,3,
+		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
+    
+    // Unpack recv buffers
+    if (ps.layoutMPI.nSrc != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commFaceBCsNS(unpack north)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 nDstSub(KFVM_DM_DECL(i,k),nQ,nV) = nDst(KFVM_DM_DECL(i,k),nQ,nV);
-				 nSrc(KFVM_DM_DECL(i,k),nQ,nV) = nSrcSub(KFVM_DM_DECL(i,k),nQ,nV);
+				 nRecvSub(KFVM_DM_DECL(i,k),nQ,nV) = nRecv(KFVM_DM_DECL(i,k),nQ,nV);
 			       }
 			     }
 			   });
-      
-      MPI_Send(nSrc.data(),int(nSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::north],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
-    
-    // recv and unpack south buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::south] >= 0) {
-      MPI_Recv(sDst.data(),int(sDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::south],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
+    if (ps.layoutMPI.sSrc != MPI_PROC_NULL) {
       Kokkos::parallel_for("Solver::commFaceBCsNS(unpack south)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 sDstSub(KFVM_DM_DECL(i,k),nQ,nV) = sDst(KFVM_DM_DECL(i,k),nQ,nV);
+				 sRecvSub(KFVM_DM_DECL(i,k),nQ,nV) = sRecv(KFVM_DM_DECL(i,k),nQ,nV);
 			       }
 			     }
 			   });
@@ -819,84 +899,87 @@ namespace KFVM {
       ({0,0,0},{ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.rad});
 
     // Subviews of sol_halo to pack from/unpack to
-    auto bSrcSub = Kokkos::subview(sol_halo,
-				   Kokkos::make_pair(bdyData.bCellSrcLo[0],bdyData.bCellSrcUp[0]),
-				   Kokkos::make_pair(bdyData.bCellSrcLo[1],bdyData.bCellSrcUp[1]),
-				   Kokkos::make_pair(bdyData.bCellSrcLo[2],bdyData.bCellSrcUp[2]),
-				   Kokkos::ALL);
-    auto bDstSub = Kokkos::subview(sol_halo,
-				   Kokkos::make_pair(bdyData.bCellDstLo[0],bdyData.bCellDstUp[0]),
-				   Kokkos::make_pair(bdyData.bCellDstLo[1],bdyData.bCellDstUp[1]),
-				   Kokkos::make_pair(bdyData.bCellDstLo[2],bdyData.bCellDstUp[2]),
-				   Kokkos::ALL);
-    auto tSrcSub = Kokkos::subview(sol_halo,
-				   Kokkos::make_pair(bdyData.tCellSrcLo[0],bdyData.tCellSrcUp[0]),
-				   Kokkos::make_pair(bdyData.tCellSrcLo[1],bdyData.tCellSrcUp[1]),
-				   Kokkos::make_pair(bdyData.tCellSrcLo[2],bdyData.tCellSrcUp[2]),
-				   Kokkos::ALL);
-    auto tDstSub = Kokkos::subview(sol_halo,
-				   Kokkos::make_pair(bdyData.tCellDstLo[0],bdyData.tCellDstUp[0]),
-				   Kokkos::make_pair(bdyData.tCellDstLo[1],bdyData.tCellDstUp[1]),
-				   Kokkos::make_pair(bdyData.tCellDstLo[2],bdyData.tCellDstUp[2]),
-				   Kokkos::ALL);
+    auto bSendSub = Kokkos::subview(sol_halo,
+				    Kokkos::make_pair(bdyData.bCellSendLo[0],bdyData.bCellSendUp[0]),
+				    Kokkos::make_pair(bdyData.bCellSendLo[1],bdyData.bCellSendUp[1]),
+				    Kokkos::make_pair(bdyData.bCellSendLo[2],bdyData.bCellSendUp[2]),
+				    Kokkos::ALL);
+    auto bRecvSub = Kokkos::subview(sol_halo,
+				    Kokkos::make_pair(bdyData.bCellRecvLo[0],bdyData.bCellRecvUp[0]),
+				    Kokkos::make_pair(bdyData.bCellRecvLo[1],bdyData.bCellRecvUp[1]),
+				    Kokkos::make_pair(bdyData.bCellRecvLo[2],bdyData.bCellRecvUp[2]),
+				    Kokkos::ALL);
+    auto tSendSub = Kokkos::subview(sol_halo,
+				    Kokkos::make_pair(bdyData.tCellSendLo[0],bdyData.tCellSendUp[0]),
+				    Kokkos::make_pair(bdyData.tCellSendLo[1],bdyData.tCellSendUp[1]),
+				    Kokkos::make_pair(bdyData.tCellSendLo[2],bdyData.tCellSendUp[2]),
+				    Kokkos::ALL);
+    auto tRecvSub = Kokkos::subview(sol_halo,
+				    Kokkos::make_pair(bdyData.tCellRecvLo[0],bdyData.tCellRecvUp[0]),
+				    Kokkos::make_pair(bdyData.tCellRecvLo[1],bdyData.tCellRecvUp[1]),
+				    Kokkos::make_pair(bdyData.tCellRecvLo[2],bdyData.tCellRecvUp[2]),
+				    Kokkos::ALL);
 
     // Communication buffers
-    auto bSrc = bdyData.bCellSrc;
-    auto bDst = bdyData.bCellDst;
-    auto tSrc = bdyData.tCellSrc;
-    auto tDst = bdyData.tCellDst;
+    auto bSend = bdyData.bCellSend;
+    auto bRecv = bdyData.bCellRecv;
+    auto tSend = bdyData.tCellSend;
+    auto tRecv = bdyData.tCellRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.nbrRank[FaceLabel::bottom] == ps.layoutMPI.nbrRank[FaceLabel::top]) {
+    if (ps.layoutMPI.bDst == ps.layoutMPI.tSrc) {
       Kokkos::parallel_for("Solver::commCellBCsTB(copy)",bdyRange,
 			   KOKKOS_LAMBDA (const idx_t i,const idx_t j,const idx_t k) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       tDstSub(i,j,k,nV) = bSrcSub(i,j,k,nV);
-			       bDstSub(i,j,k,nV) = tSrcSub(i,j,k,nV);
+			       tRecvSub(i,j,k,nV) = bSendSub(i,j,k,nV);
+			       bRecvSub(i,j,k,nV) = tSendSub(i,j,k,nV);
 			     }
 			   });
       return;
     }
     
-    // Pack and send bottom src buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::bottom] >= 0) {
-      Kokkos::parallel_for("Solver::commCellBCsTB(pack bottom)",bdyRange,
-			   KOKKOS_LAMBDA (const idx_t i,const idx_t j,const idx_t k) {
+    // Pack send buffers
+    if (ps.layoutMPI.bDst != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commCellBCsNS(pack bottom)",bdyRange,
+			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       bSrc(i,j,k,nV) = bSrcSub(i,j,k,nV);
+			       bSend(KFVM_D_DECL(i,j,k),nV) = bSendSub(KFVM_D_DECL(i,j,k),nV);
 			     }
 			   });
-      
-      MPI_Send(bSrc.data(),int(bSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::bottom],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
-
-    // recv top buffer, unpack, pack, send
-    if (ps.layoutMPI.nbrRank[FaceLabel::top] >= 0) {
-      MPI_Recv(tDst.data(),int(tDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::top],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-      Kokkos::parallel_for("Solver::commCellBCsTB(pack/unpack top)",bdyRange,
-			   KOKKOS_LAMBDA (const idx_t i,const idx_t j,const idx_t k) {
+    if (ps.layoutMPI.tDst != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commCellBCsNS(pack top)",bdyRange,
+			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       tDstSub(i,j,k,nV) = tDst(i,j,k,nV);
-			       tSrc(i,j,k,nV) = tSrcSub(i,j,k,nV);
+			       tSend(KFVM_D_DECL(i,j,k),nV) = tSendSub(KFVM_D_DECL(i,j,k),nV);
 			     }
 			   });
-      
-      MPI_Send(tSrc.data(),int(tSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::top],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
+
+    // Communicate W -> E face
+     MPI_Sendrecv(bSend.data(),int(bSend.size()),ps.layoutMPI.realType,ps.layoutMPI.bDst,0,
+		  tRecv.data(),int(tRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.tSrc,0,
+		  ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
-    // recv and unpack bottom buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::bottom] >= 0) {
-      MPI_Recv(bDst.data(),int(bDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::bottom],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-      Kokkos::parallel_for("Solver::commCellBCsTB(unpack bottom)",bdyRange,
-			   KOKKOS_LAMBDA (const idx_t i,const idx_t j,const idx_t k) {
+    // Communicate E -> W face
+    MPI_Sendrecv(tSend.data(),int(tSend.size()),ps.layoutMPI.realType,ps.layoutMPI.tDst,1,
+		 bRecv.data(),int(bRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.bSrc,1,
+		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
+    
+    // Unpack recv buffers
+    if (ps.layoutMPI.tSrc != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commCellBCsNS(unpack top)",bdyRange,
+			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
-			       bDstSub(i,j,k,nV) = bDst(i,j,k,nV);
+			       tRecvSub(KFVM_D_DECL(i,j,k),nV) = tRecv(KFVM_D_DECL(i,j,k),nV);
+			     }
+			   });
+    }
+    if (ps.layoutMPI.bSrc != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commCellBCsNS(unpack bottom)",bdyRange,
+			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
+			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
+			       bRecvSub(KFVM_D_DECL(i,j,k),nV) = bRecv(KFVM_D_DECL(i,j,k),nV);
 			     }
 			   });
     }
@@ -905,93 +988,98 @@ namespace KFVM {
   void Solver::commFaceBCsTB()
   {
     // Overall order: send bottom, recv top, send top, recv bottom
-
     // Range for (un)packing buffers
     auto bdyRange = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM - 1>,Kokkos::IndexType<idx_t>>
       ({0,0},{ps.nX,ps.nY});
 
     // Subviews of faceVals to pack from/unpack to
-    auto bSrcSub = Kokkos::subview(faceVals.zDir,
-				   Kokkos::ALL,Kokkos::ALL,0,
-				   1,Kokkos::ALL,Kokkos::ALL);
-    auto bDstSub = Kokkos::subview(faceVals.zDir,
-				   Kokkos::ALL,Kokkos::ALL,0,
-				   0,Kokkos::ALL,Kokkos::ALL);
-    auto tSrcSub = Kokkos::subview(faceVals.zDir,
-				   Kokkos::ALL,Kokkos::ALL,ps.nZ,
-				   0,Kokkos::ALL,Kokkos::ALL);
-    auto tDstSub = Kokkos::subview(faceVals.zDir,
-				   Kokkos::ALL,Kokkos::ALL,ps.nZ,
-				   1,Kokkos::ALL,Kokkos::ALL);
+    auto bSendSub = Kokkos::subview(faceVals.zDir,
+				    Kokkos::ALL,Kokkos::ALL,0,
+				    1,Kokkos::ALL,Kokkos::ALL);
+    auto bRecvSub = Kokkos::subview(faceVals.zDir,
+				    Kokkos::ALL,Kokkos::ALL,0,
+				    0,Kokkos::ALL,Kokkos::ALL);
+    auto tSendSub = Kokkos::subview(faceVals.zDir,
+				    Kokkos::ALL,Kokkos::ALL,ps.nZ,
+				    0,Kokkos::ALL,Kokkos::ALL);
+    auto tRecvSub = Kokkos::subview(faceVals.zDir,
+				    Kokkos::ALL,Kokkos::ALL,ps.nZ,
+				    1,Kokkos::ALL,Kokkos::ALL);
 
     // Communication buffers
-    auto bSrc = bdyData.bFaceSrc;
-    auto bDst = bdyData.bFaceDst;
-    auto tSrc = bdyData.tFaceSrc;
-    auto tDst = bdyData.tFaceDst;
+    auto bSend = bdyData.bFaceSend;
+    auto bRecv = bdyData.bFaceRecv;
+    auto tSend = bdyData.tFaceSend;
+    auto tRecv = bdyData.tFaceRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.nbrRank[FaceLabel::bottom] == ps.layoutMPI.nbrRank[FaceLabel::top]) {
+    if (ps.layoutMPI.bDst == ps.layoutMPI.tSrc) {
       Kokkos::parallel_for("Solver::commFaceBCsTB(copy)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t j)) {
 			     const idx_t nQuad = NUM_QUAD_PTS*NUM_QUAD_PTS;
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 tDstSub(i,j,nQ,nV) = bSrcSub(i,j,nQ,nV);
-				 bDstSub(i,j,nQ,nV) = tSrcSub(i,j,nQ,nV);
+				 tRecvSub(i,j,nQ,nV) = bSendSub(i,j,nQ,nV);
+				 bRecvSub(i,j,nQ,nV) = tSendSub(i,j,nQ,nV);
 			       }
 			     }
 			   });
       return;
     }
     
-    // Pack and send bottom src buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::bottom] >= 0) {
+    // Pack send buffers
+    if (ps.layoutMPI.bDst != MPI_PROC_NULL) {
       Kokkos::parallel_for("Solver::commFaceBCsTB(pack bottom)",bdyRange,
-			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t j)) {
-			     const idx_t nQuad = NUM_QUAD_PTS*NUM_QUAD_PTS;
+			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
+			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 bSrc(i,j,nQ,nV) = bSrcSub(i,j,nQ,nV);
+				 bSend(KFVM_DM_DECL(i,k),nQ,nV) = bSendSub(KFVM_DM_DECL(i,k),nQ,nV);
 			       }
 			     }
 			   });
-      
-      MPI_Send(bSrc.data(),int(bSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::bottom],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
-
-    // recv top buffer, unpack, pack, send
-    if (ps.layoutMPI.nbrRank[FaceLabel::top] >= 0) {
-      MPI_Recv(tDst.data(),int(tDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::top],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-      Kokkos::parallel_for("Solver::commFaceBCsTB(pack/unpack top)",bdyRange,
-			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t j)) {
-			     const idx_t nQuad = NUM_QUAD_PTS*NUM_QUAD_PTS;			     
+    if (ps.layoutMPI.tDst != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commFaceBCsTB(pack top)",bdyRange,
+			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
+			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 tDstSub(i,j,nQ,nV) = tDst(i,j,nQ,nV);
-				 tSrc(i,j,nQ,nV) = tSrcSub(i,j,nQ,nV);
+				 tSend(KFVM_DM_DECL(i,k),nQ,nV) = tSendSub(KFVM_DM_DECL(i,k),nQ,nV);
 			       }
 			     }
 			   });
-      
-      MPI_Send(tSrc.data(),int(tSrc.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::top],KFVM_MPI_TAG,MPI_COMM_WORLD);
     }
     
-    // recv and unpack bottom buffer
-    if (ps.layoutMPI.nbrRank[FaceLabel::bottom] >= 0) {
-      MPI_Recv(bDst.data(),int(bDst.size()),ps.layoutMPI.datatype,
-	       ps.layoutMPI.nbrRank[FaceLabel::bottom],KFVM_MPI_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
-      Kokkos::parallel_for("Solver::commFaceBCsTB(unpack bottom)",bdyRange,
-			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t j)) {
-			     const idx_t nQuad = NUM_QUAD_PTS*NUM_QUAD_PTS;			     
+    // Communicate W -> E face
+    MPI_Sendrecv(bSend.data(),int(bSend.size()),ps.layoutMPI.realType,ps.layoutMPI.bDst,2,
+		 tRecv.data(),int(tRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.tSrc,2,
+		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
+    
+    // Communicate E -> W face
+    MPI_Sendrecv(tSend.data(),int(tSend.size()),ps.layoutMPI.realType,ps.layoutMPI.tDst,3,
+		 bRecv.data(),int(bRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.bSrc,3,
+		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
+    
+    // Unpack recv buffers
+    if (ps.layoutMPI.tSrc != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commFaceBCsTB(unpack top)",bdyRange,
+			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
+			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
 			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
 			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
-				 bDstSub(i,j,nQ,nV) = bDst(i,j,nQ,nV);
+				 tRecvSub(KFVM_DM_DECL(i,k),nQ,nV) = tRecv(KFVM_DM_DECL(i,k),nQ,nV);
+			       }
+			     }
+			   });
+    }
+    if (ps.layoutMPI.bSrc != MPI_PROC_NULL) {
+      Kokkos::parallel_for("Solver::commFaceBCsTB(unpack bottom)",bdyRange,
+			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
+			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
+			     for (idx_t nQ=0; nQ<nQuad; nQ++) {
+			       for (idx_t nV=0; nV<NUM_VARS; nV++) {
+				 bRecvSub(KFVM_DM_DECL(i,k),nQ,nV) = bRecv(KFVM_DM_DECL(i,k),nQ,nV);
 			       }
 			     }
 			   });
@@ -1028,7 +1116,7 @@ namespace KFVM {
 			   (sol_halo,geom,ps.rad,ps.nX,t));
       break;
     default:
-      std::printf("Warning: Western cell BC undefined.\n");
+      PrintSingle(ps,"Warning: Western cell BC undefined.\n");
     }
   }
 
@@ -1061,7 +1149,7 @@ namespace KFVM {
 			   (sol_halo,geom,ps.rad,ps.nX,t));
       break;
     default:
-      std::printf("Warning: Eastern cell BC undefined.\n");
+      PrintSingle(ps,"Warning: Eastern cell BC undefined.\n");
     }    
   }
 
@@ -1094,7 +1182,7 @@ namespace KFVM {
 			   (sol_halo,geom,ps.rad,ps.nY,t));
       break;
     default:
-      std::printf("Warning: Southern cell BC undefined.\n");
+      PrintSingle(ps,"Warning: Southern cell BC undefined.\n");
     }    
   }
 
@@ -1127,7 +1215,7 @@ namespace KFVM {
 			   (sol_halo,geom,ps.rad,ps.nY,t));
       break;
     default:
-      std::printf("Warning: Northern cell BC undefined.\n");
+      PrintSingle(ps,"Warning: Northern cell BC undefined.\n");
     }    
   }
 
@@ -1156,7 +1244,7 @@ namespace KFVM {
 			   (sol_halo,geom,ps.rad,ps.nZ,t));
       break;
     default:
-      std::printf("Warning: Bottom cell BC undefined.\n");
+      PrintSingle(ps,"Warning: Bottom cell BC undefined.\n");
     }
   }
   
@@ -1184,7 +1272,7 @@ namespace KFVM {
 			   (sol_halo,geom,ps.rad,ps.nZ,t));
       break;
     default:
-      std::printf("Warning: Top cell BC undefined.\n");
+      PrintSingle(ps,"Warning: Top cell BC undefined.\n");
     }
   }
 #endif
@@ -1219,7 +1307,7 @@ namespace KFVM {
 			   FaceBcWest_K<decltype(westBnd),BCType::user>(westBnd,geom,qr.ab,t));
       break;
     default:
-      std::printf("Warning: Western face BC undefined.\n");
+      PrintSingle(ps,"Warning: Western face BC undefined.\n");
     }
   }
   
@@ -1253,7 +1341,7 @@ namespace KFVM {
 			   FaceBcEast_K<decltype(eastBnd),BCType::user>(eastBnd,geom,qr.ab,t));
       break;
     default:
-      std::printf("Warning: Eastern face BC undefined.\n");
+      PrintSingle(ps,"Warning: Eastern face BC undefined.\n");
     }
   }
   
@@ -1287,7 +1375,7 @@ namespace KFVM {
 			   FaceBcSouth_K<decltype(southBnd),BCType::user>(southBnd,geom,qr.ab,t));
       break;
     default:
-      std::printf("Warning: Southern face BC undefined.\n");
+      PrintSingle(ps,"Warning: Southern face BC undefined.\n");
     }
   }
   
@@ -1321,7 +1409,7 @@ namespace KFVM {
 			   FaceBcNorth_K<decltype(northBnd),BCType::user>(northBnd,geom,qr.ab,t));
       break;
     default:
-      std::printf("Warning: Northern face BC undefined.\n");
+      PrintSingle(ps,"Warning: Northern face BC undefined.\n");
     }
   }
 
@@ -1352,7 +1440,7 @@ namespace KFVM {
 			   FaceBcBottom_K<decltype(bottomBnd),BCType::user>(bottomBnd,geom,qr.ab,t));
       break;
     default:
-      std::printf("Warning: Bottom face BC undefined.\n");
+      PrintSingle(ps,"Warning: Bottom face BC undefined.\n");
     }
   }
   
@@ -1382,7 +1470,7 @@ namespace KFVM {
 			   FaceBcTop_K<decltype(topBnd),BCType::user>(topBnd,geom,qr.ab,t));
       break;
     default:
-      std::printf("Warning: Top face BC undefined.\n");
+      PrintSingle(ps,"Warning: Top face BC undefined.\n");
     }
   }
 #endif

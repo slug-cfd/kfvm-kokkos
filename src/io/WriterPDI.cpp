@@ -29,26 +29,26 @@ namespace KFVM {
       // Generate base filename and make directories as needed
       std::ostringstream oss;
       oss << ps.dataDir << "/R" << ps.rad
-          << "_NX" << ps.nX
-          << "_NY" << ps.nY;
+          << "_NX" << ps.nX*ps.nbX
+          << "_NY" << ps.nY*ps.nbY;
 #if (SPACE_DIM == 3)
-      oss << "_NZ" << ps.nZ;
+      oss << "_NZ" << ps.nZ*ps.nbZ;
 #endif
+      oss << "/Rank" << ps.layoutMPI.rank << "/";
       std::filesystem::create_directories(oss.str());
-      oss << "/";
       prefix = std::string(oss.str());
 
       // Fill coordinate arrays (including z even in 2D)
       // Note that these are nodal, hence one longer than number of cells
       for (int n=0; n<=ps.nX; n++) {
-        xCoord[n] = n*geom.dx;
+        xCoord[n] = n*geom.dx + geom.xLo;
       }
       for (int n=0; n<=ps.nY; n++) {
-        yCoord[n] = n*geom.dy;
+        yCoord[n] = n*geom.dy + geom.yLo;
       }
       Real dz = (SPACE_DIM == 2 ? geom.dmin : geom.dz);
       for (int n=0; n<=ps.nZ; n++) {
-        zCoord[n] = n*dz;
+        zCoord[n] = n*dz + geom.zLo;
       }
 
       // Gather up solution metadata and give it to PDI

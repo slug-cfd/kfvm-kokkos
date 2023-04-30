@@ -9,6 +9,7 @@
 #include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
+#include <cstdio>
 
 #include "Dimension.H"
 #include "Geometry.H"
@@ -54,6 +55,9 @@ namespace KFVM {
     // Buffers for boundary communication
     BoundaryData bdyData;
     // Time step information
+    static constexpr int TS_ACCEPTED = 0;
+    static constexpr int TS_TOLERANCE = 1;
+    static constexpr int TS_UNPHYSICAL = 2;
     Real time,dt,errEst;
     bool lastTimeStep;
     // Threshold for WENO reconstruction
@@ -69,6 +73,11 @@ namespace KFVM {
 					   Kokkos::make_pair(ps.rad,ps.nZ + ps.rad)),
 			     Kokkos::ALL);
     }
+
+    int timeStepStatusComm(int);
+    Real timeStepSizeComm(Real);
+    Real timeStepMaxVelComm(Real);
+    Real timeStepErrEstComm(Real);
     
   public:
     Solver(ProblemSetup&);

@@ -13,28 +13,28 @@ namespace KFVM {
   
   struct BoundaryData {
     // Shape of each buffer
-    const Kokkos::Array<idx_t,SPACE_DIM> wCellSrcLo,wCellSrcUp;
-    const Kokkos::Array<idx_t,SPACE_DIM> wCellDstLo,wCellDstUp;
-    const Kokkos::Array<idx_t,SPACE_DIM> eCellSrcLo,eCellSrcUp;
-    const Kokkos::Array<idx_t,SPACE_DIM> eCellDstLo,eCellDstUp;
-    const Kokkos::Array<idx_t,SPACE_DIM> sCellSrcLo,sCellSrcUp;
-    const Kokkos::Array<idx_t,SPACE_DIM> sCellDstLo,sCellDstUp;
-    const Kokkos::Array<idx_t,SPACE_DIM> nCellSrcLo,nCellSrcUp;
-    const Kokkos::Array<idx_t,SPACE_DIM> nCellDstLo,nCellDstUp;
-    const Kokkos::Array<idx_t,SPACE_DIM> bCellSrcLo,bCellSrcUp;
-    const Kokkos::Array<idx_t,SPACE_DIM> bCellDstLo,bCellDstUp;
-    const Kokkos::Array<idx_t,SPACE_DIM> tCellSrcLo,tCellSrcUp;
-    const Kokkos::Array<idx_t,SPACE_DIM> tCellDstLo,tCellDstUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> wCellSendLo,wCellSendUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> wCellRecvLo,wCellRecvUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> eCellSendLo,eCellSendUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> eCellRecvLo,eCellRecvUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> sCellSendLo,sCellSendUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> sCellRecvLo,sCellRecvUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> nCellSendLo,nCellSendUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> nCellRecvLo,nCellRecvUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> bCellSendLo,bCellSendUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> bCellRecvLo,bCellRecvUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> tCellSendLo,tCellSendUp;
+    const Kokkos::Array<idx_t,SPACE_DIM> tCellRecvLo,tCellRecvUp;
 
     // Cell data buffers, only allocated if needed
-    ConsDataCommView wCellSrc,wCellDst,eCellSrc,eCellDst;
-    ConsDataCommView sCellSrc,sCellDst,nCellSrc,nCellDst;
-    ConsDataCommView bCellSrc,bCellDst,tCellSrc,tCellDst;
+    ConsDataCommView wCellSend,wCellRecv,eCellSend,eCellRecv;
+    ConsDataCommView sCellSend,sCellRecv,nCellSend,nCellRecv;
+    ConsDataCommView bCellSend,bCellRecv,tCellSend,tCellRecv;
 
     // Face data buffers, only allocated if needed
-    FaceDataCommView wFaceSrc,wFaceDst,eFaceSrc,eFaceDst;
-    FaceDataCommView sFaceSrc,sFaceDst,nFaceSrc,nFaceDst;
-    FaceDataCommView bFaceSrc,bFaceDst,tFaceSrc,tFaceDst;
+    FaceDataCommView wFaceSend,wFaceRecv,eFaceSend,eFaceRecv;
+    FaceDataCommView sFaceSend,sFaceRecv,nFaceSend,nFaceRecv;
+    FaceDataCommView bFaceSend,bFaceRecv,tFaceSend,tFaceRecv;
     
     BoundaryData(const ProblemSetup& ps_);
   };

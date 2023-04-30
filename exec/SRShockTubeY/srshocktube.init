@@ -1,5 +1,6 @@
 # Set mesh resolution and extent
 mesh:resolution 8 1024 8
+mesh:numblocks 1 1 1
 mesh:extent 0.0 0.0078125 0.0 1.0 0.0 0.0078125
 
 # Set time information

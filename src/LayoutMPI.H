@@ -15,9 +15,9 @@ namespace KFVM {
   
   struct LayoutMPI
   {
-    const MPI_Datatype datatype;
-    
-    int mpiSize,mpiRank;
+    const MPI_Datatype realType;
+    MPI_Comm commWorld;
+    int size,rank;
 
     // Number of blocks in global domain
     // one block per MPI rank
@@ -30,92 +30,73 @@ namespace KFVM {
     idx_t bxLo,bxUp,byLo,byUp,bzLo,bzUp;
 
     // Ranks of neighboring blocks
-    std::array<int,6> nbrRank;
+    int wSrc,wDst,eSrc,eDst;
+    int sSrc,sDst,nSrc,nDst;
+    int bSrc,bDst,tSrc,tDst;
+
+    // Will this rank communicate in each direction
+    bool hasEWComm,hasNSComm,hasTBComm;
 
     LayoutMPI():
-      datatype(FLOAT_PRECISION == 0 ? MPI_FLOAT : MPI_DOUBLE)
+      realType(FLOAT_PRECISION == 0 ? MPI_FLOAT : MPI_DOUBLE)
     {
-      MPI_Comm_size(MPI_COMM_WORLD,&mpiSize);
-      MPI_Comm_rank(MPI_COMM_WORLD,&mpiRank);
+      MPI_Comm_size(MPI_COMM_WORLD,&size);
+      MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     }
 
     bool distributeBlocks(idx_t nbX_,idx_t nbY_,idx_t nbZ_,
+			  idx_t nX,idx_t nY,idx_t nZ,
 			  const std::array<BCType,6>& bcType)
     {
       // Copy in block counts and check that they are valid
       nbX = nbX_; nbY = nbY_; nbZ = nbZ_;
-      if (nbX*nbY*nbZ != mpiSize) {
+      if (int(nbX*nbY*nbZ) != size) {
 	// Add proper error checking later
 	return false;
       }
 
+      // Create cartesian communicator
+      // Always 3d regardless of space dimension
+      int dims[] = {int(nbX),int(nbY),int(nbZ)};
+      int periods[] = {
+	bcType[FaceLabel::west] == BCType::periodic ? 1 : 0,
+	bcType[FaceLabel::north] == BCType::periodic ? 1 : 0,
+	bcType[FaceLabel::bottom] == BCType::periodic ? 1 : 0,
+      };
+      MPI_Cart_create(MPI_COMM_WORLD,3,dims,periods,1,&commWorld);
+
       // Convert rank to block position
-      rank2idx(mpiRank,bIdxX,bIdxY,bIdxZ);
-      bxLo = bIdxX*nbX;
-      bxUp = (bIdxX + 1)*nbX;
-      byLo = bIdxY*nbY;
-      byUp = (bIdxY + 1)*nbY;
-      bzLo = bIdxZ*nbZ;
-      bzUp = (bIdxZ + 1)*nbZ;
+      int bIdx[3];
+      MPI_Cart_coords(commWorld,rank,3,bIdx);
+      bIdxX = bIdx[0];
+      bIdxY = bIdx[1];
+      bIdxZ = bIdx[2];
+
+      // Set extents of this block in global index space
+      bxLo = bIdxX*nX;
+      bxUp = (bIdxX + 1)*nX;
+      byLo = bIdxY*nY;
+      byUp = (bIdxY + 1)*nY;
+      bzLo = bIdxZ*nZ;
+      bzUp = (bIdxZ + 1)*nZ;
 
       // Find ranks of all neighbors
-      if (bIdxX == 0 && bcType[FaceLabel::west] == BCType::periodic) {
-	nbrRank[FaceLabel::west] = idx2rank(nbX - 1,bIdxY,bIdxZ);
-      } else {
-	nbrRank[FaceLabel::west] = idx2rank(bIdxX - 1,bIdxY,bIdxZ);
-      }
-	
-      if (bIdxX == nbX-1 && bcType[FaceLabel::east] == BCType::periodic) {
-	nbrRank[FaceLabel::east] = idx2rank(0,bIdxY,bIdxZ);
-      } else {
-	nbrRank[FaceLabel::east] = idx2rank(bIdxX + 1,bIdxY,bIdxZ);
-      }
-	
-      if (bIdxY == 0 && bcType[FaceLabel::south] == BCType::periodic) {
-	nbrRank[FaceLabel::south] = idx2rank(bIdxX,nbY - 1,bIdxZ);
-      } else {
-	nbrRank[FaceLabel::south] = idx2rank(bIdxX,bIdxY - 1,bIdxZ);
-      }
-	
-      if (bIdxY == nbY-1 && bcType[FaceLabel::north] == BCType::periodic) {
-	nbrRank[FaceLabel::north] = idx2rank(bIdxX,0,bIdxZ);
-      } else {
-	nbrRank[FaceLabel::north] = idx2rank(bIdxX,bIdxY + 1,bIdxZ);
-      }
-	
-      if (bIdxZ == 0 && bcType[FaceLabel::bottom] == BCType::periodic) {
-	nbrRank[FaceLabel::bottom] = idx2rank(bIdxX,bIdxY,nbZ - 1);
-      } else {
-	nbrRank[FaceLabel::bottom] = idx2rank(bIdxX,bIdxY,bIdxZ - 1);
-      }
-	
-      if (bIdxZ == nbZ-1 && bcType[FaceLabel::top] == BCType::periodic) {
-	nbrRank[FaceLabel::top] = idx2rank(bIdxX,bIdxY,0);
-      } else {
-	nbrRank[FaceLabel::top] = idx2rank(bIdxX,bIdxY,bIdxZ + 1);
-      }
+      MPI_Cart_shift(commWorld,0,-1,&eSrc,&wDst);
+      MPI_Cart_shift(commWorld,0,1,&wSrc,&eDst);
+      MPI_Cart_shift(commWorld,1,-1,&nSrc,&sDst);
+      MPI_Cart_shift(commWorld,1,1,&sSrc,&nDst);
+      MPI_Cart_shift(commWorld,2,-1,&tSrc,&bDst);
+      MPI_Cart_shift(commWorld,2,1,&bSrc,&tDst);
+
+      // Store whether certain comms happen or not
+      hasEWComm = (wSrc != MPI_PROC_NULL || wDst != MPI_PROC_NULL ||
+		   eSrc != MPI_PROC_NULL || eDst != MPI_PROC_NULL);
+      hasNSComm = (sSrc != MPI_PROC_NULL || sDst != MPI_PROC_NULL ||
+		   nSrc != MPI_PROC_NULL || nDst != MPI_PROC_NULL);
+      hasTBComm = (bSrc != MPI_PROC_NULL || bDst != MPI_PROC_NULL ||
+		   tSrc != MPI_PROC_NULL || tDst != MPI_PROC_NULL);
 
       return true;
-    }
-
-    void rank2idx(int rank,idx_t& x,idx_t& y,idx_t& z)
-    {
-      idx_t trank = static_cast<idx_t>(rank);
-      idx_t xy = trank % (nbX*nbY);
-
-      x = xy % nbX;
-      y = (xy - x)/nbX;
-      z = (trank - xy)/(nbX*nbY);
-    }
-
-    int idx2rank(idx_t x,idx_t y,idx_t z)
-    {
-      if (x < 0 || y < 0 || z < 0 ||
-	  x >= nbX || y >= nbY || z >= nbZ) {
-	// block is outside domain
-	return -1;
-      }
-      return static_cast<int>(nbX*nbY*z + nbX*y + x);
     }
   };
 
