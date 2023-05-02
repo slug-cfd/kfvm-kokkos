@@ -135,7 +135,7 @@ namespace KFVM {
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  refState[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
-	Physics::VarConvert<eqType,decltype(Kokkos::subview(Vf,0,Kokkos::ALL))> varConv(refState,fProp.gamma);
+	Physics::VarConvert<eqType> varConv(refState,fProp.gamma);
 	for (int nC=0; nC<nCellsFull; nC++) {
 	  auto state = Kokkos::subview(Vf,nC,Kokkos::ALL);
           varConv.cons2LinPrim(state);

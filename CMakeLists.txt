@@ -21,4 +21,10 @@ set (USER_DIR ${CMAKE_BINARY_DIR})
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${USER_DIR}/bin)
 
+# Fixes for Lux
+if (${CMAKE_PREFIX_PATH} NOT EQUAL "")
+include_directories (SYSTEM ${MPI_INCLUDE_PATH})
+include_directories (SYSTEM ${CMAKE_PREFIX_PATH}/include)
+endif ()
+
 add_subdirectory (src)

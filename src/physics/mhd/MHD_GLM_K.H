@@ -21,8 +21,8 @@ namespace KFVM {
 
   namespace Physics {
 
-    template<class StateType>
-    class VarConvert<EquationType::MHD_GLM,StateType>
+    template<>
+    class VarConvert<EquationType::MHD_GLM>
     {
       const Real gamm;
       const Real rho,u,v,w,bx,by,bz,rPsi,vsq;
@@ -41,9 +41,10 @@ namespace KFVM {
 	rPsi(ref_[MHD_GLM::SimVar::psi]),
 	vsq((u*u + v*v + w*w)/Real(2.0))
       {}
-      
+
+      template<class T>
       KOKKOS_INLINE_FUNCTION
-      void cons2LinPrim(StateType& state)
+      void cons2LinPrim(T& state)
       {
         using MHD_GLM::SimVar;
         
@@ -62,9 +63,10 @@ namespace KFVM {
         state(SimVar::momy) = (state(SimVar::momy) - v*state(SimVar::dens))/rho;
         state(SimVar::momz) = (state(SimVar::momz) - w*state(SimVar::dens))/rho;
       }
-      
+
+      template<class T>      
       KOKKOS_INLINE_FUNCTION
-      void linPrim2Cons(StateType& state)
+      void linPrim2Cons(T& state)
       {
         using MHD_GLM::SimVar;
         

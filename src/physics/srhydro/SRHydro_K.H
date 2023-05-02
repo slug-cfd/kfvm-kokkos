@@ -24,8 +24,8 @@ namespace KFVM {
 
   namespace Physics {
 
-    template<class StateType>
-    class VarConvert<EquationType::SRHydro,StateType>
+    template<>
+    class VarConvert<EquationType::SRHydro>
     {
       const Real gRatio;
       Real rho,W,Vx,Vy,Vz,p;
@@ -176,9 +176,10 @@ namespace KFVM {
         luInvert(p2c,p2ci);
         // luInvert(c2p,c2pi);
       }
-      
+
+      template<class T>
       KOKKOS_INLINE_FUNCTION
-      void cons2LinPrim(StateType& state)
+      void cons2LinPrim(T& state)
       {
         using SRHydro::SimVar;
 	
@@ -197,9 +198,10 @@ namespace KFVM {
         state(SimVar::momz) = lprim[SimVar::momz];
         state(SimVar::tau) = lprim[SimVar::tau];
       }
-      
+
+      template<class T>      
       KOKKOS_INLINE_FUNCTION
-      void linPrim2Cons(StateType& state)
+      void linPrim2Cons(T& state)
       {
         using SRHydro::SimVar;
 	

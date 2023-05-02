@@ -11,7 +11,7 @@ namespace KFVM {
 
     // Empty primary templates for each needed functor struct
     template<EquationType ET,class UViewType> struct AuxVars {};
-    template<EquationType ET,class StateType> class VarConvert {};
+    template<EquationType ET> class VarConvert {};
     template<EquationType ET,RSType RS> struct RiemannSolverX_K {};
     template<EquationType ET,RSType RS> struct RiemannSolverY_K {};
     template<EquationType ET,RSType RS> struct RiemannSolverZ_K {};
