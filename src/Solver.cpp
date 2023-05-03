@@ -687,6 +687,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
 
     // Communicate W -> E face
     MPI_Sendrecv(wSend.data(),int(wSend.size()),ps.layoutMPI.realType,ps.layoutMPI.wDst,0,
@@ -715,6 +716,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
   }
 
   void Solver::commFaceBCsEW()
@@ -788,6 +790,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
     
     // Communicate W -> E face
     MPI_Sendrecv(wSend.data(),int(wSend.size()),ps.layoutMPI.realType,ps.layoutMPI.wDst,2,
@@ -822,6 +825,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
   }
 
   void Solver::commCellBCsNS(ConsDataView sol_halo)
@@ -885,6 +889,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
 
     // Communicate S -> N face
     MPI_Sendrecv(sSend.data(),int(sSend.size()),ps.layoutMPI.realType,ps.layoutMPI.sDst,0,
@@ -913,6 +918,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
   }
 
   void Solver::commFaceBCsNS()
@@ -984,6 +990,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
     
     // Communicate S -> N face
     MPI_Sendrecv(sSend.data(),int(sSend.size()),ps.layoutMPI.realType,ps.layoutMPI.sDst,2,
@@ -1018,6 +1025,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
   }
 
 #if (SPACE_DIM == 3)
@@ -1086,6 +1094,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
 
     // Communicate B -> T face
      MPI_Sendrecv(bSend.data(),int(bSend.size()),ps.layoutMPI.realType,ps.layoutMPI.bDst,0,
@@ -1114,6 +1123,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
   }
 
   void Solver::commFaceBCsTB()
@@ -1181,6 +1191,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
     
     // Communicate T -> B face
     MPI_Sendrecv(bSend.data(),int(bSend.size()),ps.layoutMPI.realType,ps.layoutMPI.bDst,2,
@@ -1215,6 +1226,7 @@ namespace KFVM {
 			     }
 			   });
     }
+    Kokkos::fence();
   }
 #endif
 
