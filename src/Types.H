@@ -5,9 +5,11 @@
 // Purpose: Define any types needed throughout the code base
 
 #include <cstddef>
+#include <cstdint>
 #include <mpi.h>
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_UnorderedMap.hpp>
 
 #include <Definitions.H>
 
@@ -27,11 +29,20 @@ namespace KFVM {
   // Set index type for all iteration spaces
   typedef int64_t idx_t;
 
+  // Type for small flags
+  typedef uint8_t flag_t;
+
   // Enumeration of face names associated to [2*SPACE_DIM] entry in FaceDataView
-  enum FaceLabel {west = 0, east, south, north, bottom, top};
+  enum FaceLabel {west = 0,east,south,north,bottom,top};
   
   // Supported boundary conditions
   enum BCType {periodic = 0,outflow,reflecting,user};
+
+  // Time stepper status codes
+  enum TSStatus {ACCEPTED = 0,TOLERANCE,UNPHYSICAL};
+
+  // Weno selection flags
+  enum WenoFlag {NOWENO = 0,NBRWENO,WENO};
 
   // Set number of evolved and auxiliary variables
   constexpr std::size_t NUM_VARS = NUM_EQN_VARS[eqType];
@@ -48,6 +59,7 @@ namespace KFVM {
 
   // Kokkos views for various state data
 #if (SPACE_DIM == 2)
+  typedef Kokkos::View<flag_t**,Kokkos::LayoutLeft,Kokkos::HostSpace> HostFlagDataView;
   typedef Kokkos::View<Real**,MemSpace> CellDataView;
   typedef Kokkos::View<Real**,Kokkos::LayoutLeft,Kokkos::HostSpace> HostCellDataView;
   typedef Kokkos::View<Real**[NUM_VARS],MemSpace> ConsDataView;
@@ -58,6 +70,7 @@ namespace KFVM {
   typedef Kokkos::View<Real**[2][NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataView;
   typedef Kokkos::View<Real*[NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataCommView;
 #else
+  typedef Kokkos::View<flag_t***,Kokkos::LayoutLeft,Kokkos::HostSpace> HostFlagDataView;
   typedef Kokkos::View<Real***,MemSpace> CellDataView;
   typedef Kokkos::View<Real***,Kokkos::LayoutLeft,Kokkos::HostSpace> HostCellDataView;
   typedef Kokkos::View<Real***[NUM_VARS],MemSpace> ConsDataView;
@@ -71,6 +84,9 @@ namespace KFVM {
 
   // Kokkos views for quadrature rules
   typedef Kokkos::View<Real[NUM_QUAD_PTS],MemSpace> QuadRuleView;
+
+  // Unordered map for storing weno flags
+  typedef Kokkos::UnorderedMap<idx_t,void,ExecSpace> FlagMap;
 }
 
 #endif

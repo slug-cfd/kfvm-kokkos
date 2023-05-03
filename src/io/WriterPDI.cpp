@@ -8,6 +8,7 @@
 
 #include <pdi.h>
 
+#include "../Types.H"
 #include "WriterPDI.H"
 
 namespace KFVM {

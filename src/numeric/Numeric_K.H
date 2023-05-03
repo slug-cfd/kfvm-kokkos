@@ -16,6 +16,7 @@
 #include "../ProblemSetup.H"
 #include "../Geometry.H"
 #include "../physics/Physics_K.H"
+#include "Dimension.H"
 #include "Numeric.H"
 
 namespace KFVM {
@@ -304,24 +305,27 @@ namespace KFVM {
     template<class UViewType,class WViewType>
     struct RK_WenoSelect_K {
       UViewType U,Uprev;
-      WViewType W;
       FluidProperties fProp;
+      Real wThresh;
+      WViewType W;
 
       RK_WenoSelect_K(const UViewType& U_,
 		      const UViewType& Uprev_,
-		      const WViewType& W_,
-                      const FluidProperties& fProp_):
+                      const FluidProperties& fProp_,
+		      const Real wThresh_,
+		      const WViewType& W_):
 	U(U_),
 	Uprev(Uprev_),
-	W(W_),
-        fProp(fProp_)
+        fProp(fProp_),
+	wThresh(wThresh_),
+	W(W_)
       {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const {
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),
+		      uint32_t& nWeno) const {
 	using Kokkos::fabs;
 	using Kokkos::fmin;
-	using Kokkos::fmax;
 	Real u0[NUM_VARS],u1[NUM_VARS];
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  u0[nV] = Uprev(KFVM_D_DECL(i,j,k),nV);
@@ -329,7 +333,13 @@ namespace KFVM {
 	}
 	Real w0 = Physics::EOS<eqType>::weno(u0,fProp);
 	Real w1 = Physics::EOS<eqType>::weno(u1,fProp);
-	W(KFVM_D_DECL(i,j,k)) = fabs(w1 - w0)/fmin(w0,w1);
+	Real w = fabs(w1 - w0)/fmin(w0,w1);
+	if (w < wThresh) {
+	  W(KFVM_D_DECL(i,j,k)) = WenoFlag::NOWENO;
+	} else {
+	  W(KFVM_D_DECL(i,j,k)) = WenoFlag::WENO;
+	  nWeno++;
+	}
       }
     };
     
