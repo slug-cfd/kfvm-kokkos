@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 1024 3072
+mesh:resolution 768 2304
 mesh:numblocks 1 1 1
 mesh:extent 0.0 0.5 0.0 1.5
 
@@ -23,4 +23,4 @@ properties:wenothresh 20.0
 output:pdiconf ../../user/pdi_euler_xdmf.yml
 output:datadir data
 output:basename AstroJetLD
-output:plotfreq 100
+output:plotfreq 25
