@@ -86,7 +86,7 @@ namespace KFVM {
   typedef Kokkos::View<Real[NUM_QUAD_PTS],MemSpace> QuadRuleView;
 
   // Unordered map for storing weno flags
-  typedef Kokkos::UnorderedMap<idx_t,void,ExecSpace> FlagMap;
+  typedef Kokkos::UnorderedMap<idx_t,void,MemSpace> FlagMap;
 }
 
 #endif

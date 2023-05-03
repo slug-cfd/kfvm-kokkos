@@ -389,8 +389,9 @@ namespace KFVM {
 					stencil.ttOff),
 			    stencil.faceWeights));
       // Weno reconstruction
+      auto flagRng = Kokkos::RangePolicy<ExecSpace>(0,wenoSelector.wenoFlagMap.capacity());
       Kokkos::parallel_for("Solver::reconstructRiemannStates(sparse weno)",
-			   wenoSelector.wenoFlagMap.capacity(),
+			   flagRng,
 			   Stencil::KernelWenoRecon_K<decltype(U)>
 			   (U,
 			    KFVM_D_DECL(ps.nX,ps.nY,ps.nZ),
@@ -688,22 +689,17 @@ namespace KFVM {
     }
 
     // Communicate W -> E face
-    auto wSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),wSend);
-    auto eRecvHost = Kokkos::create_mirror_view(eRecv);
-    MPI_Sendrecv(wSendHost.data(),int(wSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.wDst,0,
-		 eRecvHost.data(),int(eRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.eSrc,0,
+    MPI_Sendrecv(wSend.data(),int(wSend.size()),ps.layoutMPI.realType,ps.layoutMPI.wDst,0,
+		 eRecv.data(),int(eRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.eSrc,0,
 		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Communicate E -> W face
-    auto eSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),eSend);
-    auto wRecvHost = Kokkos::create_mirror_view(wRecv);
-    MPI_Sendrecv(eSendHost.data(),int(eSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.eDst,1,
-		 wRecvHost.data(),int(wRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.wSrc,1,
+    MPI_Sendrecv(eSend.data(),int(eSend.size()),ps.layoutMPI.realType,ps.layoutMPI.eDst,1,
+		 wRecv.data(),int(wRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.wSrc,1,
 		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Unpack recv buffers
     if (ps.layoutMPI.eSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(eRecv,eRecvHost);
       Kokkos::parallel_for("Solver::commCellBCsEW(unpack east)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
@@ -712,7 +708,6 @@ namespace KFVM {
 			   });
     }
     if (ps.layoutMPI.wSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(wRecv,wRecvHost);
       Kokkos::parallel_for("Solver::commCellBCsEW(unpack west)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
@@ -795,22 +790,17 @@ namespace KFVM {
     }
     
     // Communicate W -> E face
-    auto wSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),wSend);
-    auto eRecvHost = Kokkos::create_mirror_view(eRecv);
-    MPI_Sendrecv(wSendHost.data(),int(wSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.wDst,2,
-		 eRecvHost.data(),int(eRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.eSrc,2,
+    MPI_Sendrecv(wSend.data(),int(wSend.size()),ps.layoutMPI.realType,ps.layoutMPI.wDst,2,
+		 eRecv.data(),int(eRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.eSrc,2,
 		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Communicate E -> W face
-    auto eSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),eSend);
-    auto wRecvHost = Kokkos::create_mirror_view(wRecv);
-    MPI_Sendrecv(eSendHost.data(),int(eSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.eDst,3,
-		 wRecvHost.data(),int(wRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.wSrc,3,
+    MPI_Sendrecv(eSend.data(),int(eSend.size()),ps.layoutMPI.realType,ps.layoutMPI.eDst,3,
+		 wRecv.data(),int(wRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.wSrc,3,
 		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Unpack recv buffers
     if (ps.layoutMPI.eSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(eRecv,eRecvHost);
       Kokkos::parallel_for("Solver::commFaceBCsEW(unpack east)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t j,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
@@ -822,7 +812,6 @@ namespace KFVM {
 			   });
     }
     if (ps.layoutMPI.wSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(wRecv,wRecvHost);
       Kokkos::parallel_for("Solver::commFaceBCsEW(unpack west)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t j,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
@@ -898,22 +887,17 @@ namespace KFVM {
     }
 
     // Communicate S -> N face
-    auto sSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),sSend);
-    auto nRecvHost = Kokkos::create_mirror_view(nRecv);
-    MPI_Sendrecv(sSendHost.data(),int(sSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.sDst,0,
-		 nRecvHost.data(),int(nRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.nSrc,0,
+    MPI_Sendrecv(sSend.data(),int(sSend.size()),ps.layoutMPI.realType,ps.layoutMPI.sDst,0,
+		 nRecv.data(),int(nRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.nSrc,0,
 		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Communicate N -> S face
-    auto nSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),nSend);
-    auto sRecvHost = Kokkos::create_mirror_view(sRecv);
-    MPI_Sendrecv(nSendHost.data(),int(nSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.nDst,1,
-		 sRecvHost.data(),int(sRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.sSrc,1,
+    MPI_Sendrecv(nSend.data(),int(nSend.size()),ps.layoutMPI.realType,ps.layoutMPI.nDst,1,
+		 sRecv.data(),int(sRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.sSrc,1,
 		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Unpack recv buffers
     if (ps.layoutMPI.nSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(nRecv,nRecvHost);
       Kokkos::parallel_for("Solver::commCellBCsNS(unpack north)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
@@ -922,7 +906,6 @@ namespace KFVM {
 			   });
     }
     if (ps.layoutMPI.sSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(sRecv,sRecvHost);
       Kokkos::parallel_for("Solver::commCellBCsNS(unpack south)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
@@ -1003,22 +986,17 @@ namespace KFVM {
     }
     
     // Communicate S -> N face
-    auto sSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),sSend);
-    auto nRecvHost = Kokkos::create_mirror_view(nRecv);
-    MPI_Sendrecv(sSendHost.data(),int(sSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.sDst,2,
-		 nRecvHost.data(),int(nRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.nSrc,2,
+    MPI_Sendrecv(sSend.data(),int(sSend.size()),ps.layoutMPI.realType,ps.layoutMPI.sDst,2,
+		 nRecv.data(),int(nRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.nSrc,2,
 		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Communicate N -> S face
-    auto nSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),nSend);
-    auto sRecvHost = Kokkos::create_mirror_view(sRecv);
-    MPI_Sendrecv(nSendHost.data(),int(nSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.nDst,3,
-		 sRecvHost.data(),int(sRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.sSrc,3,
+    MPI_Sendrecv(nSend.data(),int(nSend.size()),ps.layoutMPI.realType,ps.layoutMPI.nDst,3,
+		 sRecv.data(),int(sRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.sSrc,3,
 		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Unpack recv buffers
     if (ps.layoutMPI.nSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(nRecv,nRecvHost);
       Kokkos::parallel_for("Solver::commFaceBCsNS(unpack north)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
@@ -1030,7 +1008,6 @@ namespace KFVM {
 			   });
     }
     if (ps.layoutMPI.sSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(sRecv,sRecvHost);
       Kokkos::parallel_for("Solver::commFaceBCsNS(unpack south)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
@@ -1111,22 +1088,17 @@ namespace KFVM {
     }
 
     // Communicate B -> T face
-    auto bSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),bSend);
-    auto tRecvHost = Kokkos::create_mirror_view(tRecv);
-     MPI_Sendrecv(bSendHost.data(),int(bSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.bDst,0,
-		  tRecvHost.data(),int(tRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.tSrc,0,
+     MPI_Sendrecv(bSend.data(),int(bSend.size()),ps.layoutMPI.realType,ps.layoutMPI.bDst,0,
+		  tRecv.data(),int(tRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.tSrc,0,
 		  ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Communicate T -> B face
-    auto tSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),tSend);
-    auto bRecvHost = Kokkos::create_mirror_view(bRecv);
-    MPI_Sendrecv(tSendHost.data(),int(tSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.tDst,1,
-		 bRecvHost.data(),int(bRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.bSrc,1,
+    MPI_Sendrecv(tSend.data(),int(tSend.size()),ps.layoutMPI.realType,ps.layoutMPI.tDst,1,
+		 bRecv.data(),int(bRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.bSrc,1,
 		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Unpack recv buffers
     if (ps.layoutMPI.tSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(tRecv,tRecvHost);
       Kokkos::parallel_for("Solver::commCellBCsNS(unpack top)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
@@ -1135,7 +1107,6 @@ namespace KFVM {
 			   });
     }
     if (ps.layoutMPI.bSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(bRecv,bRecvHost);
       Kokkos::parallel_for("Solver::commCellBCsNS(unpack bottom)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
@@ -1212,22 +1183,17 @@ namespace KFVM {
     }
     
     // Communicate T -> B face
-    auto bSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),bSend);
-    auto tRecvHost = Kokkos::create_mirror_view(tRecv);
-    MPI_Sendrecv(bSendHost.data(),int(bSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.bDst,2,
-		 tRecvHost.data(),int(tRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.tSrc,2,
+    MPI_Sendrecv(bSend.data(),int(bSend.size()),ps.layoutMPI.realType,ps.layoutMPI.bDst,2,
+		 tRecv.data(),int(tRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.tSrc,2,
 		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Communicate T -> B face
-    auto tSendHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),tSend);
-    auto bRecvHost = Kokkos::create_mirror_view(bRecv);
-    MPI_Sendrecv(tSendHost.data(),int(tSendHost.size()),ps.layoutMPI.realType,ps.layoutMPI.tDst,3,
-		 bRecvHost.data(),int(bRecvHost.size()),ps.layoutMPI.realType,ps.layoutMPI.bSrc,3,
+    MPI_Sendrecv(tSend.data(),int(tSend.size()),ps.layoutMPI.realType,ps.layoutMPI.tDst,3,
+		 bRecv.data(),int(bRecv.size()),ps.layoutMPI.realType,ps.layoutMPI.bSrc,3,
 		 ps.layoutMPI.commWorld,MPI_STATUS_IGNORE);
     
     // Unpack recv buffers
     if (ps.layoutMPI.tSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(tRecv,tRecvHost);
       Kokkos::parallel_for("Solver::commFaceBCsTB(unpack top)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     
@@ -1239,7 +1205,6 @@ namespace KFVM {
 			   });
     }
     if (ps.layoutMPI.bSrc != MPI_PROC_NULL) {
-      Kokkos::deep_copy(bRecv,bRecvHost);
       Kokkos::parallel_for("Solver::commFaceBCsTB(unpack bottom)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;			     

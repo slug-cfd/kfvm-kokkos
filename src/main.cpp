@@ -20,6 +20,8 @@
 int main(int argc, char* argv[]) {
   MPI_Init(&argc,&argv); {
     Kokkos::initialize(argc, argv); {
+      std::printf("Kokkos initialized with default execution space: %s\n",
+		typeid(KFVM::ExecSpace).name());
       if (argc > 1) {
 	// Create Problemsetup object
 	KFVM::ProblemSetup ps;
