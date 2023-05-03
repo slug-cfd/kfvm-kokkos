@@ -4,6 +4,7 @@
 // File: Types.H
 // Purpose: Define any types needed throughout the code base
 
+#include <Kokkos_Core_fwd.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <mpi.h>
@@ -48,38 +49,42 @@ namespace KFVM {
   constexpr std::size_t NUM_VARS = NUM_EQN_VARS[eqType];
   constexpr std::size_t NUM_AUX = NUM_EQN_AUX[eqType];
 
-  // Kokkos spaces, mostly here for debugging
-#ifdef KFVM_DEBUG
+  // Kokkos spaces
+#if (defined KFVM_EXEC_SERIAL)
   typedef Kokkos::Serial ExecSpace;
   typedef Kokkos::HostSpace MemSpace;
+#elif (defined KFVM_EXEC_HOST)
+  typedef Kokkos::DefaultHostExecutionSpace ExecSpace;
+  typedef Kokkos::DefaultHostExecutionSpace::memory_space MemSpace;
 #else
   typedef Kokkos::DefaultExecutionSpace ExecSpace;
   typedef Kokkos::DefaultExecutionSpace::memory_space MemSpace;
 #endif
+  typedef Kokkos::SharedHostPinnedSpace MemSpacePinned;
 
   // Kokkos views for various state data
 #if (SPACE_DIM == 2)
-  typedef Kokkos::View<flag_t**,Kokkos::LayoutLeft,Kokkos::HostSpace> HostFlagDataView;
-  typedef Kokkos::View<Real**,MemSpace> CellDataView;
-  typedef Kokkos::View<Real**,Kokkos::LayoutLeft,Kokkos::HostSpace> HostCellDataView;
-  typedef Kokkos::View<Real**[NUM_VARS],MemSpace> ConsDataView;
-  typedef Kokkos::View<Real**[NUM_VARS],MemSpace> ConsDataCommView;
+  typedef Kokkos::View<flag_t**,Kokkos::LayoutLeft,Kokkos::HostSpace>         HostFlagDataView;
+  typedef Kokkos::View<Real**,MemSpace>                                       CellDataView;
+  typedef Kokkos::View<Real**,Kokkos::LayoutLeft,Kokkos::HostSpace>           HostCellDataView;
+  typedef Kokkos::View<Real**[NUM_VARS],MemSpace>                             ConsDataView;
+  typedef Kokkos::View<Real**[NUM_VARS],MemSpacePinned>                       ConsDataCommView;
   typedef Kokkos::View<Real**[NUM_VARS],Kokkos::LayoutLeft,Kokkos::HostSpace> HostConsDataView;
-  typedef Kokkos::View<Real**[NUM_AUX],MemSpace> AuxDataView;
-  typedef Kokkos::View<Real**[NUM_AUX],Kokkos::LayoutLeft,Kokkos::HostSpace> HostAuxDataView;
-  typedef Kokkos::View<Real**[2][NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataView;
-  typedef Kokkos::View<Real*[NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataCommView;
+  typedef Kokkos::View<Real**[NUM_AUX],MemSpace>                              AuxDataView;
+  typedef Kokkos::View<Real**[NUM_AUX],Kokkos::LayoutLeft,Kokkos::HostSpace>  HostAuxDataView;
+  typedef Kokkos::View<Real**[2][NUM_QUAD_PTS][NUM_VARS],MemSpace>            FaceDataView;
+  typedef Kokkos::View<Real*[NUM_QUAD_PTS][NUM_VARS],MemSpacePinned>          FaceDataCommView;
 #else
-  typedef Kokkos::View<flag_t***,Kokkos::LayoutLeft,Kokkos::HostSpace> HostFlagDataView;
-  typedef Kokkos::View<Real***,MemSpace> CellDataView;
-  typedef Kokkos::View<Real***,Kokkos::LayoutLeft,Kokkos::HostSpace> HostCellDataView;
-  typedef Kokkos::View<Real***[NUM_VARS],MemSpace> ConsDataView;
-  typedef Kokkos::View<Real***[NUM_VARS],MemSpace> ConsDataCommView;
-  typedef Kokkos::View<Real***[NUM_VARS],Kokkos::LayoutLeft,Kokkos::HostSpace> HostConsDataView;
-  typedef Kokkos::View<Real***[NUM_AUX],MemSpace> AuxDataView;
-  typedef Kokkos::View<Real***[NUM_AUX],Kokkos::LayoutLeft,Kokkos::HostSpace> HostAuxDataView;
-  typedef Kokkos::View<Real***[2][NUM_QUAD_PTS*NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataView;
-  typedef Kokkos::View<Real**[NUM_QUAD_PTS*NUM_QUAD_PTS][NUM_VARS],MemSpace> FaceDataCommView;
+  typedef Kokkos::View<flag_t***,Kokkos::LayoutLeft,Kokkos::HostSpace>             HostFlagDataView;
+  typedef Kokkos::View<Real***,MemSpace>                                           CellDataView;
+  typedef Kokkos::View<Real***,Kokkos::LayoutLeft,Kokkos::HostSpace>               HostCellDataView;
+  typedef Kokkos::View<Real***[NUM_VARS],MemSpace>                                 ConsDataView;
+  typedef Kokkos::View<Real***[NUM_VARS],MemSpacePinned>                           ConsDataCommView;
+  typedef Kokkos::View<Real***[NUM_VARS],Kokkos::LayoutLeft,Kokkos::HostSpace>     HostConsDataView;
+  typedef Kokkos::View<Real***[NUM_AUX],MemSpace>                                  AuxDataView;
+  typedef Kokkos::View<Real***[NUM_AUX],Kokkos::LayoutLeft,Kokkos::HostSpace>      HostAuxDataView;
+  typedef Kokkos::View<Real***[2][NUM_QUAD_PTS*NUM_QUAD_PTS][NUM_VARS],MemSpace>   FaceDataView;
+  typedef Kokkos::View<Real**[NUM_QUAD_PTS*NUM_QUAD_PTS][NUM_VARS],MemSpacePinned> FaceDataCommView;
 #endif
 
   // Kokkos views for quadrature rules
