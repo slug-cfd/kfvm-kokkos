@@ -1,14 +1,14 @@
 # Set mesh resolution and extent
-mesh:resolution 256 512 96
-mesh:numblocks 1 1 1
+mesh:resolution 256 512
+mesh:numblocks 1 1
 mesh:extent 0.0 0.1 -0.1 0.1 0.0 0.1
 
 # Set time information
 time:initial 0.0
-time:final 4.0
+time:final 5.0
 time:initialdt 1.e-8
 time:cfl 2.0
-time:maxsteps 50000
+time:maxsteps 60000
 time:atol 1.e-4
 time:rtol 1.e-3
 
@@ -16,11 +16,11 @@ time:rtol 1.e-3
 stencil:lfac 24
 
 # Set fluid properties
-properties:gamma 1.6666666666666
-properties:wenothresh 20.0
+properties:gamma 1.666666666666
+properties:wenothresh 10.0
 
 # Output settings
-output:pdiconf ../../user/pdi_euler_xdmf.yml
+output:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 output:datadir data
-output:basename RayleighTaylor
-output:plotfreq 1000
+output:basename MagRayleighTaylor
+output:plotfreq 500

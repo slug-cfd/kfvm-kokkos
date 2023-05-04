@@ -32,7 +32,7 @@ namespace KFVM {
     Stencil::WorkView stenWork;
     int ntX,ntY,ntZ; // Tiles in x/y/z for full weno
     idx_t tX,tY,tZ;  // Tile size
-    uint32_t minTot;
+    uint32_t minSize,currSize,nWeno;
     WenoSelector(const ProblemSetup& ps);
     template<class UViewType>
     void update(UViewType,UViewType,const Real);

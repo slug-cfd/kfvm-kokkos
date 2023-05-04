@@ -388,26 +388,29 @@ namespace KFVM {
 					stencil.tOff,
 					stencil.ttOff),
 			    stencil.faceWeights));
-      // Weno reconstruction
-      auto flagRng = Kokkos::RangePolicy<ExecSpace>(0,wenoSelector.wenoFlagMap.capacity());
-      Kokkos::parallel_for("Solver::reconstructRiemannStates(sparse weno)",
-			   flagRng,
-			   Stencil::KernelWenoRecon_K<decltype(U)>
-			   (U,
-			    KFVM_D_DECL(ps.nX,ps.nY,ps.nZ),
-			    KFVM_D_DECL(wenoSelector.tX,wenoSelector.tY,wenoSelector.tZ),
-			    KFVM_D_DECL(faceVals.xDir,
-					faceVals.yDir,
-					faceVals.zDir),
-			    wenoSelector.stenWork,
-			    wenoSelector.wenoFlagMap,
-			    KFVM_D_DECL(stencil.lOff,
-					stencil.tOff,
-					stencil.ttOff),
-			    stencil.subIdx,
-			    stencil.faceWeights,
-			    stencil.derivWeights,
-			    ps.fluidProp));
+      // Weno reconstruction if needed
+      if (wenoSelector.nWeno > 0) {
+	auto flagRng = Kokkos::RangePolicy<ExecSpace>
+	  (0,wenoSelector.wenoFlagMap.capacity());
+	Kokkos::parallel_for("Solver::reconstructRiemannStates(sparse weno)",
+			     flagRng,
+			     Stencil::KernelWenoRecon_K<decltype(U)>
+			     (U,
+			      KFVM_D_DECL(ps.nX,ps.nY,ps.nZ),
+			      KFVM_D_DECL(wenoSelector.tX,wenoSelector.tY,wenoSelector.tZ),
+			      KFVM_D_DECL(faceVals.xDir,
+					  faceVals.yDir,
+					  faceVals.zDir),
+			      wenoSelector.stenWork,
+			      wenoSelector.wenoFlagMap,
+			      KFVM_D_DECL(stencil.lOff,
+					  stencil.tOff,
+					  stencil.ttOff),
+			      stencil.subIdx,
+			      stencil.faceWeights,
+			      stencil.derivWeights,
+			      ps.fluidProp));
+      }
     } else {
       // Weno reconstruction tile by tile
       for (int ntX=0; ntX<wenoSelector.ntX; ntX++) {
@@ -455,7 +458,8 @@ namespace KFVM {
     ps(ps_),
     wenoFlagView("Solver::WenoSelector::wenoFlagView",
 		 KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
-    wenoFlagMap(0)
+    wenoFlagMap(0),
+    nWeno(0)
   {
     // Figure out appropriate tile sizes
     // Want small enough tiles to save memory 
@@ -482,11 +486,12 @@ namespace KFVM {
     idx_t minX = std::max(tX,ps.nX - tX*(ntX - 1));
     idx_t minY = std::max(tY,ps.nY - tY*(ntY - 1));
     idx_t minZ = std::max(tZ,ps.nZ - tZ*(ntZ - 1));
-    minTot = static_cast<uint32_t>(minX*minY*minZ);
+    minSize = minX*minY*minZ;
+    currSize = minSize;
 
     // Allocate everything workspace and map
-    wenoFlagMap.rehash(minTot);
-    stenWork = Stencil::WorkView("Solver::WenoSelector::stenWork",minTot);
+    wenoFlagMap.rehash(currSize);
+    stenWork = Stencil::WorkView("Solver::WenoSelector::stenWork",currSize);
   }
 
   template<class UViewType>
@@ -503,24 +508,23 @@ namespace KFVM {
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
 
     // Set all flags and count how many need weno
-    uint32_t nWeno = 0;
+    nWeno = 0;
     Kokkos::parallel_reduce("Solver::WenoSelector::update(flag)",
 			    cellRng,
 			    Numeric::RK_WenoSelect_K<UViewType,
 			    decltype(wenoFlagView)>
 			    (U,Uprev,ps.fluidProp,wThresh,wenoFlagView),nWeno);
 
-    // Clear map and rehash if needed
+    // Clear map and reallocate workspace if needed
     wenoFlagMap.clear();
-    if (nWeno > wenoFlagMap.capacity()) {
-      uint32_t newCap = std::max(2*wenoFlagMap.capacity(),nWeno);
-      wenoFlagMap.rehash(minTot);
-      Kokkos::realloc(stenWork,minTot);
-      PrintAll(ps,"    Growing wenoFlagMap to size %u on rank %d\n",
-	       newCap,ps.layoutMPI.rank);
+    wenoFlagMap.rehash(nWeno);
+    if (wenoFlagMap.capacity() > currSize) {
+      // Note that capacity != nWeno generally
+      PrintAll(ps,"    Realloc workspace from %u to %u on rank %d\n",
+	       currSize,wenoFlagMap.capacity(),ps.layoutMPI.rank);
+      Kokkos::realloc(stenWork,wenoFlagMap.capacity());
+      currSize = wenoFlagMap.capacity();
     }
-    PrintAll(ps,"    Doing sparse weno on %u cells on rank %d\n",
-	     nWeno,ps.layoutMPI.rank);
     
     // Avoid implicit this captures
     auto flagView = wenoFlagView;
@@ -535,11 +539,12 @@ namespace KFVM {
 			 KOKKOS_LAMBDA (KFVM_D_DECL(idx_t i,idx_t j,idx_t k)) {
 			   if (flagView(KFVM_D_DECL(i,j,k)) > 0) {
 #if (SPACE_DIM == 2)
-			     uint32_t idx = nX*j + i;
+			     idx_t key = nX*j + i;
 #else
-			     uint32_t idx = nX*nY*k + nX*j + i;
+			     idx_t key = nX*nY*k + nX*j + i;
 #endif
-			     flagMap.insert(idx);
+			     auto stat = flagMap.insert(key);
+			     assert(stat.success());
 			   }
 			 });
   }

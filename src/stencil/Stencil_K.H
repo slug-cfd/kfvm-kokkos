@@ -256,26 +256,25 @@ namespace KFVM {
       }
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(uint32_t idx) const
+      void operator()(uint32_t workIdx) const
       {
 	// bail out if this idx is invalid
-	if (!wenoMap.valid_at(idx)) {
+	if (!wenoMap.valid_at(workIdx)) {
 	  return;
 	}
 
 	// convert key to coordinate
-	idx_t workIdx = static_cast<idx_t>(idx);
-	idx_t key = wenoMap.key_at(idx);
+	idx_t key = wenoMap.key_at(workIdx);
 #if (SPACE_DIM == 2)
 	idx_t j = key/nX;
 	idx_t i = key - nX*j;
+	assert(key == nX*j + i);
 #else
 	idx_t k = key/(nX*nY);
 	idx_t j = (key - nX*nY*k)/nX;
 	idx_t i = key - nX*nY*k - nX*j;
+	assert(key == nX*nY*k + nX*j + i);
 #endif
-	
-        // Create subview slices of workspace for substencils
 	auto Vf = Kokkos::subview(Work,workIdx,
 				  Kokkos::pair<int,int>(0,nCellsFull),Kokkos::ALL);
 	auto Vc = Kokkos::subview(Work,workIdx,
@@ -383,6 +382,7 @@ namespace KFVM {
 			     RSArrayType rsFace) const
       {
 	using namespace KokkosBatched;
+	
 	// First apply full and center stencils
 	for (int nF=0; nF<2*SPACE_DIM; nF++) {
 	  auto rWtsF = Kokkos::subview(faceWeight,0,nF,
@@ -430,6 +430,7 @@ namespace KFVM {
 			  Real omega[Stencil::Core::SI.nSub][NUM_VARS]) const
       {
 	using namespace KokkosBatched;
+	
 	// Full stencil
 	{
 	  auto dWts = Kokkos::subview(derivWeight,0,Kokkos::ALL,Kokkos::ALL);
