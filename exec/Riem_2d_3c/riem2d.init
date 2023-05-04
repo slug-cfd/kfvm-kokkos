@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 512 512
+mesh:resolution 256 256
 mesh:numblocks 1 1
 mesh:extent 0.0 1.0 0.0 1.0
 

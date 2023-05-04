@@ -15,11 +15,7 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   const Real gam = 5.0/3.0,gamm = gam - 1.0;
   const Real rho = y <= 0.0 ? 1.0 : 10.0;
   const Real p = y <= 3.0/5.0 - 0.1*rho*y;
-
-  // velocity perturbations with "random sign"
-  const Real rand = cos(1000.0*x)*cos(3333.0*y)*cos(505.0*z);
-  const Real sv = rand > 0.0 ? 1.0 : -1.0;
-  const Real v = 0.005*sv*(1.0 + cos(M_PI*y/0.1));
+  const Real v = 0.005*cos(20.0*M_PI*x/0.1)*cos(30.0*M_PI*z/0.1)*(1.0 + cos(M_PI*y/0.1));
   
   state[SimVar::dens] = rho;
   state[SimVar::momx] = 0.0;

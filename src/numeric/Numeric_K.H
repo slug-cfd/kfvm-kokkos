@@ -335,9 +335,9 @@ namespace KFVM {
 	Real w1 = Physics::EOS<eqType>::weno(u1,fProp);
 	Real w = fabs(w1 - w0)/fmin(w0,w1);
 	if (w < wThresh) {
-	  W(KFVM_D_DECL(i,j,k)) = WenoFlag::NOWENO;
+	  W(KFVM_D_DECL(i,j,k)) = Real(WenoFlag::NOWENO);
 	} else {
-	  W(KFVM_D_DECL(i,j,k)) = WenoFlag::WENO;
+	  W(KFVM_D_DECL(i,j,k)) = Real(WenoFlag::WENO);
 	  nWeno++;
 	}
       }

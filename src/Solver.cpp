@@ -493,7 +493,7 @@ namespace KFVM {
   void WenoSelector::update(UViewType U,UViewType Uprev,
 			    const Real wThresh)
   {
-    if (ps.fluidProp.wenoThresh > 0.0) {
+    if (ps.fluidProp.wenoThresh < 0.0) {
       // don't need to manage any of this if weno is used everywhere
       return;
     }
@@ -519,6 +519,8 @@ namespace KFVM {
       PrintAll(ps,"    Growing wenoFlagMap to size %u on rank %d\n",
 	       newCap,ps.layoutMPI.rank);
     }
+    PrintAll(ps,"    Doing sparse weno on %u cells on rank %d\n",
+	     nWeno,ps.layoutMPI.rank);
     
     // Avoid implicit this captures
     auto flagView = wenoFlagView;
@@ -531,7 +533,7 @@ namespace KFVM {
     Kokkos::parallel_for("Solver::WenoSelector::update(insert)",
 			 cellRng,
 			 KOKKOS_LAMBDA (KFVM_D_DECL(idx_t i,idx_t j,idx_t k)) {
-			   if (flagView(KFVM_D_DECL(i,j,k)) != WenoFlag::NOWENO) {
+			   if (flagView(KFVM_D_DECL(i,j,k)) > 0) {
 #if (SPACE_DIM == 2)
 			     uint32_t idx = nX*j + i;
 #else

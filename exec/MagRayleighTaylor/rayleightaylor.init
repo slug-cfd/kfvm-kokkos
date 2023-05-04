@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 96 192 96
+mesh:resolution 256 512 96
 mesh:numblocks 1 1 1
 mesh:extent 0.0 0.1 -0.1 0.1 0.0 0.1
 
@@ -8,7 +8,7 @@ time:initial 0.0
 time:final 4.0
 time:initialdt 1.e-8
 time:cfl 2.0
-time:maxsteps 10000
+time:maxsteps 60000
 time:atol 1.e-4
 time:rtol 1.e-3
 
@@ -23,4 +23,4 @@ properties:wenothresh 20.0
 output:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 output:datadir data
 output:basename MagRayleighTaylor
-output:plotfreq 50
+output:plotfreq 500
