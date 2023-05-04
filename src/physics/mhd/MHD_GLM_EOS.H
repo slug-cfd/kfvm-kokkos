@@ -5,7 +5,7 @@
 
 #include "../../Types.H"
 #include "../../FluidProperties.H"
-#include "MHD_GLM_SimVar.H"
+#include "../SimVar.H"
 #include "../EquationTypes.H"
 
 namespace KFVM {

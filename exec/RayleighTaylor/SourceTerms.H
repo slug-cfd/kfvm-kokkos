@@ -3,10 +3,11 @@
 
 KOKKOS_INLINE_FUNCTION
 void SourceTerm(Real t,Real x,Real y,Real z,const Real state[NUM_VARS],Real force[NUM_VARS])
-{ 
+{
+  using Hydro::SimVar;
   (void) t; (void) x; (void) y; (void) z;
   (void) state; (void) force;
 
-  force[SimVar::momy] = state[SimVar::dens];
-  force[SimVar::etot] = state[SimVar::momy];
+  force[SimVar::momy] = -state[SimVar::dens];
+  force[SimVar::etot] = -state[SimVar::momy];
 }

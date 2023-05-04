@@ -6,7 +6,7 @@
 #include <Definitions.H>
 
 #include "../../Types.H"
-#include "MHD_GLM_SimVar.H"
+#include "../SimVar.H"
 #include "MHD_GLM_EOS.H"
 #include "../EquationTypes.H"
 

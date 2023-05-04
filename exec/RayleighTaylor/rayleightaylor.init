@@ -1,7 +1,7 @@
 # Set mesh resolution and extent
 mesh:resolution 96 192 96
 mesh:numblocks 1 1 1
-mesh:extent -0.25 0.25 0.0 1.0 -0.25 0.25
+mesh:extent 0.0 0.1 -0.1 0.1 0.0 0.1
 
 # Set time information
 time:initial 0.0
@@ -16,7 +16,7 @@ time:rtol 1.e-3
 stencil:lfac 24
 
 # Set fluid properties
-properties:gamma 1.4
+properties:gamma 1.6666666666666
 properties:wenothresh 20.0
 
 # Output settings

@@ -6,7 +6,7 @@
 #include <Definitions.H>
 
 #include "../../Types.H"
-#include "Hydro_SimVar.H"
+#include "../SimVar.H"
 #include "Hydro_EOS.H"
 #include "../EquationTypes.H"
 #include "../Riemann.H"

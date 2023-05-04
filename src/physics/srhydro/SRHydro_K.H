@@ -13,7 +13,7 @@
 #include "../../FluidProperties.H"
 #include "../EquationTypes.H"
 #include "../RSTypes.H"
-#include "SRHydro_SimVar.H"
+#include "../SimVar.H"
 #include "SRHydro_EOS.H"
 #include "SRHydro_Riemann.H"
 #include "physics/Physics_K.H"

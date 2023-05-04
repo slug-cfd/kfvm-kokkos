@@ -13,7 +13,7 @@
 #include "../../FluidProperties.H"
 #include "../EquationTypes.H"
 #include "../RSTypes.H"
-#include "MHD_GLM_SimVar.H"
+#include "../SimVar.H"
 #include "MHD_GLM_EOS.H"
 #include "MHD_GLM_Riemann.H"
 

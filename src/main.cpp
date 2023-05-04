@@ -15,7 +15,6 @@
 #include "Solver.H"
 #include "physics/EquationTypes.H"
 #include "physics/Physics_K.H"
-#include "physics/srhydro/SRHydro_SimVar.H"
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc,&argv); {

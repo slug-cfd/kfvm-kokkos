@@ -3,7 +3,7 @@
 
 #include <Kokkos_Core.hpp>
 
-#include "Hydro_SimVar.H"
+#include "../SimVar.H"
 #include "../../Types.H"
 #include "../../FluidProperties.H"
 #include "../EquationTypes.H"

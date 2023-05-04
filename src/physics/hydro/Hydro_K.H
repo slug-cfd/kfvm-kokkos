@@ -14,7 +14,7 @@
 #include "../../FluidProperties.H"
 #include "../EquationTypes.H"
 #include "../RSTypes.H"
-#include "Hydro_SimVar.H"
+#include "../SimVar.H"
 #include "Hydro_EOS.H"
 #include "Hydro_Riemann.H"
 

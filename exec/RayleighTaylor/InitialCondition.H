@@ -12,11 +12,14 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   using Kokkos::sqrt;
   using Kokkos::cos;
 
-  const Real gam = 1.4,gamm = 0.4;
-  const Real rho = y <= 0.5 ? 2.0 : 1.0;
-  const Real p = y <= 0.5 ? 2.0*y + 1.0 : y + 1.5;
-  const Real c = y <= 0.5 ? sqrt(gam*(2.0*y + 1.0)/2.0) : sqrt(gam*(y + 1.5));
-  const Real v = 0.025*c*cos(4.0*M_PI*x)*cos(4.0*M_PI*z);
+  const Real gam = 5.0/3.0,gamm = gam - 1.0;
+  const Real rho = y <= 0.0 ? 1.0 : 10.0;
+  const Real p = y <= 3.0/5.0 - 0.1*rho*y;
+
+  // velocity perturbations with "random sign"
+  const Real rand = cos(1000.0*x)*cos(3333.0*y)*cos(505.0*z);
+  const Real sv = rand > 0.0 ? 1.0 : -1.0;
+  const Real v = 0.005*sv*(1.0 + cos(M_PI*y/0.1));
   
   state[SimVar::dens] = rho;
   state[SimVar::momx] = 0.0;
