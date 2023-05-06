@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 65 65 65
+mesh:resolution 128 128 128
 mesh:numblocks 1 1 1
 mesh:extent -1.0 1.0 -1.0 1.0 -1.0 1.0
 
@@ -17,7 +17,7 @@ stencil:lfac 24
 
 # Set fluid properties
 properties:gamma 1.4
-properties:wenothresh 20.0
+properties:wenothresh 10.0
 
 # Output settings
 output:pdiconf ../../user/pdi_euler_xdmf.yml

@@ -519,11 +519,12 @@ namespace KFVM {
     wenoFlagMap.clear();
     wenoFlagMap.rehash(nWeno);
     if (wenoFlagMap.capacity() > currSize) {
+      uint32_t newSize = std::max(wenoFlagMap.capacity(),2*currSize);
       // Note that capacity != nWeno generally
       PrintAll(ps,"    Realloc workspace from %u to %u on rank %d\n",
-	       currSize,wenoFlagMap.capacity(),ps.layoutMPI.rank);
-      Kokkos::realloc(stenWork,wenoFlagMap.capacity());
-      currSize = wenoFlagMap.capacity();
+	       currSize,newSize,ps.layoutMPI.rank);
+      Kokkos::realloc(stenWork,newSize);
+      currSize = newSize;
     }
     
     // Avoid implicit this captures

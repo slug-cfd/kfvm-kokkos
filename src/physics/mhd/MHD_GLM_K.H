@@ -492,7 +492,7 @@ namespace KFVM {
         Real dzW = Real(0.0);
 #endif
         Real divV = (dxU + dyV + dzW)/Real(2.0); // Undivided difference
-        Real kappa1 = Real(0.3),kappa2 = Real(0.3);
+        Real kappa1 = Real(0.2),kappa2 = Real(0.2);
         Real eta = fmin(Real(1.0),fmax(Real(0.0),-(kappa1*minFms + divV)/(kappa1*minFms)));
 
         // Extend density and pressure ranges
