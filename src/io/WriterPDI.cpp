@@ -23,9 +23,12 @@ namespace KFVM {
                                   ps.nZ + 2*ps.rad)),
       V_host("V_host",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
       weno_host("weno_host",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
-      xCoord(ps.nX + 1,Real(0.0)),
-      yCoord(ps.nY + 1,Real(0.0)),
-      zCoord(ps.nZ + 1,Real(0.0))
+      nX_g(ps.layoutMPI.nbX*ps.nX),
+      nY_g(ps.layoutMPI.nbY*ps.nY),
+      nZ_g(ps.layoutMPI.nbZ*ps.nZ),
+      xCoord(nX_g + 1,Real(0.0)),
+      yCoord(nY_g + 1,Real(0.0)),
+      zCoord(nZ_g + 1,Real(0.0))
     {
       // Generate base filename and make directories as needed
       std::ostringstream oss;
@@ -35,36 +38,42 @@ namespace KFVM {
 #if (SPACE_DIM == 3)
       oss << "_NZ" << ps.nZ*ps.nbZ;
 #endif
-      oss << "/Rank" << ps.layoutMPI.rank << "/";
+      oss << "/";
       std::filesystem::create_directories(oss.str());
       prefix = std::string(oss.str());
 
       // Fill coordinate arrays (including z even in 2D)
       // Note that these are nodal, hence one longer than number of cells
-      for (int n=0; n<=ps.nX; n++) {
-        xCoord[n] = n*geom.dx + geom.xLo;
+      // Note also that ps.xLo is used and *not* geom.xLo (need global low)
+      for (int n=0; n<=nX_g; n++) {
+        xCoord[n] = n*geom.dx + ps.xLo_g;
       }
-      for (int n=0; n<=ps.nY; n++) {
-        yCoord[n] = n*geom.dy + geom.yLo;
+      for (int n=0; n<=nY_g; n++) {
+        yCoord[n] = n*geom.dy + ps.yLo_g;
       }
       Real dz = (SPACE_DIM == 2 ? geom.dmin : geom.dz);
-      for (int n=0; n<=ps.nZ; n++) {
-        zCoord[n] = n*dz + geom.zLo;
+      for (int n=0; n<=nZ_g; n++) {
+        zCoord[n] = n*dz + ps.zLo_g;
       }
 
       // Gather up solution metadata and give it to PDI
       // These are all size 3, even in 2D
-      int ngZ = (SPACE_DIM==2 ? 0 : (int) ps.rad);
-      int siZ = (SPACE_DIM==2 ? 0 : (int) ps.rad);
-      std::array<int,3> ncell = {(int) ps.nX,(int) ps.nY,(int) ps.nZ};
-      std::array<int,3> nghost = {(int) ps.rad,(int) ps.rad,ngZ};
-      std::array<int,3> start_idx = {(int) ps.rad,(int) ps.rad,siZ};
+      int ngZ = (SPACE_DIM==2 ? 0 : int(ps.rad));
+      std::array<int,3> ncell_global = {int(nX_g),
+					int(nY_g),
+					int(nZ_g)};
+      std::array<int,3> ncell_local = {int(ps.nX),int(ps.nY),int(ps.nZ)};
+      std::array<int,3> nghost = {int(ps.rad),int(ps.rad),ngZ};
+      std::array<int,3> start_idx = {int(ps.layoutMPI.bxLo),
+				     int(ps.layoutMPI.byLo),
+				     int(ps.layoutMPI.bzLo)};
       
       Real time = 0.0;
       int time_step = 0;
 
       PDI_multi_expose("init_pdi",
-                       "ncell",(void*) ncell.data(),PDI_OUT,
+                       "ncell_g",(void*) ncell_global.data(),PDI_OUT,
+                       "ncell_l",(void*) ncell_local.data(),PDI_OUT,
                        "nghost",(void*) nghost.data(),PDI_OUT,
                        "start_idx",(void*) start_idx.data(),PDI_OUT,
                        "xcoord",(void*) xCoord.data(),PDI_OUT,
@@ -73,6 +82,7 @@ namespace KFVM {
                        "gamma",(void*) &ps.fluidProp.gamma,PDI_OUT,
                        "time",(void*) &time,PDI_OUT,
                        "time_step",(void*) &time_step,PDI_OUT,
+		       "comm",(void*) &ps.layoutMPI.commWorld,PDI_OUT,
                        NULL);
 
       PDI_event("init_pdi");
@@ -86,8 +96,10 @@ namespace KFVM {
       oss << ps.baseName << "_" << std::setw(7) << std::setfill('0') << step;
       filename_xmf = oss.str() + ".xmf";
       filename_h5 = oss.str() + ".h5";
-      
-      writeXML(step,time);
+
+      if (ps.layoutMPI.rank == 0) {
+	writeXML(step,time);
+      }
       writePDI(U,V,weno,step,time);
     }
 
@@ -96,7 +108,9 @@ namespace KFVM {
     {
       std::string filename = prefix + filename_h5;
       int filename_size = filename.size();
-      std::cout << "Writing file: " << filename << std::endl;
+      if (ps.layoutMPI.rank == 0) {
+	std::printf("Writing file: %s\n",filename.c_str());
+      }
 
       // Copy data from GPU to host (no-op if already on host)
       Kokkos::deep_copy(U_host,U);
@@ -117,7 +131,9 @@ namespace KFVM {
     void WriterPDI::writeXML(int step,Real time)
     {
       std::string filename = prefix + filename_xmf;
-      std::cout << "Writing file: " << filename << std::endl;
+      if (ps.layoutMPI.rank == 0) {
+	std::printf("Writing file: %s\n",filename.c_str());
+      }
 
       // Create Xdmf file
       std::ofstream ofs(filename,std::ios::trunc);
@@ -133,15 +149,15 @@ namespace KFVM {
       ofs << "    <Grid Name=\"Structured Grid\" GridType=\"Uniform\">\n"
           << "      <Time Value=\"" << time << "\" />\n"
           << "      <Topology TopologyType=\"3DRectMesh\" NumberOfElements=\""
-          << (ps.nZ + 1) << " " << (ps.nY + 1) << " " << (ps.nX + 1) << "\"/>\n"
+          << (nZ_g + 1) << " " << (nY_g + 1) << " " << (nX_g + 1) << "\"/>\n"
           << "      <Geometry GeometryType=\"VxVyVz\">\n"
-          << "        <DataItem Name=\"Vx\" Dimensions=\"" << (ps.nX + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
+          << "        <DataItem Name=\"Vx\" Dimensions=\"" << (nX_g + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
           << "          " << filename_h5 << ":/xcoord\n"
           << "        </DataItem>\n"
-          << "        <DataItem Name=\"Vy\" Dimensions=\"" << (ps.nY + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
+          << "        <DataItem Name=\"Vy\" Dimensions=\"" << (nY_g + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
           << "          " << filename_h5 << ":/ycoord\n"
           << "        </DataItem>\n"
-          << "        <DataItem Name=\"Vz\" Dimensions=\"" << (ps.nZ + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
+          << "        <DataItem Name=\"Vz\" Dimensions=\"" << (nZ_g + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
           << "          " << filename_h5 << ":/zcoord\n"
           << "        </DataItem>\n      </Geometry>\n"
           << std::endl;
@@ -187,6 +203,7 @@ namespace KFVM {
       writeAttributeScalar(ofs,"pres");
       writeAttributeScalar(ofs,"prsg");
       writeAttributeScalar(ofs,"prsb");
+      writeAttributeScalar(ofs,"psi");
     }
 
     void WriterPDI::writeAttrSRHydro(std::ofstream& ofs)
@@ -204,7 +221,7 @@ namespace KFVM {
     {
       ofs << "      <Attribute Name=\"" << varName << "\" AttributeType=\"Scalar\" Center=\"Cell\">\n"
           << "        <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
-          << ps.nZ << " " << ps.nY << " " << ps.nX << "\">\n"
+          << nZ_g << " " << nY_g << " " << nX_g << "\">\n"
           << "          " << filename_h5 << ":/" << varName << "\n"
           << "        </DataItem>\n      </Attribute>\n"
           << std::endl;
@@ -215,20 +232,20 @@ namespace KFVM {
     {
       ofs << "      <Attribute Name=\"" << vecName << "\" AttributeType=\"Vector\" Center=\"Cell\">\n"
           << "        <DataItem ItemType=\"Function\" Function=\"JOIN($0, $1, $2)\" Dimensions=\""
-          << ps.nZ << " " << ps.nY << " " << ps.nX << " 3\">\n"
+          << nZ_g << " " << nY_g << " " << nX_g << " 3\">\n"
         // x-component (permutes to the  component)
           << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
-          << ps.nZ << " " << ps.nY << " " << ps.nX << "\">\n"
+          << nZ_g << " " << nY_g << " " << nX_g << "\">\n"
           << "            " << filename_h5 << ":/" << vecX << "\n"
           << "          </DataItem>\n"
         // y-component (permutes to the  component)
           << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
-          << ps.nZ << " " << ps.nY << " " << ps.nX << "\">\n"
+          << nZ_g << " " << nY_g << " " << nX_g << "\">\n"
           << "            " << filename_h5 << ":/" << vecY << "\n"
           << "          </DataItem>\n"
         // z-component (permutes to the  component)
           << "          <DataItem Format=\"HDF\" NumberType=\"Float\" Precision=\"8\" Dimensions=\""
-          << ps.nZ << " " << ps.nY << " " << ps.nX << "\">\n"
+          << nZ_g << " " << nY_g << " " << nX_g << "\">\n"
           << "            " << filename_h5 << ":/" << vecZ << "\n"
           << "          </DataItem>\n"
         

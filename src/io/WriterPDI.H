@@ -23,6 +23,7 @@ namespace KFVM {
       HostConsDataView U_host;
       HostAuxDataView V_host;
       HostCellDataView weno_host;
+      int nX_g,nY_g,nZ_g;
       std::vector<Real> xCoord,yCoord,zCoord;
       std::string prefix;
       std::string filename_h5;

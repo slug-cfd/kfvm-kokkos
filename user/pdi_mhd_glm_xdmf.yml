@@ -1,178 +1,185 @@
 fld_datasets: &fld_datasets
-  dens: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]']}
-  momx: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  momy: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  momz: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  etot: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  magx: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  magy: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  magz: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  psi: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]']}
-  velx: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]']}
-  vely: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  velz: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  eint: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  pres: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  prsg: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  prsb: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
-  weno: { type: array, subtype: double, size: ['$ncell[2]', '$ncell[1]', '$ncell[0]'] }
+  dens: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]']}
+  momx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  momy: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  momz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  etot: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  magx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  magy: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  magz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  psi: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]']}
+  velx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]']}
+  vely: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  velz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  eint: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  pres: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  prsg: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  prsb: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  weno: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
 
 fld_dataset_selection: &fld_dataset_selection
-  size: ['$ncell[2]', '$ncell[1]', '$ncell[0]']
-  start: [0, 0, 0]
+  size: ['$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+  start: ['$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
 
 dens_description: &dens_description
   dataset: dens
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [0, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [0, '$nghost[2]', '$nghost[1]', '$nghost[0]']
   dataset_selection: *fld_dataset_selection
 
 momx_description: &momx_description
   dataset: momx
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [1, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [1, '$nghost[2]', '$nghost[1]', '$nghost[0]']
   dataset_selection: *fld_dataset_selection
 
 momy_description: &momy_description
   dataset: momy
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [2, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [2, '$nghost[2]', '$nghost[1]', '$nghost[0]']
   dataset_selection: *fld_dataset_selection
 
 momz_description: &momz_description
   dataset: momz
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [3, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [3, '$nghost[2]', '$nghost[1]', '$nghost[0]']
   dataset_selection: *fld_dataset_selection
 
 etot_description: &etot_description
   dataset: etot
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [4, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [4, '$nghost[2]', '$nghost[1]', '$nghost[0]']
   dataset_selection: *fld_dataset_selection
 
 magx_description: &magx_description
   dataset: magx
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [5, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [5, '$nghost[2]', '$nghost[1]', '$nghost[0]']
   dataset_selection: *fld_dataset_selection
 
 magy_description: &magy_description
   dataset: magy
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [6, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [6, '$nghost[2]', '$nghost[1]', '$nghost[0]']
   dataset_selection: *fld_dataset_selection
 
 magz_description: &magz_description
   dataset: magz
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [7, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [7, '$nghost[2]', '$nghost[1]', '$nghost[0]']
   dataset_selection: *fld_dataset_selection
 
 psi_description: &psi_description
   dataset: psi
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
-    start: [8, '$start_idx[2]', '$start_idx[1]', '$start_idx[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [8, '$nghost[2]', '$nghost[1]', '$nghost[0]']
   dataset_selection: *fld_dataset_selection
   
 velx_description: &velx_description
   dataset: velx
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     start: [0, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 vely_description: &vely_description
   dataset: vely
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     start: [1, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 velz_description: &velz_description
   dataset: velz
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     start: [2, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 eint_description: &eint_description
   dataset: eint
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     start: [3, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 pres_description: &pres_description
   dataset: pres
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     start: [4, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 prsg_description: &prsg_description
   dataset: prsg
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     start: [5, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 prsb_description: &prsb_description
   dataset: prsb
   memory_selection:
-    size: [1, '$ncell[2]', '$ncell[1]', '$ncell[0]']
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     start: [6, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 weno_description: &weno_description
   dataset: weno
   memory_selection:
-    size: ['$ncell[2]', '$ncell[1]', '$ncell[0]']
+    size: ['$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     start: [0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 pdi:
   metadata:
-    ncell: { type: array, subtype: int, size: 3 }
+    ncell_g: { type: array, subtype: int, size: 3 }
+    ncell_l: { type: array, subtype: int, size: 3 }
     nghost: { type: array, subtype: int, size: 3 }
     start_idx: { type: array, subtype: int, size: 3 }
-    xcoord: { type: array, subtype: double, size: '$ncell[0] + 1' }
-    ycoord: { type: array, subtype: double, size: '$ncell[1] + 1' }
-    zcoord: { type: array, subtype: double, size: '$ncell[2] + 1' }
+    xcoord: { type: array, subtype: double, size: '$ncell_g[0] + 1' }
+    ycoord: { type: array, subtype: double, size: '$ncell_g[1] + 1' }
+    zcoord: { type: array, subtype: double, size: '$ncell_g[2] + 1' }
     gamma: double
     time: double
     time_step: int
+    comm: MPI_Comm
   data:
     filename_size: int
     filename: { type: array, subtype: char, size: $filename_size }
     cons_field:
       type: array
       subtype: double
-      size: [9, '$ncell[2] + 2*$nghost[2]', '$ncell[1] + 2*$nghost[1]', '$ncell[0] + 2*$nghost[0]']
+      size: [9, '$ncell_l[2] + 2*$nghost[2]', '$ncell_l[1] + 2*$nghost[1]', '$ncell_l[0] + 2*$nghost[0]']
     aux_field:
       type: array
       subtype: double
-      size: [7, '$ncell[2]', '$ncell[1]', '$ncell[0]']
+      size: [7, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     weno_field:
       type: array
       subtype: double
-      size: ['$ncell[2]', '$ncell[1]', '$ncell[0]']
+      size: ['$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
 
   plugins:
+    
+    mpi:
+    
     decl_hdf5:
+      
     - file: ${filename}
       datasets: *fld_datasets
       on_event: write_data
       collision_policy: replace
+      communicator: '$comm'
       write:
         time:
         time_step:
