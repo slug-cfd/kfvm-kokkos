@@ -9,8 +9,8 @@ time:final 20.0
 time:initialdt 1.e-10
 time:cfl 3.0
 time:maxsteps 2500
-time:atol 1.e-5
-time:rtol 1.e-4
+time:atol 1.e-10
+time:rtol 1.e-8
 
 # Set stencil options
 stencil:lfac 24
