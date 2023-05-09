@@ -1,26 +1,26 @@
 # Set mesh resolution and extent
-mesh:resolution 256 128
+mesh:resolution 128 128
 mesh:numblocks 1 1
-mesh:extent -1.0 1.0 -0.5 0.5
+mesh:extent -10.0 10.0 -10.0 10.0
 
 # Set time information
 time:initial 0.0
-time:final 1.0
+time:final 20.0
 time:initialdt 1.e-10
 time:cfl 1.5
 time:maxsteps 4000
-time:atol 1.e-5
-time:rtol 1.e-4
+time:atol 1.e-8
+time:rtol 1.e-6
 
 # Set stencil options
 stencil:lfac 24
 
 # Set fluid properties
-properties:gamma 1.4
+properties:gamma 1.666666666666
 properties:wenothresh 20.0
 
 # Output settings
 output:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 output:datadir data
-output:basename FieldLoop
+output:basename MagVort
 output:plotfreq 20
