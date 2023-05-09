@@ -7,9 +7,9 @@
 
 #include "../../Types.H"
 #include "../SimVar.H"
-#include "SRHydro_EOS.H"
 #include "../EquationTypes.H"
 #include "../Riemann.H"
+#include "SRHydro_EOS.H"
 
 namespace KFVM {
 
@@ -55,11 +55,11 @@ namespace KFVM {
 
       // Left going wavespeeds
       const Real sLm = (vL[lng] - sqrtL)/(Real(1.0) + sigL);
-      const Real sRm = (vR[lng] - sqrtR)/(Real(1.0) + sigL);
+      const Real sRm = (vR[lng] - sqrtR)/(Real(1.0) + sigR);
 
       // Right going wavespeeds
       const Real sLp = (vL[lng] + sqrtL)/(Real(1.0) + sigL);
-      const Real sRp = (vR[lng] + sqrtR)/(Real(1.0) + sigL);
+      const Real sRp = (vR[lng] + sqrtR)/(Real(1.0) + sigR);
 
       // Put it all together
       sL = fmin(sLm,sRm);
@@ -129,10 +129,10 @@ namespace KFVM {
       srhydroSpeed(gamma,ord[0],vL,vR,sL,sR);
 
       // Bail early if possible
-      if (sL > 0) {
+      if (sL >= 0) {
         srhydroFlux(gamma,ord,uL,vL,F);
         return fmax(fabs(sL),fabs(sR));
-      } else if (sR < 0) {
+      } else if (sR <= 0) {
         srhydroFlux(gamma,ord,uR,vR,F);
         return fmax(fabs(sL),fabs(sR));
       }
@@ -144,8 +144,8 @@ namespace KFVM {
       srhydroFlux(gamma,ord,uR,vR,FT);
 
       // Solve for contact speed and pressure
-      const Real eL = uL[SimVar::tau] + uL[SimVar::dens],feL = F[SimVar::tau] + F[SimVar::dens];
-      const Real eR = uR[SimVar::tau] + uR[SimVar::dens],feR = FT[SimVar::tau] + FT[SimVar::dens];
+      const Real eL = uL[SimVar::tau] + uL[SimVar::dens],feL = uL[ord[0]];
+      const Real eR = uR[SimVar::tau] + uR[SimVar::dens],feR = uR[ord[0]];
 
       const Real aL = sL*eL - feL,aR = sR*eR - feR;
       const Real bL = sL*uL[ord[0]] - F[ord[0]] - vL[PrimVar::pres];

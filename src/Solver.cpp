@@ -208,7 +208,7 @@ namespace KFVM {
 	// Solution is unphysical, reject and reduce dt
         PrintSingle(ps,", cfl = %f\n    Rejected: Unphysical\n",cfl);
 	// first set to quarter of max cfl, then start halving
-	dt = firstUnphys ? 0.25*ps.cfl*geom.dmin/maxVel : dt/2.0;
+	dt = firstUnphys ? std::fmin(0.25*ps.cfl*geom.dmin/maxVel,dt/4.0) : dt/2.0;
 	firstUnphys = false;
 	// Force full weno usage on failure
 	useSparseWeno = false;

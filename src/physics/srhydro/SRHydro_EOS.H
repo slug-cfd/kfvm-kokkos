@@ -125,7 +125,7 @@ namespace KFVM {
 	  const Real phat = gamm*rho*ei;
 
 	  // test p for convergence
-	  if (rtol > fabs(p - phat)/fmax(p,phat)) {
+	  if (rtol*fmin(p,phat) > fabs(p - phat)) {
 	    break;
 	  }
 
@@ -177,7 +177,8 @@ namespace KFVM {
       {
 	using SRHydro::SimVar;
         
-        return pres(fProp.gamma,10,U);
+        // return pres(fProp.gamma,10,U);
+        return U[SimVar::tau];
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -196,18 +197,16 @@ namespace KFVM {
       static Real positivity(const SRHydro::ConsVec U)
       {
         using Kokkos::fmin;
-        using Kokkos::sqrt;
 	using SRHydro::SimVar;
 
         // Calculate lower bound on tau
-        const Real tauMin = sqrt(U[SimVar::dens]*U[SimVar::dens] +
-                                 U[SimVar::momx]*U[SimVar::momx] +
-                                 U[SimVar::momy]*U[SimVar::momy] +
-                                 U[SimVar::momz]*U[SimVar::momz]) - U[SimVar::dens];
+        const Real tauDiff = U[SimVar::tau]*U[SimVar::tau] + Real(2.0)*U[SimVar::dens]*U[SimVar::tau] - 
+          (U[SimVar::momx]*U[SimVar::momx] + U[SimVar::momy]*U[SimVar::momy] + U[SimVar::momz]*U[SimVar::momz]);
 
         // Note that the bound on tau also guarantees positive pressure
         // and subluminal velocities
-        return fmin(U[SimVar::dens],U[SimVar::tau] - tauMin);
+        return U[SimVar::dens];
+        return fmin(U[SimVar::dens],tauDiff);
       }
     };
     

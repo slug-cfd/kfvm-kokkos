@@ -1,14 +1,14 @@
 # Set mesh resolution and extent
-mesh:resolution 256 256
+mesh:resolution 560 192
 mesh:numblocks 1 1
-mesh:extent -1.0 1.0 -1.0 1.0
+mesh:extent 0.0 35.0 0.0 12.0
 
 # Set time information
 time:initial 0.0
-time:final 0.8
+time:final 80.0
 time:initialdt 1.e-10
 time:cfl 1.0
-time:maxsteps 1000
+time:maxsteps 10000
 time:atol 1.e-3
 time:rtol 1.e-3
 
@@ -22,5 +22,5 @@ properties:wenothresh 5.0
 # Output settings
 output:pdiconf ../../user/pdi_srhydro_xdmf.yml
 output:datadir data
-output:basename SRRiem
-output:plotfreq 10
+output:basename AstroJetSR
+output:plotfreq 20

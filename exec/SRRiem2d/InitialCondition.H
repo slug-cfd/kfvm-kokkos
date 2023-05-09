@@ -9,7 +9,7 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   (void) y;
   (void) z;
   
-  const Real gam = 5.0/3.0,gamm = gam - 1.0;
+  const Real gam = 5.0/3.0,gamm = gam - 1.0,v0 = 0.99;
   Real rho,vx,vy,p;
   // Set primitives based on quadrant
   if (x > 0.0) {
@@ -21,13 +21,13 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
     } else {
       rho = 0.1;
       vx = 0.0;
-      vy = 0.99;
+      vy = v0;
       p = 1.0;
     }
   } else {
     if (y > 0.0) {
       rho = 0.1;
-      vx = 0.99;
+      vx = v0;
       vy = 0.0;
       p = 1.0;
     } else {
