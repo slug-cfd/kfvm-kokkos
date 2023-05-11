@@ -63,7 +63,11 @@ namespace KFVM {
 
     // File output information
     std::string pdiConf,dataDir,baseName;
-    int plotFreq;
+    int plotFreq,ckptFreq;
+
+    // Restart from checkpoint info
+    bool restart;
+    std::string restartFile;
 
     // Fluid properties object
     FluidProperties fluidProp;
@@ -98,7 +102,9 @@ namespace KFVM {
       pdiConf(""),
       dataDir("data"),
       baseName("default"),
-      plotFreq(100)
+      plotFreq(100),
+      ckptFreq(50),
+      restart(false)
     {}
     
     void print()
@@ -139,12 +145,16 @@ namespace KFVM {
 	std::printf("  gamma: %f\n",fluidProp.gamma);
 	std::printf("  wenothresh: %f\n",fluidProp.wenoThresh);
 
-	// Print output information
-	std::printf("Output:\n");
+	// Print io information
+	std::printf("IO:\n");
 	std::printf("  pdiconf: %s\n",pdiConf.c_str());
 	std::printf("  datadir: %s\n",dataDir.c_str());
 	std::printf("  basename: %s\n",baseName.c_str());
 	std::printf("  plotfreq: %d\n",plotFreq);
+	std::printf("  ckptfreq: %d\n",ckptFreq);
+	if (restart) {
+	  std::printf("  restartfile: %s\n",restartFile.c_str());
+	}
       }
     }
 
@@ -185,8 +195,8 @@ namespace KFVM {
 	  success = setTime(setting);
 	} else if (category == "properties") {
 	  success = setProperties(setting);
-	} else if (category == "output") {
-	  success = setOutput(setting);
+	} else if (category == "io") {
+	  success = setIO(setting);
 	} else {
 	  std::cout << "Warning!!!! Ignoring line from input file: " << line << std::endl;
 	}
@@ -341,7 +351,7 @@ namespace KFVM {
       return true;
     }
     
-    bool setOutput(const std::string& setting) {
+    bool setIO(const std::string& setting) {
       std::istringstream lStream(setting);
       std::string category,value;
       std::size_t pos;
@@ -352,12 +362,18 @@ namespace KFVM {
       if (category == "plotfreq") {
 	std::getline(lStream,value,' ');
 	plotFreq = std::stoi(value,&pos);
+      } else if (category == "ckptfreq") {
+	std::getline(lStream,value,' ');
+	ckptFreq = std::stoi(value,&pos);
       } else if (category == "basename") {
 	std::getline(lStream,baseName);
       } else if (category == "pdiconf") {
 	std::getline(lStream,pdiConf);
       } else if (category == "datadir") {
 	std::getline(lStream,dataDir);
+      } else if (category == "restartfile") {
+	std::getline(lStream,restartFile);
+	restart = true;
       } else {
 	return false;
       }

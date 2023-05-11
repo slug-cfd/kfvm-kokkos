@@ -39,8 +39,9 @@ namespace KFVM {
       oss << "_NZ" << ps.nZ*ps.nbZ;
 #endif
       oss << "/";
-      std::filesystem::create_directories(oss.str());
       prefix = std::string(oss.str());
+      std::filesystem::create_directories(prefix + "plot/");
+      std::filesystem::create_directories(prefix + "ckpt/");
 
       // Fill coordinate arrays (including z even in 2D)
       // Note that these are nodal, hence one longer than number of cells
@@ -67,11 +68,8 @@ namespace KFVM {
       std::array<int,3> start_idx = {int(ps.layoutMPI.bxLo),
 				     int(ps.layoutMPI.byLo),
 				     int(ps.layoutMPI.bzLo)};
-      
-      Real time = 0.0;
-      int time_step = 0;
 
-      PDI_multi_expose("init_pdi",
+      PDI_multi_expose("",
                        "ncell_g",(void*) ncell_global.data(),PDI_OUT,
                        "ncell_l",(void*) ncell_local.data(),PDI_OUT,
                        "nghost",(void*) nghost.data(),PDI_OUT,
@@ -80,16 +78,12 @@ namespace KFVM {
                        "ycoord",(void*) yCoord.data(),PDI_OUT,
                        "zcoord",(void*) zCoord.data(),PDI_OUT,
                        "gamma",(void*) &ps.fluidProp.gamma,PDI_OUT,
-                       "time",(void*) &time,PDI_OUT,
-                       "time_step",(void*) &time_step,PDI_OUT,
 		       "comm",(void*) &ps.layoutMPI.commWorld,PDI_OUT,
                        NULL);
-
-      PDI_event("init_pdi");
     }
 
-    void WriterPDI::write(ConsDataView U,AuxDataView V,CellDataView weno,
-                          int step,Real time)
+    void WriterPDI::writePlot(ConsDataView U,AuxDataView V,CellDataView weno,
+			      int step,Real time)
     {
       // Form filenames
       std::ostringstream oss;
@@ -98,15 +92,29 @@ namespace KFVM {
       filename_h5 = oss.str() + ".h5";
 
       if (ps.layoutMPI.rank == 0) {
-	writeXML(step,time);
+	writeXML(step,time,true);
       }
-      writePDI(U,V,weno,step,time);
+      writePlotPDI(U,V,weno,step,time);
     }
 
-    void WriterPDI::writePDI(ConsDataView U,AuxDataView V,CellDataView weno,
-                             int step,Real time)
+    void WriterPDI::writeCkpt(ConsDataView U,CellDataView weno,int step,Real time,Real dt)
     {
-      std::string filename = prefix + filename_h5;
+      // Form filenames
+      std::ostringstream oss;
+      oss << ps.baseName << "_" << std::setw(7) << std::setfill('0') << step;
+      filename_xmf = oss.str() + ".xmf";
+      filename_h5 = oss.str() + ".h5";
+
+      if (ps.layoutMPI.rank == 0) {
+	writeXML(step,time,false);
+      }
+      writeCkptPDI(U,weno,step,time,dt);
+    }
+
+    void WriterPDI::writePlotPDI(ConsDataView U,AuxDataView V,CellDataView weno,
+				 int step,Real time)
+    {
+      std::string filename = prefix + "plot/" + filename_h5;
       int filename_size = filename.size();
       if (ps.layoutMPI.rank == 0) {
 	std::printf("Writing file: %s\n",filename.c_str());
@@ -117,7 +125,7 @@ namespace KFVM {
       Kokkos::deep_copy(V_host,V);
       Kokkos::deep_copy(weno_host,weno);
 
-      PDI_multi_expose("write_data",
+      PDI_multi_expose("write_plot_data",
                        "filename_size",(void*) &filename_size, PDI_OUT,
                        "filename",(void*) filename.c_str(), PDI_OUT,
                        "time_step",(void*) &step, PDI_OUT,
@@ -128,9 +136,58 @@ namespace KFVM {
                        NULL);
     }
 
-    void WriterPDI::writeXML(int step,Real time)
+    void WriterPDI::writeCkptPDI(ConsDataView U,CellDataView weno,
+				 int step,Real time,Real dt)
     {
-      std::string filename = prefix + filename_xmf;
+      std::string filename = prefix + "ckpt/" + filename_h5;
+      int filename_size = filename.size();
+      if (ps.layoutMPI.rank == 0) {
+	std::printf("Writing file: %s\n",filename.c_str());
+      }
+
+      // Copy data from GPU to host (no-op if already on host)
+      Kokkos::deep_copy(U_host,U);
+      Kokkos::deep_copy(weno_host,weno);
+
+      PDI_multi_expose("write_ckpt_data",
+                       "filename_size",(void*) &filename_size, PDI_OUT,
+                       "filename",(void*) filename.c_str(), PDI_OUT,
+                       "time_step",(void*) &step, PDI_OUT,
+                       "time",(void*) &time, PDI_OUT,
+                       "time_step_size",(void*) &dt, PDI_OUT,
+                       "cons_field",(void*) U_host.data(), PDI_OUT,
+                       "weno_field",(void*) weno_host.data(), PDI_OUT,
+                       NULL);
+    }
+
+    void WriterPDI::readCkpt(ConsDataView U,CellDataView weno,
+			     int& step,Real& time,Real& dt)
+    {
+      int filename_size = ps.restartFile.size();
+      if (ps.layoutMPI.rank == 0) {
+	std::printf("Restarting from: %s\n",ps.restartFile.c_str());
+      }
+      
+      PDI_multi_expose("read_ckpt_data",
+                       "restart_filename_size",(void*) &filename_size, PDI_OUT,
+                       "restart_filename",(void*) ps.restartFile.c_str(), PDI_OUT,
+                       "time",(void*) &time, PDI_INOUT,
+                       "time_step",(void*) &step, PDI_INOUT,
+                       "time_step_size",(void*) &dt, PDI_INOUT,
+                       "cons_field",(void*) U_host.data(), PDI_INOUT,
+                       "weno_field",(void*) weno_host.data(), PDI_INOUT,
+                       NULL);
+
+      // Copy data from host to GPU
+      Kokkos::deep_copy(U,U_host);
+      Kokkos::deep_copy(weno,weno_host);
+      Kokkos::fence("WriterPDI::readCkpt(Finish copying restart data)");
+    }
+
+    void WriterPDI::writeXML(int step,Real time,bool plotMode)
+    {
+      std::string sd(plotMode ? "plot/" : "ckpt/");
+      std::string filename = prefix + sd + filename_xmf;
       if (ps.layoutMPI.rank == 0) {
 	std::printf("Writing file: %s\n",filename.c_str());
       }
@@ -165,13 +222,13 @@ namespace KFVM {
       // Write all data fields as attributes
       switch (eqType) {
       case EquationType::MHD_GLM:
-        writeAttrMHD_GLM(ofs);
+	writeAttrMHD_GLM(ofs,plotMode);
         break;
       case EquationType::SRHydro:
-        writeAttrSRHydro(ofs);
+	writeAttrSRHydro(ofs,plotMode);
         break;
       default:
-        writeAttrHydro(ofs);
+	writeAttrHydro(ofs,plotMode);
       }
       writeAttributeScalar(ofs,"weno");
 
@@ -182,39 +239,45 @@ namespace KFVM {
       ofs.close();
     }
 
-    void WriterPDI::writeAttrHydro(std::ofstream& ofs)
+    void WriterPDI::writeAttrHydro(std::ofstream& ofs,bool plotMode)
     {    
       writeAttributeScalar(ofs,"dens");
       writeAttributeVector(ofs,"mom","momx","momy","momz");
       writeAttributeScalar(ofs,"etot");
-      writeAttributeVector(ofs,"vel","velx","vely","velz");
-      writeAttributeScalar(ofs,"eint");
-      writeAttributeScalar(ofs,"pres");
+      if (plotMode) {
+	writeAttributeVector(ofs,"vel","velx","vely","velz");
+	writeAttributeScalar(ofs,"eint");
+	writeAttributeScalar(ofs,"pres");
+      }
     }
 
-    void WriterPDI::writeAttrMHD_GLM(std::ofstream& ofs)
+    void WriterPDI::writeAttrMHD_GLM(std::ofstream& ofs,bool plotMode)
     {
       writeAttributeScalar(ofs,"dens");
       writeAttributeVector(ofs,"mom","momx","momy","momz");
       writeAttributeVector(ofs,"mag","magx","magy","magz");
       writeAttributeScalar(ofs,"etot");
-      writeAttributeVector(ofs,"vel","velx","vely","velz");
-      writeAttributeScalar(ofs,"eint");
-      writeAttributeScalar(ofs,"pres");
-      writeAttributeScalar(ofs,"prsg");
-      writeAttributeScalar(ofs,"prsb");
       writeAttributeScalar(ofs,"psi");
+      if (plotMode) {
+	writeAttributeVector(ofs,"vel","velx","vely","velz");
+	writeAttributeScalar(ofs,"eint");
+	writeAttributeScalar(ofs,"pres");
+	writeAttributeScalar(ofs,"prsg");
+	writeAttributeScalar(ofs,"prsb");
+      }
     }
 
-    void WriterPDI::writeAttrSRHydro(std::ofstream& ofs)
+    void WriterPDI::writeAttrSRHydro(std::ofstream& ofs,bool plotMode)
     {
       writeAttributeScalar(ofs,"dens");
       writeAttributeVector(ofs,"mom","momx","momy","momz");
       writeAttributeScalar(ofs,"tau");
-      writeAttributeScalar(ofs,"rho");
-      writeAttributeVector(ofs,"vel","velx","vely","velz");
-      writeAttributeScalar(ofs,"lorz");
-      writeAttributeScalar(ofs,"pres");
+      if (plotMode) {
+	writeAttributeScalar(ofs,"rho");
+	writeAttributeVector(ofs,"vel","velx","vely","velz");
+	writeAttributeScalar(ofs,"lorz");
+	writeAttributeScalar(ofs,"pres");
+      }
     }
     
     void WriterPDI::writeAttributeScalar(std::ofstream& ofs,const char *varName)

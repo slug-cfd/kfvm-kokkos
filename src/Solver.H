@@ -82,6 +82,7 @@ namespace KFVM {
     WenoSelector wenoSelector;
     bool useSparseWeno;
     // Time step information
+    int nTS;
     Real time,dt,errEst;
     bool lastTimeStep;
     // Threshold for WENO reconstruction

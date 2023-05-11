@@ -20,7 +20,8 @@ properties:gamma 1.666666666666666
 properties:wenothresh 10.0
 
 # Output settings
-output:pdiconf ../../user/pdi_euler_xdmf.yml
-output:datadir data
-output:basename CircImplosionRef
-output:plotfreq 100
+io:pdiconf ../../user/pdi_euler_xdmf.yml
+io:datadir data
+io:basename CircImplosionRef
+io:plotfreq 100
+io:ckptfreq 20

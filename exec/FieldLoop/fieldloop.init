@@ -20,7 +20,8 @@ properties:gamma 1.4
 properties:wenothresh 20.0
 
 # Output settings
-output:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
-output:datadir data
-output:basename FieldLoop
-output:plotfreq 20
+io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
+io:datadir data
+io:basename FieldLoop
+io:plotfreq 20
+io:ckptfreq 20

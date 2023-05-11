@@ -51,6 +51,7 @@ namespace KFVM {
     bdyData(ps),
     wenoSelector(ps),
     useSparseWeno(false),
+    nTS(1),
     time(ps.initialTime),
     dt(ps.initialDeltaT),
     errEst(1.0),
@@ -60,14 +61,29 @@ namespace KFVM {
     nRejectUnphys(0),
     nRejectThresh(0)
   {
-    setIC();
-    evalAuxiliary();
-    writerPDI.write(U_halo,U_aux,wenoSelector.wenoFlagView,0,time);
-
-    // FSAL methods need one RHS eval to start
+    if (!ps.restart) {
+      // Set ICs and write initial data out
+      setIC();
+      evalAuxiliary();
+      writerPDI.writePlot(U_halo,U_aux,wenoSelector.wenoFlagView,0,time);
+      writerPDI.writeCkpt(U_halo,wenoSelector.wenoFlagView,0,time,dt);
+    } else {
+      // Read in checkpoint file and set state
+      writerPDI.readCkpt(U_halo,wenoSelector.wenoFlagView,nTS,time,dt);
+      Kokkos::deep_copy(Uprev_halo,U_halo);
+      nTS++;
+      // Clear sparse weno flag if allowed
+      useSparseWeno = ps.fluidProp.wenoThresh > 0.0;
+    }
+    
+    // FSAL methods need one RHS eval to start,
+    // still needed for restarted runs to prime the time stepper
     Real maxVel = evalRHS(U_halo,K,time);
-    // Use small CFL just to pick first time step size
-    dt = 0.01*ps.cfl*geom.dmin/maxVel;
+    
+    // Use small CFL to pick initial time step size on fresh runs
+    if (!ps.restart) {
+      dt = 0.01*ps.cfl*geom.dmin/maxVel;
+    }
   }
 
   // Solve system for full time range
@@ -76,15 +92,18 @@ namespace KFVM {
     Kokkos::Profiling::pushRegion("Solver::Solve");
     
     // Evolve in time, recording solutions as needed
-    // Start at nT=1 since IC is step 0
-    for (int nT=1; nT<ps.maxTimeSteps && !lastTimeStep; ++nT) {
-      PrintSingle(ps,"Step %d: time = %e\n",nT,time);
+    // nTS already set to 1 for non-restart, or to whatever the restart value is
+    for (; nTS<ps.maxTimeSteps && !lastTimeStep; ++nTS) {
+      PrintSingle(ps,"Step %d: time = %e\n",nTS,time);
       TakeStep();
 
-      // Write out data file if needed
-      if (nT%ps.plotFreq == 0 || lastTimeStep || nT == (ps.maxTimeSteps-1) ) {
+      // Write out data files if needed
+      if (nTS%ps.plotFreq == 0 || lastTimeStep || nTS == (ps.maxTimeSteps-1) ) {
 	evalAuxiliary();
-        writerPDI.write(U_halo,U_aux,wenoSelector.wenoFlagView,nT,time);
+        writerPDI.writePlot(U_halo,U_aux,wenoSelector.wenoFlagView,nTS,time);
+      }
+      if (nTS%ps.ckptFreq == 0 || lastTimeStep || nTS == (ps.maxTimeSteps-1) ) {
+        writerPDI.writeCkpt(U_halo,wenoSelector.wenoFlagView,nTS,time,dt);
       }
     }
 

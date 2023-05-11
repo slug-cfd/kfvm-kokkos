@@ -29,16 +29,21 @@ namespace KFVM {
       std::string filename_h5;
       std::string filename_xmf;
 
-      void writeAttrHydro(std::ofstream&);
-      void writeAttrMHD_GLM(std::ofstream&);
-      void writeAttrSRHydro(std::ofstream&);
+      void writeAttrHydro(std::ofstream&,bool);
+      void writeAttrMHD_GLM(std::ofstream&,bool);
+      void writeAttrSRHydro(std::ofstream&,bool);
+      
       void writeAttributeScalar(std::ofstream&,const char*);
       void writeAttributeVector(std::ofstream&,const char*,const char*,const char*,const char*);
-      void writeXML(int,Real);
-      void writePDI(ConsDataView,AuxDataView,CellDataView,int,Real);
+      
+      void writeXML(int,Real,bool);
+      void writePlotPDI(ConsDataView,AuxDataView,CellDataView,int,Real);
+      void writeCkptPDI(ConsDataView,CellDataView,int,Real,Real);
     public:
       WriterPDI(ProblemSetup&,const Geometry&);
-      void write(ConsDataView,AuxDataView,CellDataView,int,Real);
+      void writePlot(ConsDataView,AuxDataView,CellDataView,int,Real);
+      void writeCkpt(ConsDataView,CellDataView,int,Real,Real);
+      void readCkpt(ConsDataView,CellDataView,int&,Real&,Real&);
     };
 
   } // end namespace IO

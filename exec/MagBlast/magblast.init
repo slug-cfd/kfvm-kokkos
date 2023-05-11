@@ -1,13 +1,13 @@
 # Set mesh resolution and extent
-mesh:resolution 64 64 64
+mesh:resolution 256 256 64
 mesh:numblocks 1 1 1
-mesh:extent 0.0 0.5 0.0 0.5 0.0 0.5
+mesh:extent -0.5 0.5 -0.5 0.5 -0.5 0.5
 
 # Set time information
 time:initial 0.0
 time:final 0.01
 time:initialdt 1.e-10
-time:cfl 1.2
+time:cfl 1.5
 time:maxsteps 5000
 time:atol 1.e-3
 time:rtol 1.e-3
@@ -20,7 +20,8 @@ properties:gamma 1.4
 properties:wenothresh 20.0
 
 # Output settings
-output:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
-output:datadir data
-output:basename MagBlast
-output:plotfreq 5
+io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
+io:datadir data
+io:basename MagBlast
+io:plotfreq 100
+io:ckptfreq 20

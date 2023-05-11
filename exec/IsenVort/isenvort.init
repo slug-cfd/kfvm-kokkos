@@ -2,15 +2,15 @@
 mesh:resolution 128 128 4
 mesh:numblocks 1 1 1
 mesh:extent -10.0 10.0 -10.0 10.0 0.0 0.625
-
+65;7201;1c
 # Set time information
 time:initial 0.0
 time:final 20.0
 time:initialdt 1.e-10
-time:cfl 3.0
+time:cfl 2.0
 time:maxsteps 2500
 time:atol 1.e-10
-time:rtol 1.e-3
+time:rtol 1.e-5
 
 # Set stencil options
 stencil:lfac 24
@@ -19,8 +19,9 @@ stencil:lfac 24
 properties:gamma 1.4
 properties:wenothresh 20.0
 
-# Output settings
-output:pdiconf ../../user/pdi_euler_xdmf.yml
-output:datadir data
-output:basename IsenVort
-output:plotfreq 50
+# IO settings
+io:pdiconf ../../user/pdi_euler_xdmf.yml
+io:datadir data
+io:basename IsenVort
+io:plotfreq 100
+io:ckptfreq 20

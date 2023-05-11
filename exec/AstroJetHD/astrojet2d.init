@@ -20,7 +20,8 @@ properties:gamma 1.4
 properties:wenothresh 20.0
 
 # Output settings
-output:pdiconf ../../user/pdi_euler_xdmf.yml
-output:datadir data
-output:basename AstroJetHD
-output:plotfreq 100
+io:pdiconf ../../user/pdi_euler_xdmf.yml
+io:datadir data
+io:basename AstroJetHD
+io:plotfreq 100
+io:ckptfreq 20

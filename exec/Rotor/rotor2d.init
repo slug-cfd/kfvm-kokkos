@@ -20,7 +20,8 @@ properties:gamma 1.4
 properties:wenothresh 10.0
 
 # Output settings
-output:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
-output:datadir data
-output:basename Rotor
-output:plotfreq 50
+io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
+io:datadir data
+io:basename Rotor
+io:plotfreq 50
+io:ckptfreq 20

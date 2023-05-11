@@ -20,7 +20,8 @@ properties:gamma 1.333333333333
 properties:wenothresh 10.0
 
 # Output settings
-output:pdiconf ../../user/pdi_srhydro_xdmf.yml
-output:datadir data
-output:basename SRShockTube
-output:plotfreq 10
+io:pdiconf ../../user/pdi_srhydro_xdmf.yml
+io:datadir data
+io:basename SRShockTube
+io:plotfreq 10
+io:ckptfreq 20
