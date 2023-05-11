@@ -30,8 +30,6 @@
 #include <Solver.H>
 #include <mpi.h>
 
-#define KFVM_MPI_TAG 0
-
 namespace KFVM {
   
   Solver::Solver(ProblemSetup& ps_):
@@ -667,7 +665,7 @@ namespace KFVM {
     auto eRecv = bdyData.eCellRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.wDst == ps.layoutMPI.eSrc) {
+    if (ps.layoutMPI.nbX == 1 && ps.bcType[FaceLabel::west] == BCType::periodic) {
       Kokkos::parallel_for("Solver::commCellBCsEW(copy)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
@@ -761,7 +759,7 @@ namespace KFVM {
     auto eRecv = bdyData.eFaceRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.wDst == ps.layoutMPI.eSrc) {
+    if (ps.layoutMPI.nbX == 1 && ps.bcType[FaceLabel::west] == BCType::periodic) {
       Kokkos::parallel_for("Solver::commFaceBCsEW(copy)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t j,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
@@ -869,7 +867,7 @@ namespace KFVM {
     auto nRecv = bdyData.nCellRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.sDst == ps.layoutMPI.nSrc) {
+    if (ps.layoutMPI.nbY == 1 && ps.bcType[FaceLabel::south] == BCType::periodic) {
       Kokkos::parallel_for("Solver::commCellBCsNS(copy)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
@@ -961,7 +959,7 @@ namespace KFVM {
     auto nRecv = bdyData.nFaceRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.sDst == ps.layoutMPI.nSrc) {
+    if (ps.layoutMPI.nbY == 1 && ps.bcType[FaceLabel::south] == BCType::periodic) {
       Kokkos::parallel_for("Solver::commFaceBCsNS(copy)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t k)) {
 			     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
@@ -1074,7 +1072,7 @@ namespace KFVM {
     auto tRecv = bdyData.tCellRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.bDst == ps.layoutMPI.tSrc) {
+    if (ps.layoutMPI.nbZ == 1 && ps.bcType[FaceLabel::bottom] == BCType::periodic) {
       Kokkos::parallel_for("Solver::commCellBCsTB(copy)",bdyRange,
 			   KOKKOS_LAMBDA (const idx_t i,const idx_t j,const idx_t k) {
 			     for (idx_t nV=0; nV<NUM_VARS; nV++) {
@@ -1162,7 +1160,7 @@ namespace KFVM {
     auto tRecv = bdyData.tFaceRecv;
 
     // Don't do any comms if sending to self (periodic BCs with one block)
-    if (ps.layoutMPI.bDst == ps.layoutMPI.tSrc) {
+    if (ps.layoutMPI.nbZ == 1 && ps.bcType[FaceLabel::bottom] == BCType::periodic) {
       Kokkos::parallel_for("Solver::commFaceBCsTB(copy)",bdyRange,
 			   KOKKOS_LAMBDA (KFVM_DM_DECL(const idx_t i,const idx_t j)) {
 			     const idx_t nQuad = NUM_QUAD_PTS*NUM_QUAD_PTS;
