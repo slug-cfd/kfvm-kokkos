@@ -20,7 +20,7 @@
 //#define KFVM_EXEC_HOST
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
-constexpr KFVM::RSType rsType = KFVM::RSType::HLLC;
+constexpr KFVM::RSType rsType = KFVM::RSType::ROE;
 constexpr KFVM::RKType rkType = KFVM::RKType::FourStarP;
 
 #endif

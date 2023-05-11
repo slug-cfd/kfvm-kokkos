@@ -9,7 +9,7 @@
 #define SPACE_DIM 2
 
 // Stencil radius (2-4)
-#define STENCIL_RADIUS 2
+#define STENCIL_RADIUS 3
 
 // Number of Gauss-Legendre points on faces (1-9)
 #define NUM_QUAD_PTS 3
@@ -20,7 +20,7 @@
 //#define KFVM_EXEC_SERIAL
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
-constexpr KFVM::RSType rsType = KFVM::RSType::ROE;
+constexpr KFVM::RSType rsType = KFVM::RSType::HLLC;
 constexpr KFVM::RKType rkType = KFVM::RKType::SSP4_3_2;
 
 #endif

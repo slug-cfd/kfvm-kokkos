@@ -19,10 +19,10 @@ namespace KFVM {
       stenSize(xs_.size()),
       KFVM_D_DECL(xs(xs_),ys(ys_),zs(zs_)),
       eps(eps_),
-      monos(SPACE_DIM == 2 ? 1 : 0),
+      monos(1),
       sysSize(stenSize + monos.nMono),
-      K(10*stenSize),
-      N(8*stenSize),
+      K(300),
+      N(250),
       M(K - N - 1),
       epsCont(K/2,0),
       ipiv(K/2,std::vector<int>(sysSize,0)),
@@ -33,8 +33,7 @@ namespace KFVM {
       double dT = M_PI/static_cast<double>(K),dhT = dT/2.0;
       for (int k=0; k<K/2; k++) {
 	double theta = k*dT + dhT;
-	epsCont[k] = std::complex<double>(epsRad*std::cos(theta),
-					  epsRad*std::sin(theta));
+	epsCont[k] = std::complex<double>(epsRad*std::cos(theta),epsRad*std::sin(theta));
 	
 	// Build and factor systems for each epsilon value
 	fillCovMat(epsCont[k],C[k]);

@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 128 128
+mesh:resolution 256 256
 mesh:numblocks 1 1
 mesh:extent -10.0 10.0 -10.0 10.0
 
@@ -7,10 +7,10 @@ mesh:extent -10.0 10.0 -10.0 10.0
 time:initial 0.0
 time:final 20.0
 time:initialdt 1.e-10
-time:cfl 1.5
+time:cfl 3.0
 time:maxsteps 4000
-time:atol 1.e-8
-time:rtol 1.e-6
+time:atol 1.e-10
+time:rtol 1.e-3
 
 # Set stencil options
 stencil:lfac 24
