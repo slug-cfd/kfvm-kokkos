@@ -257,19 +257,19 @@ namespace KFVM {
 #include "SourceTerms.H"
     }
 
-    template<class UDataView,class RHSDataView>
-    struct SourceTerms_K<EquationType::SRHydro,UDataView,RHSDataView>
+    template<class UDataView>
+    struct SourceTerms_K<EquationType::SRHydro,UDataView>
     {
       UDataView U;
-      RHSDataView RHS;
+      SourceDataView source;
       FluidProperties fProp;
       Geometry geom;
       Real t;
 
-      SourceTerms_K(const UDataView& U_,const RHSDataView RHS_,
+      SourceTerms_K(const UDataView& U_,const SourceDataView source_,
 		    const FluidProperties& fProp_,const Geometry& geom_,const Real t_):
 	U(U_),
-	RHS(RHS_),
+        source(source_),
 	fProp(fProp_),
 	geom(geom_),
         t(t_)
@@ -280,10 +280,10 @@ namespace KFVM {
       {
         SRHydro::ConsVec state,force;
 
-        // extract state, zero out force
+        // extract state
         for (int n=0; n<NUM_VARS; n++) {
           state[n] = U(KFVM_D_DECL(i,j,k),n);
-          force[n] = 0.0;
+          force[n] = 0;
         }
 
         // Call user-defined source terms
@@ -296,9 +296,16 @@ namespace KFVM {
 #endif
         SRHydro::SourceTerm(t,xc,yc,zc,state,force);
 
-        // Apply to RHS
-        for (int n=0; n<NUM_VARS; n++) {
-          RHS(KFVM_D_DECL(i,j,k),n) += force[n];
+        const int nzQuad = SPACE_DIM==2 ? 1 : NUM_QUAD_PTS;
+        for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+          for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+            for (int nS=0; nS<nzQuad; nS++) {
+              for (int nV=0; nV<NUM_VARS; nV++) {
+                source(KFVM_D_DECL(i,j,k),
+                       KFVM_D_DECL(nQ,nR,nS),nV) = force[nV];
+              }
+            }
+          }
         }
       }
     };

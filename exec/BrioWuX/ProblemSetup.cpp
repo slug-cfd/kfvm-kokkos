@@ -34,3 +34,6 @@ std::array<KFVM::BCType,6> KFVM::ProblemSetup::bcType = {
   KFVM::BCType::periodic,
   KFVM::BCType::periodic,
   KFVM::BCType::periodic};
+
+// Set whether this problem has source terms
+bool KFVM::ProblemSetup::haveSourceTerms = true;

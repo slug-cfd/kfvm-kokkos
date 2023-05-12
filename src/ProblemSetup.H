@@ -21,11 +21,6 @@
 #include "physics/EquationTypes.H"
 #include "FluidProperties.H"
 
-#ifndef STENCIL_RADIUS
-#define STENCIL_RADIUS 2
-#warning Defaulted to radius 2 stencil
-#endif
-
 namespace KFVM {
 
   struct ProblemSetup
@@ -38,6 +33,8 @@ namespace KFVM {
     // Array of boundary conditions
     // Note: always 6 entries (2*3) even in 2D
     static std::array<BCType,6> bcType;
+
+    static bool haveSourceTerms;
 
     // MPI information
     LayoutMPI layoutMPI;
@@ -105,7 +102,10 @@ namespace KFVM {
       plotFreq(100),
       ckptFreq(50),
       restart(false)
-    {}
+    {
+      // Ensure that source terms are always enabled in MHD
+      haveSourceTerms = haveSourceTerms || (eqType == EquationType::MHD_GLM);
+    }
     
     void print()
     {

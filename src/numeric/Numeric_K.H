@@ -108,22 +108,27 @@ namespace KFVM {
     };
 
     template<class RhsViewType>
-    struct IntegrateFlux_K
+    struct IntegrateRHS_K
     {
       RhsViewType rhs;
       FaceDataView KFVM_D_DECL(flX,flY,flZ);
+      SourceDataView sources;
+      bool haveSources;
       QuadRuleView ab,wt;
       Geometry geom;
 
-      IntegrateFlux_K(const RhsViewType& rhs_,
-		      KFVM_D_DECL(const FaceDataView& flX_,
-				  const FaceDataView& flY_,
-				  const FaceDataView& flZ_),
-		      const QuadRuleView& ab_,
-		      const QuadRuleView& wt_,
-		      const Geometry& geom_):
+      IntegrateRHS_K(const RhsViewType& rhs_,
+                     KFVM_D_DECL(const FaceDataView& flX_,
+                                 const FaceDataView& flY_,
+                                 const FaceDataView& flZ_),
+                     const SourceDataView& sources_,bool haveSources_,
+                     const QuadRuleView& ab_,
+                     const QuadRuleView& wt_,
+                     const Geometry& geom_):
 	rhs(rhs_),
 	KFVM_D_DECL(flX(flX_),flY(flY_),flZ(flZ_)),
+        sources(sources_),
+        haveSources(haveSources_),
 	ab(ab_),
 	wt(wt_),
 	geom(geom_) {}
@@ -131,12 +136,12 @@ namespace KFVM {
 #if (SPACE_DIM == 2)
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j) const {
-	// Zero out RHS before accumulating fluxes
+	// Zero out RHS before accumulating fluxes and sources
 	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  rhs(i,j,nV) = Real(0.0);
 	}
 			   
-	// Loop over quadrature points and components
+	// Integrate fluxes
 	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    // x-direction
@@ -145,16 +150,27 @@ namespace KFVM {
 	    rhs(i,j,nV) += wt(nQ)*(flY(i,j,1,nQ,nV) - flY(i,j + 1,0,nQ,nV))/geom.dy;
 	  }
 	}
+
+        if (haveSources) {
+          // Integrate source terms
+          for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+            for (idx_t nR=0; nR<NUM_QUAD_PTS; nR++) {
+              for (idx_t nV=0; nV<NUM_VARS; nV++) {
+                rhs(i,j,nV) += wt(nQ)*wt(nR)*sources(i,j,nQ,nR,nV);
+              }
+            }
+          }
+        }
       }
 #else
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j,const idx_t k) const {
-	// Zero out RHS before accumulating fluxes
+	// Zero out RHS before accumulating fluxes and sources
 	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  rhs(i,j,k,nV) = Real(0.0);
 	}
 			   
-	// Loop over quadrature points and components
+	// Integrate fluxes
 	for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	  for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
 	    for (idx_t nR=0; nR<NUM_QUAD_PTS; nR++) {
@@ -169,6 +185,19 @@ namespace KFVM {
 	    }
 	  }
 	}
+			   
+	// Integrate source terms
+        if (haveSources) {
+          for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+            for (idx_t nR=0; nR<NUM_QUAD_PTS; nR++) {
+              for (idx_t nS=0; nS<NUM_QUAD_PTS; nS++) {
+                for (idx_t nV=0; nV<NUM_VARS; nV++) {
+                  rhs(i,j,k,nV) += wt(nQ)*wt(nR)*wt(nS)*sources(i,j,k,nQ,nR,nS,nV);
+                }
+              }
+            }
+          }
+        }
       }
 #endif
     };

@@ -340,19 +340,19 @@ namespace KFVM {
 #include "SourceTerms.H"
     }
 
-    template<class UDataView,class RHSDataView>
-    struct SourceTerms_K<EquationType::MHD_GLM,UDataView,RHSDataView>
+    template<class UDataView>
+    struct SourceTerms_K<EquationType::MHD_GLM,UDataView>
     {
       UDataView U;
-      RHSDataView RHS;
+      SourceDataView source;
       FluidProperties fProp;
       Geometry geom;
       Real t;
 
-      SourceTerms_K(const UDataView& U_,const RHSDataView RHS_,
+      SourceTerms_K(const UDataView& U_,const SourceDataView source_,
 		    const FluidProperties& fProp_,const Geometry& geom_,const Real t_):
 	U(U_),
-	RHS(RHS_),
+        source(source_),
 	fProp(fProp_),
 	geom(geom_),
         t(t_)
@@ -363,58 +363,95 @@ namespace KFVM {
       {
 	using MHD_GLM::SimVar;
 	using MHD_GLM::ConsVec;
-	
-	const Real divB =
-	  Real(0.5)*(U(KFVM_D_DECL(i + 1,j,k),SimVar::magx) - U(KFVM_D_DECL(i - 1,j,k),SimVar::magx))/geom.dx +
-          Real(0.5)*(U(KFVM_D_DECL(i,j + 1,k),SimVar::magy) - U(KFVM_D_DECL(i,j - 1,k),SimVar::magy))/geom.dy +
-          Real(0.5)*(U(KFVM_D_DECL(i,j,k + 1),SimVar::magz) - U(KFVM_D_DECL(i,j,k - 1),SimVar::magz))/geom.dz;
 
-	const Real uDb = (U(KFVM_D_DECL(i,j,k),SimVar::momx)*U(KFVM_D_DECL(i,j,k),SimVar::magx) +
-                          U(KFVM_D_DECL(i,j,k),SimVar::momy)*U(KFVM_D_DECL(i,j,k),SimVar::magy) +
-			  U(KFVM_D_DECL(i,j,k),SimVar::momz)*U(KFVM_D_DECL(i,j,k),SimVar::magz))/U(KFVM_D_DECL(i,j,k),SimVar::dens);
+        const int nzQuad = SPACE_DIM==2 ? 1 : NUM_QUAD_PTS;
 
-	const Real psi_x = Real(0.5)*(U(KFVM_D_DECL(i + 1,j,k),SimVar::psi) - U(KFVM_D_DECL(i - 1,j,k),SimVar::psi))/geom.dx;
-        const Real psi_y = Real(0.5)*(U(KFVM_D_DECL(i,j + 1,k),SimVar::psi) - U(KFVM_D_DECL(i,j - 1,k),SimVar::psi))/geom.dy;
-        const Real psi_z = Real(0.5)*(U(KFVM_D_DECL(i,j,k + 1),SimVar::psi) - U(KFVM_D_DECL(i,j,k - 1),SimVar::psi))/geom.dz;
-        
-	const Real gpsiDu = (psi_x*U(KFVM_D_DECL(i,j,k),SimVar::momx) +
-			     psi_y*U(KFVM_D_DECL(i,j,k),SimVar::momy) +
-			     psi_z*U(KFVM_D_DECL(i,j,k),SimVar::momz))/U(KFVM_D_DECL(i,j,k),SimVar::dens);
+        // Get cell center coordinate
+        const Real xc = geom.xCoord(i);
+        const Real yc = geom.yCoord(j);
+#if (SPACE_DIM == 2)
+        const Real zc = geom.zCoord(0);
+#else
+        const Real zc = geom.zCoord(k);
+#endif
 
-	RHS(KFVM_D_DECL(i,j,k),SimVar::momx) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::magx);
-	RHS(KFVM_D_DECL(i,j,k),SimVar::momy) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::magy);
-	RHS(KFVM_D_DECL(i,j,k),SimVar::momz) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::magz);
-	
-	RHS(KFVM_D_DECL(i,j,k),SimVar::etot) -= divB*uDb + U(KFVM_D_DECL(i,j,k),SimVar::psi)*gpsiDu;
-	
-	RHS(KFVM_D_DECL(i,j,k),SimVar::magx) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::momx)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
-	RHS(KFVM_D_DECL(i,j,k),SimVar::magy) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::momy)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
-	RHS(KFVM_D_DECL(i,j,k),SimVar::magz) -= divB*U(KFVM_D_DECL(i,j,k),SimVar::momz)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
-	
-	RHS(KFVM_D_DECL(i,j,k),SimVar::psi) -= gpsiDu;
+        // Find field divergence and psi gradient terms
+#if (SPACE_DIM == 2)
+        Real divB[NUM_QUAD_PTS][NUM_QUAD_PTS][1];
+        Real gpsiDu[NUM_QUAD_PTS][NUM_QUAD_PTS][1];
+#else
+        Real divB[NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_QUAD_PTS];
+        Real gpsiDu[NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_QUAD_PTS];
+#endif
+        for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+          for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+            for (int nS=0; nS<nzQuad; nS++) {
+              divB[nQ][nR][nS] = 
+                Real(0.5)*(U(KFVM_D_DECL(i + 1,j,k),SimVar::magx) - U(KFVM_D_DECL(i - 1,j,k),SimVar::magx))/geom.dx +
+                Real(0.5)*(U(KFVM_D_DECL(i,j + 1,k),SimVar::magy) - U(KFVM_D_DECL(i,j - 1,k),SimVar::magy))/geom.dy +
+                Real(0.5)*(U(KFVM_D_DECL(i,j,k + 1),SimVar::magz) - U(KFVM_D_DECL(i,j,k - 1),SimVar::magz))/geom.dz;
 
-        // Incorporate user defined terms too
-        ConsVec state,force;
+              const Real rho = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::dens);
+              const Real vx = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::momx)/rho;
+              const Real vy = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::momy)/rho;
+              const Real vz = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::momz)/rho;
 
-        // extract state, zero out force
-        for (int n=0; n<NUM_VARS; n++) {
-          state[n] = U(KFVM_D_DECL(i,j,k),n);
-          force[n] = 0.0;
+              gpsiDu[nQ][nR][nS] = Real(0.5)*vx*(U(KFVM_D_DECL(i + 1,j,k),SimVar::psi) -
+                                                 U(KFVM_D_DECL(i - 1,j,k),SimVar::psi))/geom.dx;
+              gpsiDu[nQ][nR][nS] += Real(0.5)*vy*(U(KFVM_D_DECL(i,j + 1,k),SimVar::psi) -
+                                                  U(KFVM_D_DECL(i,j - 1,k),SimVar::psi))/geom.dy;
+              gpsiDu[nQ][nR][nS] += Real(0.5)*vz*(U(KFVM_D_DECL(i,j,k + 1),SimVar::psi) -
+                                                  U(KFVM_D_DECL(i,j,k - 1),SimVar::psi))/geom.dz;
+            }
+          }
         }
 
-        // Call user-defined source terms
-        Real xc = geom.xCoord(i);
-        Real yc = geom.yCoord(j);
-#if (SPACE_DIM == 2)
-        Real zc = geom.zCoord(0);
-#else
-        Real zc = geom.zCoord(k);
-#endif
-        MHD_GLM::SourceTerm(t,xc,yc,zc,state,force);
+        // Find and fill forcing
+        ConsVec state,force;
+        for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+          for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+            for (int nS=0; nS<nzQuad; nS++) {
+              // Extract state and clear force vector
+              for (int nV=0; nV<NUM_VARS; nV++) {
+                state[nV] = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV);
+                force[nV] = 0;
+              }
+              
+              // Fill force with user defined terms
+              MHD_GLM::SourceTerm(t,xc,yc,zc,state,force);
 
-        // Apply to RHS
-        for (int n=0; n<NUM_VARS; n++) {
-          RHS(KFVM_D_DECL(i,j,k),n) += force[n];
+              // Define GLM source terms
+              const Real vx = state[SimVar::momx]/state[SimVar::dens];
+              const Real vy = state[SimVar::momy]/state[SimVar::dens];
+              const Real vz = state[SimVar::momz]/state[SimVar::dens];
+
+              const Real uDb = vx*state[SimVar::magx] + vy*state[SimVar::magy] + vz*state[SimVar::magz];
+
+              // Fill source view with GLM and user forcing
+              source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::dens) =
+                force[SimVar::dens];
+              
+              source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::momx) =
+                force[SimVar::momx] - divB[nQ][nR][nS]*state[SimVar::magx];
+              source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::momy) =
+                force[SimVar::momy] - divB[nQ][nR][nS]*state[SimVar::magy];
+              source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::momz) =
+                force[SimVar::momz] - divB[nQ][nR][nS]*state[SimVar::magz];
+	
+              source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::etot) =
+                force[SimVar::etot] - divB[nQ][nR][nS]*uDb + gpsiDu[nQ][nR][nS]*state[SimVar::psi];
+	
+              source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::magx) =
+                force[SimVar::magx] - divB[nQ][nR][nS]*vx;
+              source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::magy) =
+                force[SimVar::magy] - divB[nQ][nR][nS]*vy;
+              source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::magz) =
+                force[SimVar::magz] - divB[nQ][nR][nS]*vz;
+	
+              source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::psi) =
+                force[SimVar::psi] - gpsiDu[nQ][nR][nS];
+            }
+          }
         }
       }
     };

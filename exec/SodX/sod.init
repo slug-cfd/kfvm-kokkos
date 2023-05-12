@@ -23,5 +23,5 @@ properties:wenothresh 20.0
 io:pdiconf ../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename SodX
-io:plotfreq 10
+io:plotfreq 100
 io:ckptfreq 20

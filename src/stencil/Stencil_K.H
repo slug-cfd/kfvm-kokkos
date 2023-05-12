@@ -33,6 +33,8 @@ namespace KFVM {
     struct KernelLinearRecon_K {
       UViewType U;
       FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
+      SourceDataView source;
+      bool haveSource;
       OffsetView KFVM_D_DECL(lOff,tOff,ttOff);
       FaceWtView faceWeight;
       const int nCellsFull;
@@ -42,6 +44,8 @@ namespace KFVM {
 			  KFVM_D_DECL(const FaceDataView& rsX_,
 				      const FaceDataView& rsY_,
 				      const FaceDataView& rsZ_),
+                          const SourceDataView source_,
+                          bool haveSource_,
 			  KFVM_D_DECL(const OffsetView& lOff_,
 				      const OffsetView& tOff_,
 				      const OffsetView& ttOff_),
@@ -49,6 +53,8 @@ namespace KFVM {
 	U(U_),
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
 	KFVM_D_DECL(lOff(lOff_),tOff(tOff_),ttOff(ttOff_)),
+        source(source_),
+        haveSource(haveSource_),
 	faceWeight(face_),
 	nCellsFull(Stencil::Core::SI.nCellsFull),
 	nqFace_d(Stencil::Core::SI.nqFace_d)
@@ -92,6 +98,21 @@ namespace KFVM {
 	    }
 	  }
 	}
+
+        // Fill in source terms
+        if (haveSource) {
+          int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+          for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+            for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+              for (int nS=0; nS<nzQuad; nS++) {
+                for (int nV=0; nV<NUM_VARS; nV++) {
+                  source(KFVM_D_DECL(i,j,k),
+                         KFVM_D_DECL(nQ,nR,nS),nV) = U(KFVM_D_DECL(i,j,k),nV);
+                }
+              }
+            }
+          }
+        }
       }
     };
 
@@ -101,6 +122,8 @@ namespace KFVM {
       idx_t nX,nY,nZ;
       idx_t tX,tY,tZ;
       FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
+      SourceDataView source;
+      bool haveSource;
       WorkView Work;
       FlagMap wenoMap;
       OffsetView KFVM_D_DECL(lOff,tOff,ttOff);
@@ -117,6 +140,8 @@ namespace KFVM {
 			KFVM_D_DECL(const FaceDataView& rsX_,
 				    const FaceDataView& rsY_,
 				    const FaceDataView& rsZ_),
+                        const SourceDataView source_,
+                        bool haveSource_,
 			const WorkView& Work_,
 			const FlagMap& wenoMap_,
 			KFVM_D_DECL(const OffsetView& lOff_,
@@ -130,6 +155,8 @@ namespace KFVM {
 	KFVM_D_DECL(nX(nX_),nY(nY_),nZ(nZ_)),
 	KFVM_D_DECL(tX(tX_),tY(tY_),tZ(tZ_)),
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
+        source(source_),
+        haveSource(haveSource_),
 	Work(Work_),
 	wenoMap(wenoMap_),
 	KFVM_D_DECL(lOff(lOff_),tOff(tOff_),ttOff(ttOff_)),
@@ -253,6 +280,21 @@ namespace KFVM {
 	    varConv.linPrim2Cons(state);
 	  }
 	}
+
+        // Fill in source terms
+        if (haveSource) {
+          int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+          for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+            for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+              for (int nS=0; nS<nzQuad; nS++) {
+                for (int nV=0; nV<NUM_VARS; nV++) {
+                  source(KFVM_D_DECL(i,j,k),
+                         KFVM_D_DECL(nQ,nR,nS),nV) = refState[nV];
+                }
+              }
+            }
+          }
+        }
       }
 
       KOKKOS_INLINE_FUNCTION
@@ -372,6 +414,21 @@ namespace KFVM {
 	    varConv.linPrim2Cons(state);
 	  }
 	}
+
+        // Fill in source terms
+        if (haveSource) {
+          int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+          for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+            for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+              for (int nS=0; nS<nzQuad; nS++) {
+                for (int nV=0; nV<NUM_VARS; nV++) {
+                  source(KFVM_D_DECL(i,j,k),
+                         KFVM_D_DECL(nQ,nR,nS),nV) = refState[nV];
+                }
+              }
+            }
+          }
+        }
       }
 
       template<class ValsFullType,class ValsCtrType,

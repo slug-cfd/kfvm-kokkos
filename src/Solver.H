@@ -76,6 +76,8 @@ namespace KFVM {
       {}
     };
     FaceVals faceVals;
+    // Pointwise cell data for source terms
+    SourceDataView sourceTerms;
     // Buffers for boundary communication
     BoundaryData bdyData;
     // Struct to manage weno/linear reconstruction

@@ -61,8 +61,8 @@ namespace KFVM {
     nRejectUnphys(0),
     nRejectThresh(0)
   {
+    // Fill IC from user defined function or restart file
     if (!ps.restart) {
-      // Set ICs and write initial data out
       setIC();
       evalAuxiliary();
       writerPDI.writePlot(U_halo,U_aux,wenoSelector.wenoFlagView,0,time);
@@ -74,6 +74,11 @@ namespace KFVM {
       nTS++;
       // Clear sparse weno flag if allowed
       useSparseWeno = ps.fluidProp.wenoThresh > 0.0;
+    }
+
+    // Allocate space for source terms if needed
+    if (ps.haveSourceTerms) {
+      sourceTerms = SourceDataView("S",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ));
     }
     
     // FSAL methods need one RHS eval to start,
@@ -370,17 +375,22 @@ namespace KFVM {
     // Reduce max velocities from each direction
     Real maxVel = std::fmax(vEW,std::fmax(vNS,vTB));
 
-    // Integrate fluxes and store into rhs
-    Kokkos::parallel_for("IntegrateFlux",cellRng,
-			 Numeric::IntegrateFlux_K<decltype(rhs)>
-			 (rhs,
-			  KFVM_D_DECL(faceVals.xDir,faceVals.yDir,faceVals.zDir),
-			  qr.ab,qr.wt,geom));
     
     // Fill in source terms
-    auto sol = trimCellHalo(sol_halo);
-    Kokkos::parallel_for("SourceTerms",cellRng,
-			 Physics::SourceTerms_K<eqType,decltype(sol),decltype(rhs)>(sol,rhs,ps.fluidProp,geom,t));
+    bool haveSources = ps.haveSourceTerms;
+    if (haveSources) {
+      auto sol = trimCellHalo(sol_halo);
+      Kokkos::parallel_for("SourceTerms",cellRng,
+                           Physics::SourceTerms_K<eqType,decltype(sol)>(sol,sourceTerms,ps.fluidProp,geom,t));
+    }
+
+    // Integrate fluxes and store into rhs
+    Kokkos::parallel_for("IntegrateRHS",cellRng,
+			 Numeric::IntegrateRHS_K<decltype(rhs)>
+			 (rhs,
+			  KFVM_D_DECL(faceVals.xDir,faceVals.yDir,faceVals.zDir),
+                          sourceTerms,haveSources,
+			  qr.ab,qr.wt,geom));
     
     Kokkos::Profiling::popRegion();
     return maxVel;
@@ -388,6 +398,9 @@ namespace KFVM {
 
   void Solver::reconstructRiemannStates(ConsDataView sol_halo)
   {
+    // Should reconstructions also fill source term view
+    bool haveSources = ps.haveSourceTerms;
+    
     // Subviews of cell data and Riemann states to simplify indexing
     auto U = trimCellHalo(sol_halo);
     
@@ -401,6 +414,7 @@ namespace KFVM {
 			    KFVM_D_DECL(faceVals.xDir,
 					faceVals.yDir,
 					faceVals.zDir),
+                            sourceTerms,haveSources,
 			    KFVM_D_DECL(stencil.lOff,
 					stencil.tOff,
 					stencil.ttOff),
@@ -418,6 +432,7 @@ namespace KFVM {
 			      KFVM_D_DECL(faceVals.xDir,
 					  faceVals.yDir,
 					  faceVals.zDir),
+                              sourceTerms,haveSources,
 			      wenoSelector.stenWork,
 			      wenoSelector.wenoFlagMap,
 			      KFVM_D_DECL(stencil.lOff,
@@ -443,6 +458,7 @@ namespace KFVM {
 				  KFVM_D_DECL(faceVals.xDir,
 					      faceVals.yDir,
 					      faceVals.zDir),
+                                  sourceTerms,haveSources,
 				  wenoSelector.stenWork,
 				  wenoSelector.wenoFlagMap,
 				  KFVM_D_DECL(stencil.lOff,
