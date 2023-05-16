@@ -89,8 +89,9 @@ namespace KFVM {
   typedef Kokkos::View<Real***[NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_VARS],MemSpace> SourceDataView;
 #endif
 
-  // Kokkos views for quadrature rules
+  // Kokkos views for quadrature rules and differentiation matrices
   typedef Kokkos::View<Real[NUM_QUAD_PTS],MemSpace> QuadRuleView;
+  typedef Kokkos::View<Real[NUM_QUAD_PTS][NUM_QUAD_PTS + 2],MemSpace> DiffMatView;
 
   // Unordered map for storing weno flags
   typedef Kokkos::UnorderedMap<idx_t,void,MemSpace> FlagMap;

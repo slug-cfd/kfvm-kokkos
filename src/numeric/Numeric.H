@@ -44,14 +44,20 @@ namespace KFVM {
     template <> std::array<Real,4> QuadRuleLUT<4>::wt;
     template <> std::array<Real,5> QuadRuleLUT<5>::ab;
     template <> std::array<Real,5> QuadRuleLUT<5>::wt;
-    template <> std::array<Real,6> QuadRuleLUT<6>::ab;
-    template <> std::array<Real,6> QuadRuleLUT<6>::wt;
-    template <> std::array<Real,7> QuadRuleLUT<7>::ab;
-    template <> std::array<Real,7> QuadRuleLUT<7>::wt;
-    template <> std::array<Real,8> QuadRuleLUT<8>::ab;
-    template <> std::array<Real,8> QuadRuleLUT<8>::wt;
-    template <> std::array<Real,9> QuadRuleLUT<9>::ab;
-    template <> std::array<Real,9> QuadRuleLUT<9>::wt;
+
+    // Lookup tables for LGL->GL differentiation rules
+    // Row-major ordering
+    // input includes boundary points, output doesn't so nQ x (nQ+2) size
+    template<int nQuad> struct DiffMatLUT
+    {
+      static std::array<Real,nQuad*(nQuad+2)> D;
+    };
+    
+    template <> std::array<Real,3> DiffMatLUT<1>::D;
+    template <> std::array<Real,8> DiffMatLUT<2>::D;
+    template <> std::array<Real,15> DiffMatLUT<3>::D;
+    template <> std::array<Real,24> DiffMatLUT<4>::D;
+    template <> std::array<Real,35> DiffMatLUT<5>::D;
 
     // Quadrature rule with values accessible in non-host space
     struct QuadRule
@@ -73,6 +79,27 @@ namespace KFVM {
 	Kokkos::deep_copy(wt,h_wt);
       }
     };
+
+    // Differentiation matrix accessible in non-host space
+    struct DiffMat
+    {
+      DiffMatView diffMat;
+      DiffMat(): diffMat("DifferentiationMatrix")
+      {
+        // Host mirror to copy into
+        auto h_D = Kokkos::create_mirror(diffMat);
+        for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+          for (int nR=0; nR<NUM_QUAD_PTS+2; nR++) {
+            int idx = (NUM_QUAD_PTS+2)*nQ + nR;
+            h_D(nQ,nR) = DiffMatLUT<NUM_QUAD_PTS>::D[idx];
+          }
+        }
+
+        // Copy to device
+        Kokkos::deep_copy(diffMat,h_D);
+      }
+    };
+      
 
     template<RKType rkt> struct RKCoeff{};
 

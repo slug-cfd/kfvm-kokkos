@@ -19,7 +19,8 @@ namespace KFVM {
     typedef Kokkos::View<idx_t[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> OffsetView;
     typedef Kokkos::View<idx_t[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nBias][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsBias],MemSpace> SubIdxView;
     typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub][2*SPACE_DIM][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nqFace_d][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> FaceWtView;
-    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nIndic][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> CellWtView;
+    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nqFace_d][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> CellWtView;
+    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nIndic][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> DerivWtView;
     typedef Kokkos::View<Real*[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nWorkspace][NUM_VARS],MemSpace> WorkView;
 
     struct Stencil
@@ -62,7 +63,7 @@ namespace KFVM {
 
       // stencil weights for derivative reconstruction in cell
       // indices are substencil index/derivative type and location/cell in stencil
-      CellWtView derivWeights;
+      DerivWtView derivWeights;
 
       Stencil(Real lfac_):
 	core(),

@@ -54,6 +54,8 @@ namespace KFVM {
     ProblemSetup& ps;
     // Quadrature rule for face/cell integration
     Numeric::QuadRule qr;
+    // Differentiation matrix for source terms
+    Numeric::DiffMat diffMat;
     // Grid geometry data
     Geometry geom;
     // IO object

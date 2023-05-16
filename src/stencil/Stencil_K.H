@@ -5,6 +5,8 @@
 // Purpose: Define compute kernels for reconstructing Riemann states
 //          from cell average data
 
+#include <cstdint>
+
 #include <Kokkos_Core.hpp>
 
 #include <KokkosBatched_Gemv_Decl.hpp>
@@ -14,7 +16,6 @@
 #include <KokkosBatched_Gemm_Serial_Impl.hpp>
 
 #include <Definitions.H>
-#include <cstdint>
 
 #include "../Types.H"
 #include "../FluidProperties.H"
@@ -129,7 +130,7 @@ namespace KFVM {
       OffsetView KFVM_D_DECL(lOff,tOff,ttOff);
       SubIdxView subIdx;
       FaceWtView faceWeight;
-      CellWtView derivWeight;
+      DerivWtView derivWeight;
       FluidProperties fProp;
       const int nCellsFull,nCellsCtr,nCellsBias;
       const int nSub,nBias,nIndic,nqFace_d;
@@ -149,7 +150,7 @@ namespace KFVM {
 				    const OffsetView& ttOff_),
 			const SubIdxView& subIdx_,
 			const FaceWtView& face_,
-			const CellWtView& deriv_,
+			const DerivWtView& deriv_,
                         const FluidProperties& fProp_):
 	U(U_),
 	KFVM_D_DECL(nX(nX_),nY(nY_),nZ(nZ_)),

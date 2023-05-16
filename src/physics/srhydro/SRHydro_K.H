@@ -261,15 +261,26 @@ namespace KFVM {
     struct SourceTerms_K<EquationType::SRHydro,UDataView>
     {
       UDataView U;
+      FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
       SourceDataView source;
+      DiffMatView D;
       FluidProperties fProp;
       Geometry geom;
       Real t;
 
-      SourceTerms_K(const UDataView& U_,const SourceDataView source_,
-		    const FluidProperties& fProp_,const Geometry& geom_,const Real t_):
+      SourceTerms_K(const UDataView& U_,
+                    KFVM_D_DECL(const FaceDataView& rsX_,
+                                const FaceDataView& rsY_,
+                                const FaceDataView& rsZ_),
+                    const SourceDataView source_,
+                    const DiffMatView& D_,
+		    const FluidProperties& fProp_
+                    ,const Geometry& geom_,
+                    const Real t_):
 	U(U_),
+        KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
         source(source_),
+        D(D_),
 	fProp(fProp_),
 	geom(geom_),
         t(t_)

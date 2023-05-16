@@ -22,9 +22,9 @@ namespace KFVM {
       // Total after tensoring across dimensions
       static constexpr idx_t nqFace_d = nqFace;
       // Number of interior quadrature points per dimension
-      static constexpr idx_t nqCell = 2;
+      static constexpr idx_t nqDeriv = 2;
       // Total after tensoring across dimensions
-      static constexpr idx_t nqCell_d = nqCell*nqCell;
+      static constexpr idx_t nqDeriv_d = nqDeriv*nqDeriv;
       // Total number of cells in full stencil
       static constexpr idx_t nCellsFull = 13;
       // Total number of cells in central substencil
@@ -34,7 +34,7 @@ namespace KFVM {
       // Number of derivatives in smoothness indicator
       static constexpr idx_t nDeriv = 4;
       // Number of total smoothness indicator entries to form
-      static constexpr idx_t nIndic = nDeriv*nqCell_d;
+      static constexpr idx_t nIndic = nDeriv*nqDeriv_d;
       // Total workspace size needed by recon. kernel
       static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
       // Number of substencils
@@ -48,13 +48,13 @@ namespace KFVM {
     {
       static constexpr idx_t nqFace = NUM_QUAD_PTS;
       static constexpr idx_t nqFace_d = nqFace;
-      static constexpr idx_t nqCell = 2;
-      static constexpr idx_t nqCell_d = nqCell*nqCell;
+      static constexpr idx_t nqDeriv = 2;
+      static constexpr idx_t nqDeriv_d = nqDeriv*nqDeriv;
       static constexpr idx_t nCellsFull = 29;
       static constexpr idx_t nCellsCtr = 13;
       static constexpr idx_t nCellsBias = 10;
       static constexpr idx_t nDeriv = 4;
-      static constexpr idx_t nIndic = nDeriv*nqCell_d;
+      static constexpr idx_t nIndic = nDeriv*nqDeriv_d;
       static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
       static constexpr idx_t nSub = 6;
       static constexpr idx_t nBias = 4;
@@ -66,13 +66,13 @@ namespace KFVM {
     {
       static constexpr idx_t nqFace = NUM_QUAD_PTS;
       static constexpr idx_t nqFace_d = nqFace*nqFace;
-      static constexpr idx_t nqCell = 2;
-      static constexpr idx_t nqCell_d = nqCell*nqCell*nqCell;
+      static constexpr idx_t nqDeriv = 2;
+      static constexpr idx_t nqDeriv_d = nqDeriv*nqDeriv*nqDeriv;
       static constexpr idx_t nCellsFull = 33;
       static constexpr idx_t nCellsCtr = 7;
       static constexpr idx_t nCellsBias = 11;
       static constexpr idx_t nDeriv = 6;
-      static constexpr idx_t nIndic = nDeriv*nqCell_d;
+      static constexpr idx_t nIndic = nDeriv*nqDeriv_d;
       static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
       static constexpr idx_t nSub = 8;
       static constexpr idx_t nBias = 6;
@@ -83,13 +83,13 @@ namespace KFVM {
     {
       static constexpr idx_t nqFace = NUM_QUAD_PTS;
       static constexpr idx_t nqFace_d = nqFace*nqFace;
-      static constexpr idx_t nqCell = 2;
-      static constexpr idx_t nqCell_d = nqCell*nqCell*nqCell;
+      static constexpr idx_t nqDeriv = 2;
+      static constexpr idx_t nqDeriv_d = nqDeriv*nqDeriv*nqDeriv;
       static constexpr idx_t nCellsFull = 123;
       static constexpr idx_t nCellsCtr = 33;
       static constexpr idx_t nCellsBias = 32;
       static constexpr idx_t nDeriv = 6;
-      static constexpr idx_t nIndic = nDeriv*nqCell_d;
+      static constexpr idx_t nIndic = nDeriv*nqDeriv_d;
       static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
       static constexpr idx_t nSub = 8;
       static constexpr idx_t nBias = 6;

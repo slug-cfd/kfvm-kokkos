@@ -339,12 +339,33 @@ namespace KFVM {
     if (eqType == EquationType::MHD_GLM) {
       ps.fluidProp.ch_glm = 0.0;
       Kokkos::parallel_reduce("CalculateCH_GLM",cellRng,
-			      Physics::SpeedEstimate_K<eqType>(KFVM_D_DECL(faceVals.xDir,faceVals.yDir,faceVals.zDir),ps.fluidProp),
+			      Physics::SpeedEstimate_K<eqType>(KFVM_D_DECL(faceVals.xDir,
+                                                                           faceVals.yDir,
+                                                                           faceVals.zDir),
+                                                               ps.fluidProp),
 			      Kokkos::Max<Real>(ps.fluidProp.ch_glm));
     }
     
     // Set BCs on Riemann states
     setFaceBCs(t);
+    
+    // Fill in source terms
+    // These actually use face values for better internal derivatives
+    //   -> Must call before fluxes overwrite Riemann states
+    bool haveSources = ps.haveSourceTerms;
+    if (haveSources) {
+      auto sol = trimCellHalo(sol_halo);
+      Kokkos::parallel_for("SourceTerms",cellRng,
+                           Physics::SourceTerms_K<eqType,decltype(sol)>(sol,
+                                                                        KFVM_D_DECL(faceVals.xDir,
+                                                                                    faceVals.yDir,
+                                                                                    faceVals.zDir),
+                                                                        sourceTerms,
+                                                                        diffMat.diffMat,
+                                                                        ps.fluidProp,
+                                                                        geom,
+                                                                        t));
+    }
     
     // Call Riemann solver
     Real vEW = 0.0,vNS = 0.0,vTB = 0.0;
@@ -374,15 +395,6 @@ namespace KFVM {
 
     // Reduce max velocities from each direction
     Real maxVel = std::fmax(vEW,std::fmax(vNS,vTB));
-
-    
-    // Fill in source terms
-    bool haveSources = ps.haveSourceTerms;
-    if (haveSources) {
-      auto sol = trimCellHalo(sol_halo);
-      Kokkos::parallel_for("SourceTerms",cellRng,
-                           Physics::SourceTerms_K<eqType,decltype(sol)>(sol,sourceTerms,ps.fluidProp,geom,t));
-    }
 
     // Integrate fluxes and store into rhs
     Kokkos::parallel_for("IntegrateRHS",cellRng,
