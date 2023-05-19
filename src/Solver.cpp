@@ -337,13 +337,15 @@ namespace KFVM {
     auto cellRng = interiorCellRange();
     
     if (eqType == EquationType::MHD_GLM) {
-      ps.fluidProp.ch_glm = 0.0;
+      Real ch_glm = 0.0;
       Kokkos::parallel_reduce("CalculateCH_GLM",cellRng,
-			      Physics::SpeedEstimate_K<eqType>(KFVM_D_DECL(faceVals.xDir,
+        		      Physics::SpeedEstimate_K<eqType>(KFVM_D_DECL(faceVals.xDir,
                                                                            faceVals.yDir,
                                                                            faceVals.zDir),
                                                                ps.fluidProp),
-			      Kokkos::Max<Real>(ps.fluidProp.ch_glm));
+        		      Kokkos::Max<Real>(ch_glm));
+      Kokkos::fence("Solver::evalRHS(GLM reduction)");
+      MPI_Allreduce(&ch_glm,&ps.fluidProp.ch_glm,1,ps.layoutMPI.realType,MPI_MAX,ps.layoutMPI.commWorld);
     }
     
     // Set BCs on Riemann states

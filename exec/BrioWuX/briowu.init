@@ -1,7 +1,7 @@
 # Set mesh resolution and extent
-mesh:resolution 4000 8 8
+mesh:resolution 400 8 8
 mesh:numblocks 1 1 1
-mesh:extent 0.0 1.0 0.0 0.002 0.0 0.02
+mesh:extent 0.0 1.0 0.0 0.02 0.0 0.02
 
 # Set time information
 time:initial 0.0
@@ -25,4 +25,3 @@ io:datadir data
 io:basename BrioWuX
 io:plotfreq 100
 io:ckptfreq 50
-io:restartfile data/R2_NX4000_NY8/ckpt/BrioWuX_0000999.h5

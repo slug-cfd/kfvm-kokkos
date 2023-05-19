@@ -52,7 +52,8 @@ namespace KFVM {
       F[vord[1]] = U[vord[0]]*V[vord[1]] - U[bord[0]]*U[bord[1]];
       F[vord[2]] = U[vord[0]]*V[vord[2]] - U[bord[0]]*U[bord[2]];
       
-      F[SimVar::etot] = V[vord[0]]*(U[SimVar::etot] + p) + U[bord[0]]*(ch*U[SimVar::psi] - uDb);
+      F[SimVar::etot] = V[vord[0]]*(U[SimVar::etot] + p - Real(0.5)*U[SimVar::psi]*U[SimVar::psi])
+        + U[bord[0]]*(ch*U[SimVar::psi] - uDb);
       
       F[bord[0]] = ch*U[SimVar::psi];
       F[bord[1]] = (V[vord[0]]*U[bord[1]] - V[vord[1]]*U[bord[0]]);
