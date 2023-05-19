@@ -17,6 +17,7 @@ std::array<std::string,KFVM::NUM_AUX> KFVM::ProblemSetup::auxVarName = {
   "velx",
   "vely",
   "velz",
+  "lorz",
   "pres"};
 
 // Boundary conditions in order west, east, south, north, bottom, top
@@ -30,4 +31,4 @@ std::array<KFVM::BCType,6> KFVM::ProblemSetup::bcType = {
   KFVM::BCType::outflow};
 
 // Set whether this problem has source terms
-bool KFVM::ProblemSetup::haveSourceTerms = false;
+bool KFVM::ProblemSetup::haveSourceTerms = true;

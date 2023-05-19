@@ -19,9 +19,11 @@ namespace KFVM {
     {
       // Number of face quadrature points per dimension
       static constexpr idx_t nqFace = NUM_QUAD_PTS;
-      // Total after tensoring across dimensions
+      // Total on each face after tensoring across dimensions
       static constexpr idx_t nqFace_d = nqFace;
-      // Number of interior quadrature points per dimension
+      // Total interior to cell for source terms
+      static constexpr idx_t nqCell_d = nqFace*nqFace;
+      // Number of interior quadrature points per dimension (for smoothness indicators)
       static constexpr idx_t nqDeriv = 2;
       // Total after tensoring across dimensions
       static constexpr idx_t nqDeriv_d = nqDeriv*nqDeriv;
@@ -48,6 +50,7 @@ namespace KFVM {
     {
       static constexpr idx_t nqFace = NUM_QUAD_PTS;
       static constexpr idx_t nqFace_d = nqFace;
+      static constexpr idx_t nqCell_d = nqFace*nqFace;
       static constexpr idx_t nqDeriv = 2;
       static constexpr idx_t nqDeriv_d = nqDeriv*nqDeriv;
       static constexpr idx_t nCellsFull = 29;
@@ -66,6 +69,7 @@ namespace KFVM {
     {
       static constexpr idx_t nqFace = NUM_QUAD_PTS;
       static constexpr idx_t nqFace_d = nqFace*nqFace;
+      static constexpr idx_t nqCell_d = nqFace*nqFace*nqFace;
       static constexpr idx_t nqDeriv = 2;
       static constexpr idx_t nqDeriv_d = nqDeriv*nqDeriv*nqDeriv;
       static constexpr idx_t nCellsFull = 33;
@@ -83,6 +87,7 @@ namespace KFVM {
     {
       static constexpr idx_t nqFace = NUM_QUAD_PTS;
       static constexpr idx_t nqFace_d = nqFace*nqFace;
+      static constexpr idx_t nqCell_d = nqFace*nqFace*nqFace;
       static constexpr idx_t nqDeriv = 2;
       static constexpr idx_t nqDeriv_d = nqDeriv*nqDeriv*nqDeriv;
       static constexpr idx_t nCellsFull = 123;

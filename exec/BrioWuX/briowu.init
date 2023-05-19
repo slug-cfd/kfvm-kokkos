@@ -1,14 +1,14 @@
 # Set mesh resolution and extent
-mesh:resolution 256 8 8
+mesh:resolution 4000 8 8
 mesh:numblocks 1 1 1
-mesh:extent 0.0 1.0 0.0 0.03125 0.0 0.03125
+mesh:extent 0.0 1.0 0.0 0.002 0.0 0.02
 
 # Set time information
 time:initial 0.0
 time:final 0.1
 time:initialdt 1.e-10
 time:cfl 1.5
-time:maxsteps 1000
+time:maxsteps 10000
 time:atol 1.e-4
 time:rtol 1.e-3
 
@@ -23,5 +23,6 @@ properties:wenothresh 20.0
 io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename BrioWuX
-io:plotfreq 10
-io:ckptfreq 20
+io:plotfreq 100
+io:ckptfreq 50
+io:restartfile data/R2_NX4000_NY8/ckpt/BrioWuX_0000999.h5

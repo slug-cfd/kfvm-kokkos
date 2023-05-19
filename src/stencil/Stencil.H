@@ -7,6 +7,7 @@
 
 #include <Kokkos_Core.hpp>
 
+#include "Definitions.H"
 #include "../Types.H"
 #include "../ProblemSetup.H"
 #include "StencilInfo.H"
@@ -17,10 +18,24 @@ namespace KFVM {
 
     // Set view types for stencil information and needed kernel workspace
     typedef Kokkos::View<idx_t[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> OffsetView;
-    typedef Kokkos::View<idx_t[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nBias][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsBias],MemSpace> SubIdxView;
-    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub][2*SPACE_DIM][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nqFace_d][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> FaceWtView;
-    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nqFace_d][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> CellWtView;
-    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nIndic][StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> DerivWtView;
+    typedef Kokkos::View<idx_t[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nBias]
+			      [StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsBias],MemSpace> SubIdxView;
+    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub]
+			     [2*SPACE_DIM]
+			     [StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nqFace_d]
+			     [StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> FaceWtView;
+#if (SPACE_DIM == 2)
+    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub]
+			     [NUM_QUAD_PTS][NUM_QUAD_PTS]
+			     [StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> CellWtView;
+#else
+    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub]
+			     [NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_QUAD_PTS]
+			     [StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> CellWtView;
+#endif
+    typedef Kokkos::View<Real[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nSub]
+			     [StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nIndic]
+			     [StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nCellsFull],MemSpace> DerivWtView;
     typedef Kokkos::View<Real*[StencilInfo<SPACE_DIM,STENCIL_RADIUS>::nWorkspace][NUM_VARS],MemSpace> WorkView;
 
     struct Stencil
@@ -61,6 +76,10 @@ namespace KFVM {
       // weights on smaller substencils will be extended by zeros initially
       FaceWtView faceWeights;
 
+      // stencil weights for reconstructing interior cell values
+      // indices are substencil index/x-quad/y-quad/(z-quad if 3d)/cell in stencil
+      CellWtView cellWeights;
+
       // stencil weights for derivative reconstruction in cell
       // indices are substencil index/derivative type and location/cell in stencil
       DerivWtView derivWeights;
@@ -72,6 +91,7 @@ namespace KFVM {
 	ttOff("Stencil::ttOff"),
 	subIdx("Stencil::subIdx"),
 	faceWeights("Stencil::faceWeights"),
+	cellWeights("Stencil::cellWeights"),
 	derivWeights("Stencil::derivWeights")
       {
 	Kokkos::Profiling::pushRegion("Stencil::Stencil");

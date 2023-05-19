@@ -257,30 +257,30 @@ namespace KFVM {
 #include "SourceTerms.H"
     }
 
-    template<class UDataView>
-    struct SourceTerms_K<EquationType::SRHydro,UDataView>
+    template<>
+    struct SourceTerms_K<EquationType::SRHydro>
     {
-      UDataView U;
-      FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
       SourceDataView source;
+      FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
       DiffMatView D;
+      QuadRuleView ab;
       FluidProperties fProp;
       Geometry geom;
       Real t;
 
-      SourceTerms_K(const UDataView& U_,
+      SourceTerms_K(const SourceDataView source_,
                     KFVM_D_DECL(const FaceDataView& rsX_,
                                 const FaceDataView& rsY_,
                                 const FaceDataView& rsZ_),
-                    const SourceDataView source_,
                     const DiffMatView& D_,
-		    const FluidProperties& fProp_
-                    ,const Geometry& geom_,
+		    const QuadRuleView& ab_,
+		    const FluidProperties& fProp_,
+		    const Geometry& geom_,
                     const Real t_):
-	U(U_),
+	source(source_),
         KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
-        source(source_),
         D(D_),
+	ab(ab_),
 	fProp(fProp_),
 	geom(geom_),
         t(t_)
@@ -289,15 +289,7 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
-        SRHydro::ConsVec state,force;
-
-        // extract state
-        for (int n=0; n<NUM_VARS; n++) {
-          state[n] = U(KFVM_D_DECL(i,j,k),n);
-          force[n] = 0;
-        }
-
-        // Call user-defined source terms
+	// Get coordinates of cell center
         Real xc = geom.xCoord(i);
         Real yc = geom.yCoord(j);
 #if (SPACE_DIM == 2)
@@ -305,16 +297,28 @@ namespace KFVM {
 #else
         Real zc = geom.zCoord(k);
 #endif
-        SRHydro::SourceTerm(t,xc,yc,zc,state,force);
 
         const int nzQuad = SPACE_DIM==2 ? 1 : NUM_QUAD_PTS;
         for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	  Real x = Numeric::sclAb(xc,geom.dx,ab(nQ));
           for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	    Real y = Numeric::sclAb(yc,geom.dy,ab(nR));
             for (int nS=0; nS<nzQuad; nS++) {
+	      Real z = SPACE_DIM == 2 ? zc : Numeric::sclAb(zc,geom.dz,ab(nS));
+	      SRHydro::ConsVec state,force;
+              // Extract state and clear force vector
               for (int nV=0; nV<NUM_VARS; nV++) {
-                source(KFVM_D_DECL(i,j,k),
-                       KFVM_D_DECL(nQ,nR,nS),nV) = force[nV];
+                state[nV] = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV);
+                force[nV] = 0;
               }
+              
+              // Fill force with user defined terms
+              SRHydro::SourceTerm(t,x,y,z,state,force);
+
+	      // overwrite source with forcing
+	      for (int nV=0; nV<NUM_VARS; nV++) {
+		source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV) = force[nV];
+	      }
             }
           }
         }
@@ -326,15 +330,21 @@ namespace KFVM {
     {
       UDataView U;
       FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
+      bool haveSources;
+      SourceDataView source;
       FluidProperties fProp;
 
       PositivityPreserve_K(const UDataView& U_,
 			   KFVM_D_DECL(const FaceDataView& rsX_,
 				       const FaceDataView& rsY_,
 				       const FaceDataView& rsZ_),
+			   const bool haveSources_,
+			   const SourceDataView& source_,
 			   const FluidProperties& fProp_):
 	U(U_),
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
+	haveSources(haveSources_),
+	source(source_),
 	fProp(fProp_)
       {}
 
@@ -412,6 +422,20 @@ namespace KFVM {
 	  theta = rho>maxDens ? fmin(theta,rDensDiffP/(rho - rDens)) : theta;
 #endif
 	}
+
+	// Find mixing amount given by interior values
+	if (haveSources) {
+	  int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	      for (int nS=0; nS<nzQuad; nS++) {
+		Real rho = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::dens);
+		theta = rho<minDens ? fmin(theta,rDensDiffM/(rDens - rho)) : theta;
+		theta = rho>maxDens ? fmin(theta,rDensDiffP/(rho - rDens)) : theta;
+	      }
+	    }
+	  }
+	}
 	
 	// Apply mixing
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
@@ -426,6 +450,19 @@ namespace KFVM {
 #endif
 	  }	  
 	}
+	if (haveSources) {
+	  int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	      for (int nS=0; nS<nzQuad; nS++) {
+		for (idx_t nV=0; nV<NUM_VARS; nV++) {
+		  source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV) =
+		    refState[nV] + theta*(source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV) - refState[nV]);
+		}
+	      }
+	    }
+	  }
+	}
 
 	// Enforce lower bound on tau
 	Real rTauDiff = rTau - minTau;
@@ -433,25 +470,38 @@ namespace KFVM {
 	theta = Real(1.0);
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // West face
-          Real rho = rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
-	  theta = rho<minTau ? fmin(theta,rTauDiff/(rTau - rho)) : theta;
+          Real Tau = rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
+	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
 	  // East face
-          rho = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::tau);
-	  theta = rho<minTau ? fmin(theta,rTauDiff/(rTau - rho)) : theta;
+          Tau = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::tau);
+	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
 	  // South face
-          rho = rsY(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
-	  theta = rho<minTau ? fmin(theta,rTauDiff/(rTau - rho)) : theta;
+          Tau = rsY(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
+	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
 	  // North face
-          rho = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::tau);
-	  theta = rho<minTau ? fmin(theta,rTauDiff/(rTau - rho)) : theta;
+          Tau = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::tau);
+	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
 #if (SPACE_DIM == 3)
 	  // Bottom face
-          rho = rsZ(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
-	  theta = rho<minTau ? fmin(theta,rTauDiff/(rTau - rho)) : theta;
+          Tau = rsZ(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
+	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
 	  // Top face
-          rho = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::tau);
-	  theta = rho<minTau ? fmin(theta,rTauDiff/(rTau - rho)) : theta;
+          Tau = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::tau);
+	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
 #endif
+	}
+
+	// Find mixing amount given by interior values
+	if (haveSources) {
+	  int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	      for (int nS=0; nS<nzQuad; nS++) {
+		Real Tau = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::tau);
+		theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
+	      }
+	    }
+	  }
 	}
 	
 	// Apply mixing
@@ -465,6 +515,19 @@ namespace KFVM {
 	    rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) - refState[nV]);
 	    rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) - refState[nV]);
 #endif
+	  }
+	}
+	if (haveSources) {
+	  int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	      for (int nS=0; nS<nzQuad; nS++) {
+		for (idx_t nV=0; nV<NUM_VARS; nV++) {
+		  source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV) =
+		    refState[nV] + theta*(source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV) - refState[nV]);
+		}
+	      }
+	    }
 	  }
 	}
 
@@ -513,6 +576,23 @@ namespace KFVM {
           theta = td >= minTauDiff ? theta : fmin(theta,tauBound(minTauDiff,refState,state));
 #endif
 	}
+
+	// Find mixing amount given by interior values
+	if (haveSources) {
+	  int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	      for (int nS=0; nS<nzQuad; nS++) {
+		ConsVec state;
+		for (int nV=0; nV<NUM_VARS; nV++) {
+		  state[nV] = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV);
+		}
+		Real td = tauDiff(state);
+		theta = td >= minTauDiff ? theta : fmin(theta,tauBound(minTauDiff,refState,state));
+	      }
+	    }
+	  }
+	}
 	
 	// Apply mixing
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
@@ -526,6 +606,19 @@ namespace KFVM {
 	    rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) - refState[nV]);
 #endif
 	  }	  
+	}
+	if (haveSources) {
+	  int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	      for (int nS=0; nS<nzQuad; nS++) {
+		for (idx_t nV=0; nV<NUM_VARS; nV++) {
+		  source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV) =
+		    refState[nV] + theta*(source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV) - refState[nV]);
+		}
+	      }
+	    }
+	  }
 	}
       }
 

@@ -38,6 +38,7 @@ namespace KFVM {
       bool haveSource;
       OffsetView KFVM_D_DECL(lOff,tOff,ttOff);
       FaceWtView faceWeight;
+      CellWtView cellWeight;
       const int nCellsFull;
       const int nqFace_d;
 
@@ -50,13 +51,15 @@ namespace KFVM {
 			  KFVM_D_DECL(const OffsetView& lOff_,
 				      const OffsetView& tOff_,
 				      const OffsetView& ttOff_),
-			  const FaceWtView& face_):
+			  const FaceWtView& face_,
+			  const CellWtView& cell_):
 	U(U_),
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
 	KFVM_D_DECL(lOff(lOff_),tOff(tOff_),ttOff(ttOff_)),
         source(source_),
         haveSource(haveSource_),
 	faceWeight(face_),
+	cellWeight(cell_),
 	nCellsFull(Stencil::Core::SI.nCellsFull),
 	nqFace_d(Stencil::Core::SI.nqFace_d)
       {}
@@ -102,13 +105,30 @@ namespace KFVM {
 
         // Fill in source terms
         if (haveSource) {
-          int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+          const int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+	  auto cellVals = Kokkos::subview(source,
+					  KFVM_D_DECL(i,j,k),
+					  KFVM_D_DECL(Kokkos::ALL,Kokkos::ALL,Kokkos::ALL),
+					  Kokkos::ALL);
+	  
           for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
             for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
               for (int nS=0; nS<nzQuad; nS++) {
+		auto state = Kokkos::subview(cellVals,
+					     KFVM_D_DECL(nQ,nR,nS),
+					     Kokkos::ALL);
+		auto rWtsF = Kokkos::subview(cellWeight,0,
+					     KFVM_D_DECL(nQ,nR,nS),
+					     Kokkos::ALL);
                 for (int nV=0; nV<NUM_VARS; nV++) {
-                  source(KFVM_D_DECL(i,j,k),
-                         KFVM_D_DECL(nQ,nR,nS),nV) = U(KFVM_D_DECL(i,j,k),nV);
+		  // Zero out state
+                  state(nV) = Real(0.0);
+		  // Apply stencil weights
+		  for (int nC=0; nC<nCellsFull; nC++) {
+		    state(nV) += rWtsF(nC)*U(KFVM_D_DECL(i + lOff(nC),
+							 j + tOff(nC),
+							 k + ttOff(nC)),nV);
+		  }
                 }
               }
             }
@@ -130,6 +150,7 @@ namespace KFVM {
       OffsetView KFVM_D_DECL(lOff,tOff,ttOff);
       SubIdxView subIdx;
       FaceWtView faceWeight;
+      CellWtView cellWeight;
       DerivWtView derivWeight;
       FluidProperties fProp;
       const int nCellsFull,nCellsCtr,nCellsBias;
@@ -150,6 +171,7 @@ namespace KFVM {
 				    const OffsetView& ttOff_),
 			const SubIdxView& subIdx_,
 			const FaceWtView& face_,
+			const CellWtView& cell_,
 			const DerivWtView& deriv_,
                         const FluidProperties& fProp_):
 	U(U_),
@@ -163,6 +185,7 @@ namespace KFVM {
 	KFVM_D_DECL(lOff(lOff_),tOff(tOff_),ttOff(ttOff_)),
 	subIdx(subIdx_),
 	faceWeight(face_),
+	cellWeight(cell_),
 	derivWeight(deriv_),
         fProp(fProp_),
 	nCellsFull(Stencil::Core::SI.nCellsFull),
@@ -282,19 +305,25 @@ namespace KFVM {
 	  }
 	}
 
-        // Fill in source terms
+        // Fill interior values if needed
         if (haveSource) {
-          int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
-          for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-            for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
-              for (int nS=0; nS<nzQuad; nS++) {
-                for (int nV=0; nV<NUM_VARS; nV++) {
-                  source(KFVM_D_DECL(i,j,k),
-                         KFVM_D_DECL(nQ,nR,nS),nV) = refState[nV];
-                }
-              }
-            }
-          }
+	  const int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+	  auto cellVals = Kokkos::subview(source,
+					  KFVM_D_DECL(i,j,k),
+					  KFVM_D_DECL(Kokkos::ALL,Kokkos::ALL,Kokkos::ALL),
+					  Kokkos::ALL);
+	  fillInterior(Vf,Vc,Vb,omega,cellVals);
+
+	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	      for (int nS=0; nS<nzQuad; nS++) {
+		auto state = Kokkos::subview(cellVals,
+					     KFVM_D_DECL(nQ,nR,nS),
+					     Kokkos::ALL);
+		varConv.linPrim2Cons(state);
+	      }
+	    }
+	  }
         }
       }
 
@@ -407,7 +436,7 @@ namespace KFVM {
 	
 	// Fill in Riemann states one face at a time
 	fillRiemannStates(Vf,Vc,Vb,omega,rsFace);
-
+	
 	// Convert back to conservative variables
 	for (int nF=0; nF<2*SPACE_DIM; nF++) {
 	  for (int nQ=0; nQ<nqFace_d; nQ++) {
@@ -415,21 +444,27 @@ namespace KFVM {
 	    varConv.linPrim2Cons(state);
 	  }
 	}
-
-        // Fill in source terms
+	
+        // Fill interior values if needed
         if (haveSource) {
-          int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
-          for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-            for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
-              for (int nS=0; nS<nzQuad; nS++) {
-                for (int nV=0; nV<NUM_VARS; nV++) {
-                  source(KFVM_D_DECL(i,j,k),
-                         KFVM_D_DECL(nQ,nR,nS),nV) = refState[nV];
-                }
-              }
-            }
-          }
-        }
+	  const int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+	  auto cellVals = Kokkos::subview(source,
+					  KFVM_D_DECL(i,j,k),
+					  KFVM_D_DECL(Kokkos::ALL,Kokkos::ALL,Kokkos::ALL),
+					  Kokkos::ALL);
+	  fillInterior(Vf,Vc,Vb,omega,cellVals);
+
+	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	      for (int nS=0; nS<nzQuad; nS++) {
+		auto state = Kokkos::subview(cellVals,
+					     KFVM_D_DECL(nQ,nR,nS),
+					     Kokkos::ALL);
+		varConv.linPrim2Cons(state);
+	      }
+	    }
+	  }
+	}
       }
 
       template<class ValsFullType,class ValsCtrType,
@@ -461,8 +496,9 @@ namespace KFVM {
 						      Real(1.0),rsFV);
 	  }
 	}
-	
-	// Biased substencil Riemann states
+
+	// Then apply biased stencils
+	// Do these separately to minimize calls to fillbiased
 	for (int nB=0; nB<nBias; nB++) {
 	  fillBiased(nB,Vf,Vb);
 	  for (int nF=0; nF<2*SPACE_DIM; nF++) {
@@ -478,6 +514,69 @@ namespace KFVM {
 	    }
 	  }
 	}
+      }
+
+      template<class ValsFullType,class ValsCtrType,
+	       class ValsBiasType,class CellArrayType>
+      KOKKOS_INLINE_FUNCTION
+      void fillInterior(ValsFullType Vf,ValsCtrType Vc,ValsBiasType Vb,
+			Real omega[Stencil::Core::SI.nSub][NUM_VARS],
+			CellArrayType cellVals) const
+      {
+	using namespace KokkosBatched;
+
+	const int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+	
+	// First apply full and center stencils
+	// Compute states pencil-by-pencil for each fixed y,z pair
+	for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	  for (int nS=0; nS<nzQuad; nS++) {
+	    auto rWtsF = Kokkos::subview(cellWeight,0,
+					 KFVM_D_DECL(Kokkos::ALL,nR,nS),
+					 Kokkos::ALL);
+	    auto rWtsC = Kokkos::subview(cellWeight,1,
+					 KFVM_D_DECL(Kokkos::ALL,nR,nS),
+					 Kokkos::make_pair(0,nCellsCtr));
+	    for (int nV=0; nV<NUM_VARS; nV++) {
+	      auto penV = Kokkos::subview(cellVals,
+					  KFVM_D_DECL(Kokkos::ALL,nR,nS),
+					  nV);
+	      auto vf = Kokkos::subview(Vf,Kokkos::ALL,nV);
+	      auto vc = Kokkos::subview(Vc,Kokkos::ALL,nV);
+	      SerialGemv<Trans::NoTranspose,
+			 Algo::Gemv::Unblocked>::invoke(omega[0][nV],
+							rWtsF,vf,
+							Real(0.0),penV);
+	      SerialGemv<Trans::NoTranspose,
+			 Algo::Gemv::Unblocked>::invoke(omega[1][nV],
+							rWtsC,vc,
+							Real(1.0),penV);
+	    }
+	  }
+	}
+	
+	// Then apply biased stencils
+	// Do these separately to minimize calls to fillbiased
+	for (int nB=0; nB<nBias; nB++) {
+	  fillBiased(nB,Vf,Vb);
+	  for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
+	    for (int nS=0; nS<nzQuad; nS++) {
+	      auto rWtsB = Kokkos::subview(cellWeight,2 + nB,
+					   KFVM_D_DECL(Kokkos::ALL,nR,nS),
+					   Kokkos::make_pair(0,nCellsBias));
+	      for (int nV=0; nV<NUM_VARS; nV++) {
+		auto penV = Kokkos::subview(cellVals,
+					    KFVM_D_DECL(Kokkos::ALL,nR,nS),
+					    nV);
+		auto vb = Kokkos::subview(Vb,Kokkos::ALL,nV);
+		SerialGemv<Trans::NoTranspose,
+			   Algo::Gemv::Unblocked>::invoke(omega[2 + nB][nV],
+							  rWtsB,vb,
+							  Real(1.0),penV);
+	      }
+	    }
+	  }
+	}	
       }
 
       template<class ValsFullType,class ValsCtrType,class ValsBiasType,

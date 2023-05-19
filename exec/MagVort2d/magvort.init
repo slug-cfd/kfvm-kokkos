@@ -7,13 +7,13 @@ mesh:extent -10.0 10.0 -10.0 10.0
 time:initial 0.0
 time:final 20.0
 time:initialdt 1.e-10
-time:cfl 3.0
+time:cfl 2.0
 time:maxsteps 4000
 time:atol 1.e-10
 time:rtol 1.e-3
 
 # Set stencil options
-stencil:lfac 24
+stencil:lfac 12
 
 # Set fluid properties
 properties:gamma 1.666666666666

@@ -350,21 +350,20 @@ namespace KFVM {
     setFaceBCs(t);
     
     // Fill in source terms
-    // These actually use face values for better internal derivatives
+    // These may use face values for better internal derivatives
     //   -> Must call before fluxes overwrite Riemann states
     bool haveSources = ps.haveSourceTerms;
     if (haveSources) {
-      auto sol = trimCellHalo(sol_halo);
       Kokkos::parallel_for("SourceTerms",cellRng,
-                           Physics::SourceTerms_K<eqType,decltype(sol)>(sol,
-                                                                        KFVM_D_DECL(faceVals.xDir,
-                                                                                    faceVals.yDir,
-                                                                                    faceVals.zDir),
-                                                                        sourceTerms,
-                                                                        diffMat.diffMat,
-                                                                        ps.fluidProp,
-                                                                        geom,
-                                                                        t));
+                           Physics::SourceTerms_K<eqType>(sourceTerms,
+							  KFVM_D_DECL(faceVals.xDir,
+								      faceVals.yDir,
+								      faceVals.zDir),
+							  diffMat.diffMat,
+							  qr.ab,
+							  ps.fluidProp,
+							  geom,
+							  t));
     }
     
     // Call Riemann solver
@@ -430,7 +429,8 @@ namespace KFVM {
 			    KFVM_D_DECL(stencil.lOff,
 					stencil.tOff,
 					stencil.ttOff),
-			    stencil.faceWeights));
+			    stencil.faceWeights,
+			    stencil.cellWeights));
       // Weno reconstruction if needed
       if (wenoSelector.nWeno > 0) {
 	auto flagRng = Kokkos::RangePolicy<ExecSpace>
@@ -452,6 +452,7 @@ namespace KFVM {
 					  stencil.ttOff),
 			      stencil.subIdx,
 			      stencil.faceWeights,
+			      stencil.cellWeights,
 			      stencil.derivWeights,
 			      ps.fluidProp));
       }
@@ -478,6 +479,7 @@ namespace KFVM {
 					      stencil.ttOff),
 				  stencil.subIdx,
 				  stencil.faceWeights,
+				  stencil.cellWeights,
 				  stencil.derivWeights,
 				  ps.fluidProp));
 	  }
@@ -488,13 +490,14 @@ namespace KFVM {
       useSparseWeno = ps.fluidProp.wenoThresh > 0.0;
     }
     
-    // Enforce positivity of Riemann states
+    // Enforce positivity of states
     Kokkos::parallel_for("PosPres",cellRng,
         		 Physics::PositivityPreserve_K<eqType,decltype(U)>
         		 (U,
         		  KFVM_D_DECL(faceVals.xDir,
         			      faceVals.yDir,
         			      faceVals.zDir),
+			  haveSources,sourceTerms,
         		  ps.fluidProp));
   }
 

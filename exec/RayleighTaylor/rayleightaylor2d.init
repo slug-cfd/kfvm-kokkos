@@ -24,4 +24,4 @@ io:pdiconf ../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename RayleighTaylor
 io:plotfreq 1000
-io:ckptfreq 20
+io:ckptfreq 200

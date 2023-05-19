@@ -1,11 +1,11 @@
 # Set mesh resolution and extent
-mesh:resolution 96 192 96
-mesh:numblocks 1 1 1
-mesh:extent 0.0 0.1 -0.1 0.1 0.0 0.1
+mesh:resolution 512 512
+mesh:numblocks 1 1
+mesh:extent -2.5 2.5 -2.5 2.5
 
 # Set time information
 time:initial 0.0
-time:final 5.0
+time:final 10.0
 time:initialdt 1.e-8
 time:cfl 2.0
 time:maxsteps 50000
@@ -22,6 +22,6 @@ properties:wenothresh 10.0
 # Output settings
 io:pdiconf ../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename RayleighTaylor
-io:plotfreq 200
-io:ckptfreq 20
+io:basename CircRayTay
+io:plotfreq 1000
+io:ckptfreq 200

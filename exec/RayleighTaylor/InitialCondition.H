@@ -10,12 +10,14 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
   using Physics::Hydro::SimVar;
   using Kokkos::sqrt;
+  using Kokkos::pow;
   using Kokkos::cos;
 
   const Real gam = 5.0/3.0,gamm = gam - 1.0;
+  const Real rhoH = 10.0,rhoL = 1.0;
   const Real rho = y <= 0.0 ? 1.0 : 10.0;
-  const Real p = y <= 3.0/5.0 - 0.1*rho*y;
-  const Real v = 0.005*cos(20.0*M_PI*x/0.1)*cos(30.0*M_PI*z/0.1)*(1.0 + cos(M_PI*y/0.1));
+  const Real p = y <= 0.0 ? 1.0 + 0.1*rhoH - y*rhoL : 1.0 + rhoH*(0.1 - y);
+  const Real v = 0.01*cos(4.0*M_PI*x/0.1)*cos(6.0*M_PI*z/0.1)*pow(cos(M_PI*y/0.1),4);
   
   state[SimVar::dens] = rho;
   state[SimVar::momx] = 0.0;

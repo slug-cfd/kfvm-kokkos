@@ -19,6 +19,7 @@ namespace KFVM {
 			RotXY,RotXZ,RotYZ,
 			RotXYm,RotXZm,RotYZm,
 			None};
+    
     // This array is needed because iterating on enums is impossible,
     // but an enum is nice for this purpose otherwise
     constexpr std::array<SymType,14> SymTypes = {SymType::RefX,SymType::RefY,SymType::RefZ,
