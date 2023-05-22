@@ -17,7 +17,7 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   const Real rhoH = 10.0,rhoL = 1.0;
   const Real rho = y <= 0.0 ? 1.0 : 10.0;
   const Real p = y <= 0.0 ? 1.0 + 0.1*rhoH - y*rhoL : 1.0 + rhoH*(0.1 - y);
-  const Real v = 0.01*cos(4.0*M_PI*x/0.1)*cos(6.0*M_PI*z/0.1)*pow(cos(M_PI*y/0.1),4);
+  const Real v = 0.01*cos(4.0*M_PI*x/0.1)*cos(6.0*M_PI*z/0.1)*pow(cos(M_PI*y/0.2),4);
   
   state[SimVar::dens] = rho;
   state[SimVar::momx] = 0.0;

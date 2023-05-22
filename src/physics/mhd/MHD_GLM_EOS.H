@@ -81,7 +81,7 @@ namespace KFVM {
       static Real weno(const MHD_GLM::ConsVec U,const FluidProperties& fProp)
       {
 	using MHD_GLM::SimVar;
-        return prsg(fProp.gamma,U);
+        return U[SimVar::dens]; //prsg(fProp.gamma,U);
       }
       
       KOKKOS_INLINE_FUNCTION
