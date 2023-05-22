@@ -110,9 +110,9 @@ namespace KFVM {
 	({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)});
     }
 
+    Real rhsSpeedComm(Real);
+    Real glmSpeedComm(Real,Real);
     int timeStepStatusComm(int);
-    Real timeStepSizeComm(Real);
-    Real timeStepMaxVelComm(Real);
     Real timeStepErrEstComm(Real);
     
   public:

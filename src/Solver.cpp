@@ -149,10 +149,10 @@ namespace KFVM {
 
     // Try step with dt, and repeat as needed
     bool accepted = false,firstUnphys = true;
-    Real maxVelLoc,v;
+    Real maxVel,v;
     wThresh = ps.fluidProp.wenoThresh*dt;
     for (int nT=0; nT<ps.rejectionLimit; nT++) {
-      maxVelLoc = 0.0;
+      maxVel = 0.0;
       PrintSingle(ps,"  Attempt %d: dt = %e, wThresh = %e",nT+1,dt,wThresh);
 
       // Trim halos off
@@ -162,7 +162,7 @@ namespace KFVM {
       // Need to reset K if this is a repeat of a rejected step
       if (nT > 0) {
 	v = evalRHS(Uprev_halo,K,time);
-        maxVelLoc = std::fmax(maxVelLoc,v);
+        maxVel = std::fmax(maxVel,v);
       }
 
       // First stage is special, do it outside loop
@@ -183,7 +183,7 @@ namespace KFVM {
 
 	// Evaluate RHS on U
 	v = evalRHS(U_halo,K,time + cDt);
-        maxVelLoc = std::fmax(maxVelLoc,v);
+        maxVel = std::fmax(maxVel,v);
       
 	// Update registers
 	Kokkos::parallel_for("RKStage",cellRng,
@@ -192,12 +192,9 @@ namespace KFVM {
 
       // FSAL stage
       v = evalRHS(U_halo,K,time + dt);
-      maxVelLoc = std::fmax(maxVelLoc,v);
+      maxVel = std::fmax(maxVel,v);
       bhatDt = RKCoeff::bhatfsal*dt;
       Kokkos::parallel_for("RKStageFSAL",cellRng,Numeric::RKFSAL_StageLast_K<decltype(K)>(Uhat,K,bhatDt));
-
-      // Get global max velocity
-      Real maxVel = timeStepMaxVelComm(maxVelLoc);
 
       // Calculate CFL that ended up being used
       Real cfl = dt*maxVel/geom.dmin;
@@ -241,8 +238,7 @@ namespace KFVM {
 	accepted = true;
 	time += dt;
 	Real dterr = dt*dtfac,dtcfl = ps.cfl*geom.dmin/maxVel;
-	Real ldt = std::fmin(dterr,dtcfl); // Limit to max cfl
-	dt = timeStepSizeComm(ldt); // coordinate all ranks to smallest dt
+	dt = std::fmin(dterr,dtcfl); // Limit to max cfl
 	errEst = errNew;
 
 	// Update the weno selector
@@ -254,8 +250,7 @@ namespace KFVM {
       } else if (gStat == TSStatus::TOLERANCE) {
 	// otherwise step is rejected, try again with new smaller dt
         PrintSingle(ps,", cfl = %f\n    Rejected: Tolerance\n",cfl);
-	Real ldt = dt*dtfac;
-	dt = timeStepSizeComm(ldt); // coordinate all ranks to smallest dt
+	dt = dt*dtfac;
 	nRejectThresh++;
       } else {
 	PrintSingle(ps,"Warning: Unknown time step status\n");
@@ -288,28 +283,6 @@ namespace KFVM {
     return gStat;
   }
 
-  Real Solver::timeStepSizeComm(Real ldt)
-  {
-    if (ps.layoutMPI.size == 1) {
-      return ldt;
-    }
-
-    Real gdt;
-    MPI_Allreduce(&ldt,&gdt,1,ps.layoutMPI.realType,MPI_MIN,ps.layoutMPI.commWorld);
-    return gdt;
-  }
-
-  Real Solver::timeStepMaxVelComm(Real lV)
-  {
-    if (ps.layoutMPI.size == 1) {
-      return lV;
-    }
-
-    Real gV;
-    MPI_Allreduce(&lV,&gV,1,ps.layoutMPI.realType,MPI_MAX,ps.layoutMPI.commWorld);
-    return gV;
-  }
-
   Real Solver::timeStepErrEstComm(Real lEst)
   {
     if (ps.layoutMPI.size == 1) {
@@ -337,15 +310,15 @@ namespace KFVM {
     auto cellRng = interiorCellRange();
     
     if (eqType == EquationType::MHD_GLM) {
-      Real ch_glm = 0.0;
+      Real lLamMax = 0.0,lVMax = 0.0;
       Kokkos::parallel_reduce("CalculateCH_GLM",cellRng,
         		      Physics::SpeedEstimate_K<eqType>(KFVM_D_DECL(faceVals.xDir,
                                                                            faceVals.yDir,
                                                                            faceVals.zDir),
                                                                ps.fluidProp),
-        		      Kokkos::Max<Real>(ch_glm));
+        		      Kokkos::Max<Real>(lLamMax),Kokkos::Max<Real>(lVMax));
       Kokkos::fence("Solver::evalRHS(GLM reduction)");
-      MPI_Allreduce(&ch_glm,&ps.fluidProp.ch_glm,1,ps.layoutMPI.realType,MPI_MAX,ps.layoutMPI.commWorld);
+      ps.fluidProp.ch_glm = glmSpeedComm(lLamMax,lVMax);
     }
     
     // Set BCs on Riemann states
@@ -404,10 +377,35 @@ namespace KFVM {
 			  KFVM_D_DECL(faceVals.xDir,faceVals.yDir,faceVals.zDir),
                           sourceTerms,haveSources,
 			  qr.ab,qr.wt,geom));
+
+    Kokkos::fence("Solver::evalRHS(Speed reduction)");
     
     Kokkos::Profiling::popRegion();
-    return maxVel;
+    return rhsSpeedComm(maxVel);
   }
+
+  Real Solver::glmSpeedComm(Real lLamMax,Real lVMax)
+  {
+    if (ps.layoutMPI.size == 1) {
+      return lLamMax - lVMax;
+    }
+    
+    Real gLamMax,gVMax;
+    MPI_Allreduce(&lLamMax,&gLamMax,1,ps.layoutMPI.realType,MPI_MAX,ps.layoutMPI.commWorld);
+    MPI_Allreduce(&lVMax,&gVMax,1,ps.layoutMPI.realType,MPI_MAX,ps.layoutMPI.commWorld);
+    return gLamMax - gVMax;
+  }
+
+  Real Solver::rhsSpeedComm(Real lVMax)
+  {
+    if (ps.layoutMPI.size == 1) {
+      return lVMax;
+    }
+    
+    Real gVMax;
+    MPI_Allreduce(&lVMax,&gVMax,1,ps.layoutMPI.realType,MPI_MAX,ps.layoutMPI.commWorld);
+    return gVMax;
+  }  
 
   void Solver::reconstructRiemannStates(ConsDataView sol_halo)
   {

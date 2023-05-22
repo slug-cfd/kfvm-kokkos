@@ -112,13 +112,13 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real fastMagSonic(const Real gamma,const MHD_GLM::ConsVec U,Real bl)
+      static Real fastMagSonic(const Real gamma,const MHD_GLM::ConsVec U,const Real bl)
       {
 	using MHD_GLM::SimVar;
 	using Kokkos::sqrt;
 	
-	Real asq = gamma*prsg(gamma,U)/U[SimVar::dens],bsq = Real(2.0)*prsb(U);
-	Real cfsq = Real(0.5)*(asq + bsq + sqrt((asq + bsq)*(asq + bsq) - Real(4.0)*asq*bl*bl));
+	Real asq = gamma*prsg(gamma,U)/U[SimVar::dens],bsq = Real(2.0)*prsb(U)/U[SimVar::dens];
+	Real cfsq = Real(0.5)*(asq + bsq + sqrt((asq + bsq)*(asq + bsq) - Real(4.0)*asq*bl*bl/U[SimVar::dens]));
 	
         return sqrt(cfsq);
       }
