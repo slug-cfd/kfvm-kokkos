@@ -13,7 +13,7 @@ time:atol 1.e-5
 time:rtol 1.e-4
 
 # Set stencil options
-stencil:lfac 12
+stencil:lfac 5
 
 # Set fluid properties
 properties:gamma 1.4
