@@ -13,7 +13,6 @@ set (CMAKE_CXX_EXTENSIONS OFF)
 find_package (MPI REQUIRED)
 find_package (Kokkos REQUIRED)
 find_package (KokkosKernels REQUIRED)
-find_package (cerf REQUIRED)
 find_package (PDI REQUIRED)
 find_package (LAPACK REQUIRED)
 

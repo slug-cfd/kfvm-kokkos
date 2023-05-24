@@ -43,6 +43,8 @@ namespace KFVM {
       static constexpr idx_t nSub = 6;
       // Number of biased substencils
       static constexpr idx_t nBias = 4;
+      // Max monomial degree for each substencil type
+      static constexpr std::array<int,3> monoDeg {3,1,1};
     };
 
     // radius 3
@@ -61,6 +63,7 @@ namespace KFVM {
       static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
       static constexpr idx_t nSub = 6;
       static constexpr idx_t nBias = 4;
+      static constexpr std::array<int,3> monoDeg {6,2,2};
     };
 
     // 3D specializations
@@ -80,6 +83,7 @@ namespace KFVM {
       static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
       static constexpr idx_t nSub = 8;
       static constexpr idx_t nBias = 6;
+      static constexpr std::array<int,3> monoDeg {3,1,1};
     };
 
     // radius 3
@@ -98,6 +102,7 @@ namespace KFVM {
       static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
       static constexpr idx_t nSub = 8;
       static constexpr idx_t nBias = 6;
+      static constexpr std::array<int,3> monoDeg {6,2,2};
     };
     
   } // end namespace Stencil
