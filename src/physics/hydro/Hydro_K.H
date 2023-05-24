@@ -259,7 +259,7 @@ namespace KFVM {
       {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxVel) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& lamMax,Real& vMax) const
       {}
     };
 
