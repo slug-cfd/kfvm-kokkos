@@ -7,8 +7,9 @@
 
 #include "../../Types.H"
 #include "../SimVar.H"
-#include "MHD_GLM_EOS.H"
 #include "../EquationTypes.H"
+#include "../Riemann.H"
+#include "MHD_GLM_EOS.H"
 
 namespace KFVM {
 
@@ -34,35 +35,6 @@ namespace KFVM {
     }
 
     KOKKOS_INLINE_FUNCTION
-    void mhdGlmFlux(Real gamma,Real ch,int vord[3],int bord[3],
-		    const MHD_GLM::ConsVec U,const MHD_GLM::PrimVec V,
-                    MHD_GLM::ConsVec F)
-    {
-      using MHD_GLM::SimVar;
-      using MHD_GLM::PrimVar;
-
-      const Real p = V[PrimVar::pres];
-      const Real uDb = (V[PrimVar::velx]*U[SimVar::magx] +
-			V[PrimVar::vely]*U[SimVar::magy] +
-			V[PrimVar::velz]*U[SimVar::magz]);
-      
-      F[SimVar::dens] = U[vord[0]];
-      
-      F[vord[0]] = U[vord[0]]*V[vord[0]] - U[bord[0]]*U[bord[0]] + p;
-      F[vord[1]] = U[vord[0]]*V[vord[1]] - U[bord[0]]*U[bord[1]];
-      F[vord[2]] = U[vord[0]]*V[vord[2]] - U[bord[0]]*U[bord[2]];
-      
-      F[SimVar::etot] = V[vord[0]]*(U[SimVar::etot] + p - Real(0.5)*U[SimVar::psi]*U[SimVar::psi])
-        + U[bord[0]]*(ch*U[SimVar::psi] - uDb);
-      
-      F[bord[0]] = ch*U[SimVar::psi];
-      F[bord[1]] = (V[vord[0]]*U[bord[1]] - V[vord[1]]*U[bord[0]]);
-      F[bord[2]] = (V[vord[0]]*U[bord[2]] - V[vord[2]]*U[bord[0]]);
-      
-      F[SimVar::psi] = ch*U[bord[0]];
-    }      
-
-    KOKKOS_INLINE_FUNCTION
     void mhdGlmSpeed(Real gamma,int lng,int bord[3],
                      const MHD_GLM::ConsVec uL,const MHD_GLM::ConsVec uR,
                      const MHD_GLM::PrimVec vL,const MHD_GLM::PrimVec vR,
@@ -82,6 +54,33 @@ namespace KFVM {
       
       sL = fmin(slMs,slCh);
       sR = fmax(srMs,srCh);
+    }
+    
+    KOKKOS_INLINE_FUNCTION
+    void entropyVars(const Real gamma,
+		     const MHD_GLM::ConsVec u,
+		     const MHD_GLM::PrimVec v,
+		     MHD_GLM::ConsVec ev)
+    {
+      using Kokkos::log;
+      using MHD_GLM::SimVar;
+      using MHD_GLM::PrimVar;
+
+      const Real beta = u[SimVar::dens]/(Real(2.0)*v[PrimVar::prsg]);
+      const Real s = (Real(1.0) - gamma)*log(u[SimVar::dens]) - log(beta) - log(Real(2.0));
+      const Real usq = (v[PrimVar::velx]*v[PrimVar::velx] +
+			v[PrimVar::vely]*v[PrimVar::vely] +
+			v[PrimVar::velz]*v[PrimVar::velz]);
+
+      ev[SimVar::dens] = (gamma - s)/(gamma - Real(1.0)) - beta*usq;
+      ev[SimVar::momx] = Real(2.0)*beta*v[PrimVar::velx];
+      ev[SimVar::momy] = Real(2.0)*beta*v[PrimVar::vely];
+      ev[SimVar::momz] = Real(2.0)*beta*v[PrimVar::velz];
+      ev[SimVar::etot] = -Real(2.0)*beta;
+      ev[SimVar::magx] = Real(2.0)*beta*u[SimVar::magx];
+      ev[SimVar::magy] = Real(2.0)*beta*u[SimVar::magy];
+      ev[SimVar::magz] = Real(2.0)*beta*u[SimVar::magz];
+      ev[SimVar::psi] = Real(2.0)*beta*u[SimVar::psi];
     }
     
     KOKKOS_INLINE_FUNCTION
@@ -133,10 +132,12 @@ namespace KFVM {
       Real psiAv = arithMean(uL[SimVar::psi],uR[SimVar::psi]);
       Real bxPsiAv = arithMean(uL[bord[0]]*uL[SimVar::psi],uR[bord[0]]*uR[SimVar::psi]);
 
-      Real betaLn = logMean(uL[SimVar::dens]/(Real(2.0)*EOS<EquationType::MHD_GLM>::prsg(gamma,uL)),
-			    uR[SimVar::dens]/(Real(2.0)*EOS<EquationType::MHD_GLM>::prsg(gamma,uR)));
-      Real betaAv = arithMean(uL[SimVar::dens]/(Real(2.0)*EOS<EquationType::MHD_GLM>::prsg(gamma,uL)),
-			      uR[SimVar::dens]/(Real(2.0)*EOS<EquationType::MHD_GLM>::prsg(gamma,uR)));
+      Real betaL = uL[SimVar::dens]/(Real(2.0)*vL[PrimVar::prsg]);
+      Real betaR = uR[SimVar::dens]/(Real(2.0)*vR[PrimVar::prsg]);
+      Real betaLn = logMean(betaL,betaR);
+      Real betaAv = arithMean(betaL,betaR);
+
+      Real pLn = logMean(vL[PrimVar::prsg],vR[PrimVar::prsg]);
       Real pTil = Real(0.5)*rhoAv/betaAv;
       Real pHatTot = pTil + Real(0.5)*(bxxAv + byyAv + bzzAv);
 
@@ -162,10 +163,42 @@ namespace KFVM {
 	bxAv*(uBxAv + vByAv + wBzAv) -
 	ch*bxPsiAv;
 
+      // Form energy row of H matrix
+      const Real mgamma = gamma - Real(1.0);
+      const Real usqBar = Real(2.0)*(uAv*uAv + vAv*vAv + wAv*wAv) - (uuAv + vvAv + wwAv);
+      const Real Ebar = Real(0.5)*rhoLn*usqBar + pLn/mgamma;
+      const Real tau = Real(0.5)/betaAv;
+      const Real H55 =
+	(Ebar*Ebar + pLn*pLn/mgamma)/rhoLn +
+	pTil*(uAv*uAv + vAv*vAv + wAv*wAv) +
+	tau*(bxAv*bxAv + byAv*byAv + bzAv*bzAv + psiAv*psiAv);
+      const Real H5[] = {
+	Ebar,
+	(Ebar + pTil)*uAv,
+	(Ebar + pTil)*vAv,
+	(Ebar + pTil)*wAv,
+	H55,
+	tau*bxAv,
+	tau*byAv,
+	tau*bzAv,
+	tau*psiAv
+      };
+
+      // Form entropy variables
+      Real evL[NUM_VARS],evR[NUM_VARS];
+      entropyVars(gamma,uL,vL,evL);
+      entropyVars(gamma,uR,vR,evR);
+
       // Add in local Lax-Friedrichs dissipation
+      // Total energy treated through entropy variables
+      Real Ej = Real(0.0);
       for (int nV=0; nV<NUM_VARS; nV++) {
-	F[nV] -= Real(0.5)*sMax*(uR[nV] - uL[nV]);
+	Ej += H5[nV]*(evR[nV] - evL[nV]);
+	if (true || nV != SimVar::etot) {
+	  F[nV] -= sMax*(uR[nV] - uL[nV])/Real(2.0);
+	}
       }
+      // F[SimVar::etot] -= sMax*Ej/Real(2.0);
 
       return sMax;
     }

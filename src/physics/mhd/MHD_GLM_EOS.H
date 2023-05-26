@@ -25,7 +25,7 @@ namespace KFVM {
         V[PrimVar::velx] = U[SimVar::momx]/U[SimVar::dens];
         V[PrimVar::vely] = U[SimVar::momy]/U[SimVar::dens];
         V[PrimVar::velz] = U[SimVar::momz]/U[SimVar::dens];
-        V[PrimVar::pres] = pres(gam,U);
+        V[PrimVar::prsg] = prsg(gam,U);
         V[PrimVar::magx] = U[SimVar::magx];
         V[PrimVar::magy] = U[SimVar::magy];
         V[PrimVar::magz] = U[SimVar::magz];
@@ -42,10 +42,14 @@ namespace KFVM {
         U[SimVar::momx] = V[PrimVar::dens]*V[PrimVar::velx];
         U[SimVar::momy] = V[PrimVar::dens]*V[PrimVar::vely];
         U[SimVar::momz] = V[PrimVar::dens]*V[PrimVar::velz];
-        U[SimVar::etot] = V[PrimVar::pres]/(gam - Real(1.0)) +
+        U[SimVar::etot] = V[PrimVar::prsg]/(gam - Real(1.0)) +
           Real(0.5)*(V[PrimVar::velx]*V[PrimVar::velx] +
                      V[PrimVar::vely]*V[PrimVar::vely] +
-                     V[PrimVar::velz]*V[PrimVar::velz]);
+                     V[PrimVar::velz]*V[PrimVar::velz] +
+		     V[PrimVar::magx]*V[PrimVar::magx] +
+                     V[PrimVar::magy]*V[PrimVar::magy] +
+                     V[PrimVar::magz]*V[PrimVar::magz] +
+                     V[PrimVar::psi]*V[PrimVar::psi]);
         U[SimVar::magx] = V[PrimVar::magx];
         U[SimVar::magy] = V[PrimVar::magy];
         U[SimVar::magz] = V[PrimVar::magz];
@@ -116,9 +120,11 @@ namespace KFVM {
       {
 	using MHD_GLM::SimVar;
 	using Kokkos::sqrt;
-	
-	Real asq = gamma*prsg(gamma,U)/U[SimVar::dens],bsq = Real(2.0)*prsb(U)/U[SimVar::dens];
-	Real cfsq = Real(0.5)*(asq + bsq + sqrt((asq + bsq)*(asq + bsq) - Real(4.0)*asq*bl*bl/U[SimVar::dens]));
+
+	const Real asq = gamma*prsg(gamma,U)/U[SimVar::dens];
+	const Real bsq = Real(2.0)*prsb(U)/U[SimVar::dens];
+	const Real absq = asq + bsq;
+	Real cfsq = Real(0.5)*(absq + sqrt(absq*absq - Real(4.0)*asq*bl*bl/U[SimVar::dens]));
 	
         return sqrt(cfsq);
       }

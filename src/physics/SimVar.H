@@ -30,7 +30,7 @@ namespace KFVM {
         enum var { dens = 0, momx, momy, momz, etot, magx, magy, magz, psi };
       };
       struct PrimVar {
-        enum var { dens = 0, velx, vely, velz, pres, magx, magy, magz, psi };
+        enum var { dens = 0, velx, vely, velz, prsg, magx, magy, magz, psi };
       };
       struct AuxVar {
         enum var { velx = 0, vely, velz, eint, pres, prsg, prsb };

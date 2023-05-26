@@ -17,7 +17,7 @@ stencil:lfac 5
 
 # Set fluid properties
 properties:gamma 1.4
-properties:wenothresh 20.0
+properties:wenothresh -1.0
 
 # Output settings
 io:pdiconf ../../user/pdi_euler_xdmf.yml
