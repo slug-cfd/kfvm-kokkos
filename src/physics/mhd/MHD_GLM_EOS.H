@@ -43,9 +43,9 @@ namespace KFVM {
         U[SimVar::momy] = V[PrimVar::dens]*V[PrimVar::vely];
         U[SimVar::momz] = V[PrimVar::dens]*V[PrimVar::velz];
         U[SimVar::etot] = V[PrimVar::prsg]/(gam - Real(1.0)) +
-          Real(0.5)*(V[PrimVar::velx]*V[PrimVar::velx] +
-                     V[PrimVar::vely]*V[PrimVar::vely] +
-                     V[PrimVar::velz]*V[PrimVar::velz] +
+          Real(0.5)*(V[PrimVar::dens]*(V[PrimVar::velx]*V[PrimVar::velx] +
+				       V[PrimVar::vely]*V[PrimVar::vely] +
+				       V[PrimVar::velz]*V[PrimVar::velz]) +
 		     V[PrimVar::magx]*V[PrimVar::magx] +
                      V[PrimVar::magy]*V[PrimVar::magy] +
                      V[PrimVar::magz]*V[PrimVar::magz] +
@@ -85,7 +85,7 @@ namespace KFVM {
       static Real weno(const MHD_GLM::ConsVec U,const FluidProperties& fProp)
       {
 	using MHD_GLM::SimVar;
-        return U[SimVar::dens]; //prsg(fProp.gamma,U);
+        return U[SimVar::dens];
       }
       
       KOKKOS_INLINE_FUNCTION
