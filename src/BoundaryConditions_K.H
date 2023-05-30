@@ -59,25 +59,14 @@ namespace KFVM {
 	v(v_),
 	rad(rad_),
 	nX(nX_) {}
-      
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(rad - nH - 1,j,nV) = v(rad,j,nV);
-	  }
-	}
-      }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
+      void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(rad - nH - 1,j,k,nV) = v(rad,j,k,nV);
+	    v(KFVM_D_DECL(rad - nH - 1,j,k),nV) = v(KFVM_D_DECL(rad + nH,j,k),nV);
 	  }
 	}
       }
@@ -96,58 +85,12 @@ namespace KFVM {
 	nX(nX_) {}
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
+      void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(rad - nH - 1,j,nV) = pf(nV)*v(rad + nH,j,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(rad - nH - 1,j,k,nV) = pf(nV)*v(rad + nH,j,k,nV);
-	  }
-	}
-      }
-    };
-    
-    template<class DataViewType>
-    struct CellBcWest_K<DataViewType,BCType::periodic> {
-      DataViewType v;
-      idx_t rad,nX;
-
-      CellBcWest_K(const DataViewType& v_,idx_t rad_,idx_t nX_):
-	v(v_),
-	rad(rad_),
-	nX(nX_) {}
-      
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(rad - nH - 1 ,j,nV) = v(nX + rad - nH - 1,j,nV);
-	    v(nX + rad + nH,j,nV) = v(rad + nH         ,j,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(rad - nH - 1 ,j,k,nV) = v(nX + rad - nH - 1,j,k,nV);
-	    v(nX + rad + nH,j,k,nV) = v(rad + nH         ,j,k,nV);
+	    v(KFVM_D_DECL(rad - nH - 1,j,k),nV) = pf(nV)*v(KFVM_D_DECL(rad + nH,j,k),nV);
 	  }
 	}
       }
@@ -166,38 +109,26 @@ namespace KFVM {
 	rad(rad_),
 	nX(nX_),
 	t(t_) {}
-    
+      
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
+      void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Get cell center in halo
 	  Real x = geom.xCoord(-nH-1);
 	  Real y = geom.yCoord(j - rad);
-	  // query user defined BCs
-	  Real state[NUM_VARS];
-	  CellWest(v,rad,nX,j,0,nH,x,y,geom.zLo,t,state);
-	  // Copy idx_to view
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(rad - nH - 1,j,nV) = state[nV];
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Get cell center in halo
-	  Real x = geom.xCoord(-nH-1);
-	  Real y = geom.yCoord(j - rad);
-	  Real z = geom.yCoord(k - rad);
+#if (SPACE_DIM == 2)
+	  const idx_t k = 0;
+	  Real z = geom.zLo;
+#else
+	  Real z = geom.zCoord(k - rad);
+#endif
 	  // query user defined BCs
 	  Real state[NUM_VARS];
 	  CellWest(v,rad,nX,j,k,nH,x,y,z,t,state);
 	  // Copy idx_to view
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(rad - nH - 1,j,k,nV) = state[nV];
+	    v(KFVM_D_DECL(rad - nH - 1,j,k),nV) = state[nV];
 	  }
 	}
       }
@@ -213,25 +144,14 @@ namespace KFVM {
 	v(v_),
 	rad(rad_),
 	nX(nX_) {}
-
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(nX + rad + nH,j,nV) = v(nX + rad - 1,j,nV);
-	  }
-	}
-      }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
+      void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(nX + rad + nH,j,k,nV) = v(nX + rad - 1,j,k,nV);
+	    v(KFVM_D_DECL(nX + rad + nH,j,k),nV) = v(KFVM_D_DECL(nX + rad - nH - 1,j,k),nV);
 	  }
 	}
       }
@@ -248,25 +168,14 @@ namespace KFVM {
         pf(pf_),
 	rad(rad_),
 	nX(nX_) {}
-
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(nX + rad + nH,j,nV) = pf(nV)*v(nX + rad - nH - 1,j,nV);
-	  }
-	}
-      }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
+      void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(nX + rad + nH,j,k,nV) = pf(nV)*v(nX + rad - nH - 1,j,k,nV);
+	    v(KFVM_D_DECL(nX + rad + nH,j,k),nV) = pf(nV)*v(KFVM_D_DECL(nX + rad - nH - 1,j,k),nV);
 	  }
 	}
       }
@@ -285,38 +194,26 @@ namespace KFVM {
 	rad(rad_),
 	nX(nX_),
 	t(t_) {}
-
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Get cell center in halo
-	  Real x = geom.xCoord(nX + nH);
-	  Real y = geom.yCoord(j - rad);
-	  // query user defined BCs
-	  Real state[NUM_VARS];
-	  CellEast(v,rad,nX,j,0,nH,x,y,geom.zLo,t,state);
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(nX + rad + nH,j,nV) = state[nV];
-	  }
-	}
-      }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
+      void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Get cell center in halo
 	  Real x = geom.xCoord(nX + nH);
 	  Real y = geom.yCoord(j - rad);
-	  Real z = geom.yCoord(k - rad);
+#if (SPACE_DIM == 2)
+	  const idx_t k = 0;
+	  Real z = geom.zLo;
+#else
+	  Real z = geom.zCoord(k - rad);
+#endif
 	  // query user defined BCs
 	  Real state[NUM_VARS];
 	  CellEast(v,rad,nX,j,k,nH,x,y,z,t,state);
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(nX + rad + nH,j,k,nV) = state[nV];
+	    v(KFVM_D_DECL(nX + rad + nH,j,k),nV) = state[nV];
 	  }
 	}
       }
@@ -332,25 +229,14 @@ namespace KFVM {
 	v(v_),
 	rad(rad_),
 	nY(nY_) {}
-      
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,rad - nH - 1,nV) = v(i,rad,nV);
-	  }
-	}
-      }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
+      void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,rad - nH - 1,k,nV) = v(i,rad,k,nV);
+	    v(KFVM_D_DECL(i,rad - nH - 1,k),nV) = v(KFVM_D_DECL(i,rad + nH,k),nV);
 	  }
 	}
       }
@@ -367,60 +253,14 @@ namespace KFVM {
         pf(pf_),
 	rad(rad_),
 	nY(nY_) {}
-      
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,rad - nH - 1,nV) = pf(nV)*v(i,rad + nH,nV);
-	  }
-	}
-      }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
+      void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,rad - nH - 1,k,nV) = pf(nV)*v(i,rad + nH,k,nV);
-	  }
-	}
-      }
-    };
-
-    template<class DataViewType>
-    struct CellBcSouth_K<DataViewType,BCType::periodic> {
-      DataViewType v;
-      idx_t rad,nY;
-
-      CellBcSouth_K(const DataViewType& v_,idx_t rad_,idx_t nY_):
-	v(v_),
-	rad(rad_),
-	nY(nY_) {}
-      
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,rad - nH - 1 ,nV) = v(i,nY + rad - nH - 1,nV);
-	    v(i,nY + rad + nH,nV) = v(i,rad + nH         ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,rad - nH - 1 ,k,nV) = v(i,nY + rad - nH - 1,k,nV);
-	    v(i,nY + rad + nH,k,nV) = v(i,rad + nH         ,k,nV);
+	    v(KFVM_D_DECL(i,rad - nH - 1,k),nV) = pf(nV)*v(KFVM_D_DECL(i,rad + nH,k),nV);
 	  }
 	}
       }
@@ -441,36 +281,24 @@ namespace KFVM {
 	t(t_) {}
       
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
+      void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Get cell center in halo
 	  Real x = geom.xCoord(i - rad);
 	  Real y = geom.yCoord(-nH - 1);
-	  // query user defined BCs
-	  Real state[NUM_VARS];
-	  CellSouth(v,rad,nY,i,0,nH,x,y,geom.zLo,t,state);
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,rad - nH - 1,nV) = state[nV];
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Get cell center in halo
-	  Real x = geom.xCoord(i - rad);
-	  Real y = geom.yCoord(-nH - 1);
+#if (SPACE_DIM == 2)
+	  const idx_t k = 0;
+	  Real z = geom.zLo;
+#else
 	  Real z = geom.zCoord(k - rad);
+#endif
 	  // query user defined BCs
 	  Real state[NUM_VARS];
 	  CellSouth(v,rad,nY,i,k,nH,x,y,z,t,state);
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,rad - nH - 1,k,nV) = state[nV];
+	    v(KFVM_D_DECL(i,rad - nH - 1,k),nV) = state[nV];
 	  }
 	}
       }
@@ -486,25 +314,14 @@ namespace KFVM {
 	v(v_),
 	rad(rad_),
 	nY(nY_) {}
-
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,nY + rad + nH,nV) = v(i,nY + rad - 1,nV);
-	  }
-	}
-      }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
+      void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,nY + rad + nH,k,nV) = v(i,nY + rad - 1,k,nV);
+	    v(KFVM_D_DECL(i,nY + rad + nH,k),nV) = v(KFVM_D_DECL(i,nY + rad - nH - 1,k),nV);
 	  }
 	}
       }
@@ -521,25 +338,14 @@ namespace KFVM {
         pf(pf_),
 	rad(rad_),
 	nY(nY_) {}
-
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,nY + rad + nH,nV) = pf(nV)*v(i,nY + rad - nH - 1,nV);
-	  }
-	}
-      }
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
+      void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,nY + rad + nH,k,nV) = pf(nV)*v(i,nY + rad - nH - 1,k,nV);
+	    v(KFVM_D_DECL(i,nY + rad + nH,k),nV) = pf(nV)*v(KFVM_D_DECL(i,nY + rad - nH - 1,k),nV);
 	  }
 	}
       }
@@ -558,38 +364,26 @@ namespace KFVM {
 	rad(rad_),
 	nY(nY_),
 	t(t_) {}
-
+      
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
+      void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
 	// Loop over halo
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Get cell center in halo
 	  Real x = geom.xCoord(i - rad);
 	  Real y = geom.yCoord(nY + nH);
-	  // query user defined BCs
-	  Real state[NUM_VARS];
-	  CellNorth(v,rad,nY,i,0,nH,x,y,geom.zLo,t,state);
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,nY + rad + nH,nV) = state[nV];
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Get cell center in halo
-	  Real x = geom.xCoord(i - rad);
-	  Real y = geom.yCoord(nY + nH);
+#if (SPACE_DIM == 2)
+	  const idx_t k = 0;
+	  Real z = geom.zLo;
+#else
 	  Real z = geom.zCoord(k - rad);
+#endif
 	  // query user defined BCs
 	  Real state[NUM_VARS];
 	  CellNorth(v,rad,nY,i,k,nH,x,y,z,t,state);
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,nY + rad + nH,k,nV) = state[nV];
+	    v(KFVM_D_DECL(i,nY + rad + nH,k),nV) = state[nV];
 	  }
 	}
       }
@@ -612,7 +406,7 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,j,rad - nH - 1,nV) = v(i,j,rad,nV);
+	    v(i,j,rad - nH - 1,nV) = v(i,j,rad + nH,nV);
 	  } 
 	}
       }
@@ -637,29 +431,6 @@ namespace KFVM {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(i,j,rad - nH - 1,nV) = pf(nV)*v(i,j,rad + nH,nV);
-	  } 
-	}
-      }
-    };
-    
-    template<class DataViewType>
-    struct CellBcBottom_K<DataViewType,BCType::periodic> {
-      DataViewType v;
-      idx_t rad,nZ;
-
-      CellBcBottom_K(const DataViewType& v_,idx_t rad_,idx_t nZ_):
-	v(v_),
-	rad(rad_),
-	nZ(nZ_) {}
-
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j) const {
-	// Loop over halo
-	for (idx_t nH=0; nH<rad; nH++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,j,rad - nH - 1 ,nV) = v(i,j,nZ + rad - nH - 1,nV);
-	    v(i,j,nZ + rad + nH,nV) = v(i,j,rad + nH         ,nV);
 	  } 
 	}
       }
@@ -715,8 +486,8 @@ namespace KFVM {
 	for (idx_t nH=0; nH<rad; nH++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,j,nZ + rad + nH,nV) = v(i,j,nZ + rad - 1,nV);
-	  }
+	    v(i,j,nZ + rad + nH,nV) = v(i,j,nZ + rad - nH - 1,nV);
+	  } 
 	}
       }
     };
@@ -786,23 +557,13 @@ namespace KFVM {
       FaceBcWest_K(const DataViewType& v_): v(v_) {}
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
+      void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
 	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(j,0,nQ,nV) = v(j,1,nQ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(j,k,0,nQ,nV) = v(j,k,1,nQ,nV);
+	    v(KFVM_DM_DECL(j,k),0,nQ,nV) = v(KFVM_DM_DECL(j,k),1,nQ,nV);
 	  }
 	}
       }
@@ -819,54 +580,13 @@ namespace KFVM {
       {}
     
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
+      void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
 	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(j,0,nQ,nV) = pf(nV)*v(j,1,nQ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(j,k,0,nQ,nV) = pf(nV)*v(j,k,1,nQ,nV);
-	  }
-	}
-      }
-    };
-    
-    template<class DataViewType>
-    struct FaceBcWest_K<DataViewType,BCType::periodic> {
-      DataViewType vW,vE;
-
-      FaceBcWest_K(const DataViewType& vW_,const DataViewType& vE_): vW(vW_),vE(vE_) {}
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    vW(j,0,nQ,nV) = vE(j,0,nQ,nV);
-	    vE(j,1,nQ,nV) = vW(j,1,nQ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    vW(j,k,0,nQ,nV) = vE(j,k,0,nQ,nV);
-	    vE(j,k,1,nQ,nV) = vW(j,k,1,nQ,nV);
+	    v(KFVM_DM_DECL(j,k),0,nQ,nV) = pf(nV)*v(KFVM_DM_DECL(j,k),1,nQ,nV);
 	  }
 	}
       }
@@ -928,25 +648,15 @@ namespace KFVM {
 
       FaceBcEast_K(const DataViewType& v_):
 	v(v_) {}
-    
+      
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
+      void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
 	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(j,1,nQ,nV) = v(j,0,nQ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(j,k,1,nQ,nV) = v(j,k,0,nQ,nV);
+	    v(KFVM_DM_DECL(j,k),1,nQ,nV) = v(KFVM_DM_DECL(j,k),0,nQ,nV);
 	  }
 	}
       }
@@ -961,25 +671,15 @@ namespace KFVM {
 	v(v_),
         pf(pf_)
       {}
-
+      
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j) const {
+      void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
 	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(j,1,nQ,nV) = pf(nV)*v(j,0,nQ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t j,const idx_t k) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(j,k,1,nQ,nV) = pf(nV)*v(j,k,0,nQ,nV);
+	    v(KFVM_DM_DECL(j,k),1,nQ,nV) = pf(nV)*v(KFVM_DM_DECL(j,k),0,nQ,nV);
 	  }
 	}
       }
@@ -998,7 +698,7 @@ namespace KFVM {
 	geom(geom_),
 	ab(ab_),
 	t(t_) {}
-    
+      
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t j) const {
 	// Loop over quadrature points
@@ -1042,25 +742,15 @@ namespace KFVM {
 
       FaceBcSouth_K(const DataViewType& v_):
 	v(v_) {}
-    
+      
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
+      void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
 	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,0,nQ,nV) = v(i,1,nQ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,k,0,nQ,nV) = v(i,k,1,nQ,nV);	    
+	    v(KFVM_DM_DECL(i,k),0,nQ,nV) = v(KFVM_DM_DECL(i,k),1,nQ,nV);	    
 	  }
 	}
       }
@@ -1075,59 +765,18 @@ namespace KFVM {
 	v(v_),
         pf(pf_)
       {}
-
+      
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
+      void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
 	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,0,nQ,nV) = pf(nV)*v(i,1,nQ,nV);
+	    v(KFVM_DM_DECL(i,k),0,nQ,nV) = pf(nV)*v(KFVM_DM_DECL(i,k),1,nQ,nV);
 	  }
 	}
       }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,k,0,nQ,nV) = pf(nV)*v(i,k,1,nQ,nV);
-	  }
-	}
-      }
-    };
-    
-    template<class DataViewType>
-    struct FaceBcSouth_K<DataViewType,BCType::periodic> {
-      DataViewType vS,vN;
-
-      FaceBcSouth_K(const DataViewType& vS_,const DataViewType& vN_): vS(vS_),vN(vN_) {}
-
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    vS(i,0,nQ,nV) = vN(i,0,nQ,nV);
-	    vN(i,1,nQ,nV) = vS(i,1,nQ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    vS(i,k,0,nQ,nV) = vN(i,k,0,nQ,nV);
-	    vN(i,k,1,nQ,nV) = vS(i,k,1,nQ,nV);
-	  }
-	}
-      }      
     };
     
     template<class DataViewType>
@@ -1142,7 +791,7 @@ namespace KFVM {
 	geom(geom_),
 	ab(ab_),
 	t(t_) {}
-
+      
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i) const {
 	// Loop over quadrature points
@@ -1186,25 +835,15 @@ namespace KFVM {
 
       FaceBcNorth_K(const DataViewType& v_):
 	v(v_) {}
-    
+      
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
+      void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
 	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,1,nQ,nV) = v(i,0,nQ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,k,1,nQ,nV) = v(i,k,0,nQ,nV);
+	    v(KFVM_DM_DECL(i,k),1,nQ,nV) = v(KFVM_DM_DECL(i,k),0,nQ,nV);
 	  }
 	}
       }
@@ -1219,25 +858,15 @@ namespace KFVM {
 	v(v_),
         pf(pf_)
       {}
-
+      
       KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i) const {
+      void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
 	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
+	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,1,nQ,nV) = pf(nV)*v(i,0,nQ,nV);
-	  }
-	}
-      }
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t k) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    v(i,k,1,nQ,nV) = pf(nV)*v(i,k,0,nQ,nV);
+	    v(KFVM_DM_DECL(i,k),1,nQ,nV) = pf(nV)*v(KFVM_DM_DECL(i,k),0,nQ,nV);
 	  }
 	}
       }
@@ -1255,7 +884,7 @@ namespace KFVM {
 	geom(geom_),
 	ab(ab_),
 	t(t_) {}
-    
+      
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i) const {
 	// Loop over quadrature points
@@ -1329,25 +958,6 @@ namespace KFVM {
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(i,j,0,nQ,nV) = pf(nV)*v(i,j,1,nQ,nV);
-	  }
-	}
-      }
-    };
-    
-    template<class DataViewType>
-    struct FaceBcBottom_K<DataViewType,BCType::periodic> {
-      DataViewType vB,vT;
-
-      FaceBcBottom_K(const DataViewType& vB_,const DataViewType& vT_): vB(vB_),vT(vT_) {}
-    
-      KOKKOS_INLINE_FUNCTION
-      void operator()(const idx_t i,const idx_t j) const {
-	// Loop over quadrature points
-	for (idx_t nQ=0; nQ<NUM_QUAD_PTS*NUM_QUAD_PTS; nQ++) {
-	  // Loop over SimVars
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    vB(i,j,0,nQ,nV) = vT(i,j,0,nQ,nV);
-	    vT(i,j,1,nQ,nV) = vB(i,j,1,nQ,nV);
 	  }
 	}
       }

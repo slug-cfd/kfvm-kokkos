@@ -9,7 +9,7 @@
 
 #include "Definitions.H"
 #ifndef B0SQ
-#define B0SQ 2000.0
+#define B0SQ 200.0
 #endif
 
 // Western boundary
@@ -85,29 +85,37 @@ void CellSouth(const DataViewType& U,int rad,int nY,
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
-  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z;
-  const Real Rsq = 0.05*0.05,b0 = sqrt(B0SQ);
+  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z, r = sqrt(rsq);
+  const Real R0sq = 0.05*0.05,R1sq = 0.06*0.06,b0 = sqrt(B0SQ);
 
-  if (rsq > Rsq) { // outflow
-    state[0] = U(KFVM_D_DECL(i,rad + nH,k),0);
-    state[1] = U(KFVM_D_DECL(i,rad + nH,k),1);
-    state[2] = U(KFVM_D_DECL(i,rad + nH,k),2);
-    state[3] = U(KFVM_D_DECL(i,rad + nH,k),3);
-    state[4] = U(KFVM_D_DECL(i,rad + nH,k),4);
-    state[5] = U(KFVM_D_DECL(i,rad + nH,k),5);
-    state[6] = U(KFVM_D_DECL(i,rad + nH,k),6);
-    state[7] = U(KFVM_D_DECL(i,rad + nH,k),7);
-    state[8] = U(KFVM_D_DECL(i,rad + nH,k),8);
-  } else { // Jet inflow
-    state[0] = 1.4;
-    state[1] = 0.0;
-    state[2] = 800.0*1.4;
-    state[3] = 0.0;
-    state[4] = 1.0/0.4 + 1.4*800.0*800.0/2.0 + b0*b0/2.0;
-    state[5] = 0.0;
-    state[6] = sqrt(b0);
-    state[7] = 0.0;
-    state[8] = 0.0;
+  // Inflow conditions
+  const Real inState[] = {
+    1.4,
+    0.0,
+    800.0*1.4,
+    0.0,
+    1.0/0.4 + 1.4*800.0*800.0/2.0 + b0*b0/2.0,
+    0.0,
+    b0,
+    0.0,
+    0.0
+  };
+
+  if (rsq > R0sq) { // outflow
+    for (int nV=0; nV<NUM_VARS; nV++) {
+      state[nV] = U(KFVM_D_DECL(i,rad + nH,k),nV);
+    }
+  } else { // Pure inflow
+    for (int nV=0; nV<NUM_VARS; nV++) {
+      state[nV] = inState[nV];
+    }
+  }
+
+  if (rsq > R0sq && rsq <= R1sq) { // linear taper
+    const Real th = (r - 0.05)/0.01;
+    for (int nV=0; nV<NUM_VARS; nV++) {
+      state[nV] = th*state[nV] + (1.0 - th)*inState[nV];
+    }
   }
 }
 
@@ -125,29 +133,37 @@ void FaceSouth(const DataViewType& U,
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
-  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z;
-  const Real Rsq = 0.05*0.05,b0 = sqrt(B0SQ);
+  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z, r = sqrt(rsq);
+  const Real R0sq = 0.05*0.05,R1sq = 0.06*0.06,b0 = sqrt(B0SQ);
 
-  if (rsq > Rsq) { // outflow
-    state[0] = U(KFVM_DM_DECL(i,k),1,nQ,0);
-    state[1] = U(KFVM_DM_DECL(i,k),1,nQ,1);
-    state[2] = U(KFVM_DM_DECL(i,k),1,nQ,2);
-    state[3] = U(KFVM_DM_DECL(i,k),1,nQ,3);
-    state[4] = U(KFVM_DM_DECL(i,k),1,nQ,4);
-    state[5] = U(KFVM_DM_DECL(i,k),1,nQ,5);
-    state[6] = U(KFVM_DM_DECL(i,k),1,nQ,6);
-    state[7] = U(KFVM_DM_DECL(i,k),1,nQ,7);
-    state[8] = U(KFVM_DM_DECL(i,k),1,nQ,8);
-  } else { // Jet inflow
-    state[0] = 1.4;
-    state[1] = 0.0;
-    state[2] = 800.0*1.4;
-    state[3] = 0.0;
-    state[4] = 1.0/0.4 + 1.4*800.0*800.0/2.0 + b0*b0/2.0;
-    state[5] = 0.0;
-    state[6] = b0;
-    state[7] = 0.0;
-    state[8] = 0.0;
+  // Inflow conditions
+  const Real inState[] = {
+    1.4,
+    0.0,
+    800.0*1.4,
+    0.0,
+    1.0/0.4 + 1.4*800.0*800.0/2.0 + b0*b0/2.0,
+    0.0,
+    b0,
+    0.0,
+    0.0
+  };
+
+  if (rsq > R0sq) { // outflow
+    for (int nV=0; nV<NUM_VARS; nV++) {
+      state[nV] = U(KFVM_DM_DECL(i,k),1,nQ,nV);
+    }
+  } else { // Pure inflow
+    for (int nV=0; nV<NUM_VARS; nV++) {
+      state[nV] = inState[nV];
+    }
+  }
+
+  if (rsq > R0sq && rsq <= R1sq) { // linear taper
+    const Real th = (r - 0.05)/0.01;
+    for (int nV=0; nV<NUM_VARS; nV++) {
+      state[nV] = th*state[nV] + (1.0 - th)*inState[nV];
+    }
   }
 }
 
