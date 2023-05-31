@@ -17,11 +17,11 @@ stencil:lfac 5
 
 # Set fluid properties
 properties:gamma 1.4
-properties:wenothresh -1.0
+properties:wenothresh 15.0
 
 # Output settings
 io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename MagAstroJetHD
-io:plotfreq 10
+io:plotfreq 100
 io:ckptfreq 20
