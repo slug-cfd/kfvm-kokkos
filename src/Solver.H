@@ -111,7 +111,7 @@ namespace KFVM {
     }
 
     Real rhsSpeedComm(Real);
-    Real glmSpeedComm(Real,Real);
+    Real glmSpeedComm(Real);
     int timeStepStatusComm(int);
     Real timeStepErrEstComm(Real);
     

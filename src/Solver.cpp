@@ -310,15 +310,15 @@ namespace KFVM {
     auto cellRng = interiorCellRange();
     
     if (eqType == EquationType::MHD_GLM) {
-      Real lLamMax = 0.0,lVMax = 0.0;
+      Real ch_glm = 0.0;
       Kokkos::parallel_reduce("CalculateCH_GLM",cellRng,
         		      Physics::SpeedEstimate_K<eqType>(KFVM_D_DECL(faceVals.xDir,
                                                                            faceVals.yDir,
                                                                            faceVals.zDir),
                                                                ps.fluidProp),
-        		      Kokkos::Max<Real>(lLamMax),Kokkos::Max<Real>(lVMax));
+        		      Kokkos::Max<Real>(ch_glm));
       Kokkos::fence("Solver::evalRHS(GLM reduction)");
-      ps.fluidProp.ch_glm = glmSpeedComm(lLamMax,lVMax);
+      ps.fluidProp.ch_glm = glmSpeedComm(ch_glm);
     }
     
     // Set BCs on Riemann states
@@ -384,16 +384,15 @@ namespace KFVM {
     return rhsSpeedComm(maxVel);
   }
 
-  Real Solver::glmSpeedComm(Real lLamMax,Real lVMax)
+  Real Solver::glmSpeedComm(Real lch)
   {
     if (ps.layoutMPI.size == 1) {
-      return lLamMax - lVMax;
+      return lch;
     }
     
-    Real gLamMax,gVMax;
-    MPI_Allreduce(&lLamMax,&gLamMax,1,ps.layoutMPI.realType,MPI_MAX,ps.layoutMPI.commWorld);
-    MPI_Allreduce(&lVMax,&gVMax,1,ps.layoutMPI.realType,MPI_MAX,ps.layoutMPI.commWorld);
-    return gLamMax - gVMax;
+    Real gch;
+    MPI_Allreduce(&lch,&gch,1,ps.layoutMPI.realType,MPI_MAX,ps.layoutMPI.commWorld);
+    return gch;
   }
 
   Real Solver::rhsSpeedComm(Real lVMax)

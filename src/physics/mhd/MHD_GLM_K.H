@@ -268,96 +268,68 @@ namespace KFVM {
       {}
 
       KOKKOS_INLINE_FUNCTION
-      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& lamMax,Real& vMax) const
+      void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxCh) const
       {
-	using Kokkos::fabs;
 	using Kokkos::fmax;
 	using MHD_GLM::SimVar;
 	using MHD_GLM::ConsVec;
-	using MHD_GLM::PrimVar;
-	using MHD_GLM::PrimVec;
 	
 	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
+	const Real pf = 0.99;
 
 	// Check x-faces
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
+	  Real cfVel;
 	  ConsVec uM,uP;
-          PrimVec vM,vP;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uM[nV] = rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV);
 	    uP[nV] = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV);
 	  }
-          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uM,vM);
-          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uP,vP);
 	  
-	  // Get fast mag sonic speeds
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uM));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uP));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicY(fProp.gamma,uM));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicY(fProp.gamma,uP));
-#if (SPACE_DIM == 3)
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicZ(fProp.gamma,uM));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicZ(fProp.gamma,uP));
-#endif
-          // Get max velocities
-          vMax = fmax(vMax,fabs(vM[PrimVar::velx])); vMax = fmax(vMax,fabs(vP[PrimVar::velx]));
-          vMax = fmax(vMax,fabs(vM[PrimVar::vely])); vMax = fmax(vMax,fabs(vP[PrimVar::vely]));
-          vMax = fmax(vMax,fabs(vM[PrimVar::velz])); vMax = fmax(vMax,fabs(vP[PrimVar::velz]));
+	  // Get fast mag sonic speed and longitudinal speed (x faces)
+	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uM);
+	  maxCh = fmax(maxCh,pf*cfVel);
+	  
+	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uP);
+	  maxCh = fmax(maxCh,pf*cfVel);
 	}
 
 	// Check y-faces
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
+	  Real cfVel;
 	  ConsVec uM,uP;
-          PrimVec vM,vP;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uM[nV] = rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV);
 	    uP[nV] = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV);
 	  }
-          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uM,vM);
-          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uP,vP);
 	  
-	  // Get fast mag sonic speeds
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uM));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uP));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicY(fProp.gamma,uM));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicY(fProp.gamma,uP));
-#if (SPACE_DIM == 3)
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicZ(fProp.gamma,uM));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicZ(fProp.gamma,uP));
-#endif
-          // Get max velocities
-          vMax = fmax(vMax,fabs(vM[PrimVar::velx])); vMax = fmax(vMax,fabs(vP[PrimVar::velx]));
-          vMax = fmax(vMax,fabs(vM[PrimVar::vely])); vMax = fmax(vMax,fabs(vP[PrimVar::vely]));
-          vMax = fmax(vMax,fabs(vM[PrimVar::velz])); vMax = fmax(vMax,fabs(vP[PrimVar::velz]));
+	  // Get fast mag sonic speed and longitudinal speed (y faces)
+	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicY(fProp.gamma,uM);
+	  maxCh = fmax(maxCh,pf*cfVel);
+	  
+	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicY(fProp.gamma,uP);
+	  maxCh = fmax(maxCh,pf*cfVel);
 	}
 
 #if (SPACE_DIM == 3)
 	// Check z-faces
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
+	  Real cfVel;
 	  ConsVec uM,uP;
-          PrimVec vM,vP;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uM[nV] = rsZ(i,j,k    ,1,nQ,nV);
 	    uP[nV] = rsZ(i,j,k + 1,0,nQ,nV);
 	  }
-          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uM,vM);
-          EOS<EquationType::MHD_GLM>::cons2prim(fProp.gamma,uP,vP);
 	  
-	  // Get fast mag sonic speeds
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uM));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uP));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicY(fProp.gamma,uM));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicY(fProp.gamma,uP));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicZ(fProp.gamma,uM));
-	  lamMax = fmax(lamMax,EOS<EquationType::MHD_GLM>::fastMagSonicZ(fProp.gamma,uP));
-
-          // Get max velocities
-          vMax = fmax(vMax,fabs(vM[PrimVar::velx])); vMax = fmax(vMax,fabs(vP[PrimVar::velx]));
-          vMax = fmax(vMax,fabs(vM[PrimVar::vely])); vMax = fmax(vMax,fabs(vP[PrimVar::vely]));
-          vMax = fmax(vMax,fabs(vM[PrimVar::velz])); vMax = fmax(vMax,fabs(vP[PrimVar::velz]));
+	  // Get fast mag sonic speed and longitudinal speed (z faces)
+	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicZ(fProp.gamma,uM);
+	  maxCh = fmax(maxCh,pf*cfVel);
+	  
+	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicZ(fProp.gamma,uP);
+	  maxCh = fmax(maxCh,pf*cfVel);
 	}
 #endif
       }
