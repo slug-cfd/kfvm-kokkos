@@ -61,7 +61,7 @@ namespace KFVM {
 	U[SimVar::momx] = U[SimVar::dens]*W*h*V[PrimVar::velx];
 	U[SimVar::momy] = U[SimVar::dens]*W*h*V[PrimVar::vely];
 	U[SimVar::momz] = U[SimVar::dens]*W*h*V[PrimVar::velz];
-	U[SimVar::tau] = U[SimVar::dens]*(W*h - Real(1.0)) - V[PrimVar::pres];
+	U[SimVar::etot] = W*h*U[SimVar::dens] - V[PrimVar::pres];
       }
       
       // Generate initial guess as center of bracket range
@@ -75,7 +75,7 @@ namespace KFVM {
 	const Real S = sqrt(U[SimVar::momx]*U[SimVar::momx] +
 			    U[SimVar::momy]*U[SimVar::momy] +
 			    U[SimVar::momz]*U[SimVar::momz]);
-	const Real k = S/(U[SimVar::tau] + U[SimVar::dens]);
+	const Real k = S/U[SimVar::etot];
 
 	// Bracket is on z = Wv
 	const Real zm = k/(Real(2.0)*sqrt(Real(1.0) - k*k/Real(4.0)));
@@ -87,7 +87,7 @@ namespace KFVM {
 
 	// convert that to pressure and return
         const Real gRatio = gam/(gam - Real(1.0));
-        return (U[SimVar::tau] + U[SimVar::dens])/(Wsq*gRatio - Real(1.0));
+        return U[SimVar::etot]/(Wsq*gRatio - Real(1.0));
       }
 
       // Get pressure by NR process
@@ -105,7 +105,7 @@ namespace KFVM {
 
 	// Pull out useful quantities
 	const Real gamm = gam - Real(1.0);
-	const Real D = U[SimVar::dens],T = U[SimVar::tau];
+	const Real D = U[SimVar::dens],E = U[SimVar::etot];
 	const Real SS = (U[SimVar::momx]*U[SimVar::momx] +
 			 U[SimVar::momy]*U[SimVar::momy] +
 			 U[SimVar::momz]*U[SimVar::momz]);
@@ -116,7 +116,7 @@ namespace KFVM {
 	// Do NR iteration to tolerance
 	for (int n=0; n<maxIt; n++) {
 	  // get rho and internal energy from U and current p
-	  const Real tpd = D + T + p;
+	  const Real tpd = E + p;
 	  const Real rt = sqrt(tpd*tpd - SS);
 	  const Real rho = D*rt/tpd;
 	  const Real ei = (rt - p*tpd/rt - D)/D;
@@ -146,7 +146,7 @@ namespace KFVM {
 	using SRHydro::SimVar;
         using Kokkos::sqrt;
 
-	const Real DhW = U[SimVar::tau] + p + U[SimVar::dens];
+	const Real DhW = U[SimVar::etot] + p;
         const Real DhWsq = DhW*DhW;
         const Real msq =
           U[SimVar::momx]*U[SimVar::momx] +
@@ -177,8 +177,7 @@ namespace KFVM {
       {
 	using SRHydro::SimVar;
         
-        // return pres(fProp.gamma,10,U);
-        return U[SimVar::tau];
+        return pres(fProp.gamma,10,U);
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -199,14 +198,15 @@ namespace KFVM {
         using Kokkos::fmin;
 	using SRHydro::SimVar;
 
-        // Calculate lower bound on tau
-        const Real tauDiff = U[SimVar::tau]*U[SimVar::tau] + Real(2.0)*U[SimVar::dens]*U[SimVar::tau] - 
-          (U[SimVar::momx]*U[SimVar::momx] + U[SimVar::momy]*U[SimVar::momy] + U[SimVar::momz]*U[SimVar::momz]);
-
-        // Note that the bound on tau also guarantees positive pressure
+        // Calculate lower bound on etot
+        const Real etotDiff = U[SimVar::etot]*U[SimVar::etot] - (U[SimVar::dens]*U[SimVar::dens] + 
+                                                                 U[SimVar::momx]*U[SimVar::momx] +
+                                                                 U[SimVar::momy]*U[SimVar::momy] +
+                                                                 U[SimVar::momz]*U[SimVar::momz]);
+        
+        // Note that the bound on etot also guarantees positive pressure
         // and subluminal velocities
-        return U[SimVar::dens];
-        return fmin(U[SimVar::dens],tauDiff);
+        return fmin(U[SimVar::dens],etotDiff);
       }
     };
     

@@ -9,14 +9,15 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   (void) x;
   (void) z;
   
-  const Real ay = Kokkos::fabs(y),gam = 4.0/3.0,gamm = gam - 1.0;
-  const Real vy = ay<0.5 ? 0.9 : 0.0,W = 1.0/Kokkos::sqrt(1.0 - vy*vy);
-  const Real p = ay<0.5 ? 1.0 : 10.0;
-  const Real h = 1.0 + p*gam/gamm;
+  const Real ay = Kokkos::fabs(y),gam = 5.0/3.0,gamm = gam - 1.0;
+  const Real W = 1.0;
+  const Real rho = ay<0.5 ? 10.0 : 1.0;
+  const Real p = ay<0.5 ? 40.0/3.0 : 1.e-6;
+  const Real h = 1.0 + (gam/gamm)*(p/rho);
   
-  state[SimVar::dens] = W;
+  state[SimVar::dens] = rho*W;
   state[SimVar::momx] = 0.0;
-  state[SimVar::momy] = W*W*h*vy;
+  state[SimVar::momy] = 0.0;
   state[SimVar::momz] = 0.0;
-  state[SimVar::tau] = W*W*h - p - W;
+  state[SimVar::etot] = rho*W*W*h - p;
 }

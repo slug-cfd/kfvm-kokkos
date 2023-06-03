@@ -3,7 +3,7 @@ cons_datasets: &cons_datasets
   momx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   momy: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   momz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
-  tau: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  etot: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   weno: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
 
 all_datasets: &all_datasets
@@ -11,7 +11,7 @@ all_datasets: &all_datasets
   momx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   momy: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   momz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
-  tau: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  etot: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   weno: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   rho: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   velx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]']}
@@ -52,8 +52,8 @@ momz_description: &momz_description
     start: [3, '$nghost[2]', '$nghost[1]', '$nghost[0]']
   dataset_selection: *fld_dataset_selection
 
-tau_description: &tau_description
-  dataset: tau
+etot_description: &etot_description
+  dataset: etot
   memory_selection:
     size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     start: [4, '$nghost[2]', '$nghost[1]', '$nghost[0]']
@@ -163,7 +163,7 @@ pdi:
           - *momx_description
           - *momy_description
           - *momz_description
-          - *tau_description
+          - *etot_description
         aux_field:
           - *rho_description
           - *velx_description
@@ -192,7 +192,7 @@ pdi:
           - *momx_description
           - *momy_description
           - *momz_description
-          - *tau_description
+          - *etot_description
         weno_field:
           - *weno_description
           
@@ -209,6 +209,6 @@ pdi:
           - *momx_description
           - *momy_description
           - *momz_description
-          - *tau_description
+          - *etot_description
         weno_field:
           - *weno_description

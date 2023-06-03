@@ -44,7 +44,7 @@ namespace KFVM {
     namespace SRHydro {
 
       struct SimVar {
-        enum var { dens = 0, momx, momy, momz, tau};
+        enum var { dens = 0, momx, momy, momz, etot};
       };
       struct PrimVar {
         enum var { rho = 0, velx, vely, velz, lorz, pres};

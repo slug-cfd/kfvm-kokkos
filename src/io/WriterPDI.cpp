@@ -271,7 +271,7 @@ namespace KFVM {
     {
       writeAttributeScalar(ofs,"dens");
       writeAttributeVector(ofs,"mom","momx","momy","momz");
-      writeAttributeScalar(ofs,"tau");
+      writeAttributeScalar(ofs,"etot");
       if (plotMode) {
 	writeAttributeScalar(ofs,"rho");
 	writeAttributeVector(ofs,"vel","velx","vely","velz");

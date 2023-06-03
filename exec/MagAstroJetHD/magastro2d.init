@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 256 384
+mesh:resolution 128 192
 mesh:numblocks 1 1
 mesh:extent -0.5 0.5 0.0 1.5
 
@@ -7,7 +7,7 @@ mesh:extent -0.5 0.5 0.0 1.5
 time:initial 0.0
 time:final 0.002
 time:initialdt 1.e-10
-time:cfl 1.2
+time:cfl 1.5
 time:maxsteps 20000
 time:atol 1.e-3
 time:rtol 1.e-3

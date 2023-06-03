@@ -27,7 +27,7 @@ namespace KFVM {
       F[ord[0]] = u[ord[0]]*v[ord[0]] + v[PrimVar::pres];
       F[ord[1]] = u[ord[1]]*v[ord[0]];
       F[ord[2]] = u[ord[2]]*v[ord[0]];
-      F[SimVar::tau] = u[ord[0]] - u[SimVar::dens]*v[ord[0]];
+      F[SimVar::etot] = u[ord[0]];
     }
       
     // Wavespeed estimates
@@ -128,8 +128,8 @@ namespace KFVM {
           F[ord[0]] = hll(sL,sR,F[ord[0]],FT[ord[0]],uL[ord[0]],uR[ord[0]]);
           F[ord[1]] = hll(sL,sR,F[ord[1]],FT[ord[1]],uL[ord[1]],uR[ord[1]]);
           F[ord[2]] = hll(sL,sR,F[ord[2]],FT[ord[2]],uL[ord[2]],uR[ord[2]]);
-          F[SimVar::tau] = hll(sL,sR,F[SimVar::tau],FT[SimVar::tau],
-                                uL[SimVar::tau],uR[SimVar::tau]);
+          F[SimVar::etot] = hll(sL,sR,F[SimVar::etot],FT[SimVar::etot],
+                                uL[SimVar::etot],uR[SimVar::etot]);
         }
       } else {
         srhydroFlux(gamma,ord,uR,vR,F);

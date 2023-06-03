@@ -26,7 +26,7 @@ namespace KFVM {
     template<>
     class VarConvert<EquationType::SRHydro>
     {
-      Real D,Sx,Sy,Sz,tau;
+      Real D,Sx,Sy,Sz,etot;
       
     public:
       
@@ -40,7 +40,7 @@ namespace KFVM {
 	Sx = ref_[SimVar::momx];
 	Sy = ref_[SimVar::momy];
 	Sz = ref_[SimVar::momz];
-	tau = ref_[SimVar::tau];
+	etot = ref_[SimVar::etot];
       }
 
       template<class T>
@@ -364,13 +364,12 @@ namespace KFVM {
 	  refState[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
 	Real rDens = refState[SimVar::dens];
-	Real rTau = refState[SimVar::tau];
+        Real edRef = eDiff(refState);
 	
-	// Find ranges of density and tau
+	// Find ranges of density and etot
 	Real maxDens = -std::numeric_limits<Real>::max();
 	Real minDens = std::numeric_limits<Real>::max();
-	Real minTau = std::numeric_limits<Real>::max();
-	Real minTauDiff = std::numeric_limits<Real>::max();
+	Real minEDiff = std::numeric_limits<Real>::max();
 	for (idx_t xo=-1; xo<=1; xo++) {
 	  for (idx_t yo=-1; yo<=1; yo++) {
 #if (SPACE_DIM == 3)
@@ -382,8 +381,7 @@ namespace KFVM {
 	      }
 	      maxDens = fmax(maxDens,state[SimVar::dens]);
 	      minDens = fmin(minDens,state[SimVar::dens]);
-	      minTau = fmin(minTau,state[SimVar::tau]);
-	      minTauDiff = fmin(minTauDiff,tauDiff(state));
+	      minEDiff = fmin(minEDiff,eDiff(state));
 #if (SPACE_DIM == 3)
 	    }
 #endif
@@ -463,117 +461,50 @@ namespace KFVM {
 	    }
 	  }
 	}
-
-	// Enforce lower bound on tau
-	Real rTauDiff = rTau - minTau;
-	// Find mixing amount
-	theta = Real(1.0);
-	for (idx_t nQ=0; nQ<nQuad; nQ++) {
-	  // West face
-          Real Tau = rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
-	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
-	  // East face
-          Tau = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,SimVar::tau);
-	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
-	  // South face
-          Tau = rsY(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
-	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
-	  // North face
-          Tau = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,SimVar::tau);
-	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
-#if (SPACE_DIM == 3)
-	  // Bottom face
-          Tau = rsZ(KFVM_D_DECL(i,j,k),1,nQ,SimVar::tau);
-	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
-	  // Top face
-          Tau = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,SimVar::tau);
-	  theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
-#endif
-	}
-
-	// Find mixing amount given by interior values
-	if (haveSources) {
-	  int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
-	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
-	      for (int nS=0; nS<nzQuad; nS++) {
-		Real Tau = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),SimVar::tau);
-		theta = Tau<minTau ? fmin(theta,rTauDiff/(rTau - Tau)) : theta;
-	      }
-	    }
-	  }
-	}
-	
-	// Apply mixing
-	for (idx_t nQ=0; nQ<nQuad; nQ++) {
-	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
-	    rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) - refState[nV]);
-	    rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV) - refState[nV]);
-	    rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) = refState[nV] + theta*(rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV) - refState[nV]);
-	    rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV) = refState[nV] + theta*(rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV) - refState[nV]);
-#if (SPACE_DIM == 3)
-	    rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k    ),1,nQ,nV) - refState[nV]);
-	    rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) = refState[nV] + theta*(rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV) - refState[nV]);
-#endif
-	  }
-	}
-	if (haveSources) {
-	  int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
-	  for (int nQ=0; nQ<NUM_QUAD_PTS; nQ++) {
-	    for (int nR=0; nR<NUM_QUAD_PTS; nR++) {
-	      for (int nS=0; nS<nzQuad; nS++) {
-		for (idx_t nV=0; nV<NUM_VARS; nV++) {
-		  source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV) =
-		    refState[nV] + theta*(source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV) - refState[nV]);
-		}
-	      }
-	    }
-	  }
-	}
-
-	// Enforce lower bound on tauDiff
+        
+	// Enforce lower bound on eDiff
 	// Find mixing amount
 	theta = Real(1.0);
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
           ConsVec state;
-          Real td;
+          Real ed;
 	  // West face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsX(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-          td = tauDiff(state);
-          theta = td >= minTauDiff ? theta : fmin(theta,tauBound(minTauDiff,refState,state));
+          ed = eDiff(state);
+          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
 	  // East face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV);
 	  }
-          td = tauDiff(state);
-          theta = td >= minTauDiff ? theta : fmin(theta,tauBound(minTauDiff,refState,state));
+          ed = eDiff(state);
+          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
 	  // South face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-          td = tauDiff(state);
-          theta = td >= minTauDiff ? theta : fmin(theta,tauBound(minTauDiff,refState,state));
+          ed = eDiff(state);
+          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
 	  // North face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV);
 	  }
-          td = tauDiff(state);
-          theta = td >= minTauDiff ? theta : fmin(theta,tauBound(minTauDiff,refState,state));
+          ed = eDiff(state);
+          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
 #if (SPACE_DIM == 3)
 	  // Bottom face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-          td = tauDiff(state);
-          theta = td >= minTauDiff ? theta : fmin(theta,tauBound(minTauDiff,refState,state));
+          ed = eDiff(state);
+          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
 	  // Top face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV);
 	  }
-          td = tauDiff(state);
-          theta = td >= minTauDiff ? theta : fmin(theta,tauBound(minTauDiff,refState,state));
+          ed = eDiff(state);
+          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
 #endif
 	}
 
@@ -587,8 +518,8 @@ namespace KFVM {
 		for (int nV=0; nV<NUM_VARS; nV++) {
 		  state[nV] = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV);
 		}
-		Real td = tauDiff(state);
-		theta = td >= minTauDiff ? theta : fmin(theta,tauBound(minTauDiff,refState,state));
+		Real ed = eDiff(state);
+		theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
 	      }
 	    }
 	  }
@@ -623,7 +554,7 @@ namespace KFVM {
       }
 
       KOKKOS_INLINE_FUNCTION
-      Real tauDiff(const SRHydro::ConsVec state) const
+      Real eDiff(const SRHydro::ConsVec state) const
       {
 	using SRHydro::SimVar;
         
@@ -631,41 +562,26 @@ namespace KFVM {
                           state[SimVar::momy]*state[SimVar::momy] +
                           state[SimVar::momz]*state[SimVar::momz]);
         
-        return state[SimVar::tau]*state[SimVar::tau] + Real(2.0)*state[SimVar::dens]*state[SimVar::tau] - sSq;
+        return state[SimVar::etot]*state[SimVar::etot] - (state[SimVar::dens]*state[SimVar::dens] + sSq);
       }
       
       KOKKOS_INLINE_FUNCTION
-      Real tauBound(const Real minTauDiff,
-                    const SRHydro::ConsVec refState,const SRHydro::ConsVec state) const
+      Real edBound(const Real ed,const Real edRef,const Real minEDiff,
+                   const SRHydro::ConsVec refState,const SRHydro::ConsVec state) const
       {
 	using Kokkos::sqrt;
 	using SRHydro::SimVar;
-
-        return Real(0.0);
-
-        const Real sBarSq = (refState[SimVar::momx]*refState[SimVar::momx] +
-                             refState[SimVar::momy]*refState[SimVar::momy] +
-                             refState[SimVar::momz]*refState[SimVar::momz]);
-        const Real sSq = (state[SimVar::momx]*state[SimVar::momx] +
-                          state[SimVar::momy]*state[SimVar::momy] +
-                          state[SimVar::momz]*state[SimVar::momz]);
+        
         const Real sBarDS = (refState[SimVar::momx]*state[SimVar::momx] +
                              refState[SimVar::momy]*state[SimVar::momy] +
                              refState[SimVar::momz]*state[SimVar::momz]);
+        const Real UUbar = state[SimVar::etot]*refState[SimVar::etot] - state[SimVar::dens]*refState[SimVar::dens] - sBarDS;
       
-	const Real A = Real(2.0)*(refState[SimVar::dens]*refState[SimVar::tau] + state[SimVar::dens]*state[SimVar::tau] -
-                                  refState[SimVar::dens]*state[SimVar::tau] - state[SimVar::dens]*refState[SimVar::tau] -
-                                  refState[SimVar::tau]*state[SimVar::tau] +
-                                  sBarDS) +
-          refState[SimVar::tau]*refState[SimVar::tau] + state[SimVar::tau]*state[SimVar::tau] - sBarSq - sSq;
+	const Real A = ed + edRef - Real(2.0)*UUbar;
         
-	const Real B = Real(2.0)*(refState[SimVar::dens]*state[SimVar::tau] + state[SimVar::dens]*refState[SimVar::tau] +
-                                  refState[SimVar::tau]*state[SimVar::tau] + sBarSq - refState[SimVar::tau]*refState[SimVar::tau] -
-                                  Real(2.0)*refState[SimVar::dens]*refState[SimVar::tau] - sBarDS);
+	const Real B = Real(2.0)*(UUbar - edRef);
       
-	const Real C = (refState[SimVar::tau]*refState[SimVar::tau] +
-                        Real(2.0)*refState[SimVar::dens]*refState[SimVar::tau] -
-                        sBarSq - minTauDiff);
+	const Real C = edRef - minEDiff;
 
 	Real rtdisc = sqrt(B*B - Real(4.0)*A*C);
 	Real th1 = (-B + rtdisc)/(Real(2.0)*A),th2 = (-B - rtdisc)/(Real(2.0)*A);
