@@ -17,11 +17,11 @@ stencil:lfac 5
 
 # Set fluid properties
 properties:gamma 1.66666666666666
-properties:wenothresh 5.0
+properties:wenothresh -1.0
 
 # Output settings
 io:pdiconf ../../user/pdi_srhydro_xdmf.yml
 io:datadir data
 io:basename AstroJetSR
-io:plotfreq 20
+io:plotfreq 100
 io:ckptfreq 20

@@ -54,44 +54,75 @@ namespace KFVM {
         using SRHydro::PrimVar;
 
 	// Get enthalpy
-	const Real ei = eint(gam,V),h = Real(1.0) + gam*ei;
+	const Real h = enthalpy(gam,V);
         const Real W = V[PrimVar::lorz];
 
 	U[SimVar::dens] = V[PrimVar::rho]*W;
 	U[SimVar::momx] = U[SimVar::dens]*W*h*V[PrimVar::velx];
 	U[SimVar::momy] = U[SimVar::dens]*W*h*V[PrimVar::vely];
 	U[SimVar::momz] = U[SimVar::dens]*W*h*V[PrimVar::velz];
-	U[SimVar::etot] = W*h*U[SimVar::dens] - V[PrimVar::pres];
+	U[SimVar::etot] = U[SimVar::dens]*W*h - V[PrimVar::pres];
       }
-      
-      // Generate initial guess as center of bracket range
-      // using eq. D.32 in Relativistic Hydrodynamics
+
+      // All pressure recovery methods come from https://doi.org/10.48550/arXiv.2305.14805
+      // Initial guess given by eqs (2.21) and (2.16)
       KOKKOS_INLINE_FUNCTION
       static Real presGuess(const Real gam,const SRHydro::ConsVec U)
       {
 	using Kokkos::sqrt;
 	using SRHydro::SimVar;
 
-	const Real S = sqrt(U[SimVar::momx]*U[SimVar::momx] +
-			    U[SimVar::momy]*U[SimVar::momy] +
-			    U[SimVar::momz]*U[SimVar::momz]);
-	const Real k = S/U[SimVar::etot];
+	const Real ESsq = U[SimVar::etot]*U[SimVar::etot] - (U[SimVar::momx]*U[SimVar::momx] +
+							     U[SimVar::momy]*U[SimVar::momy] +
+							     U[SimVar::momz]*U[SimVar::momz]);
 
-	// Bracket is on z = Wv
-	const Real zm = k/(Real(2.0)*sqrt(Real(1.0) - k*k/Real(4.0)));
-	const Real zp = k/sqrt(Real(1.0) - k*k);
-	const Real zc = (zm + zp)/Real(2.0);
+	if (U[SimVar::dens] >= ESsq/U[SimVar::etot]) {
+	  return 0.0;
+	}
 
-	// This gives estimate of Lorenz factor and enthalpy
-	const Real Wsq = Real(1.0) + zc*zc;
-
-	// convert that to pressure and return
-        const Real gRatio = gam/(gam - Real(1.0));
-        return U[SimVar::etot]/(Wsq*gRatio - Real(1.0));
+	const Real gm2E = (gam - Real(2.0))*U[SimVar::etot];
+	const Real gm = gam - Real(1.0);
+        return (gm2E + sqrt(gm2E*gm2E -
+			    Real(4.0)*gm*(U[SimVar::dens]*sqrt(ESsq) - ESsq)))/Real(2.0);
       }
 
-      // Get pressure by NR process
-      // Consult appendix D of Relativistic Hydrodynamics
+      // More stable scheme, algo (2.3)
+      KOKKOS_INLINE_FUNCTION
+      static Real presStable(const Real gam,const int maxIt,const Real rtol,const SRHydro::ConsVec U,Real p)
+      {
+	using Kokkos::fabs;
+	using Kokkos::fmax;
+	using Kokkos::sqrt;
+	using SRHydro::SimVar;
+
+	// Useful quantities
+	const Real gm = gam - Real(1.0);
+	const Real gm2 = gam - Real(2.0);
+	const Real D = U[SimVar::dens];
+	const Real E = U[SimVar::etot];
+	const Real Ssq = (U[SimVar::momx]*U[SimVar::momx] +
+			  U[SimVar::momy]*U[SimVar::momy] +
+			  U[SimVar::momz]*U[SimVar::momz]);
+	for (int n=0; n<maxIt; n++) {
+	  // Recurring quantities
+	  const Real EP = E + p;
+	  const Real rt = sqrt(EP*EP - Ssq);
+	  
+	  // Evaluate psi and derivative
+	  const Real psiP = Ssq + EP*(p/gm - E) + D*rt;
+	  const Real dpsiP = (Real(2.0)*p - gm2*E)/gm + D*EP/rt;
+
+	  // Update p and test for convergence
+	  const Real dp = -psiP/dpsiP;
+	  if (fabs(dp)/p < rtol) {
+	    break;
+	  }
+	  p += dp;
+	}
+	
+        return p;
+      }
+      
       KOKKOS_INLINE_FUNCTION
       static Real pres(const Real gam,const int maxIt,const SRHydro::ConsVec U)
       {
@@ -101,40 +132,50 @@ namespace KFVM {
 	using SRHydro::SimVar;
 
 	// Set tolerances
-	const Real rtol = Real(1.e-10);
-
-	// Pull out useful quantities
-	const Real gamm = gam - Real(1.0);
-	const Real D = U[SimVar::dens],E = U[SimVar::etot];
-	const Real SS = (U[SimVar::momx]*U[SimVar::momx] +
-			 U[SimVar::momy]*U[SimVar::momy] +
-			 U[SimVar::momz]*U[SimVar::momz]);
+	const Real eps1 = Real(0.01),eps2 = Real(1.e-4);
+	const Real rtol = Real(1.e-9);
 	
 	// Use bracket to get decent initial guess
 	Real p = presGuess(gam,U);
+	
+	// Check which scheme to apply
+	const Real Dsq = U[SimVar::dens]*U[SimVar::dens];
+	const Real Esq = U[SimVar::etot]*U[SimVar::etot];
+	const Real Ssq = (U[SimVar::momx]*U[SimVar::momx] +
+			  U[SimVar::momy]*U[SimVar::momy] +
+			  U[SimVar::momz]*U[SimVar::momz]);
+	const Real ESsq = Esq - Ssq;
+	// Immediately swap to stable version
+	if (Dsq/ESsq < eps2) {
+	  return presStable(gam,maxIt,rtol,U,p);
+	}
 
-	// Do NR iteration to tolerance
+	// Do fast version unless lorenz factor is bad
+	// Algorithm (2.1)
+	const Real gm = gam - Real(1.0);
+	const Real gm2 = gam - Real(2.0);
+	const Real c0 = -ESsq*(Dsq - ESsq)*gm*gm;
+	const Real c1 = Real(2.0)*U[SimVar::etot]*(gm2*ESsq*gm - Dsq*gm*gm);
+	const Real c2 = Esq*(gam*gam - Real(6.0)*gm) + Real(2.0)*Ssq*gm - Dsq*gm*gm;
+	const Real c3 = -Real(2.0)*U[SimVar::etot]*gm2;
 	for (int n=0; n<maxIt; n++) {
-	  // get rho and internal energy from U and current p
-	  const Real tpd = E + p;
-	  const Real rt = sqrt(tpd*tpd - SS);
-	  const Real rho = D*rt/tpd;
-	  const Real ei = (rt - p*tpd/rt - D)/D;
+	  // Test lorenz factor
+	  // revert to stable if needed
+	  const Real W = lorenz(p,U);
+	  if (W < Real(1.0) + eps1) {
+	    return presStable(gam,maxIt,rtol,U,p);
+	  }
+	  
+	  // Evaluate pressure polynomial and derivative
+	  const Real phiP = c0 + p*(c1 + p*(c2 + p*(c3 + p)));
+	  const Real dphiP = c1 + p*(Real(2.0)*c2 + p*(Real(3.0)*c3 + p));
 
-	  // get p from this rho and eint
-	  const Real phat = gamm*rho*ei;
-
-	  // test p for convergence
-	  if (rtol*fmin(p,phat) > fabs(p - phat)) {
+	  // Update p and test for convergence
+	  const Real dp = -phiP/dphiP;
+	  if (fabs(dp)/p < rtol) {
 	    break;
 	  }
-
-	  // update p
-	  const Real drdp = D*SS/(rt*tpd*tpd);
-	  const Real dedp = p*SS/(rho*tpd*(tpd*tpd - SS));
-	  const Real dFdp = Real(1.0) - gamm*(ei*drdp + rho*dedp);
-
-	  p -= (p - phat)/dFdp;
+	  p += dp;
 	}
 	
         return p;
@@ -173,11 +214,28 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
+      static Real enthalpy(const Real gam,const Real p,const SRHydro::ConsVec U)
+      {
+	using SRHydro::SimVar;
+        
+        const Real rho = U[SimVar::dens]/lorenz(p,U);
+        return Real(1.0) + gam*p/((gam - Real(1.0))*rho);
+      }
+      
+      KOKKOS_INLINE_FUNCTION
+      static Real enthalpy(const Real gam,const SRHydro::PrimVec V)
+      {
+	using SRHydro::PrimVar;
+        
+        return Real(1.0) + gam*V[PrimVar::pres]/((gam - Real(1.0))*V[PrimVar::rho]);
+      }
+      
+      KOKKOS_INLINE_FUNCTION
       static Real weno(const SRHydro::ConsVec U,const FluidProperties& fProp)
       {
 	using SRHydro::SimVar;
         
-        return pres(fProp.gamma,10,U);
+        return U[SimVar::dens];
       }
       
       KOKKOS_INLINE_FUNCTION
@@ -186,8 +244,7 @@ namespace KFVM {
 	using SRHydro::PrimVar;
         using Kokkos::sqrt;
 
-        const Real ei = eint(gam,V);
-	const Real h = Real(1.0) + gam*ei;
+	const Real h = enthalpy(gam,V);
         
         return sqrt(gam*V[PrimVar::pres]/(V[PrimVar::rho]*h));
       }

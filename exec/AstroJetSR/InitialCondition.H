@@ -28,5 +28,5 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   state[SimVar::momx] = rho*W*W*h*vx;
   state[SimVar::momy] = 0.0;
   state[SimVar::momz] = 0.0;
-  state[SimVar::tau] = rho*W*W*h - p;
+  state[SimVar::etot] = rho*W*W*h - p;
 }

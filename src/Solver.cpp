@@ -112,7 +112,8 @@ namespace KFVM {
       }
     }
 
-    PrintSingle(ps,"Time stepping completed\n  %d RHS evals and %d/%d rejected (accuracy/unphysical) steps\n",nRhsEval,nRejectThresh,nRejectUnphys);
+    PrintSingle(ps,"Time stepping completed\n  %d RHS evals and %d/%d rejected (accuracy/unphysical) steps\n",
+		nRhsEval,nRejectThresh,nRejectUnphys);
 
     Kokkos::Profiling::popRegion();
   }

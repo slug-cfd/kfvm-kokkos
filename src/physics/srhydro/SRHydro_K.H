@@ -463,6 +463,7 @@ namespace KFVM {
 	}
         
 	// Enforce lower bound on eDiff
+	Real eDiffDiff = edRef - minEDiff;
 	// Find mixing amount
 	theta = Real(1.0);
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
@@ -473,38 +474,38 @@ namespace KFVM {
 	    state[nV] = rsX(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
           ed = eDiff(state);
-          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
+	  theta = ed<minEDiff ? fmin(theta,eDiffDiff/(edRef - ed)) : theta;
 	  // East face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV);
 	  }
           ed = eDiff(state);
-          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
+	  theta = ed<minEDiff ? fmin(theta,eDiffDiff/(edRef - ed)) : theta;
 	  // South face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
           ed = eDiff(state);
-          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
+	  theta = ed<minEDiff ? fmin(theta,eDiffDiff/(edRef - ed)) : theta;
 	  // North face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV);
 	  }
           ed = eDiff(state);
-          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
+	  theta = ed<minEDiff ? fmin(theta,eDiffDiff/(edRef - ed)) : theta;
 #if (SPACE_DIM == 3)
 	  // Bottom face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
           ed = eDiff(state);
-          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
+	  theta = ed<minEDiff ? fmin(theta,eDiffDiff/(edRef - ed)) : theta;
 	  // Top face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV);
 	  }
           ed = eDiff(state);
-          theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
+	  theta = ed<minEDiff ? fmin(theta,eDiffDiff/(edRef - ed)) : theta;
 #endif
 	}
 
@@ -519,7 +520,7 @@ namespace KFVM {
 		  state[nV] = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV);
 		}
 		Real ed = eDiff(state);
-		theta = ed >= minEDiff ? theta : fmin(theta,edBound(ed,edRef,minEDiff,refState,state));
+		theta = ed<minEDiff ? fmin(theta,eDiffDiff/(edRef - ed)) : theta;
 	      }
 	    }
 	  }
@@ -556,45 +557,14 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       Real eDiff(const SRHydro::ConsVec state) const
       {
+	using Kokkos::sqrt;
 	using SRHydro::SimVar;
         
         const Real sSq = (state[SimVar::momx]*state[SimVar::momx] +
                           state[SimVar::momy]*state[SimVar::momy] +
                           state[SimVar::momz]*state[SimVar::momz]);
         
-        return state[SimVar::etot]*state[SimVar::etot] - (state[SimVar::dens]*state[SimVar::dens] + sSq);
-      }
-      
-      KOKKOS_INLINE_FUNCTION
-      Real edBound(const Real ed,const Real edRef,const Real minEDiff,
-                   const SRHydro::ConsVec refState,const SRHydro::ConsVec state) const
-      {
-	using Kokkos::sqrt;
-	using SRHydro::SimVar;
-        
-        const Real sBarDS = (refState[SimVar::momx]*state[SimVar::momx] +
-                             refState[SimVar::momy]*state[SimVar::momy] +
-                             refState[SimVar::momz]*state[SimVar::momz]);
-        const Real UUbar = state[SimVar::etot]*refState[SimVar::etot] - state[SimVar::dens]*refState[SimVar::dens] - sBarDS;
-      
-	const Real A = ed + edRef - Real(2.0)*UUbar;
-        
-	const Real B = Real(2.0)*(UUbar - edRef);
-      
-	const Real C = edRef - minEDiff;
-
-	Real rtdisc = sqrt(B*B - Real(4.0)*A*C);
-	Real th1 = (-B + rtdisc)/(Real(2.0)*A),th2 = (-B - rtdisc)/(Real(2.0)*A);
-
-	if (Real(0.0) <= th1 && th1 <= Real(1.0) && Real(0.0) <= th2 && th2 <= Real(1.0)) {
-	  return th1 < th2 ? th1 : th2;
-	} else if (Real(0.0) <= th1 && th1 <= Real(1.0)) {
-	  return th1;
-	} else if (Real(0.0) <= th2 && th2 <= Real(1.0)) {
-	  return th2;
-	} else {
-	  return Real(0.0);
-	}
+        return state[SimVar::etot] - sqrt(state[SimVar::dens]*state[SimVar::dens] + sSq);
       }
     };
     
