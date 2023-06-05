@@ -21,7 +21,6 @@ namespace KFVM {
       U_host("U_host",KFVM_D_DECL(ps.nX + 2*ps.rad,
                                   ps.nY + 2*ps.rad,
                                   ps.nZ + 2*ps.rad)),
-      V_host("V_host",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
       weno_host("weno_host",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
       nX_g(ps.layoutMPI.nbX*ps.nX),
       nY_g(ps.layoutMPI.nbY*ps.nY),
@@ -122,7 +121,6 @@ namespace KFVM {
 
       // Copy data from GPU to host (no-op if already on host)
       Kokkos::deep_copy(U_host,U);
-      Kokkos::deep_copy(V_host,V);
       Kokkos::deep_copy(weno_host,weno);
 
       PDI_multi_expose("write_plot_data",
@@ -131,7 +129,7 @@ namespace KFVM {
                        "time_step",(void*) &step, PDI_OUT,
                        "time",(void*) &time, PDI_OUT,
                        "cons_field",(void*) U_host.data(), PDI_OUT,
-                       "aux_field",(void*) V_host.data(), PDI_OUT,
+                       "aux_field",(void*) V.data(), PDI_OUT,
                        "weno_field",(void*) weno_host.data(), PDI_OUT,
                        NULL);
     }

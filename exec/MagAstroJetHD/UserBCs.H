@@ -9,7 +9,7 @@
 
 #include "Definitions.H"
 #ifndef B0SQ
-#define B0SQ 200.0
+#define B0SQ 2000.0
 #endif
 
 // Western boundary

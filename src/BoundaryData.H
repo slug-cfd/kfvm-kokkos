@@ -27,14 +27,14 @@ namespace KFVM {
     const Kokkos::Array<idx_t,SPACE_DIM> tCellRecvLo,tCellRecvUp;
 
     // Cell data buffers, only allocated if needed
-    ConsDataCommView wCellSend,wCellRecv,eCellSend,eCellRecv;
-    ConsDataCommView sCellSend,sCellRecv,nCellSend,nCellRecv;
-    ConsDataCommView bCellSend,bCellRecv,tCellSend,tCellRecv;
+    ConsDataPinnedView wCellSend,wCellRecv,eCellSend,eCellRecv;
+    ConsDataPinnedView sCellSend,sCellRecv,nCellSend,nCellRecv;
+    ConsDataPinnedView bCellSend,bCellRecv,tCellSend,tCellRecv;
 
     // Face data buffers, only allocated if needed
-    FaceDataCommView wFaceSend,wFaceRecv,eFaceSend,eFaceRecv;
-    FaceDataCommView sFaceSend,sFaceRecv,nFaceSend,nFaceRecv;
-    FaceDataCommView bFaceSend,bFaceRecv,tFaceSend,tFaceRecv;
+    FaceDataPinnedView wFaceSend,wFaceRecv,eFaceSend,eFaceRecv;
+    FaceDataPinnedView sFaceSend,sFaceRecv,nFaceSend,nFaceRecv;
+    FaceDataPinnedView bFaceSend,bFaceRecv,tFaceSend,tFaceRecv;
     
     BoundaryData(const ProblemSetup& ps_);
   };

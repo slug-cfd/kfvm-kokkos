@@ -2,7 +2,7 @@
 // must take (x,y,z) coordinates regardless of space dimension
 
 #ifndef B0SQ
-#define B0SQ 200.0
+#define B0SQ 2000.0
 #endif
 
 KOKKOS_INLINE_FUNCTION

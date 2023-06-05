@@ -65,7 +65,7 @@ namespace KFVM {
     // Boundary condition coefficients
     Physics::BCCoeffs<eqType> bcCoeff;
     // Cell-based data
-    ConsDataView U_halo,Uhat,Uprev_halo,Utmp,K;
+    ConsDataView U_halo,Uprev_halo,Uhat,Utmp,RHS;
     // Auxiliary data (cell-based but different number of components)
     AuxDataView U_aux;
     // Face-based data
@@ -125,7 +125,7 @@ namespace KFVM {
     
     void evalAuxiliary();
     
-    Real evalRHS(ConsDataView,ConsDataView,Real);
+    Real evalRHS(ConsDataView,Real);
     void reconstructRiemannStates(ConsDataView);
     Real findFluxes();
     

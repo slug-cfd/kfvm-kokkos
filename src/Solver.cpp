@@ -45,7 +45,7 @@ namespace KFVM {
 				   ps.nY + 2*ps.rad,
 				   ps.nZ + 2*ps.rad)),
     Utmp("Utmp",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
-    K("RHS",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
+    RHS("RHS",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     U_aux("U_aux",KFVM_D_DECL(ps.nX,ps.nY,ps.nZ)),
     faceVals(ps),
     bdyData(ps),
@@ -83,7 +83,7 @@ namespace KFVM {
     
     // FSAL methods need one RHS eval to start,
     // still needed for restarted runs to prime the time stepper
-    Real maxVel = evalRHS(U_halo,K,time);
+    Real maxVel = evalRHS(U_halo,time);
     
     // Use small CFL to pick initial time step size on fresh runs
     if (!ps.restart) {
@@ -162,14 +162,14 @@ namespace KFVM {
 
       // Need to reset K if this is a repeat of a rejected step
       if (nT > 0) {
-	v = evalRHS(Uprev_halo,K,time);
+	v = evalRHS(Uprev_halo,time);
         maxVel = std::fmax(maxVel,v);
       }
 
       // First stage is special, do it outside loop
       Real betaDt = RKCoeff::beta[0]*dt;
       Real bhatDt = RKCoeff::bhat[0]*dt;
-      Kokkos::parallel_for("RKStagePre",cellRng,Numeric::RKFSAL_StagePre_K<decltype(U),decltype(K)>(U,Uhat,Utmp,Uprev,K,betaDt,bhatDt));
+      Kokkos::parallel_for("RKStagePre",cellRng,Numeric::RKFSAL_StagePre_K<decltype(U),decltype(RHS)>(U,Uhat,Utmp,Uprev,RHS,betaDt,bhatDt));
 
       // Loop over stages and update registers
       for (int nS=1; nS<RKCoeff::nStages; nS++) {
@@ -183,19 +183,19 @@ namespace KFVM {
 	betaDt = RKCoeff::beta[nS]*dt;
 
 	// Evaluate RHS on U
-	v = evalRHS(U_halo,K,time + cDt);
+	v = evalRHS(U_halo,time + cDt);
         maxVel = std::fmax(maxVel,v);
       
 	// Update registers
 	Kokkos::parallel_for("RKStage",cellRng,
-			     Numeric::RKFSAL_Stage_K<decltype(U),decltype(K)>(U,Uhat,Utmp,Uprev,K,delta,gam1,gam2,gam3,betaDt,bhatDt));
+			     Numeric::RKFSAL_Stage_K<decltype(U),decltype(RHS)>(U,Uhat,Utmp,Uprev,RHS,delta,gam1,gam2,gam3,betaDt,bhatDt));
       }
 
       // FSAL stage
-      v = evalRHS(U_halo,K,time + dt);
+      v = evalRHS(U_halo,time + dt);
       maxVel = std::fmax(maxVel,v);
       bhatDt = RKCoeff::bhatfsal*dt;
-      Kokkos::parallel_for("RKStageFSAL",cellRng,Numeric::RKFSAL_StageLast_K<decltype(K)>(Uhat,K,bhatDt));
+      Kokkos::parallel_for("RKStageFSAL",cellRng,Numeric::RKFSAL_StageLast_K<decltype(RHS)>(Uhat,RHS,bhatDt));
 
       // Calculate CFL that ended up being used
       Real cfl = dt*maxVel/geom.dmin;
@@ -204,7 +204,7 @@ namespace KFVM {
       Real errNewLoc = 0.0,posFlag = 1.0;
       const Real nDofs = ps.nX*ps.nY*ps.nZ*ps.nbX*ps.nbY*ps.nbZ*NUM_VARS;
       Kokkos::parallel_reduce("ErrorEstimate",cellRng,
-			      Numeric::RKFSAL_ErrEst_K<decltype(U),decltype(K)>
+			      Numeric::RKFSAL_ErrEst_K<decltype(U),decltype(RHS)>
 			      (U,Uhat,ps.atol,ps.rtol),errNewLoc,Kokkos::Min<Real>(posFlag));
       Real errNew = timeStepErrEstComm(errNewLoc);
       errNew = 1.0/std::sqrt(errNew/nDofs);
@@ -295,7 +295,7 @@ namespace KFVM {
     return gEst;
   }
   
-  Real Solver::evalRHS(ConsDataView sol_halo,ConsDataView rhs,Real t)
+  Real Solver::evalRHS(ConsDataView sol_halo,Real t)
   {
     Kokkos::Profiling::pushRegion("Solver::evalRHS");
 
@@ -373,8 +373,8 @@ namespace KFVM {
 
     // Integrate fluxes and store into rhs
     Kokkos::parallel_for("IntegrateRHS",cellRng,
-			 Numeric::IntegrateRHS_K<decltype(rhs)>
-			 (rhs,
+			 Numeric::IntegrateRHS_K<decltype(RHS)>
+			 (RHS,
 			  KFVM_D_DECL(faceVals.xDir,faceVals.yDir,faceVals.zDir),
                           sourceTerms,haveSources,
 			  qr.ab,qr.wt,geom));

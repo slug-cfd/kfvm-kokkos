@@ -21,7 +21,6 @@ namespace KFVM {
       ProblemSetup& ps;
       const Geometry geom;
       HostConsDataView U_host;
-      HostAuxDataView V_host;
       HostCellDataView weno_host;
       int nX_g,nY_g,nZ_g;
       std::vector<Real> xCoord,yCoord,zCoord;

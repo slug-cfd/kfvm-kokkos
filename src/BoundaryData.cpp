@@ -37,87 +37,87 @@ namespace KFVM {
   {
     // Allocate and assign views as needed
     if (ps.layoutMPI.wDst != MPI_PROC_NULL) {
-      wCellSend = ConsDataCommView("Solver::BoundaryData::wCellSend",
-				  KFVM_D_DECL(ps.rad,ps.nY,ps.nZ));
-      wFaceSend = FaceDataCommView("Solver::BoundaryData::wFaceSend",
-				  KFVM_DM_DECL(ps.nY,ps.nZ));
+      wCellSend = ConsDataPinnedView("Solver::BoundaryData::wCellSend",
+				     KFVM_D_DECL(ps.rad,ps.nY,ps.nZ));
+      wFaceSend = FaceDataPinnedView("Solver::BoundaryData::wFaceSend",
+				     KFVM_DM_DECL(ps.nY,ps.nZ));
     }
     
     if (ps.layoutMPI.wSrc != MPI_PROC_NULL) {
-      wCellRecv = ConsDataCommView("Solver::BoundaryData::wCellRecv",
-				  KFVM_D_DECL(ps.rad,ps.nY,ps.nZ));
-      wFaceRecv = FaceDataCommView("Solver::BoundaryData::wFaceRecv",
-				  KFVM_DM_DECL(ps.nY,ps.nZ));
+      wCellRecv = ConsDataPinnedView("Solver::BoundaryData::wCellRecv",
+				     KFVM_D_DECL(ps.rad,ps.nY,ps.nZ));
+      wFaceRecv = FaceDataPinnedView("Solver::BoundaryData::wFaceRecv",
+				     KFVM_DM_DECL(ps.nY,ps.nZ));
     }
     
     if (ps.layoutMPI.eDst != MPI_PROC_NULL) {
-      eCellSend = ConsDataCommView("Solver::BoundaryData::eCellSend",
-				  KFVM_D_DECL(ps.rad,ps.nY,ps.nZ));
-      eFaceSend = FaceDataCommView("Solver::BoundaryData::eFaceSend",
-				  KFVM_DM_DECL(ps.nY,ps.nZ));
+      eCellSend = ConsDataPinnedView("Solver::BoundaryData::eCellSend",
+				     KFVM_D_DECL(ps.rad,ps.nY,ps.nZ));
+      eFaceSend = FaceDataPinnedView("Solver::BoundaryData::eFaceSend",
+				     KFVM_DM_DECL(ps.nY,ps.nZ));
     }
     
     if (ps.layoutMPI.eSrc != MPI_PROC_NULL) {
-      eCellRecv = ConsDataCommView("Solver::BoundaryData::eCellRecv",
-				  KFVM_D_DECL(ps.rad,ps.nY,ps.nZ));
-      eFaceRecv = FaceDataCommView("Solver::BoundaryData::eFaceRecv",
-				  KFVM_DM_DECL(ps.nY,ps.nZ));
+      eCellRecv = ConsDataPinnedView("Solver::BoundaryData::eCellRecv",
+				     KFVM_D_DECL(ps.rad,ps.nY,ps.nZ));
+      eFaceRecv = FaceDataPinnedView("Solver::BoundaryData::eFaceRecv",
+				     KFVM_DM_DECL(ps.nY,ps.nZ));
     }
     
     if (ps.layoutMPI.sDst != MPI_PROC_NULL) {
-      sCellSend = ConsDataCommView("Solver::BoundaryData::sCellSend",
-				  KFVM_D_DECL(ps.nX + 2*ps.rad,ps.rad,ps.nZ));
-      sFaceSend = FaceDataCommView("Solver::BoundaryData::sFaceSend",
-				  KFVM_DM_DECL(ps.nX,ps.nZ));
+      sCellSend = ConsDataPinnedView("Solver::BoundaryData::sCellSend",
+				     KFVM_D_DECL(ps.nX + 2*ps.rad,ps.rad,ps.nZ));
+      sFaceSend = FaceDataPinnedView("Solver::BoundaryData::sFaceSend",
+				     KFVM_DM_DECL(ps.nX,ps.nZ));
     }
     
     if (ps.layoutMPI.sSrc != MPI_PROC_NULL) {
-      sCellRecv = ConsDataCommView("Solver::BoundaryData::sCellRecv",
-				  KFVM_D_DECL(ps.nX + 2*ps.rad,ps.rad,ps.nZ));
-      sFaceRecv = FaceDataCommView("Solver::BoundaryData::sFaceRecv",
-				  KFVM_DM_DECL(ps.nX,ps.nZ));
+      sCellRecv = ConsDataPinnedView("Solver::BoundaryData::sCellRecv",
+				     KFVM_D_DECL(ps.nX + 2*ps.rad,ps.rad,ps.nZ));
+      sFaceRecv = FaceDataPinnedView("Solver::BoundaryData::sFaceRecv",
+				     KFVM_DM_DECL(ps.nX,ps.nZ));
     }
     
     if (ps.layoutMPI.nDst != MPI_PROC_NULL) {
-      nCellSend = ConsDataCommView("Solver::BoundaryData::nCellSend",
-				  KFVM_D_DECL(ps.nX + 2*ps.rad,ps.rad,ps.nZ));
-      nFaceSend = FaceDataCommView("Solver::BoundaryData::nFaceSend",
-				  KFVM_DM_DECL(ps.nX,ps.nZ));
+      nCellSend = ConsDataPinnedView("Solver::BoundaryData::nCellSend",
+				     KFVM_D_DECL(ps.nX + 2*ps.rad,ps.rad,ps.nZ));
+      nFaceSend = FaceDataPinnedView("Solver::BoundaryData::nFaceSend",
+				     KFVM_DM_DECL(ps.nX,ps.nZ));
     }
     
     if (ps.layoutMPI.nSrc != MPI_PROC_NULL) {
-      nCellRecv = ConsDataCommView("Solver::BoundaryData::nCellRecv",
-				  KFVM_D_DECL(ps.nX + 2*ps.rad,ps.rad,ps.nZ));
-      nFaceRecv = FaceDataCommView("Solver::BoundaryData::nFaceRecv",
-				  KFVM_DM_DECL(ps.nX,ps.nZ));
+      nCellRecv = ConsDataPinnedView("Solver::BoundaryData::nCellRecv",
+				     KFVM_D_DECL(ps.nX + 2*ps.rad,ps.rad,ps.nZ));
+      nFaceRecv = FaceDataPinnedView("Solver::BoundaryData::nFaceRecv",
+				     KFVM_DM_DECL(ps.nX,ps.nZ));
     }
     
     if (ps.layoutMPI.bDst != MPI_PROC_NULL) {
-      bCellSend = ConsDataCommView("Solver::BoundaryData::bCellSend",
-				  KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.rad));
-      bFaceSend = FaceDataCommView("Solver::BoundaryData::bFaceSend",
-				  KFVM_DM_DECL(ps.nX,ps.nY));
+      bCellSend = ConsDataPinnedView("Solver::BoundaryData::bCellSend",
+				     KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.rad));
+      bFaceSend = FaceDataPinnedView("Solver::BoundaryData::bFaceSend",
+				     KFVM_DM_DECL(ps.nX,ps.nY));
     }
     
     if (ps.layoutMPI.bSrc != MPI_PROC_NULL) {
-      bCellRecv = ConsDataCommView("Solver::BoundaryData::bCellRecv",
-				  KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.rad));
-      bFaceRecv = FaceDataCommView("Solver::BoundaryData::bFaceRecv",
-				  KFVM_DM_DECL(ps.nX,ps.nY));
+      bCellRecv = ConsDataPinnedView("Solver::BoundaryData::bCellRecv",
+				     KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.rad));
+      bFaceRecv = FaceDataPinnedView("Solver::BoundaryData::bFaceRecv",
+				     KFVM_DM_DECL(ps.nX,ps.nY));
     }
     
     if (ps.layoutMPI.tDst != MPI_PROC_NULL) {
-      tCellSend = ConsDataCommView("Solver::BoundaryData::tCellSend",
-				  KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.rad));
-      tFaceSend = FaceDataCommView("Solver::BoundaryData::tFaceSend",
-				  KFVM_DM_DECL(ps.nX,ps.nY));
+      tCellSend = ConsDataPinnedView("Solver::BoundaryData::tCellSend",
+				     KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.rad));
+      tFaceSend = FaceDataPinnedView("Solver::BoundaryData::tFaceSend",
+				     KFVM_DM_DECL(ps.nX,ps.nY));
     }
     
     if (ps.layoutMPI.tSrc != MPI_PROC_NULL) {
-      tCellRecv = ConsDataCommView("Solver::BoundaryData::tCellRecv",
-				  KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.rad));
-      tFaceRecv = FaceDataCommView("Solver::BoundaryData::tFaceRecv",
-				  KFVM_DM_DECL(ps.nX,ps.nY));
+      tCellRecv = ConsDataPinnedView("Solver::BoundaryData::tCellRecv",
+				     KFVM_D_DECL(ps.nX + 2*ps.rad,ps.nY + 2*ps.rad,ps.rad));
+      tFaceRecv = FaceDataPinnedView("Solver::BoundaryData::tFaceRecv",
+				     KFVM_DM_DECL(ps.nX,ps.nY));
     }
   }
   
