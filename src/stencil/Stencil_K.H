@@ -155,6 +155,7 @@ namespace KFVM {
       FluidProperties fProp;
       const int nCellsFull,nCellsCtr,nCellsBias;
       const int nSub,nBias,nIndic,nqFace_d;
+      const Real gHi,gLo;
 
       KernelWenoRecon_K(const UViewType& U_,
 			KFVM_D_DECL(idx_t nX_,idx_t nY_,idx_t nZ_),
@@ -194,7 +195,12 @@ namespace KFVM {
 	nSub(Stencil::Core::SI.nSub),
 	nBias(Stencil::Core::SI.nBias),
 	nIndic(Stencil::Core::SI.nIndic),
-	nqFace_d(Stencil::Core::SI.nqFace_d)
+	nqFace_d(Stencil::Core::SI.nqFace_d),
+#if (SPACE_DIM == 2)
+	gHi(0.75),gLo(0.75)
+#else
+	gHi(0.7),gLo(0.7)
+#endif	
       {}
 
       KOKKOS_INLINE_FUNCTION
@@ -240,7 +246,6 @@ namespace KFVM {
 	// Linear weights and epsilon value
 	const Real eps = Real(1.e-12);
 #if (SPACE_DIM == 2)
-	const Real gHi = Real(0.8),gLo = Real(0.75);
 	const Real gamma[] = {gHi,
 			      (Real(1.0) - gHi)*gLo,
 			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(4.0),
@@ -248,7 +253,6 @@ namespace KFVM {
 			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(4.0),
 			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(4.0)};
 #else
-	const Real gHi = Real(0.75),gLo = Real(0.7);
 	const Real gamma[] = {gHi,
 			      (Real(1.0) - gHi)*gLo,
 			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(6.0),
@@ -380,7 +384,6 @@ namespace KFVM {
 	// Linear weights and epsilon value
 	const Real eps = Real(1.e-12);
 #if (SPACE_DIM == 2)
-	const Real gHi = Real(0.8),gLo = Real(0.75);
 	const Real gamma[] = {gHi,
 			      (Real(1.0) - gHi)*gLo,
 			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(4.0),
@@ -388,7 +391,6 @@ namespace KFVM {
 			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(4.0),
 			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(4.0)};
 #else
-	const Real gHi = Real(0.75),gLo = Real(0.7);
 	const Real gamma[] = {gHi,
 			      (Real(1.0) - gHi)*gLo,
 			      (Real(1.0) - gHi)*(Real(1.0) - gLo)/Real(6.0),
