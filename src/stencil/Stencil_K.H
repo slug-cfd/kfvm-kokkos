@@ -197,7 +197,7 @@ namespace KFVM {
 	nIndic(Stencil::Core::SI.nIndic),
 	nqFace_d(Stencil::Core::SI.nqFace_d),
 #if (SPACE_DIM == 2)
-	gHi(0.7),gLo(0.7),eps(1.e-12)
+	gHi(0.7),gLo(0.7),eps(1.e-8)
 #else
 	gHi(0.7),gLo(0.7),eps(1.e-8)
 #endif	
@@ -646,16 +646,17 @@ namespace KFVM {
 	
 	for (int nV=0; nV<NUM_VARS; nV++) {
 #if (SPACE_DIM == 2)
-	  Real tau = fabs(omega[0][nV] - (omega[2][nV] + omega[3][nV] +
+	  Real tau = fabs(omega[1][nV] - (omega[2][nV] + omega[3][nV] +
 					  omega[4][nV] + omega[5][nV])/Real(4.0));
 #else
 	  Real tau = fabs(omega[0][nV] - (omega[2][nV] + omega[3][nV] +
 					  omega[4][nV] + omega[5][nV] +
 					  omega[6][nV] + omega[7][nV])/Real(6.0));
 #endif
+	  tau = pow(tau,STENCIL_RADIUS + 1);
 	  Real tot = Real(0.0);
 	  for (int nS=0; nS<nSub; nS++) {
-	    omega[nS][nV] = gamma[nS]*(Real(1.0) + pow(tau/(omega[nS][nV] + eps),STENCIL_RADIUS));
+	    omega[nS][nV] = gamma[nS]*(Real(1.0) + tau/(pow(omega[nS][nV],STENCIL_RADIUS + 1) + eps));
 	    tot += omega[nS][nV];
 	  }
           

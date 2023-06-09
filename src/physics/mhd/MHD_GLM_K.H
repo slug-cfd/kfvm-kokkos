@@ -377,6 +377,7 @@ namespace KFVM {
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k)) const
       {
+	using Kokkos::exp;
 	using MHD_GLM::SimVar;
 
         const int nzQuad = SPACE_DIM==2 ? 1 : NUM_QUAD_PTS;

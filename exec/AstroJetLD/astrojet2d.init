@@ -17,7 +17,7 @@ stencil:lfac 5
 
 # Set fluid properties
 properties:gamma 1.4
-properties:wenothresh 1000.0
+properties:wenothresh 50.0
 
 # Output settings
 io:pdiconf ../../user/pdi_euler_xdmf.yml
@@ -25,3 +25,4 @@ io:datadir data
 io:basename AstroJetLD
 io:plotfreq 100
 io:ckptfreq 20
+io:restartfile data/R2_NX512_NY1536/ckpt/AstroJetLD_0003920.h5

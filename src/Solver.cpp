@@ -2,6 +2,7 @@
 // Purpose: The solver class is responsible for holding the
 //          solution and evolving it through time
 
+#include <Kokkos_Bitset.hpp>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -541,9 +542,12 @@ namespace KFVM {
     minSize = minX*minY*minZ;
     currSize = minSize;
 
-    // Allocate everything workspace and map
+    // Allocate workspace and map
     wenoFlagMap.rehash(currSize);
     stenWork = Stencil::WorkView("Solver::WenoSelector::stenWork",currSize);
+
+    // Clear the flag view
+    Kokkos::deep_copy(wenoFlagView,0.0);
   }
 
   template<class UViewType>
@@ -568,6 +572,8 @@ namespace KFVM {
 			    (U,Uprev,ps.fluidProp,wThresh,wenoFlagView),nWeno);
 
     // Clear map and reallocate workspace if needed
+    PrintAll(ps,"  %d (%f%%) cells flagged for WENO on rank %d\n",
+	     nWeno,(100.0*nWeno)/(ps.nX*ps.nY*ps.nZ),ps.layoutMPI.rank);
     wenoFlagMap.clear();
     assert(wenoFlagMap.rehash(nWeno));
     if (wenoFlagMap.capacity() > currSize) {

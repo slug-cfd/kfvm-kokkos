@@ -371,18 +371,21 @@ namespace KFVM {
 
 	// set flags based on indicator
 	if (w < wThresh) {
+	  // weno not required, decrement counter
 	  W(KFVM_D_DECL(i,j,k),0) = fmax(0.0,
 					 W(KFVM_D_DECL(i,j,k),0) - 1.0);
-	  nWeno++;
 	} else {
 	  // Set counter for full weno
 	  W(KFVM_D_DECL(i,j,k),0) = Real(STENCIL_RADIUS + 1);
-	  nWeno++;
 	}
 
 	// Also set flags based on last call to PP limiter
-	if (W(KFVM_D_DECL(i,j,k),1) < 1.0 && W(KFVM_D_DECL(i,j,k),0) == 0.0) {
+	if (W(KFVM_D_DECL(i,j,k),1) < 1.0 && W(KFVM_D_DECL(i,j,k),0) < 2.0) {
 	  W(KFVM_D_DECL(i,j,k),0) = 2.0;
+	}
+
+	// Increment counter if flag set
+	if (W(KFVM_D_DECL(i,j,k),0) > 0.0) {
 	  nWeno++;
 	}
       }
