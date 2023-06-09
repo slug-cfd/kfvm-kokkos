@@ -81,7 +81,7 @@ namespace KFVM {
                        NULL);
     }
 
-    void WriterPDI::writePlot(ConsDataView U,AuxDataView V,CellDataView weno,
+    void WriterPDI::writePlot(ConsDataView U,AuxDataView V,WenoFlagView weno,
 			      int step,Real time)
     {
       // Form filenames
@@ -96,7 +96,7 @@ namespace KFVM {
       writePlotPDI(U,V,weno,step,time);
     }
 
-    void WriterPDI::writeCkpt(ConsDataView U,CellDataView weno,int step,Real time,Real dt)
+    void WriterPDI::writeCkpt(ConsDataView U,WenoFlagView weno,int step,Real time,Real dt)
     {
       // Form filenames
       std::ostringstream oss;
@@ -110,7 +110,7 @@ namespace KFVM {
       writeCkptPDI(U,weno,step,time,dt);
     }
 
-    void WriterPDI::writePlotPDI(ConsDataView U,AuxDataView V,CellDataView weno,
+    void WriterPDI::writePlotPDI(ConsDataView U,AuxDataView V,WenoFlagView weno,
 				 int step,Real time)
     {
       std::string filename = prefix + "plot/" + filename_h5;
@@ -134,7 +134,7 @@ namespace KFVM {
                        NULL);
     }
 
-    void WriterPDI::writeCkptPDI(ConsDataView U,CellDataView weno,
+    void WriterPDI::writeCkptPDI(ConsDataView U,WenoFlagView weno,
 				 int step,Real time,Real dt)
     {
       std::string filename = prefix + "ckpt/" + filename_h5;
@@ -158,7 +158,7 @@ namespace KFVM {
                        NULL);
     }
 
-    void WriterPDI::readCkpt(ConsDataView U,CellDataView weno,
+    void WriterPDI::readCkpt(ConsDataView U,WenoFlagView weno,
 			     int& step,Real& time,Real& dt)
     {
       int filename_size = ps.restartFile.size();
@@ -229,6 +229,7 @@ namespace KFVM {
 	writeAttrHydro(ofs,plotMode);
       }
       writeAttributeScalar(ofs,"weno");
+      writeAttributeScalar(ofs,"fomx");
 
       // Close grid, domain, Xdmf
       ofs << "    </Grid>\n  </Domain>\n</Xdmf>" << std::endl;

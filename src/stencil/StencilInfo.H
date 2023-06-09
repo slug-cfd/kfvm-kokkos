@@ -63,7 +63,7 @@ namespace KFVM {
       static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
       static constexpr idx_t nSub = 6;
       static constexpr idx_t nBias = 4;
-      static constexpr std::array<int,3> monoDeg {6,2,2};
+      static constexpr std::array<int,3> monoDeg {5,2,2};
     };
 
     // 3D specializations

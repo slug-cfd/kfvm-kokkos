@@ -27,7 +27,7 @@ namespace KFVM {
   // struct to manage linear vs weno reconstruction
   struct WenoSelector {
     const ProblemSetup& ps;    // Reference to outer ps for ease
-    CellDataView wenoFlagView; // Really just for visualization
+    WenoFlagView wenoFlagView;
     FlagMap wenoFlagMap;
     Stencil::WorkView stenWork;
     int ntX,ntY,ntZ; // Tiles in x/y/z for full weno

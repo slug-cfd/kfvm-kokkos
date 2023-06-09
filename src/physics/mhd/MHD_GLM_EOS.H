@@ -103,7 +103,7 @@ namespace KFVM {
       
       KOKKOS_INLINE_FUNCTION
       static Real pres(const Real gamma,const MHD_GLM::ConsVec U)
-      {  
+      {
         return prsg(gamma,U) + prsb(U);
       }
       

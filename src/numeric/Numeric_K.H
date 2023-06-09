@@ -355,18 +355,34 @@ namespace KFVM {
 		      uint32_t& nWeno) const {
 	using Kokkos::fabs;
 	using Kokkos::fmin;
+	using Kokkos::fmax;
+
+	// Extract states
 	Real u0[NUM_VARS],u1[NUM_VARS];
 	for (int nV=0; nV<NUM_VARS; nV++) {
 	  u0[nV] = Uprev(KFVM_D_DECL(i,j,k),nV);
 	  u1[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
+
+	// Calculate change in weno indicator
 	Real w0 = Physics::EOS<eqType>::weno(u0,fProp);
 	Real w1 = Physics::EOS<eqType>::weno(u1,fProp);
 	Real w = fabs(w1 - w0)/fmin(w0,w1);
+
+	// set flags based on indicator
 	if (w < wThresh) {
-	  W(KFVM_D_DECL(i,j,k)) = Real(WenoFlag::NOWENO);
+	  W(KFVM_D_DECL(i,j,k),0) = fmax(0.0,
+					 W(KFVM_D_DECL(i,j,k),0) - 1.0);
+	  nWeno++;
 	} else {
-	  W(KFVM_D_DECL(i,j,k)) = Real(WenoFlag::WENO);
+	  // Set counter for full weno
+	  W(KFVM_D_DECL(i,j,k),0) = Real(STENCIL_RADIUS + 1);
+	  nWeno++;
+	}
+
+	// Also set flags based on last call to PP limiter
+	if (W(KFVM_D_DECL(i,j,k),1) < 1.0 && W(KFVM_D_DECL(i,j,k),0) == 0.0) {
+	  W(KFVM_D_DECL(i,j,k),0) = 2.0;
 	  nWeno++;
 	}
       }

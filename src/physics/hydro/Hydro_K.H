@@ -267,11 +267,13 @@ namespace KFVM {
 #include "SourceTerms.H"
     }
 
-    template<>
-    struct SourceTerms_K<EquationType::Hydro>
+    template<class UViewType>
+    struct SourceTerms_K<EquationType::Hydro,UViewType>
     {
       SourceDataView source;
       FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
+      UViewType U;
+      WenoFlagView wenoFlag;
       DiffMatView D;
       QuadRuleView ab;
       FluidProperties fProp;
@@ -282,6 +284,8 @@ namespace KFVM {
                     KFVM_D_DECL(const FaceDataView& rsX_,
                                 const FaceDataView& rsY_,
                                 const FaceDataView& rsZ_),
+		    const UViewType& U_,
+		    const WenoFlagView& wenoFlag_,
                     const DiffMatView& D_,
 		    const QuadRuleView& ab_,
 		    const FluidProperties& fProp_,
@@ -289,6 +293,8 @@ namespace KFVM {
                     const Real t_):
 	source(source_),
         KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
+	U(U_),
+	wenoFlag(wenoFlag_),
         D(D_),
 	ab(ab_),
 	fProp(fProp_),
@@ -343,6 +349,7 @@ namespace KFVM {
       FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
       bool haveSources;
       SourceDataView source;
+      WenoFlagView wenoFlag;
       FluidProperties fProp;
 
       PositivityPreserve_K(const UDataView& U_,
@@ -351,11 +358,13 @@ namespace KFVM {
 				       const FaceDataView& rsZ_),
 			   const bool haveSources_,
 			   const SourceDataView& source_,
+			   const WenoFlagView& wenoFlag_,
 			   const FluidProperties& fProp_):
 	U(U_),
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
 	haveSources(haveSources_),
 	source(source_),
+	wenoFlag(wenoFlag_),
 	fProp(fProp_)
       {}
 
@@ -472,6 +481,7 @@ namespace KFVM {
 	}
 	
 	// Apply mixing
+	wenoFlag(KFVM_D_DECL(i,j,k),1) = theta;
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) - refState[nV]);
@@ -562,6 +572,7 @@ namespace KFVM {
 	}
 	
 	// Apply mixing
+	wenoFlag(KFVM_D_DECL(i,j,k),1) = fmin(theta,wenoFlag(KFVM_D_DECL(i,j,k),1));
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) = refState[nV] + theta*(rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV) - refState[nV]);

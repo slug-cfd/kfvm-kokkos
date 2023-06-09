@@ -330,16 +330,19 @@ namespace KFVM {
     //   -> Must call before fluxes overwrite Riemann states
     bool haveSources = ps.haveSourceTerms;
     if (haveSources) {
+      auto U = trimCellHalo(sol_halo);
       Kokkos::parallel_for("SourceTerms",cellRng,
-                           Physics::SourceTerms_K<eqType>(sourceTerms,
-							  KFVM_D_DECL(faceVals.xDir,
-								      faceVals.yDir,
-								      faceVals.zDir),
-							  diffMat.diffMat,
-							  qr.ab,
-							  ps.fluidProp,
-							  geom,
-							  t));
+                           Physics::SourceTerms_K<eqType,decltype(U)>(sourceTerms,
+								      KFVM_D_DECL(faceVals.xDir,
+										  faceVals.yDir,
+										  faceVals.zDir),
+								      U,
+								      wenoSelector.wenoFlagView,
+								      diffMat.diffMat,
+								      qr.ab,
+								      ps.fluidProp,
+								      geom,
+								      t));
     }
     
     // Call Riemann solver
@@ -498,6 +501,7 @@ namespace KFVM {
         			      faceVals.yDir,
         			      faceVals.zDir),
 			  haveSources,sourceTerms,
+			  wenoSelector.wenoFlagView,
         		  ps.fluidProp));
   }
 
@@ -565,7 +569,7 @@ namespace KFVM {
 
     // Clear map and reallocate workspace if needed
     wenoFlagMap.clear();
-    wenoFlagMap.rehash(nWeno);
+    assert(wenoFlagMap.rehash(nWeno));
     if (wenoFlagMap.capacity() > currSize) {
       uint32_t newSize = std::max(wenoFlagMap.capacity(),2*currSize);
       // Note that capacity != nWeno generally
@@ -586,7 +590,7 @@ namespace KFVM {
     Kokkos::parallel_for("Solver::WenoSelector::update(insert)",
 			 cellRng,
 			 KOKKOS_LAMBDA (KFVM_D_DECL(idx_t i,idx_t j,idx_t k)) {
-			   if (flagView(KFVM_D_DECL(i,j,k)) > 0) {
+			   if (flagView(KFVM_D_DECL(i,j,k),0) > 0.0) {
 #if (SPACE_DIM == 2)
 			     idx_t key = nX*j + i;
 #else

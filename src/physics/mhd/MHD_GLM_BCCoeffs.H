@@ -13,9 +13,9 @@ namespace KFVM {
   namespace Physics {
 
     namespace  MHD_GLM_BCCoeff_LUT {
-      static constexpr Real refX[] = {1.0,-1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0};
-      static constexpr Real refY[] = {1.0,1.0,-1.0,1.0,1.0,1.0,1.0,1.0,1.0};
-      static constexpr Real refZ[] = {1.0,1.0,1.0,-1.0,1.0,1.0,1.0,1.0,1.0};
+      static constexpr Real refX[] = {1.0,-1.0, 1.0, 1.0,1.0,-1.0, 1.0, 1.0,1.0};
+      static constexpr Real refY[] = {1.0, 1.0,-1.0, 1.0,1.0, 1.0,-1.0, 1.0,1.0};
+      static constexpr Real refZ[] = {1.0, 1.0, 1.0,-1.0,1.0, 1.0, 1.0,-1.0,1.0};
     }
 
     template<>

@@ -33,7 +33,7 @@ std::array<KFVM::BCType,6> KFVM::ProblemSetup::bcType = {
   KFVM::BCType::outflow,
   KFVM::BCType::outflow,
   KFVM::BCType::outflow,
-  KFVM::BCType::outflow};
+  KFVM::BCType::reflecting};
 
 // Set whether this problem has source terms
 bool KFVM::ProblemSetup::haveSourceTerms = true;

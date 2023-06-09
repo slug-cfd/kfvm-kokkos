@@ -155,7 +155,7 @@ namespace KFVM {
       FluidProperties fProp;
       const int nCellsFull,nCellsCtr,nCellsBias;
       const int nSub,nBias,nIndic,nqFace_d;
-      const Real gHi,gLo;
+      const Real gHi,gLo,eps;
 
       KernelWenoRecon_K(const UViewType& U_,
 			KFVM_D_DECL(idx_t nX_,idx_t nY_,idx_t nZ_),
@@ -197,9 +197,9 @@ namespace KFVM {
 	nIndic(Stencil::Core::SI.nIndic),
 	nqFace_d(Stencil::Core::SI.nqFace_d),
 #if (SPACE_DIM == 2)
-	gHi(0.75),gLo(0.75)
+	gHi(0.7),gLo(0.7),eps(1.e-12)
 #else
-	gHi(0.7),gLo(0.7)
+	gHi(0.7),gLo(0.7),eps(1.e-8)
 #endif	
       {}
 
@@ -243,8 +243,7 @@ namespace KFVM {
 	};
 #endif
 
-	// Linear weights and epsilon value
-	const Real eps = Real(1.e-12);
+	// Linear weights
 #if (SPACE_DIM == 2)
 	const Real gamma[] = {gHi,
 			      (Real(1.0) - gHi)*gLo,
@@ -296,7 +295,7 @@ namespace KFVM {
 	findSmoothness(Vf,Vc,Vb,B,omega);
 
 	// Convert smoothness indicators to omegas
-	createOmegas(omega,gamma,eps);
+	createOmegas(omega,gamma);
 	
 	// Fill in Riemann states one face at a time
 	fillRiemannStates(Vf,Vc,Vb,omega,rsFace);
@@ -381,8 +380,7 @@ namespace KFVM {
 	};
 #endif
 
-	// Linear weights and epsilon value
-	const Real eps = Real(1.e-12);
+	// Linear weights
 #if (SPACE_DIM == 2)
 	const Real gamma[] = {gHi,
 			      (Real(1.0) - gHi)*gLo,
@@ -434,7 +432,7 @@ namespace KFVM {
 	findSmoothness(Vf,Vc,Vb,B,omega);
 
 	// Convert smoothness indicators to omegas
-	createOmegas(omega,gamma,eps);
+	createOmegas(omega,gamma);
 	
 	// Fill in Riemann states one face at a time
 	fillRiemannStates(Vf,Vc,Vb,omega,rsFace);
@@ -612,7 +610,7 @@ namespace KFVM {
 	  SerialGemm<Trans::NoTranspose,
 		     Trans::NoTranspose,
 		     Algo::Gemm::Unblocked>::invoke(Real(1.0),
-											  dWts,Vc,Real(0.0),B);
+						    dWts,Vc,Real(0.0),B);
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    omega[1][nV] = Real(0.0);
 	    for (int nI=0; nI<nIndic; nI++) {
@@ -641,8 +639,7 @@ namespace KFVM {
       
       KOKKOS_INLINE_FUNCTION
       void createOmegas(Real omega[Stencil::Core::SI.nSub][NUM_VARS],
-			const Real gamma[Stencil::Core::SI.nSub],
-			const Real eps) const
+			const Real gamma[Stencil::Core::SI.nSub]) const
       {
 	using Kokkos::fabs;
 	using Kokkos::pow;

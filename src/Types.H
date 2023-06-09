@@ -42,9 +42,6 @@ namespace KFVM {
   // Time stepper status codes
   enum TSStatus {ACCEPTED = 0,TOLERANCE,UNPHYSICAL};
 
-  // Weno selection flags
-  enum WenoFlag {NOWENO = 0,NBRWENO,WENO};
-
   // Set number of evolved and auxiliary variables
   constexpr std::size_t NUM_VARS = NUM_EQN_VARS[eqType];
   constexpr std::size_t NUM_AUX = NUM_EQN_AUX[eqType];
@@ -65,8 +62,8 @@ namespace KFVM {
   // Kokkos views for various state data
 #if (SPACE_DIM == 2)
   typedef Kokkos::View<flag_t**,Kokkos::LayoutLeft,Kokkos::HostSpace>         HostFlagDataView;
-  typedef Kokkos::View<Real**,MemSpace>                                       CellDataView;
-  typedef Kokkos::View<Real**,Kokkos::LayoutLeft,Kokkos::HostSpace>           HostCellDataView;
+  typedef Kokkos::View<Real**[2],MemSpace>                                    WenoFlagView;
+  typedef Kokkos::View<Real**[2],Kokkos::LayoutLeft,Kokkos::HostSpace>        HostWenoFlagView;
   typedef Kokkos::View<Real**[NUM_VARS],MemSpace>                             ConsDataView;
   typedef Kokkos::View<Real**[NUM_VARS],MemSpacePinned>                       ConsDataPinnedView;
   typedef Kokkos::View<Real**[NUM_VARS],Kokkos::LayoutLeft,Kokkos::HostSpace> HostConsDataView;
@@ -76,8 +73,8 @@ namespace KFVM {
   typedef Kokkos::View<Real**[NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_VARS],MemSpace> SourceDataView;
 #else
   typedef Kokkos::View<flag_t***,Kokkos::LayoutLeft,Kokkos::HostSpace>                       HostFlagDataView;
-  typedef Kokkos::View<Real***,MemSpace>                                                     CellDataView;
-  typedef Kokkos::View<Real***,Kokkos::LayoutLeft,Kokkos::HostSpace>                         HostCellDataView;
+  typedef Kokkos::View<Real***[2],MemSpace>                                                  WenoFlagView;
+  typedef Kokkos::View<Real***[2],Kokkos::LayoutLeft,Kokkos::HostSpace>                      HostWenoFlagView;
   typedef Kokkos::View<Real***[NUM_VARS],MemSpace>                                           ConsDataView;
   typedef Kokkos::View<Real***[NUM_VARS],MemSpacePinned>                                     ConsDataPinnedView;
   typedef Kokkos::View<Real***[NUM_VARS],Kokkos::LayoutLeft,Kokkos::HostSpace>               HostConsDataView;

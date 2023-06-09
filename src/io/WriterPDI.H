@@ -21,7 +21,7 @@ namespace KFVM {
       ProblemSetup& ps;
       const Geometry geom;
       HostConsDataView U_host;
-      HostCellDataView weno_host;
+      HostWenoFlagView weno_host;
       int nX_g,nY_g,nZ_g;
       std::vector<Real> xCoord,yCoord,zCoord;
       std::string prefix;
@@ -36,13 +36,13 @@ namespace KFVM {
       void writeAttributeVector(std::ofstream&,const char*,const char*,const char*,const char*);
       
       void writeXML(int,Real,bool);
-      void writePlotPDI(ConsDataView,AuxDataView,CellDataView,int,Real);
-      void writeCkptPDI(ConsDataView,CellDataView,int,Real,Real);
+      void writePlotPDI(ConsDataView,AuxDataView,WenoFlagView,int,Real);
+      void writeCkptPDI(ConsDataView,WenoFlagView,int,Real,Real);
     public:
       WriterPDI(ProblemSetup&,const Geometry&);
-      void writePlot(ConsDataView,AuxDataView,CellDataView,int,Real);
-      void writeCkpt(ConsDataView,CellDataView,int,Real,Real);
-      void readCkpt(ConsDataView,CellDataView,int&,Real&,Real&);
+      void writePlot(ConsDataView,AuxDataView,WenoFlagView,int,Real);
+      void writeCkpt(ConsDataView,WenoFlagView,int,Real,Real);
+      void readCkpt(ConsDataView,WenoFlagView,int&,Real&,Real&);
     };
 
   } // end namespace IO

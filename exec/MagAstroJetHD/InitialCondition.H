@@ -1,10 +1,6 @@
 // Set intial condition
 // must take (x,y,z) coordinates regardless of space dimension
 
-#ifndef B0SQ
-#define B0SQ 2000.0
-#endif
-
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
 {
@@ -13,7 +9,7 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   
   (void) x; (void) y; (void) z;
   
-  const Real gam = 1.4,gamm = gam - 1.0,b0 = sqrt(B0SQ);
+  const Real gam = 1.4,gamm = gam - 1.0,b0 = sqrt(USER_B0SQ);
 
   state[SimVar::dens] = gam/10.0;
   

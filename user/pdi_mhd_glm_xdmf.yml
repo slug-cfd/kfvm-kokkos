@@ -9,6 +9,7 @@ cons_datasets: &cons_datasets
   magz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   psi: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]']}
   weno: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  fomx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
 
 all_datasets: &all_datasets
   dens: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]']}
@@ -21,6 +22,7 @@ all_datasets: &all_datasets
   magz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   psi: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]']}
   weno: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  fomx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   velx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]']}
   vely: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   velz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
@@ -148,8 +150,15 @@ prsb_description: &prsb_description
 weno_description: &weno_description
   dataset: weno
   memory_selection:
-    size: ['$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
-    start: [0, 0, 0]
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [0, 0, 0, 0]
+  dataset_selection: *fld_dataset_selection
+
+fomx_description: &fomx_description
+  dataset: fomx
+  memory_selection:
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [1, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 pdi:
@@ -182,7 +191,7 @@ pdi:
     weno_field:
       type: array
       subtype: double
-      size: ['$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+      size: [2, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
 
   plugins:
     
@@ -222,6 +231,7 @@ pdi:
           - *prsb_description
         weno_field:
           - *weno_description
+          - *fomx_description
       
     - file: ${filename}
       datasets: *cons_datasets
@@ -248,6 +258,7 @@ pdi:
           - *psi_description
         weno_field:
           - *weno_description
+          - *fomx_description
       
     - file: ${restart_filename}
       datasets: *cons_datasets
@@ -269,3 +280,4 @@ pdi:
           - *psi_description
         weno_field:
           - *weno_description
+          - *fomx_description

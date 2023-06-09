@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 256 256
+mesh:resolution 1024 1024
 mesh:numblocks 1 1
 mesh:extent 0.0 1.0 0.0 1.0
 
@@ -17,11 +17,11 @@ stencil:lfac 5
 
 # Set fluid properties
 properties:gamma 1.4
-properties:wenothresh 10.0
+properties:wenothresh 100.0
 
 # Output settings
 io:pdiconf ../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename Riem
-io:plotfreq 50
+io:plotfreq 100
 io:ckptfreq 20

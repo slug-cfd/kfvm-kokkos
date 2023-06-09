@@ -8,9 +8,6 @@
 // the Riemann solver
 
 #include "Definitions.H"
-#ifndef B0SQ
-#define B0SQ 2000.0
-#endif
 
 // Western boundary
 template<class DataViewType>
@@ -86,15 +83,15 @@ void CellSouth(const DataViewType& U,int rad,int nY,
   (void) state;
 
   const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z, r = sqrt(rsq);
-  const Real R0sq = 0.05*0.05,R1sq = 0.06*0.06,b0 = sqrt(B0SQ);
+  const Real R0sq = 0.05*0.05,b0 = sqrt(USER_B0SQ);
 
   // Inflow conditions
   const Real inState[] = {
     1.4,
     0.0,
-    800.0*1.4,
+    USER_MACH*1.4,
     0.0,
-    1.0/0.4 + 1.4*800.0*800.0/2.0 + b0*b0/2.0,
+    1.0/0.4 + 1.4*USER_MACH*USER_MACH/2.0 + b0*b0/2.0,
     0.0,
     b0,
     0.0,
@@ -111,12 +108,12 @@ void CellSouth(const DataViewType& U,int rad,int nY,
     }
   }
 
-  if (rsq > R0sq && rsq <= R1sq) { // linear taper
-    const Real th = (r - 0.05)/0.01;
-    for (int nV=0; nV<NUM_VARS; nV++) {
-      state[nV] = th*state[nV] + (1.0 - th)*inState[nV];
-    }
-  }
+  // if (rsq > R0sq && rsq <= R1sq) { // linear taper
+  //   const Real th = (r - 0.05)/0.01;
+  //   for (int nV=0; nV<NUM_VARS; nV++) {
+  //     state[nV] = th*state[nV] + (1.0 - th)*inState[nV];
+  //   }
+  // }
 }
 
 template<class DataViewType>
@@ -134,15 +131,15 @@ void FaceSouth(const DataViewType& U,
   (void) state;
 
   const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z, r = sqrt(rsq);
-  const Real R0sq = 0.05*0.05,R1sq = 0.06*0.06,b0 = sqrt(B0SQ);
+  const Real R0sq = 0.05*0.05,b0 = sqrt(USER_B0SQ);
 
   // Inflow conditions
   const Real inState[] = {
     1.4,
     0.0,
-    800.0*1.4,
+    USER_MACH*1.4,
     0.0,
-    1.0/0.4 + 1.4*800.0*800.0/2.0 + b0*b0/2.0,
+    1.0/0.4 + 1.4*USER_MACH*USER_MACH/2.0 + b0*b0/2.0,
     0.0,
     b0,
     0.0,
@@ -159,12 +156,12 @@ void FaceSouth(const DataViewType& U,
     }
   }
 
-  if (rsq > R0sq && rsq <= R1sq) { // linear taper
-    const Real th = (r - 0.05)/0.01;
-    for (int nV=0; nV<NUM_VARS; nV++) {
-      state[nV] = th*state[nV] + (1.0 - th)*inState[nV];
-    }
-  }
+  // if (rsq > R0sq && rsq <= R1sq) { // linear taper
+  //   const Real th = (r - 0.05)/0.01;
+  //   for (int nV=0; nV<NUM_VARS; nV++) {
+  //     state[nV] = th*state[nV] + (1.0 - th)*inState[nV];
+  //   }
+  // }
 }
 
 // Northern boundary
