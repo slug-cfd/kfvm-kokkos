@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 256 512 8
+mesh:resolution 512 1024 8
 mesh:numblocks 1 1 1
 mesh:extent 0.0 1.0 0.0 2.0 0.0 0.03125
 
@@ -17,11 +17,11 @@ stencil:lfac 5
 
 # Set fluid properties
 properties:gamma 1.4
-properties:wenothresh 20.0
+properties:wenothresh 500.0
 
 # Output settings
 io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
-io:basename MagKelvHelm
+io:basename MagKelvHelmBH
 io:plotfreq 50
 io:ckptfreq 20

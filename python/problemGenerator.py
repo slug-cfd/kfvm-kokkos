@@ -8,8 +8,8 @@ class ProblemSettings:
         self.eqTypes = ["Euler","Ideal MHD-GLM","SR Hydro"]
         self.rkTypes = ["SSP(4,3)","SSP(10,4)","ThreeStarP","FourStarP"]
         self.rsTypes = {"Euler":["HLL","HLLC","Roe"],
-                        "Ideal MHD-GLM":["KEPES"],
-                        "SR Hydro":["HLL","HLLC"]}
+                        "Ideal MHD-GLM":["KEPES","LLF"],
+                        "SR Hydro":["HLL","LLF"]}
         self.floatPrecs = ["double","single"]
         self.execSpaces = ["Device","Host Parallel","Host Serial"]
         self.bcTypes = ["periodic","outflow","reflecting","user"]
@@ -21,14 +21,15 @@ class ProblemSettings:
         self.codeNames = {"Euler":"KFVM::EquationType::Hydro",
                           "Ideal MHD-GLM":"KFVM::EquationType::MHD_GLM",
                           "SR Hydro":"KFVM::EquationType::SRHydro",
-                          "SSP(4,3)":"KFVM::RKType::SSP_4_3",
-                          "SSP(10,4)":"KFVM::RKType::SSP_10_4",
+                          "SSP(4,3)":"KFVM::RKType::SSP4_3_2",
+                          "SSP(10,4)":"KFVM::RKType::SSP10_4_3",
                           "ThreeStarP":"KFVM::RKType::ThreeStarP",
                           "FourStarP":"KFVM::RKType::FourStarP",
                           "HLL":"KFVM::RSType::HLL",
                           "HLLC":"KFVM::RSType::HLLC",
                           "ROE":"KFVM::RSType::ROE",
                           "KEPES":"KFVM::RSType::MHD_GLM_KEPES",
+                          "LLF":"KFVM::RSType::LLF",
                           "double":"1",
                           "single":"0",
                           "Device":"KFVM_EXEC_DEVICE",
@@ -117,7 +118,7 @@ class ProblemSettings:
         shutil.copy(self.kfvmDir + "/python/TmplFiles/InitialCondition_" + eqSuff + ".tmpl",
                     self.probPath + "InitialConditions.cpp")
         shutil.copy(self.kfvmDir + "/python/TmplFiles/SourceTerms_" + eqSuff + ".tmpl",
-                    self.probPath + "SourceTerms.cpp")
+                    self.probPath + "SourceTerms.H")
         shutil.copy(self.kfvmDir + "/python/TmplFiles/UserBCs.tmpl",self.probPath + "UserBCs.H")
         initFile = self.probName.lower() + ".init"
         shutil.copy(self.kfvmDir + "/python/TmplFiles/init.tmpl",self.probPath + initFile)
