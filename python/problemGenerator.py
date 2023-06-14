@@ -54,7 +54,7 @@ class ProblemSettings:
         self.rkType = questionary.select("Time integrator:",choices=self.rkTypes).ask()
         self.spaceDim = questionary.select("Space dimension:",choices=self.spaceDims).ask()
         self.stenRad = questionary.select("Stencil radius:",choices=self.stenRads).ask()
-        self.numQuad = questionary.select("Number of quadrature points:",choices=self.numQuads,default="3").ask()
+        self.numQuad = questionary.select("Number of quadrature points:",choices=self.numQuads,default="2").ask()
 
         self.bcWest = questionary.select("West BC type:",choices=self.bcTypes).ask()
         if self.bcWest == "periodic":
@@ -116,7 +116,7 @@ class ProblemSettings:
         # Copy template files to new directory
         eqSuff = "Euler" if self.eqType == "Euler" else ("MHD_GLM" if self.eqType == "Ideal MHD-GLM" else "SRHydro")
         shutil.copy(self.kfvmDir + "/python/TmplFiles/InitialCondition_" + eqSuff + ".tmpl",
-                    self.probPath + "InitialConditions.cpp")
+                    self.probPath + "InitialCondition.H")
         shutil.copy(self.kfvmDir + "/python/TmplFiles/SourceTerms_" + eqSuff + ".tmpl",
                     self.probPath + "SourceTerms.H")
         shutil.copy(self.kfvmDir + "/python/TmplFiles/UserBCs.tmpl",self.probPath + "UserBCs.H")
@@ -138,7 +138,7 @@ class ProblemSettings:
                 outfile.write(defn)
 
         # Fill ProblemSetup.cpp file
-        with open(self.kfvmDir + "/python/TmplFiles/ProblemSetup_" + eqSuff + ".tmpl","r") as f:
+        with open(self.kfvmDir + "/python/TmplFiles/ProblemSetup.tmpl","r") as f:
             probset = (f.read()
                        .replace("%{BC_WEST}",self.bcWest)
                        .replace("%{BC_EAST}",self.bcEast)
