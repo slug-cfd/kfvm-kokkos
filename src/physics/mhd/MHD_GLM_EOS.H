@@ -92,19 +92,18 @@ namespace KFVM {
       {
 	using Kokkos::fmin;
 	using MHD_GLM::SimVar;
-        return fmin(U[SimVar::dens],eint(U));
+	for (int nV=0; nV<NUM_VARS; nV++) {
+	  if (Kokkos::isnan(U[nV])) {
+	    return -1.0;
+	  }
+	}
+        return 1.0; //fmin(U[SimVar::dens],eint(U));
       }
       
       KOKKOS_INLINE_FUNCTION
       static Real prsg(const Real gamma,const MHD_GLM::ConsVec U)
       {
         return (gamma - Real(1.0))*eint(U);
-      }
-      
-      KOKKOS_INLINE_FUNCTION
-      static Real pres(const Real gamma,const MHD_GLM::ConsVec U)
-      {
-        return prsg(gamma,U) + prsb(U);
       }
       
       KOKKOS_INLINE_FUNCTION

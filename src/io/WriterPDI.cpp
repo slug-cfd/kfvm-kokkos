@@ -260,7 +260,6 @@ namespace KFVM {
       if (plotMode) {
 	writeAttributeVector(ofs,"vel","velx","vely","velz");
 	writeAttributeScalar(ofs,"eint");
-	writeAttributeScalar(ofs,"pres");
 	writeAttributeScalar(ofs,"prsg");
 	writeAttributeScalar(ofs,"prsb");
       }

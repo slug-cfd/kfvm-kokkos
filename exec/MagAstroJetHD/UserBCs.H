@@ -8,6 +8,7 @@
 // the Riemann solver
 
 #include "Definitions.H"
+#include "physics/EquationTypes.H"
 
 // Western boundary
 template<class DataViewType>
@@ -75,27 +76,35 @@ void CellSouth(const DataViewType& U,int rad,int nY,
 	      Real x,Real y,Real z,Real t,
 	      Real state[NUM_VARS])
 {
-  using Kokkos::sqrt;
+  using KFVM::Physics::MHD_GLM::SimVar;
+  
   // Void casts to ignore unused parameter warnings
   (void) U; (void) rad; (void) nY;
   (void) i; (void) k; (void) nH;
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
-  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z, r = sqrt(rsq);
-  const Real R0sq = 0.05*0.05,b0 = sqrt(USER_B0SQ);
+  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z;
+  const Real R0sq = 0.05*0.05;
 
-  // Inflow conditions
+  // Always extrapolate B and psi fields
+  const Real bx = U(KFVM_D_DECL(i,rad + nH,k),SimVar::magx);
+  const Real by = U(KFVM_D_DECL(i,rad + nH,k),SimVar::magy);
+  const Real bz = U(KFVM_D_DECL(i,rad + nH,k),SimVar::magz);
+  const Real psi = U(KFVM_D_DECL(i,rad + nH,k),SimVar::psi);
+  const Real bpsq = bx*bx + by*by + bz*bz + psi*psi;
+
+  // Inflow conditions + B and psi fields
   const Real inState[] = {
     1.4,
     0.0,
     USER_MACH*1.4,
     0.0,
-    1.0/0.4 + 1.4*USER_MACH*USER_MACH/2.0 + b0*b0/2.0,
-    0.0,
-    b0,
-    0.0,
-    0.0
+    1.0/0.4 + 1.4*USER_MACH*USER_MACH/2.0 + bpsq/2.0,
+    bx,
+    by,
+    bz,
+    psi
   };
 
   if (rsq > R0sq) { // outflow
@@ -107,13 +116,6 @@ void CellSouth(const DataViewType& U,int rad,int nY,
       state[nV] = inState[nV];
     }
   }
-
-  // if (rsq > R0sq && rsq <= R1sq) { // linear taper
-  //   const Real th = (r - 0.05)/0.01;
-  //   for (int nV=0; nV<NUM_VARS; nV++) {
-  //     state[nV] = th*state[nV] + (1.0 - th)*inState[nV];
-  //   }
-  // }
 }
 
 template<class DataViewType>
@@ -123,27 +125,36 @@ void FaceSouth(const DataViewType& U,
 	       Real x,Real y,Real z,Real t,
 	       Real state[NUM_VARS])
 {
-  using Kokkos::sqrt;
+  using KFVM::Physics::MHD_GLM::SimVar;
+  
   // Void casts to ignore unused parameter warnings
   (void) U;
   (void) i; (void) k; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
   (void) state;
 
-  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z, r = sqrt(rsq);
-  const Real R0sq = 0.05*0.05,b0 = sqrt(USER_B0SQ);
+  const Real rsq = SPACE_DIM == 2 ? x*x : x*x + z*z;
+  const Real R0sq = 0.05*0.05;
 
-  // Inflow conditions
+  // Always extrapolate B and psi fields
+  const Real bx = U(KFVM_DM_DECL(i,k),1,nQ,SimVar::magx);
+  const Real by = U(KFVM_DM_DECL(i,k),1,nQ,SimVar::magy);
+  const Real bz = U(KFVM_DM_DECL(i,k),1,nQ,SimVar::magz);
+  const Real psi = U(KFVM_DM_DECL(i,k),1,nQ,SimVar::psi);
+  const Real bpsq = bx*bx + by*by + bz*bz + psi*psi;
+
+
+  // Inflow conditions + B and psi fields
   const Real inState[] = {
     1.4,
     0.0,
     USER_MACH*1.4,
     0.0,
-    1.0/0.4 + 1.4*USER_MACH*USER_MACH/2.0 + b0*b0/2.0,
-    0.0,
-    b0,
-    0.0,
-    0.0
+    1.0/0.4 + 1.4*USER_MACH*USER_MACH/2.0 + bpsq/2.0,
+    bx,
+    by,
+    bz,
+    psi
   };
 
   if (rsq > R0sq) { // outflow
@@ -155,13 +166,6 @@ void FaceSouth(const DataViewType& U,
       state[nV] = inState[nV];
     }
   }
-
-  // if (rsq > R0sq && rsq <= R1sq) { // linear taper
-  //   const Real th = (r - 0.05)/0.01;
-  //   for (int nV=0; nV<NUM_VARS; nV++) {
-  //     state[nV] = th*state[nV] + (1.0 - th)*inState[nV];
-  //   }
-  // }
 }
 
 // Northern boundary

@@ -24,12 +24,7 @@
 namespace KFVM {
 
   struct ProblemSetup
-  { 
-    // Static members to be set by the user
-    // Names for variables used in the solution files
-    static std::array<std::string,NUM_VARS> varName;
-    static std::array<std::string,NUM_AUX> auxVarName;
-
+  {
     // Array of boundary conditions
     // Note: always 6 entries (2*3) even in 2D
     static std::array<BCType,6> bcType;

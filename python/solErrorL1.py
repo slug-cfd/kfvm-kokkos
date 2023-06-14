@@ -34,11 +34,6 @@ def printErrorsMHD(N,l1err):
     magErr = np.sqrt(l1err['magx']**2 + l1err['magy']**2 + l1err['magz']**2)
     print(f"{N} {l1err['dens']} {momErr} {l1err['etot']} {magErr}")
 
-def printErrorsSRHydro(N,l1err):
-    # get momentum error as norm
-    momErr = np.sqrt(l1err['momx']**2 + l1err['momy']**2 + l1err['momz']**2)
-    print(f"{N} {l1err['dens']} {momErr} {l1err['tau']}")
-
 if __name__ == '__main__':
     # Display help message and exit
     if sys.argv[1] == '-h' or sys.argv[1] == '--help':
@@ -57,9 +52,8 @@ if __name__ == '__main__':
     # print out errors for appropriate system
     if 'magx' in fRef.keys():
         printErrorsMHD(N,l1err)
-    elif 'tau' in fRef.keys():
-        printErrorsSRHydro(N,l1err)
     else:
+        # Also handles srhydro
         printErrorsHydro(N,l1err)
 
     # close files and exit

@@ -33,7 +33,7 @@ namespace KFVM {
         enum var { dens = 0, velx, vely, velz, prsg, magx, magy, magz, psi };
       };
       struct AuxVar {
-        enum var { velx = 0, vely, velz, eint, pres, prsg, prsb };
+        enum var { velx = 0, vely, velz, eint, prsg, prsb };
       };
 
       typedef Real ConsVec[9];

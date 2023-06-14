@@ -43,18 +43,31 @@ namespace KFVM {
       using Kokkos::fmax;
       using Kokkos::fmin;
       using Kokkos::fabs;
+      using Kokkos::sqrt;
       using MHD_GLM::SimVar;
-      
+
       const Real cfL = EOS<EquationType::MHD_GLM>::fastMagSonic(gamma,uL,uL[bord[0]]);
       const Real cfR = EOS<EquationType::MHD_GLM>::fastMagSonic(gamma,uR,uR[bord[0]]);
 
+      // Davis style estimates with ch added in
       const Real slMs = fmin(vL[lng] - cfL,vR[lng] - cfR);
       const Real slCh = fmin(vL[lng] - ch ,vR[lng] - ch);
       const Real srMs = fmax(vL[lng] + cfL,vR[lng] + cfR);
       const Real srCh = fmax(vL[lng] + ch ,vR[lng] + ch);
-      
       sL = fmin(slMs,slCh);
       sR = fmax(srMs,srCh);
+
+      // PP estimates following Wu and Shu
+      const Real rtL = sqrt(uL[SimVar::dens]),rtR = sqrt(uR[SimVar::dens]);
+      const Real rtSum = rtL + rtR,vSum = (rtL*vL[lng] + rtR*vR[lng])/rtSum;
+      const Real bDiff[] = {uL[bord[0]] - uR[bord[0]],
+			    uL[bord[1]] - uR[bord[1]],
+			    uL[bord[2]] - uR[bord[2]]};
+      const Real bnDiff = sqrt(bDiff[0]*bDiff[0] + bDiff[1]*bDiff[1] + bDiff[2]*bDiff[2])/rtSum;
+      const Real aL = fmin(vL[lng],vSum) - cfL - bnDiff;
+      const Real aR = fmin(vR[lng],vSum) + cfR + bnDiff;
+      sL = fmin(sL,aL);
+      sR = fmax(sR,aR);
       
       return fmax(fabs(sL),fabs(sR));
     }

@@ -119,9 +119,8 @@ namespace KFVM {
 	V(KFVM_D_DECL(i,j,k),AuxVar::vely) = U(KFVM_D_DECL(i,j,k),SimVar::momy)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
 	V(KFVM_D_DECL(i,j,k),AuxVar::velz) = U(KFVM_D_DECL(i,j,k),SimVar::momz)/U(KFVM_D_DECL(i,j,k),SimVar::dens);
 
-	// Internal energy and pressure
+	// Internal energy and pressures
 	V(KFVM_D_DECL(i,j,k),AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(u);
-	V(KFVM_D_DECL(i,j,k),AuxVar::pres) = EOS<EquationType::MHD_GLM>::pres(fProp.gamma,u);
 	V(KFVM_D_DECL(i,j,k),AuxVar::prsg) = EOS<EquationType::MHD_GLM>::prsg(fProp.gamma,u);
 	V(KFVM_D_DECL(i,j,k),AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(u);
       }
@@ -271,67 +270,86 @@ namespace KFVM {
       void operator()(KFVM_D_DECL(const idx_t i,const idx_t j,const idx_t k),Real& maxCh) const
       {
 	using Kokkos::fmax;
+	using Kokkos::fabs;
 	using MHD_GLM::SimVar;
 	using MHD_GLM::ConsVec;
 	
 	const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS*NUM_QUAD_PTS;
-	const Real pf = 0.99;
+
+	const Real pf = 1.0;
+	Real cfDiff = 0.0;
 
 	// Check x-faces
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
-	  Real cfVel;
+	  Real cf,cfDiffLoc,v;
 	  ConsVec uM,uP;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uM[nV] = rsX(KFVM_D_DECL(i    ,j,k),1,nQ,nV);
 	    uP[nV] = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV);
 	  }
-	  
-	  // Get fast mag sonic speed and longitudinal speed (x faces)
-	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uM);
-	  maxCh = fmax(maxCh,pf*cfVel);
-	  
-	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uP);
-	  maxCh = fmax(maxCh,pf*cfVel);
+
+	  // Minus face
+	  v = fabs(uM[SimVar::momx]/uM[SimVar::dens]);
+	  cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uM);
+	  cfDiffLoc = v < cf ? cf - v : cf;
+	  cfDiff = fmax(cfDiff,cfDiffLoc);
+
+	  // Plus face
+	  v = fabs(uP[SimVar::momx]/uP[SimVar::dens]);
+	  cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uP);
+	  cfDiffLoc = v < cf ? cf - v : cf;
+	  cfDiff = fmax(cfDiff,cfDiffLoc);
 	}
 
 	// Check y-faces
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
-	  Real cfVel;
+	  Real cf,cfDiffLoc,v;
 	  ConsVec uM,uP;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uM[nV] = rsY(KFVM_D_DECL(i,j    ,k),1,nQ,nV);
 	    uP[nV] = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV);
 	  }
-	  
-	  // Get fast mag sonic speed and longitudinal speed (y faces)
-	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicY(fProp.gamma,uM);
-	  maxCh = fmax(maxCh,pf*cfVel);
-	  
-	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicY(fProp.gamma,uP);
-	  maxCh = fmax(maxCh,pf*cfVel);
+
+	  // Minus face
+	  v = fabs(uM[SimVar::momx]/uM[SimVar::dens]);
+	  cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uM);
+	  cfDiffLoc = v < cf ? cf - v : cf;
+	  cfDiff = fmax(cfDiff,cfDiffLoc);
+
+	  // Plus face
+	  v = fabs(uP[SimVar::momx]/uP[SimVar::dens]);
+	  cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uP);
+	  cfDiffLoc = v < cf ? cf - v : cf;
+	  cfDiff = fmax(cfDiff,cfDiffLoc);
 	}
 
 #if (SPACE_DIM == 3)
 	// Check z-faces
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // pull out states
-	  Real cfVel;
+	  Real cf,cfDiffLoc,v;
 	  ConsVec uM,uP;
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    uM[nV] = rsZ(i,j,k    ,1,nQ,nV);
 	    uP[nV] = rsZ(i,j,k + 1,0,nQ,nV);
 	  }
-	  
-	  // Get fast mag sonic speed and longitudinal speed (z faces)
-	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicZ(fProp.gamma,uM);
-	  maxCh = fmax(maxCh,pf*cfVel);
-	  
-	  cfVel = EOS<EquationType::MHD_GLM>::fastMagSonicZ(fProp.gamma,uP);
-	  maxCh = fmax(maxCh,pf*cfVel);
+
+	  // Minus face
+	  v = fabs(uM[SimVar::momx]/uM[SimVar::dens]);
+	  cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uM);
+	  cfDiffLoc = v < cf ? cf - v : cf;
+	  cfDiff = fmax(cfDiff,cfDiffLoc);
+
+	  // Plus face
+	  v = fabs(uP[SimVar::momx]/uP[SimVar::dens]);
+	  cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(fProp.gamma,uP);
+	  cfDiffLoc = v < cf ? cf - v : cf;
+	  cfDiff = fmax(cfDiff,cfDiffLoc);
 	}
 #endif
+	maxCh = pf*cfDiff;
       }
     };
 
@@ -424,7 +442,7 @@ namespace KFVM {
 
 	      // Derivatives of B and psi, fall back on centered fd if PP corrected too far
 	      Real dbx,dby,dbz,dpx,dpy,dpz;
-	      if (wenoFlag(KFVM_D_DECL(i,j,k),1) < 0.5) {
+	      if (wenoFlag(KFVM_D_DECL(i,j,k),1) < 1.0) {
 		const Real tdx = 1.0/(2.0*geom.dx),tdy = 1.0/(2.0*geom.dy);
 		dbx = tdx*(U(KFVM_D_DECL(i + 1,j,k),SimVar::magx) - U(KFVM_D_DECL(i - 1,j,k),SimVar::magx));
 		dby = tdy*(U(KFVM_D_DECL(i,j + 1,k),SimVar::magy) - U(KFVM_D_DECL(i,j - 1,k),SimVar::magy));
@@ -652,7 +670,7 @@ namespace KFVM {
 
 	// Enforce positive density
 	// Find mixing amount given by face values
-	Real theta = Real(1.0);
+	Real theta = minDens > 1.e-13 ? Real(1.0) : 0.0;
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  // West face
           Real rho = rsX(KFVM_D_DECL(i,j,k),1,nQ,SimVar::dens);
@@ -726,7 +744,7 @@ namespace KFVM {
 
 	// Enforce positive pressure
 	// Find mixing amount
-	theta = Real(1.0);
+	theta = minPres > 1.e-13 ? Real(1.0) : 0.0;
 	for (idx_t nQ=0; nQ<nQuad; nQ++) {
 	  Real p;
           ConsVec state;
