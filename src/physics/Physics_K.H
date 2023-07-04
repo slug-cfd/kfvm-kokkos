@@ -42,4 +42,9 @@ namespace KFVM {
 #include "srhydro/SRHydro_EOS.H"
 #include "srhydro/SRHydro_K.H"
 
+// Linear advection for simple tests
+#include "linadv/LinAdv_BCCoeffs.H"
+#include "linadv/LinAdv_EOS.H"
+#include "linadv/LinAdv_K.H"
+
 #endif

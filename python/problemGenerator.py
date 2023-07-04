@@ -5,11 +5,12 @@ import questionary
 class ProblemSettings:
     def __init__(self):
         # Human readable choices for all questionary questions
-        self.eqTypes = ["Euler","Ideal MHD-GLM","SR Hydro"]
+        self.eqTypes = ["Euler","Ideal MHD-GLM","SR Hydro","Linear Advection"]
         self.rkTypes = ["SSP(4,3)","SSP(10,4)","ThreeStarP","FourStarP"]
         self.rsTypes = {"Euler":["HLL","HLLC","Roe"],
                         "Ideal MHD-GLM":["KEPES","LLF"],
-                        "SR Hydro":["HLL","LLF"]}
+                        "SR Hydro":["HLL","LLF"],
+                        "Linear Advection":["Exact"]}
         self.floatPrecs = ["double","single"]
         self.execSpaces = ["Device","Host Parallel","Host Serial"]
         self.bcTypes = ["periodic","outflow","reflecting","user"]
@@ -21,6 +22,7 @@ class ProblemSettings:
         self.codeNames = {"Euler":"KFVM::EquationType::Hydro",
                           "Ideal MHD-GLM":"KFVM::EquationType::MHD_GLM",
                           "SR Hydro":"KFVM::EquationType::SRHydro",
+                          "Linear Advection":"KFVM::EquationType::LinAdv",
                           "SSP(4,3)":"KFVM::RKType::SSP4_3_2",
                           "SSP(10,4)":"KFVM::RKType::SSP10_4_3",
                           "ThreeStarP":"KFVM::RKType::ThreeStarP",
@@ -30,6 +32,7 @@ class ProblemSettings:
                           "ROE":"KFVM::RSType::ROE",
                           "KEPES":"KFVM::RSType::MHD_GLM_KEPES",
                           "LLF":"KFVM::RSType::LLF",
+                          "Exact":"KFVM::RSType::EXACT",
                           "double":"1",
                           "single":"0",
                           "Device":"KFVM_EXEC_DEVICE",
@@ -114,7 +117,8 @@ class ProblemSettings:
             os.mkdir(self.probPath)
 
         # Copy template files to new directory
-        eqSuff = "Euler" if self.eqType == "Euler" else ("MHD_GLM" if self.eqType == "Ideal MHD-GLM" else "SRHydro")
+        eqSuffs = {"Euler":"Euler","Ideal MHD-GLM":"MHD_GLM","SR Hydro":"SRHydro","Linear Advection":"LinAdv"}
+        eqSuff = eqSuffs[self.eqType]
         shutil.copy(self.kfvmDir + "/python/TmplFiles/InitialCondition_" + eqSuff + ".tmpl",
                     self.probPath + "InitialCondition.H")
         shutil.copy(self.kfvmDir + "/python/TmplFiles/SourceTerms_" + eqSuff + ".tmpl",

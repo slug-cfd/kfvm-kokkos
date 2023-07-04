@@ -58,6 +58,23 @@ namespace KFVM {
 
     } // end namespace SRHydro
 
+    namespace LinAdv {
+
+      struct SimVar {
+        enum var { u = 0};
+      };
+      struct PrimVar {
+        enum var { u = 0};
+      };
+      struct AuxVar {
+        enum var { u = 0};
+      };
+
+      typedef Real ConsVec[1];
+      typedef Real PrimVec[1];
+
+    } // end namespace SRHydro
+
   } // end namespace Physics
 
 } // end namespace KFVM
