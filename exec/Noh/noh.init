@@ -1,0 +1,27 @@
+# Set mesh resolution and extent
+mesh:resolution 1024 1024 8
+mesh:numblocks 1 1 1
+mesh:extent -1.0 1.0 -1.0 1.0 0.0 0.03125
+
+# Set time information
+time:initial 0.0
+time:final 1.0
+time:initialdt 1.e-10
+time:cfl 1.5
+time:maxsteps 2000
+time:atol 1.e-3
+time:rtol 1.e-3
+
+# Set stencil options
+stencil:lfac 5
+
+# Set fluid properties
+properties:gamma 1.6666666666666
+properties:wenothresh 20.0
+
+# Output settings
+io:pdiconf ../../user/pdi_euler_xdmf.yml
+io:datadir data
+io:basename Noh
+io:plotfreq 50
+io:ckptfreq 25
