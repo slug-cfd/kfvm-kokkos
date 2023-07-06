@@ -1,0 +1,27 @@
+# Set mesh resolution and extent
+mesh:resolution 240 160 80
+mesh:numblocks 1 1 1
+mesh:extent 0.0 1.5 0.0 1.0 0.0 0.5
+
+# Set time information
+time:initial 0.0
+time:final 0.8
+time:initialdt 1.e-8
+time:cfl 1.5
+time:maxsteps 10000
+time:atol 1.e-4
+time:rtol 1.e-3
+
+# Set stencil options
+stencil:lfac 5
+
+# Set fluid properties
+properties:gamma 1.4
+properties:wenothresh 5.0
+
+# Output settings
+io:pdiconf ../../user/pdi_euler_xdmf.yml
+io:datadir data
+io:basename VortexGen
+io:plotfreq 50
+io:ckptfreq 25
