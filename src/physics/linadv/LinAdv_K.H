@@ -11,7 +11,7 @@
 #include "../../Dimension.H"
 #include "../../Types.H"
 #include "../../Geometry.H"
-#include "../../FluidProperties.H"
+#include "../../ParameterStructs.H"
 #include "../EquationTypes.H"
 #include "../RSTypes.H"
 #include "../SimVar.H"
@@ -46,12 +46,12 @@ namespace KFVM {
     {
       UViewType U;
       AuxDataView V;
-      FluidProperties fProp;
+      EosParameters eosParams;
 
-      AuxVars(const UViewType& U_,const AuxDataView V_,const FluidProperties& fProp_):
+      AuxVars(const UViewType& U_,const AuxDataView V_,const EosParameters& eosParams_):
 	U(U_),
         V(V_),
-        fProp(fProp_)
+        eosParams(eosParams_)
       {}
 
       KOKKOS_INLINE_FUNCTION
@@ -63,11 +63,11 @@ namespace KFVM {
     struct RiemannSolverX_K<EquationType::LinAdv,rst>
     {
       FaceDataView U;
-      FluidProperties fProp;
+      EosParameters eosParams;
 
-      RiemannSolverX_K(const FaceDataView& U_,const FluidProperties& fProp_):
+      RiemannSolverX_K(const FaceDataView& U_,const EosParameters& eosParams_):
 	U(U_),
-        fProp(fProp_)
+        eosParams(eosParams_)
       {}
 
       KOKKOS_INLINE_FUNCTION
@@ -86,7 +86,7 @@ namespace KFVM {
 	  }
           
 	  // Calculate flux
-	  Real vq = LinAdvRS<rst>::RiemannSolve_X(fProp.gamma,uL,uR,F);
+	  Real vq = LinAdvRS<rst>::RiemannSolve_X(eosParams.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -102,11 +102,11 @@ namespace KFVM {
     struct RiemannSolverY_K<EquationType::LinAdv,rst>
     {
       FaceDataView U;
-      FluidProperties fProp;
+      EosParameters eosParams;
 
-      RiemannSolverY_K(const FaceDataView& U_,const FluidProperties& fProp_):
+      RiemannSolverY_K(const FaceDataView& U_,const EosParameters& eosParams_):
 	U(U_),
-        fProp(fProp_)
+        eosParams(eosParams_)
       {}
 
       KOKKOS_INLINE_FUNCTION
@@ -124,7 +124,7 @@ namespace KFVM {
 	  }
           
 	  // Calculate flux
-	  Real vq = LinAdvRS<rst>::RiemannSolve_Y(fProp.gamma,uL,uR,F);
+	  Real vq = LinAdvRS<rst>::RiemannSolve_Y(eosParams.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	  
 	  // Overwrite states with flux
@@ -140,11 +140,11 @@ namespace KFVM {
     struct RiemannSolverZ_K<EquationType::LinAdv,rst>
     {
       FaceDataView U;
-      FluidProperties fProp;
+      EosParameters eosParams;
 
-      RiemannSolverZ_K(const FaceDataView& U_,const FluidProperties& fProp_):
+      RiemannSolverZ_K(const FaceDataView& U_,const EosParameters& eosParams_):
 	U(U_),
-        fProp(fProp_)
+        eosParams(eosParams_)
       {}
 
 #if (SPACE_DIM == 3)
@@ -162,7 +162,7 @@ namespace KFVM {
 	  }
           
 	  // Calculate flux
-	  Real vq = LinAdvRS<rst>::RiemannSolve_Z(fProp.gamma,uL,uR,F);
+	  Real vq = LinAdvRS<rst>::RiemannSolve_Z(eosParams.gamma,uL,uR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	  
 	  // Overwrite states with flux
@@ -179,14 +179,14 @@ namespace KFVM {
     struct SpeedEstimate_K<EquationType::LinAdv>
     {
       FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
-      FluidProperties fProp;
+      EosParameters eosParams;
 
       SpeedEstimate_K(KFVM_D_DECL(const FaceDataView& rsX_,
 				  const FaceDataView& rsY_,
 				  const FaceDataView& rsZ_),
-                      const FluidProperties& fProp_):
+                      const EosParameters& eosParams_):
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
-        fProp(fProp_)
+        eosParams(eosParams_)
       {}
 
       KOKKOS_INLINE_FUNCTION
@@ -207,7 +207,7 @@ namespace KFVM {
       WenoFlagView wenoFlag;
       DiffMatView D;
       QuadRuleView ab;
-      FluidProperties fProp;
+      EosParameters eosParams;
       Geometry geom;
       Real t;
 
@@ -219,7 +219,7 @@ namespace KFVM {
 		    const WenoFlagView& wenoFlag_,
                     const DiffMatView& D_,
 		    const QuadRuleView& ab_,
-		    const FluidProperties& fProp_,
+		    const EosParameters& eosParams_,
                     const Geometry& geom_,
                     const Real t_):
 	source(source_),
@@ -228,7 +228,7 @@ namespace KFVM {
 	wenoFlag(wenoFlag_),
         D(D_),
 	ab(ab_),
-	fProp(fProp_),
+	eosParams(eosParams_),
 	geom(geom_),
         t(t_)
       {}
@@ -281,7 +281,7 @@ namespace KFVM {
       bool haveSources;
       SourceDataView source;
       WenoFlagView wenoFlag;
-      FluidProperties fProp;
+      EosParameters eosParams;
 
       PositivityPreserve_K(const UDataView& U_,
 			   KFVM_D_DECL(const FaceDataView& rsX_,
@@ -290,13 +290,13 @@ namespace KFVM {
 			   const bool haveSources_,
 			   const SourceDataView& source_,
 			   const WenoFlagView& wenoFlag_,
-			   const FluidProperties& fProp_):
+			   const EosParameters& eosParams_):
 	U(U_),
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
 	haveSources(haveSources_),
 	source(source_),
 	wenoFlag(wenoFlag_),
-	fProp(fProp_)
+	eosParams(eosParams_)
       {}
 
       KOKKOS_INLINE_FUNCTION

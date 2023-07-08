@@ -8,6 +8,7 @@
 #include <Definitions.H>
 
 #include "Dimension.H"
+#include "ParameterStructs.H"
 #include "Types.H"
 #include "Geometry.H"
 #include "numeric/Numeric.H"
@@ -102,13 +103,19 @@ namespace KFVM {
       Geometry geom;
       idx_t rad,nX;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      CellBcWest_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_,Real t_):
+      CellBcWest_K(const DataViewType& v_,const Geometry& geom_,
+		   idx_t rad_,idx_t nX_,Real t_,
+		   EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	rad(rad_),
 	nX(nX_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
       
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
@@ -125,7 +132,7 @@ namespace KFVM {
 #endif
 	  // query user defined BCs
 	  Real state[NUM_VARS];
-	  CellWest(v,rad,nX,j,k,nH,x,y,z,t,state);
+	  CellWest(v,rad,nX,j,k,nH,x,y,z,t,eosParams,userParams,state);
 	  // Copy idx_to view
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(KFVM_D_DECL(rad - nH - 1,j,k),nV) = state[nV];
@@ -187,13 +194,19 @@ namespace KFVM {
       Geometry geom;
       idx_t rad,nX;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      CellBcEast_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nX_,Real t_):
+      CellBcEast_K(const DataViewType& v_,const Geometry& geom_,
+		   idx_t rad_,idx_t nX_,Real t_,
+		   EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	rad(rad_),
 	nX(nX_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
     
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_DM_DECL(const idx_t j,const idx_t k)) const {
@@ -210,7 +223,7 @@ namespace KFVM {
 #endif
 	  // query user defined BCs
 	  Real state[NUM_VARS];
-	  CellEast(v,rad,nX,j,k,nH,x,y,z,t,state);
+	  CellEast(v,rad,nX,j,k,nH,x,y,z,t,eosParams,userParams,state);
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(KFVM_D_DECL(nX + rad + nH,j,k),nV) = state[nV];
@@ -272,13 +285,19 @@ namespace KFVM {
       Geometry geom;
       idx_t rad,nY;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      CellBcSouth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_,Real t_):
+      CellBcSouth_K(const DataViewType& v_,const Geometry& geom_,
+		    idx_t rad_,idx_t nY_,Real t_,
+		    EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	rad(rad_),
 	nY(nY_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
       
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
@@ -295,7 +314,7 @@ namespace KFVM {
 #endif
 	  // query user defined BCs
 	  Real state[NUM_VARS];
-	  CellSouth(v,rad,nY,i,k,nH,x,y,z,t,state);
+	  CellSouth(v,rad,nY,i,k,nH,x,y,z,t,eosParams,userParams,state);
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(KFVM_D_DECL(i,rad - nH - 1,k),nV) = state[nV];
@@ -357,13 +376,19 @@ namespace KFVM {
       Geometry geom;
       idx_t rad,nY;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      CellBcNorth_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nY_,Real t_):
+      CellBcNorth_K(const DataViewType& v_,const Geometry& geom_,
+		    idx_t rad_,idx_t nY_,Real t_,
+		    EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	rad(rad_),
 	nY(nY_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
       
       KOKKOS_INLINE_FUNCTION
       void operator()(KFVM_DM_DECL(const idx_t i,const idx_t k)) const {
@@ -380,7 +405,7 @@ namespace KFVM {
 #endif
 	  // query user defined BCs
 	  Real state[NUM_VARS];
-	  CellNorth(v,rad,nY,i,k,nH,x,y,z,t,state);
+	  CellNorth(v,rad,nY,i,k,nH,x,y,z,t,eosParams,userParams,state);
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(KFVM_D_DECL(i,nY + rad + nH,k),nV) = state[nV];
@@ -442,13 +467,19 @@ namespace KFVM {
       Geometry geom;
       idx_t rad,nZ;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      CellBcBottom_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_,Real t_):
+      CellBcBottom_K(const DataViewType& v_,const Geometry& geom_,
+		     idx_t rad_,idx_t nZ_,Real t_,
+		     EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	rad(rad_),
 	nZ(nZ_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
 
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j) const {
@@ -460,7 +491,7 @@ namespace KFVM {
 	  Real z = geom.zCoord(-nH - 1);
 	  // query user defined BCs
 	  Real state[NUM_VARS];
-	  CellBottom(v,rad,nZ,i,j,nH,x,y,z,t,state);
+	  CellBottom(v,rad,nZ,i,j,nH,x,y,z,t,eosParams,userParams,state);
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(i,j,rad - nH - 1 ,nV) = state[nV];
@@ -522,13 +553,19 @@ namespace KFVM {
       Geometry geom;
       idx_t rad,nZ;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      CellBcTop_K(const DataViewType& v_,const Geometry& geom_,idx_t rad_,idx_t nZ_,Real t_):
+      CellBcTop_K(const DataViewType& v_,const Geometry& geom_,
+		  idx_t rad_,idx_t nZ_,Real t_,
+		  EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	rad(rad_),
 	nZ(nZ_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
 
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j) const {
@@ -540,7 +577,7 @@ namespace KFVM {
 	  Real z = geom.zCoord(nZ + nH);
 	  // query user defined BCs
 	  Real state[NUM_VARS];
-	  CellTop(v,rad,nZ,i,j,nH,x,y,z,t,state);
+	  CellTop(v,rad,nZ,i,j,nH,x,y,z,t,eosParams,userParams,state);
 	  // Loop over SimVars
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(i,j,nZ + rad + nH,nV) = state[nV];
@@ -598,12 +635,18 @@ namespace KFVM {
       Geometry geom;
       QuadRuleView ab;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      FaceBcWest_K(const DataViewType& v_,const Geometry& geom_,const QuadRuleView& ab_,Real t_):
+      FaceBcWest_K(const DataViewType& v_,const Geometry& geom_,
+		   const QuadRuleView& ab_,Real t_,
+		   EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	ab(ab_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
     
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t j) const {
@@ -613,7 +656,7 @@ namespace KFVM {
 	  Real y = Numeric::sclAb(geom.yCoord(j),geom.dy,ab(nQ));
 	  // query user defined BCs
 	  Real state[NUM_VARS];
-	  FaceWest(v,j,0,nQ,geom.xLo,y,geom.zLo,t,state);
+	  FaceWest(v,j,0,nQ,geom.xLo,y,geom.zLo,t,eosParams,userParams,state);
 	  // Copy state over
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(j,0,nQ,nV) = state[nV];
@@ -631,7 +674,7 @@ namespace KFVM {
 	    Real z = Numeric::sclAb(geom.zCoord(k),geom.dz,ab(nR));
 	    // query user defined BCs
 	    Real state[NUM_VARS];
-	    FaceWest(v,j,k,nQ*NUM_QUAD_PTS + nR,geom.xLo,y,z,t,state);
+	    FaceWest(v,j,k,nQ*NUM_QUAD_PTS + nR,geom.xLo,y,z,t,eosParams,userParams,state);
 	    // Copy state over
 	    for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	      v(j,k,0,nQ*NUM_QUAD_PTS + nR,nV) = state[nV];
@@ -692,12 +735,18 @@ namespace KFVM {
       Geometry geom;
       QuadRuleView ab;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      FaceBcEast_K(const DataViewType& v_,const Geometry& geom_,const QuadRuleView& ab_,Real t_):
+      FaceBcEast_K(const DataViewType& v_,const Geometry& geom_,
+		   const QuadRuleView& ab_,Real t_,
+		   EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	ab(ab_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
       
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t j) const {
@@ -707,7 +756,7 @@ namespace KFVM {
 	  Real y = Numeric::sclAb(geom.yCoord(j),geom.dy,ab(nQ));
 	  // query user defined BCs
 	  Real state[NUM_VARS];
-	  FaceEast(v,j,0,nQ,geom.xUp,y,geom.zLo,t,state);
+	  FaceEast(v,j,0,nQ,geom.xUp,y,geom.zLo,t,eosParams,userParams,state);
 	  // Copy state over
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(j,1,nQ,nV) = state[nV];
@@ -725,7 +774,7 @@ namespace KFVM {
 	    Real z = Numeric::sclAb(geom.zCoord(k),geom.dz,ab(nR));
 	    // query user defined BCs
 	    Real state[NUM_VARS];
-	    FaceEast(v,j,k,nQ*NUM_QUAD_PTS + nR,geom.xUp,y,z,t,state);
+	    FaceEast(v,j,k,nQ*NUM_QUAD_PTS + nR,geom.xUp,y,z,t,eosParams,userParams,state);
 	    // Copy state over
 	    for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	      v(j,k,1,nQ*NUM_QUAD_PTS + nR,nV) = state[nV];
@@ -785,12 +834,18 @@ namespace KFVM {
       Geometry geom;
       QuadRuleView ab;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      FaceBcSouth_K(const DataViewType& v_,const Geometry& geom_,const QuadRuleView& ab_,Real t_):
+      FaceBcSouth_K(const DataViewType& v_,const Geometry& geom_,
+		    const QuadRuleView& ab_,Real t_,
+		    EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	ab(ab_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
       
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i) const {
@@ -800,7 +855,7 @@ namespace KFVM {
 	  Real x = Numeric::sclAb(geom.xCoord(i),geom.dx,ab(nQ));
 	  // query user defined BCs
 	  Real state[NUM_VARS];
-	  FaceSouth(v,i,0,nQ,x,geom.yLo,geom.zLo,t,state);
+	  FaceSouth(v,i,0,nQ,x,geom.yLo,geom.zLo,t,eosParams,userParams,state);
 	  // Copy idx_to view
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(i,0,nQ,nV) = state[nV];
@@ -818,7 +873,7 @@ namespace KFVM {
 	    Real z = Numeric::sclAb(geom.zCoord(k),geom.dz,ab(nR));
 	    // query user defined BCs
 	    Real state[NUM_VARS];
-	    FaceSouth(v,i,k,nQ*NUM_QUAD_PTS + nR,x,geom.yLo,z,t,state);
+	    FaceSouth(v,i,k,nQ*NUM_QUAD_PTS + nR,x,geom.yLo,z,t,eosParams,userParams,state);
 	    // Copy idx_to view
 	    for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	      v(i,k,0,nQ*NUM_QUAD_PTS + nR,nV) = state[nV];
@@ -878,12 +933,18 @@ namespace KFVM {
       Geometry geom;
       QuadRuleView ab;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      FaceBcNorth_K(const DataViewType& v_,const Geometry& geom_,const QuadRuleView& ab_,Real t_):
+      FaceBcNorth_K(const DataViewType& v_,const Geometry& geom_,
+		    const QuadRuleView& ab_,Real t_,
+		    EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	ab(ab_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
       
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i) const {
@@ -893,7 +954,7 @@ namespace KFVM {
 	  Real x = Numeric::sclAb(geom.xCoord(i),geom.dx,ab(nQ));
 	  // query user defined BCs
 	  Real state[NUM_VARS];
-	  FaceNorth(v,i,0,nQ,x,geom.yUp,geom.zLo,t,state);
+	  FaceNorth(v,i,0,nQ,x,geom.yUp,geom.zLo,t,eosParams,userParams,state);
 	  // copy state over
 	  for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	    v(i,1,nQ,nV) = state[nV];
@@ -911,7 +972,7 @@ namespace KFVM {
 	    Real z = Numeric::sclAb(geom.zCoord(k),geom.dz,ab(nR));
 	    // query user defined BCs
 	    Real state[NUM_VARS];
-	    FaceNorth(v,i,k,nQ*NUM_QUAD_PTS + nR,x,geom.yUp,z,t,state);
+	    FaceNorth(v,i,k,nQ*NUM_QUAD_PTS + nR,x,geom.yUp,z,t,eosParams,userParams,state);
 	    // copy state over
 	    for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	      v(i,k,1,nQ*NUM_QUAD_PTS + nR,nV) = state[nV];
@@ -969,12 +1030,18 @@ namespace KFVM {
       Geometry geom;
       QuadRuleView ab;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      FaceBcBottom_K(const DataViewType& v_,const Geometry& geom_,const QuadRuleView& ab_,Real t_):
+      FaceBcBottom_K(const DataViewType& v_,const Geometry& geom_,
+		     const QuadRuleView& ab_,Real t_,
+		     EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	ab(ab_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
     
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j) const {
@@ -986,7 +1053,7 @@ namespace KFVM {
 	    Real y = Numeric::sclAb(geom.yCoord(j),geom.dy,ab(nR));
 	    // query user defined BCs
 	    Real state[NUM_VARS];
-	    FaceBottom(v,i,j,nQ*NUM_QUAD_PTS + nR,x,y,geom.zLo,t,state);
+	    FaceBottom(v,i,j,nQ*NUM_QUAD_PTS + nR,x,y,geom.zLo,t,eosParams,userParams,state);
 	    // copy state over
 	    for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	      v(i,j,0,nQ*NUM_QUAD_PTS + nR,nV) = state[nV];
@@ -1043,12 +1110,18 @@ namespace KFVM {
       Geometry geom;
       QuadRuleView ab;
       Real t;
+      EosParameters eosParams;
+      UserParameters userParams;
 
-      FaceBcTop_K(const DataViewType& v_,const Geometry& geom_,const QuadRuleView& ab_,Real t_):
+      FaceBcTop_K(const DataViewType& v_,const Geometry& geom_,
+		  const QuadRuleView& ab_,Real t_,
+		  EosParameters& eosParams_,UserParameters& userParams_):
 	v(v_),
 	geom(geom_),
 	ab(ab_),
-	t(t_) {}
+	t(t_),
+	eosParams(eosParams_),
+	userParams(userParams_) {}
         
       KOKKOS_INLINE_FUNCTION
       void operator()(const idx_t i,const idx_t j) const {
@@ -1060,7 +1133,7 @@ namespace KFVM {
 	    Real y = Numeric::sclAb(geom.yCoord(j),geom.dy,ab(nR));
 	    // query user defined BCs
 	    Real state[NUM_VARS];
-	    FaceTop(v,i,j,nQ*NUM_QUAD_PTS + nR,x,y,geom.zUp,t,state);
+	    FaceTop(v,i,j,nQ*NUM_QUAD_PTS + nR,x,y,geom.zUp,t,eosParams,userParams,state);
 	    // copy state over
 	    for (idx_t nV=0; nV<NUM_VARS; nV++) {
 	      v(i,j,1,nQ*NUM_QUAD_PTS + nR,nV) = state[nV];

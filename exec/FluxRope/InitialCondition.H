@@ -12,14 +12,17 @@
 #endif
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Physics::MHD_GLM::SimVar;
   using Kokkos::exp;
   using Kokkos::tanh;
   using Kokkos::pow;
 
-  const Real gam = 1.4,gamm = gam - 1.0;
+  const Real gamm = eosParams.gamma - 1.0;
 
   // Layout anr field strengths
   const Real Bs = 0.0,Hb = 0.125,yc = 0.3;

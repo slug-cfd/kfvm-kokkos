@@ -2,14 +2,18 @@
 // must take (x,y,z) coordinates regardless of space dimension
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Physics::SRHydro::SimVar;
   
   (void) y;
   (void) z;
   
-  const Real gam = 5.0/3.0,gamm = gam - 1.0,v0 = 0.99;
+  const Real gR = eosParams.gamma/(eosParams.gamma - 1.0);
+  const Real v0 = 0.99;
   Real rho,vx,vy,p;
   // Set primitives based on quadrant
   if (x > 0.0) {
@@ -38,7 +42,7 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
     }
   }
   
-  const Real W = 1.0/Kokkos::sqrt(1.0 - vx*vx - vy*vy),h = 1.0 + p*gam/(rho*gamm);
+  const Real W = 1.0/Kokkos::sqrt(1.0 - vx*vx - vy*vy),h = 1.0 + p*gR/rho;
   
   state[SimVar::dens] = rho*W;
   state[SimVar::momx] = rho*W*W*h*vx;

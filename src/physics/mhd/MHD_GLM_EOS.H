@@ -4,7 +4,7 @@
 #include <Kokkos_Core.hpp>
 
 #include "../../Types.H"
-#include "../../FluidProperties.H"
+#include "../../ParameterStructs.H"
 #include "../SimVar.H"
 #include "../EquationTypes.H"
 
@@ -82,9 +82,9 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real weno(const MHD_GLM::ConsVec U,const FluidProperties& fProp)
+      static Real weno(const MHD_GLM::ConsVec U,const EosParameters& eosParams)
       {
-        return prsg(fProp.gamma,U);
+        return prsg(eosParams.gamma,U);
       }
       
       KOKKOS_INLINE_FUNCTION

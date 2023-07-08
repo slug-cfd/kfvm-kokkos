@@ -6,7 +6,7 @@
 
 #include "../SimVar.H"
 #include "../../Types.H"
-#include "../../FluidProperties.H"
+#include "../../ParameterStructs.H"
 #include "../EquationTypes.H"
 
 namespace KFVM {
@@ -231,7 +231,7 @@ namespace KFVM {
       }
       
       KOKKOS_INLINE_FUNCTION
-      static Real weno(const SRHydro::ConsVec U,const FluidProperties& fProp)
+      static Real weno(const SRHydro::ConsVec U,const EosParameters& eosParams)
       {
 	using SRHydro::SimVar;
         

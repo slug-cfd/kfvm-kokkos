@@ -1,27 +1,32 @@
 # Set mesh resolution and extent
-mesh:resolution 1024 1536
+mesh:resolution 96 144 96
 mesh:numblocks 1 1 1
-mesh:extent -0.5 0.5 0.0 1.5
+mesh:extent -0.5 0.5 0.0 1.5 -0.5 0.5
 
 # Set time information
 time:initial 0.0
-time:final 0.002
+time:final 0.04
 time:initialdt 1.e-10
-time:cfl 1.5
+time:cfl 1.0
 time:maxsteps 20000
-time:atol 1.e-4
+time:atol 1.e-3
 time:rtol 1.e-3
 
 # Set stencil options
 stencil:lfac 5
 
 # Set fluid properties
-properties:gamma 1.4
-properties:wenothresh 10000.0
+eos:gamma 1.4
+eos:wenothresh 50.0
 
 # Output settings
 io:pdiconf ../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename AstroJetHDW
+io:basename AstroJetLD
 io:plotfreq 100
 io:ckptfreq 20
+
+# User specific options
+user:inletradius 0.05
+user:mach 100.0
+user:densityratio 0.1

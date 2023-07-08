@@ -16,8 +16,8 @@ time:rtol 1.e-3
 stencil:lfac 5
 
 # Set fluid properties
-properties:gamma 1.66666666666666
-properties:wenothresh 10.0
+eos:gamma 1.66666666666666
+eos:wenothresh 10.0
 
 # Output settings
 io:pdiconf ../../user/pdi_srhydro_xdmf.yml

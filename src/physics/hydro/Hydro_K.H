@@ -11,7 +11,7 @@
 #include "../../Dimension.H"
 #include "../../Types.H"
 #include "../../Geometry.H"
-#include "../../FluidProperties.H"
+#include "../../ParameterStructs.H"
 #include "../EquationTypes.H"
 #include "../RSTypes.H"
 #include "../SimVar.H"
@@ -81,12 +81,12 @@ namespace KFVM {
     {
       UViewType U;
       AuxDataView V;
-      FluidProperties fProp;
+      EosParameters eosParams;
 
-      AuxVars(const UViewType& U_,const AuxDataView V_,const FluidProperties& fProp_):
+      AuxVars(const UViewType& U_,const AuxDataView V_,const EosParameters& eosParams_):
 	U(U_),
         V(V_),
-        fProp(fProp_)
+        eosParams(eosParams_)
       {}
 
       KOKKOS_INLINE_FUNCTION
@@ -112,7 +112,7 @@ namespace KFVM {
 
 	// Internal energy and pressure
 	V(KFVM_D_DECL(i,j,k),AuxVar::eint) = EOS<EquationType::Hydro>::eint(ua);
-	V(KFVM_D_DECL(i,j,k),AuxVar::pres) = EOS<EquationType::Hydro>::pres(fProp.gamma,ua);
+	V(KFVM_D_DECL(i,j,k),AuxVar::pres) = EOS<EquationType::Hydro>::pres(eosParams.gamma,ua);
       }
     };
 
@@ -120,11 +120,11 @@ namespace KFVM {
     struct RiemannSolverX_K<EquationType::Hydro,rst>
     {
       FaceDataView U;
-      FluidProperties fProp;
+      EosParameters eosParams;
 
-      RiemannSolverX_K(const FaceDataView& U_,const FluidProperties& fProp_):
+      RiemannSolverX_K(const FaceDataView& U_,const EosParameters& eosParams_):
 	U(U_),
-        fProp(fProp_)
+        eosParams(eosParams_)
       {}
 
       KOKKOS_INLINE_FUNCTION
@@ -143,11 +143,11 @@ namespace KFVM {
 	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
 	    uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uL,vL);
-          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uR,vR);
+          EOS<EquationType::Hydro>::cons2prim(eosParams.gamma,uL,vL);
+          EOS<EquationType::Hydro>::cons2prim(eosParams.gamma,uR,vR);
 
 	  // Calculate flux
-	  Real vq = HydroRS<rst>::RiemannSolve_X(fProp.gamma,uL,uR,vL,vR,F);
+	  Real vq = HydroRS<rst>::RiemannSolve_X(eosParams.gamma,uL,uR,vL,vR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	    
 	  // Overwrite states with flux
@@ -163,11 +163,11 @@ namespace KFVM {
     struct RiemannSolverY_K<EquationType::Hydro,rst>
     {
       FaceDataView U;
-      FluidProperties fProp;
+      EosParameters eosParams;
 
-      RiemannSolverY_K(const FaceDataView& U_,const FluidProperties& fProp_):
+      RiemannSolverY_K(const FaceDataView& U_,const EosParameters& eosParams_):
 	U(U_),
-        fProp(fProp_)
+        eosParams(eosParams_)
       {}
 
       KOKKOS_INLINE_FUNCTION
@@ -185,11 +185,11 @@ namespace KFVM {
 	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
 	    uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uL,vL);
-          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uR,vR);
+          EOS<EquationType::Hydro>::cons2prim(eosParams.gamma,uL,vL);
+          EOS<EquationType::Hydro>::cons2prim(eosParams.gamma,uR,vR);
           
 	  // Calculate flux
-	  Real vq = HydroRS<rst>::RiemannSolve_Y(fProp.gamma,uL,uR,vL,vR,F);
+	  Real vq = HydroRS<rst>::RiemannSolve_Y(eosParams.gamma,uL,uR,vL,vR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	  
 	  // Overwrite states with flux
@@ -205,11 +205,11 @@ namespace KFVM {
     struct RiemannSolverZ_K<EquationType::Hydro,rst>
     {
       FaceDataView U;
-      FluidProperties fProp;
+      EosParameters eosParams;
 
-      RiemannSolverZ_K(const FaceDataView& U_,const FluidProperties& fProp_):
+      RiemannSolverZ_K(const FaceDataView& U_,const EosParameters& eosParams_):
 	U(U_),
-        fProp(fProp_)
+        eosParams(eosParams_)
       {}
 
 #if (SPACE_DIM == 3)
@@ -227,11 +227,11 @@ namespace KFVM {
 	    uL[nV] = U(KFVM_D_DECL(i,j,k),0,nQ,nV);
 	    uR[nV] = U(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uL,vL);
-          EOS<EquationType::Hydro>::cons2prim(fProp.gamma,uR,vR);
+          EOS<EquationType::Hydro>::cons2prim(eosParams.gamma,uL,vL);
+          EOS<EquationType::Hydro>::cons2prim(eosParams.gamma,uR,vR);
 	  
 	  // Calculate flux
-	  Real vq = HydroRS<rst>::RiemannSolve_Z(fProp.gamma,uL,uR,vL,vR,F);
+	  Real vq = HydroRS<rst>::RiemannSolve_Z(eosParams.gamma,uL,uR,vL,vR,F);
 	  maxVel = vq > maxVel ? vq : maxVel;
 	  
 	  // Overwrite states with flux
@@ -248,14 +248,14 @@ namespace KFVM {
     struct SpeedEstimate_K<EquationType::Hydro>
     {
       FaceDataView KFVM_D_DECL(rsX,rsY,rsZ);
-      FluidProperties fProp;
+      EosParameters eosParams;
 
       SpeedEstimate_K(KFVM_D_DECL(const FaceDataView& rsX_,
 				  const FaceDataView& rsY_,
 				  const FaceDataView& rsZ_),
-                      const FluidProperties& fProp_):
+                      const EosParameters& eosParams_):
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
-        fProp(fProp_)
+        eosParams(eosParams_)
       {}
 
       KOKKOS_INLINE_FUNCTION
@@ -276,7 +276,7 @@ namespace KFVM {
       WenoFlagView wenoFlag;
       DiffMatView D;
       QuadRuleView ab;
-      FluidProperties fProp;
+      EosParameters eosParams;
       Geometry geom;
       Real t;
 
@@ -288,7 +288,7 @@ namespace KFVM {
 		    const WenoFlagView& wenoFlag_,
                     const DiffMatView& D_,
 		    const QuadRuleView& ab_,
-		    const FluidProperties& fProp_,
+		    const EosParameters& eosParams_,
                     const Geometry& geom_,
                     const Real t_):
 	source(source_),
@@ -297,7 +297,7 @@ namespace KFVM {
 	wenoFlag(wenoFlag_),
         D(D_),
 	ab(ab_),
-	fProp(fProp_),
+	eosParams(eosParams_),
 	geom(geom_),
         t(t_)
       {}
@@ -350,7 +350,7 @@ namespace KFVM {
       bool haveSources;
       SourceDataView source;
       WenoFlagView wenoFlag;
-      FluidProperties fProp;
+      EosParameters eosParams;
 
       PositivityPreserve_K(const UDataView& U_,
 			   KFVM_D_DECL(const FaceDataView& rsX_,
@@ -359,13 +359,13 @@ namespace KFVM {
 			   const bool haveSources_,
 			   const SourceDataView& source_,
 			   const WenoFlagView& wenoFlag_,
-			   const FluidProperties& fProp_):
+			   const EosParameters& eosParams_):
 	U(U_),
 	KFVM_D_DECL(rsX(rsX_),rsY(rsY_),rsZ(rsZ_)),
 	haveSources(haveSources_),
 	source(source_),
 	wenoFlag(wenoFlag_),
-	fProp(fProp_)
+	eosParams(eosParams_)
       {}
 
       KOKKOS_INLINE_FUNCTION
@@ -384,7 +384,7 @@ namespace KFVM {
 	  refState[nV] = U(KFVM_D_DECL(i,j,k),nV);
 	}
 	Real rDens = refState[SimVar::dens];
-	Real rPres = EOS<EquationType::Hydro>::pres(fProp.gamma,refState);
+	Real rPres = EOS<EquationType::Hydro>::pres(eosParams.gamma,refState);
 	
 	// Find ranges of density, pressure, and soundspeed
 	Real maxDens = -std::numeric_limits<Real>::max();
@@ -402,8 +402,8 @@ namespace KFVM {
 	      }
 	      maxDens = fmax(maxDens,state[SimVar::dens]);
 	      minDens = fmin(minDens,state[SimVar::dens]);
-              Real pres = EOS<EquationType::Hydro>::pres(fProp.gamma,state);
-              Real sdsp = EOS<EquationType::Hydro>::soundspeed(fProp.gamma,state);
+              Real pres = EOS<EquationType::Hydro>::pres(eosParams.gamma,state);
+              Real sdsp = EOS<EquationType::Hydro>::soundspeed(eosParams.gamma,state);
 	      minPres = fmin(minPres,pres);
 	      minSdSp = fmin(minSdSp,sdsp);
 #if (SPACE_DIM == 3)
@@ -518,39 +518,39 @@ namespace KFVM {
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsX(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-	  p = EOS<EquationType::Hydro>::pres(fProp.gamma,state);
-          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
+	  p = EOS<EquationType::Hydro>::pres(eosParams.gamma,state);
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(eosParams.gamma,minPres,refState,state));
 	  // East face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsX(KFVM_D_DECL(i + 1,j,k),0,nQ,nV);
 	  }
-	  p = EOS<EquationType::Hydro>::pres(fProp.gamma,state);
-          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
+	  p = EOS<EquationType::Hydro>::pres(eosParams.gamma,state);
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(eosParams.gamma,minPres,refState,state));
 	  // South face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-	  p = EOS<EquationType::Hydro>::pres(fProp.gamma,state);
-          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
+	  p = EOS<EquationType::Hydro>::pres(eosParams.gamma,state);
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(eosParams.gamma,minPres,refState,state));
 	  // North face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsY(KFVM_D_DECL(i,j + 1,k),0,nQ,nV);
 	  }
-	  p = EOS<EquationType::Hydro>::pres(fProp.gamma,state);
-          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
+	  p = EOS<EquationType::Hydro>::pres(eosParams.gamma,state);
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(eosParams.gamma,minPres,refState,state));
 #if (SPACE_DIM == 3)
 	  // Bottom face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k),1,nQ,nV);
 	  }
-	  p = EOS<EquationType::Hydro>::pres(fProp.gamma,state);
-          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
+	  p = EOS<EquationType::Hydro>::pres(eosParams.gamma,state);
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(eosParams.gamma,minPres,refState,state));
 	  // Top face
 	  for (int nV=0; nV<NUM_VARS; nV++) {
 	    state[nV] = rsZ(KFVM_D_DECL(i,j,k + 1),0,nQ,nV);
 	  }
-	  p = EOS<EquationType::Hydro>::pres(fProp.gamma,state);
-          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
+	  p = EOS<EquationType::Hydro>::pres(eosParams.gamma,state);
+          theta = p >= minPres ? theta : fmin(theta,eulerPresPos(eosParams.gamma,minPres,refState,state));
 #endif
 	}
 	
@@ -564,8 +564,8 @@ namespace KFVM {
 		for (int nV=0; nV<NUM_VARS; nV++) {
 		  state[nV] = source(KFVM_D_DECL(i,j,k),KFVM_D_DECL(nQ,nR,nS),nV);
 		}
-		Real p = EOS<EquationType::Hydro>::pres(fProp.gamma,state);
-		theta = p >= minPres ? theta : fmin(theta,eulerPresPos(fProp.gamma,minPres,refState,state));
+		Real p = EOS<EquationType::Hydro>::pres(eosParams.gamma,state);
+		theta = p >= minPres ? theta : fmin(theta,eulerPresPos(eosParams.gamma,minPres,refState,state));
 	      }
 	    }
 	  }

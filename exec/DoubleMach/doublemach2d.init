@@ -16,12 +16,12 @@ time:rtol 1.e-3
 stencil:lfac 5
 
 # Set fluid properties
-properties:gamma 1.4
-properties:wenothresh 20.0
+eos:gamma 1.4
+eos:wenothresh 20.0
 
 # Output settings
 io:pdiconf ../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename DoubleMach
-io:plotfreq 2000
-io:ckptfreq 2000
+io:plotfreq 50
+io:ckptfreq 25

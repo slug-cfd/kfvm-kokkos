@@ -2,7 +2,10 @@
 // must take (x,y,z) coordinates regardless of space dimension
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Kokkos::sin;
   using Kokkos::cos;
@@ -11,7 +14,7 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   
   (void) z;
 
-  const Real gam = 5.0/3.0,gamm = gam - 1.0;
+  const Real gamm = eosParams.gamma - 1.0;
   const Real rho = 1.0,V = 1.0;
   const Real theta = atan2(y,x),vx = -V*cos(theta),vy = -V*sin(theta);
   const Real P = 1.e-6,B = 1.0;

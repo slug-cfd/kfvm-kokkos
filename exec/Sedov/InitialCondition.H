@@ -6,14 +6,16 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Physics::Hydro::SimVar;
 
-  const Real gam = 1.4,gamm = gam - 1.0;
-  const Real R = SPACE_DIM == 2 ? 4.0/256.0 : 4.0/64.0; // 4 cell radius for typical resolutions
+  const Real gamm = eosParams.gamma - 1.0;
+  const Real R = userParams.R;
   const Real rsq = x*x + y*y + z*z;
   const Real p = rsq <= R*R ? gamm*gamm/(M_PI*R*R) : 1.e-5;
 

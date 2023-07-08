@@ -6,7 +6,7 @@
 #include "../../src/numeric/RKTypes.H"
 
 // Space dimension of problem
-#define SPACE_DIM 3
+#define SPACE_DIM 2
 
 // Stencil radius (2-4)
 #define STENCIL_RADIUS 2
@@ -22,8 +22,5 @@
 constexpr KFVM::EquationType eqType = KFVM::EquationType::MHD_GLM;
 constexpr KFVM::RSType rsType = KFVM::RSType::LLF;
 constexpr KFVM::RKType rkType = KFVM::RKType::SSP4_3_2;
-
-#define USER_B0SQ 20000.0
-#define USER_MACH 800.0
 
 #endif

@@ -19,7 +19,7 @@
 #include "Types.H"
 #include "LayoutMPI.H"
 #include "physics/EquationTypes.H"
-#include "FluidProperties.H"
+#include "ParameterStructs.H"
 
 namespace KFVM {
 
@@ -61,8 +61,9 @@ namespace KFVM {
     bool restart;
     std::string restartFile;
 
-    // Fluid properties object
-    FluidProperties fluidProp;
+    // Parameter structs for passing info to compute kernels
+    EosParameters eosParams;
+    UserParameters userParams;
 
     // Simple constructor setting many default values
     ProblemSetup():
@@ -135,10 +136,10 @@ namespace KFVM {
 	std::printf("  lfac: %f\n",gp_lFac);
 	std::printf("  bpow: %f\n",gp_bpow);
 
-	// Print fluid properties
-	std::printf("Properties:\n");
-	std::printf("  gamma: %f\n",fluidProp.gamma);
-	std::printf("  wenothresh: %f\n",fluidProp.wenoThresh);
+	// Print eos parameters
+	std::printf("EOS:\n");
+	std::printf("  gamma: %f\n",eosParams.gamma);
+	std::printf("  wenothresh: %f\n",eosParams.wenoThresh);
 
 	// Print io information
 	std::printf("IO:\n");
@@ -188,8 +189,10 @@ namespace KFVM {
 	  success = setStencil(setting);
 	} else if (category == "time") {
 	  success = setTime(setting);
-	} else if (category == "properties") {
-	  success = setProperties(setting);
+	} else if (category == "eos") {
+	  success = setEos(setting);
+	} else if (category == "user") {
+	  success = setUser(setting);
 	} else if (category == "io") {
 	  success = setIO(setting);
 	} else {
@@ -324,26 +327,25 @@ namespace KFVM {
 
       return true;
     }
-    
-    bool setProperties(const std::string& setting) {
+
+    bool setEos(const std::string& setting) {
       std::istringstream lStream(setting);
       std::string category,value;
-      std::size_t pos;
-      
-      // category before space
-      std::getline(lStream,category,' ');
 
-      if (category == "gamma") {
-	std::getline(lStream,value,' ');
-	fluidProp.gamma = std::stof(value,&pos);
-      } else if (category == "wenothresh") {
-	std::getline(lStream,value,' ');
-	fluidProp.wenoThresh = std::stof(value,&pos);
-      } else {
-	return false;
-      }
-      
-      return true;
+      // Get category and value, forward to settings object
+      std::getline(lStream,category,' ');
+      std::getline(lStream,value,' ');
+      return eosParams.set(category,value);
+    }
+
+    bool setUser(const std::string& setting) {
+      std::istringstream lStream(setting);
+      std::string category,value;
+
+      // Get category and value, forward to settings object
+      std::getline(lStream,category,' ');
+      std::getline(lStream,value,' ');
+      return userParams.set(category,value);
     }
     
     bool setIO(const std::string& setting) {

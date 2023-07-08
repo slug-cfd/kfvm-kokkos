@@ -16,12 +16,15 @@ KOKKOS_INLINE_FUNCTION
 void CellWest(const DataViewType& U,int rad,int nX,
 	      int j,int k,int nH,
 	      Real x,Real y,Real z,Real t,
+	      EosParameters eosParams,
+	      UserParameters userParams,
 	      Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) rad; (void) nX;
   (void) j; (void) k; (void) nH;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 
@@ -30,12 +33,15 @@ KOKKOS_INLINE_FUNCTION
 void FaceWest(const DataViewType& U,
 	      int j,int k,int nQ,
 	      Real x,Real y,Real z,Real t,
+	      EosParameters eosParams,
+	      UserParameters userParams,
 	      Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U;
   (void) j; (void) k; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 
@@ -45,12 +51,15 @@ KOKKOS_INLINE_FUNCTION
 void CellEast(const DataViewType& U,int rad,int nX,
 	      int j,int k,int nH,
 	      Real x,Real y,Real z,Real t,
+	      EosParameters eosParams,
+	      UserParameters userParams,
 	      Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) rad; (void) nX;
   (void) j; (void) k; (void) nH;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 
@@ -59,12 +68,15 @@ KOKKOS_INLINE_FUNCTION
 void FaceEast(const DataViewType& U,
 	      int j,int k,int nQ,
 	      Real x,Real y,Real z,Real t,
+	      EosParameters eosParams,
+	      UserParameters userParams,
 	      Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U;
   (void) j; (void) k; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 
@@ -72,14 +84,17 @@ void FaceEast(const DataViewType& U,
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
 void CellSouth(const DataViewType& U,int rad,int nY,
-	      int i,int k,int nH,
-	      Real x,Real y,Real z,Real t,
-	      Real state[NUM_VARS])
+	       int i,int k,int nH,
+	       Real x,Real y,Real z,Real t,
+	       EosParameters eosParams,
+	       UserParameters userParams,
+	       Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) rad; (void) nY;
   (void) i; (void) k; (void) nH;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 
@@ -88,12 +103,15 @@ KOKKOS_INLINE_FUNCTION
 void FaceSouth(const DataViewType& U,
 	       int i,int k,int nQ,
 	       Real x,Real y,Real z,Real t,
+	       EosParameters eosParams,
+	       UserParameters userParams,
 	       Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U;
   (void) i; (void) k; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 
@@ -101,14 +119,17 @@ void FaceSouth(const DataViewType& U,
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
 void CellNorth(const DataViewType& U,int rad,int nY,
-	      int i,int k,int nH,
-	      Real x,Real y,Real z,Real t,
-	      Real state[NUM_VARS])
+	       int i,int k,int nH,
+	       Real x,Real y,Real z,Real t,
+	       EosParameters eosParams,
+	       UserParameters userParams,
+	       Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) rad; (void) nY;
   (void) i; (void) k; (void) nH;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 
@@ -117,12 +138,15 @@ KOKKOS_INLINE_FUNCTION
 void FaceNorth(const DataViewType& U,
 	       int i,int k,int nQ,
 	       Real x,Real y,Real z,Real t,
+	       EosParameters eosParams,
+	       UserParameters userParams,
 	       Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U;
   (void) i; (void) k; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 
@@ -130,14 +154,17 @@ void FaceNorth(const DataViewType& U,
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
 void CellBottom(const DataViewType& U,int rad,int nZ,
-	      int i,int j,int nH,
-	      Real x,Real y,Real z,Real t,
-	      Real state[NUM_VARS])
+		int i,int j,int nH,
+		Real x,Real y,Real z,Real t,
+		EosParameters eosParams,
+		UserParameters userParams,
+		Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) rad; (void) nZ;
   (void) i; (void) j; (void) nH;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 
@@ -146,12 +173,15 @@ KOKKOS_INLINE_FUNCTION
 void FaceBottom(const DataViewType& U,
 		int i,int j,int nQ,
 		Real x,Real y,Real z,Real t,
+		EosParameters eosParams,
+		UserParameters userParams,
 		Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U;
   (void) i; (void) j; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 
@@ -159,14 +189,17 @@ void FaceBottom(const DataViewType& U,
 template<class DataViewType>
 KOKKOS_INLINE_FUNCTION
 void CellTop(const DataViewType& U,int rad,int nZ,
-	      int i,int j,int nH,
-	      Real x,Real y,Real z,Real t,
-	      Real state[NUM_VARS])
+	     int i,int j,int nH,
+	     Real x,Real y,Real z,Real t,
+	     EosParameters eosParams,
+	     UserParameters userParams,
+	     Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U; (void) rad; (void) nZ;
   (void) i; (void) j; (void) nH;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 
@@ -175,12 +208,15 @@ KOKKOS_INLINE_FUNCTION
 void FaceTop(const DataViewType& U,
 	     int i,int j,int nQ,
 	     Real x,Real y,Real z,Real t,
+	     EosParameters eosParams,
+	     UserParameters userParams,
 	     Real state[NUM_VARS])
 {
   // Void casts to ignore unused parameter warnings
   (void) U;
   (void) i; (void) j; (void) nQ;
   (void) x; (void) y; (void) z; (void) t;
+  (void) eosParams; (void) userParams;
   (void) state;
 }
 

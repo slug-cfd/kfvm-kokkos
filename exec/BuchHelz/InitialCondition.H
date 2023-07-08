@@ -6,20 +6,27 @@
 #endif
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Kokkos::cos;
   using Kokkos::sin;
   using Physics::Hydro::SimVar;
   
   (void) z;
-  Real p = 1.0 + sin(M_PI*(x - y))/2.0;
   
-  state[SimVar::dens] = 1.0 + sin(M_PI*(x + y))/2.0;
-  state[SimVar::momx] = state[SimVar::dens]*cos(M_PI*(x + 2.0*y));
-  state[SimVar::momy] = state[SimVar::dens]*(1.0 - sin(M_PI*(2.0*x + y))/2.0);
+  const Real gamm = eosParams.gamma - 1.0;
+
+  const Real rho = 1.0 + sin(M_PI*(x + y))/2.0;
+  const Real vx = cos(M_PI*(x + 2.0*y));
+  const Real vy = (1.0 - sin(M_PI*(2.0*x + y))/2.0);
+  const Real p = 1.0 + sin(M_PI*(x - y))/2.0;
+  
+  state[SimVar::dens] = rho;
+  state[SimVar::momx] = rho*vx;
+  state[SimVar::momy] = rho*vy;
   state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = p/0.4 +
-    (state[SimVar::momx]*state[SimVar::momx] +
-     state[SimVar::momy]*state[SimVar::momy])/(2.0*state[SimVar::dens]);
+  state[SimVar::etot] = p/gamm + 0.5*rho*(vx*vx + vy*vy);
 }

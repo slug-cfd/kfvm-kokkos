@@ -13,7 +13,7 @@
 #include <Definitions.H>
 
 #include "Dimension.H"
-#include "FluidProperties.H"
+#include "ParameterStructs.H"
 #include "Types.H"
 #include "ProblemSetup.H"
 #include "PrinterMPI.H"
@@ -74,7 +74,7 @@ namespace KFVM {
       Kokkos::deep_copy(Uprev_halo,U_halo);
       nTS++;
       // Clear sparse weno flag if allowed
-      useSparseWeno = ps.fluidProp.wenoThresh > 0.0;
+      useSparseWeno = ps.eosParams.wenoThresh > 0.0;
     }
 
     // Allocate space for source terms if needed
@@ -128,7 +128,7 @@ namespace KFVM {
 
     Kokkos::parallel_for("Solver::evalAuxiliary",cellRng,
 			 Physics::AuxVars<eqType,decltype(U)>
-			 (U,U_aux,ps.fluidProp));
+			 (U,U_aux,ps.eosParams));
     
     Kokkos::Profiling::popRegion();
   }
@@ -152,7 +152,7 @@ namespace KFVM {
     // Try step with dt, and repeat as needed
     bool accepted = false,firstUnphys = true;
     Real maxVel,v;
-    wThresh = ps.fluidProp.wenoThresh*dt;
+    wThresh = ps.eosParams.wenoThresh*dt;
     for (int nT=0; nT<ps.rejectionLimit; nT++) {
       maxVel = 0.0;
       PrintSingle(ps,"  Attempt %d: dt = %e, wThresh = %e",nT+1,dt,wThresh);
@@ -317,10 +317,10 @@ namespace KFVM {
         		      Physics::SpeedEstimate_K<eqType>(KFVM_D_DECL(faceVals.xDir,
                                                                            faceVals.yDir,
                                                                            faceVals.zDir),
-                                                               ps.fluidProp),
+                                                               ps.eosParams),
         		      Kokkos::Max<Real>(ch_glm));
       Kokkos::fence("Solver::evalRHS(GLM reduction)");
-      ps.fluidProp.ch_glm = glmSpeedComm(ch_glm);
+      ps.eosParams.ch_glm = glmSpeedComm(ch_glm);
     }
     
     // Set BCs on Riemann states
@@ -341,7 +341,7 @@ namespace KFVM {
 								      wenoSelector.wenoFlagView,
 								      diffMat.diffMat,
 								      qr.ab,
-								      ps.fluidProp,
+								      ps.eosParams,
 								      geom,
 								      t));
     }
@@ -353,14 +353,14 @@ namespace KFVM {
     auto fluxRng_EW = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX + 1,ps.nY,ps.nZ)});
     Kokkos::parallel_reduce("RiemannSolver::EW",fluxRng_EW,
-			    Physics::RiemannSolverX_K<eqType,rsType>(faceVals.xDir,ps.fluidProp),
+			    Physics::RiemannSolverX_K<eqType,rsType>(faceVals.xDir,ps.eosParams),
 			    Kokkos::Max<Real>(vEW));
 
     // North/South faces
     auto fluxRng_NS = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({KFVM_D_DECL(0,0,0)},{KFVM_D_DECL(ps.nX,ps.nY + 1,ps.nZ)});
     Kokkos::parallel_reduce("RiemannSolver::NS",fluxRng_NS,
-			    Physics::RiemannSolverY_K<eqType,rsType>(faceVals.yDir,ps.fluidProp),
+			    Physics::RiemannSolverY_K<eqType,rsType>(faceVals.yDir,ps.eosParams),
 			    Kokkos::Max<Real>(vNS));
     
 #if (SPACE_DIM == 3)
@@ -368,7 +368,7 @@ namespace KFVM {
     auto fluxRng_TB = Kokkos::MDRangePolicy<ExecSpace,Kokkos::Rank<SPACE_DIM>,Kokkos::IndexType<idx_t>>
       ({0,0,0},{ps.nX,ps.nY,ps.nZ + 1});
     Kokkos::parallel_reduce("RiemannSolver::TB",fluxRng_TB,
-			    Physics::RiemannSolverZ_K<eqType,rsType>(faceVals.zDir,ps.fluidProp),
+			    Physics::RiemannSolverZ_K<eqType,rsType>(faceVals.zDir,ps.eosParams),
 			    Kokkos::Max<Real>(vTB));
 #endif
 
@@ -458,7 +458,7 @@ namespace KFVM {
 			      stencil.faceWeights,
 			      stencil.cellWeights,
 			      stencil.derivWeights,
-			      ps.fluidProp));
+			      ps.eosParams));
       }
     } else {
       // Weno reconstruction tile by tile
@@ -485,13 +485,13 @@ namespace KFVM {
 				  stencil.faceWeights,
 				  stencil.cellWeights,
 				  stencil.derivWeights,
-				  ps.fluidProp));
+				  ps.eosParams));
 	  }
 	}
       }
 
       // swap back to sparse weno if allowed
-      useSparseWeno = ps.fluidProp.wenoThresh > 0.0;
+      useSparseWeno = ps.eosParams.wenoThresh > 0.0;
     }
     
     // Enforce positivity of states
@@ -503,7 +503,7 @@ namespace KFVM {
         			      faceVals.zDir),
 			  haveSources,sourceTerms,
 			  wenoSelector.wenoFlagView,
-        		  ps.fluidProp));
+        		  ps.eosParams));
   }
 
   // Set up weno selector and its logic
@@ -517,7 +517,7 @@ namespace KFVM {
     // Figure out appropriate tile sizes
     // Want small enough tiles to save memory 
     // unless we are always doing weno
-    if (ps.fluidProp.wenoThresh < 0.0) {
+    if (ps.eosParams.wenoThresh < 0.0) {
       tX = ps.nX; tY = ps.nY; tZ = ps.nZ;
     } else if (SPACE_DIM == 2) {
       tX = (ps.nX > 16 ? ps.nX/8 : 1);
@@ -554,7 +554,7 @@ namespace KFVM {
   void WenoSelector::update(UViewType U,UViewType Uprev,
 			    const Real wThresh)
   {
-    if (ps.fluidProp.wenoThresh < 0.0) {
+    if (ps.eosParams.wenoThresh < 0.0) {
       // don't need to manage any of this if weno is used everywhere
       return;
     }
@@ -569,7 +569,7 @@ namespace KFVM {
 			    cellRng,
 			    Numeric::RK_WenoSelect_K<UViewType,
 			    decltype(wenoFlagView)>
-			    (U,Uprev,ps.fluidProp,wThresh,wenoFlagView),nWeno);
+			    (U,Uprev,ps.eosParams,wThresh,wenoFlagView),nWeno);
 
     // Clear map and reallocate workspace if needed
     PrintAll(ps,"  %d (%f%%) cells flagged for WENO on rank %d\n",
@@ -1322,7 +1322,7 @@ namespace KFVM {
     case BCType::user:
       Kokkos::parallel_for("CellBCs::West",bndRng,
 			   CellBcWest_K<decltype(sol_halo),BCType::user>
-			   (sol_halo,geom,ps.rad,ps.nX,t));
+			   (sol_halo,geom,ps.rad,ps.nX,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Western cell BC undefined.\n");
@@ -1355,7 +1355,7 @@ namespace KFVM {
     case BCType::user:
       Kokkos::parallel_for("CellBCs::East",bndRng,
 			   CellBcEast_K<decltype(sol_halo),BCType::user>
-			   (sol_halo,geom,ps.rad,ps.nX,t));
+			   (sol_halo,geom,ps.rad,ps.nX,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Eastern cell BC undefined.\n");
@@ -1388,7 +1388,7 @@ namespace KFVM {
     case BCType::user :
       Kokkos::parallel_for("CellBCs::South",bndRng,
 			   CellBcSouth_K<decltype(sol_halo),BCType::user>
-			   (sol_halo,geom,ps.rad,ps.nY,t));
+			   (sol_halo,geom,ps.rad,ps.nY,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Southern cell BC undefined.\n");
@@ -1421,7 +1421,7 @@ namespace KFVM {
     case BCType::user:
       Kokkos::parallel_for("CellBCs::North",bndRng,
 			   CellBcNorth_K<decltype(sol_halo),BCType::user>
-			   (sol_halo,geom,ps.rad,ps.nY,t));
+			   (sol_halo,geom,ps.rad,ps.nY,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Northern cell BC undefined.\n");
@@ -1450,7 +1450,7 @@ namespace KFVM {
     case BCType::user :
       Kokkos::parallel_for("CellBCs::Bottom",bndRng,
 			   CellBcBottom_K<decltype(sol_halo),BCType::user>
-			   (sol_halo,geom,ps.rad,ps.nZ,t));
+			   (sol_halo,geom,ps.rad,ps.nZ,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Bottom cell BC undefined.\n");
@@ -1478,7 +1478,7 @@ namespace KFVM {
     case BCType::user:
       Kokkos::parallel_for("CellBCs::Top",bndRng,
 			   CellBcTop_K<decltype(sol_halo),BCType::user>
-			   (sol_halo,geom,ps.rad,ps.nZ,t));
+			   (sol_halo,geom,ps.rad,ps.nZ,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Top cell BC undefined.\n");
@@ -1513,7 +1513,7 @@ namespace KFVM {
       break;
     case BCType::user:
       Kokkos::parallel_for("FaceBCs::West::User",bndRng,
-			   FaceBcWest_K<decltype(westBnd),BCType::user>(westBnd,geom,qr.ab,t));
+			   FaceBcWest_K<decltype(westBnd),BCType::user>(westBnd,geom,qr.ab,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Western face BC undefined.\n");
@@ -1547,7 +1547,7 @@ namespace KFVM {
       break;
     case BCType::user:
       Kokkos::parallel_for("FaceBCs::East::User",bndRng,
-			   FaceBcEast_K<decltype(eastBnd),BCType::user>(eastBnd,geom,qr.ab,t));
+			   FaceBcEast_K<decltype(eastBnd),BCType::user>(eastBnd,geom,qr.ab,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Eastern face BC undefined.\n");
@@ -1581,7 +1581,7 @@ namespace KFVM {
       break;
     case BCType::user:
       Kokkos::parallel_for("FaceBCs::South::User",bndRng,
-			   FaceBcSouth_K<decltype(southBnd),BCType::user>(southBnd,geom,qr.ab,t));
+			   FaceBcSouth_K<decltype(southBnd),BCType::user>(southBnd,geom,qr.ab,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Southern face BC undefined.\n");
@@ -1615,7 +1615,7 @@ namespace KFVM {
       break;
     case BCType::user:
       Kokkos::parallel_for("FaceBCs::North::User",bndRng,
-			   FaceBcNorth_K<decltype(northBnd),BCType::user>(northBnd,geom,qr.ab,t));
+			   FaceBcNorth_K<decltype(northBnd),BCType::user>(northBnd,geom,qr.ab,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Northern face BC undefined.\n");
@@ -1646,7 +1646,7 @@ namespace KFVM {
       break;
     case BCType::user:
       Kokkos::parallel_for("FaceBCs::Bottom::User",bndRng,
-			   FaceBcBottom_K<decltype(bottomBnd),BCType::user>(bottomBnd,geom,qr.ab,t));
+			   FaceBcBottom_K<decltype(bottomBnd),BCType::user>(bottomBnd,geom,qr.ab,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Bottom face BC undefined.\n");
@@ -1676,7 +1676,7 @@ namespace KFVM {
       break;
     case BCType::user:
       Kokkos::parallel_for("FaceBCs::Top::User",bndRng,
-			   FaceBcTop_K<decltype(topBnd),BCType::user>(topBnd,geom,qr.ab,t));
+			   FaceBcTop_K<decltype(topBnd),BCType::user>(topBnd,geom,qr.ab,t,ps.eosParams,ps.userParams));
       break;
     default:
       PrintSingle(ps,"Warning: Top face BC undefined.\n");
@@ -1692,7 +1692,7 @@ namespace KFVM {
     auto U = trimCellHalo(U_halo);
     auto cellRng = interiorCellRange();
     Kokkos::parallel_for("IntegrateIC",cellRng,Numeric::IntegrateIC_K<decltype(U)>
-			 (U,qr.ab,qr.wt,geom));
+			 (U,qr.ab,qr.wt,geom,ps.eosParams,ps.userParams));
 
     // Set Uprev to also be IC
     // Needed for error control in timestepper

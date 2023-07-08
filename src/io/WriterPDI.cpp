@@ -76,7 +76,7 @@ namespace KFVM {
                        "xcoord",(void*) xCoord.data(),PDI_OUT,
                        "ycoord",(void*) yCoord.data(),PDI_OUT,
                        "zcoord",(void*) zCoord.data(),PDI_OUT,
-                       "gamma",(void*) &ps.fluidProp.gamma,PDI_OUT,
+                       "gamma",(void*) &ps.eosParams.gamma,PDI_OUT,
 		       "comm",(void*) &ps.layoutMPI.commWorld,PDI_OUT,
                        NULL);
     }

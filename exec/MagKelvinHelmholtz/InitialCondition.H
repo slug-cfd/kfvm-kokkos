@@ -7,7 +7,10 @@
 
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Kokkos::tanh;
   using Kokkos::sin;
@@ -15,7 +18,7 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   using Physics::MHD_GLM::SimVar;
   
   (void) z;
-  const Real gam = 1.4,gamm = gam - 1.0;
+  const Real gamm = eosParams.gamma - 1.0;
   
   Real sig = 0.2,A = 0.01,a = 0.05,y1 = 0.5,y2 = 1.5;
   Real rho = 1.0 + (tanh((y - y1)/a) - tanh((y - y2)/a))/2.0;

@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 512 512
+mesh:resolution 256 256
 mesh:numblocks 1 1 1
 mesh:extent -0.5 0.5 -0.5 0.5
 
@@ -8,7 +8,7 @@ time:initial 0.0
 time:final 0.2
 time:initialdt 1.e-10
 time:cfl 1.5
-time:maxsteps 5000
+time:maxsteps 5
 time:atol 1.e-3
 time:rtol 1.e-3
 
@@ -16,8 +16,8 @@ time:rtol 1.e-3
 stencil:lfac 5
 
 # Set fluid properties
-properties:gamma 1.4
-properties:wenothresh 20.0
+eos:gamma 1.4
+eos:wenothresh 20.0
 
 # Output settings
 io:pdiconf ../../user/pdi_euler_xdmf.yml
@@ -25,3 +25,6 @@ io:datadir data
 io:basename Sedov
 io:plotfreq 50
 io:ckptfreq 20
+
+# Problem specific settings
+user:r 0.015625

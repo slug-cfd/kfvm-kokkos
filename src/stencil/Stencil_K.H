@@ -18,11 +18,10 @@
 #include <Definitions.H>
 
 #include "../Types.H"
-#include "../FluidProperties.H"
+#include "../ParameterStructs.H"
 #include "../ProblemSetup.H"
 #include "../Geometry.H"
 #include "../physics/Physics_K.H"
-#include "../FluidProperties.H"
 #include "../Dimension.H"
 #include "Stencil.H"
 
@@ -152,7 +151,7 @@ namespace KFVM {
       FaceWtView faceWeight;
       CellWtView cellWeight;
       DerivWtView derivWeight;
-      FluidProperties fProp;
+      EosParameters eosParams;
       const int nCellsFull,nCellsCtr,nCellsBias;
       const int nSub,nBias,nIndic,nqFace_d;
       const Real gHi,gLo,eps;
@@ -174,7 +173,7 @@ namespace KFVM {
 			const FaceWtView& face_,
 			const CellWtView& cell_,
 			const DerivWtView& deriv_,
-                        const FluidProperties& fProp_):
+                        const EosParameters& eosParams_):
 	U(U_),
 	KFVM_D_DECL(nX(nX_),nY(nY_),nZ(nZ_)),
 	KFVM_D_DECL(tX(tX_),tY(tY_),tZ(tZ_)),
@@ -188,7 +187,7 @@ namespace KFVM {
 	faceWeight(face_),
 	cellWeight(cell_),
 	derivWeight(deriv_),
-        fProp(fProp_),
+        eosParams(eosParams_),
 	nCellsFull(Stencil::Core::SI.nCellsFull),
 	nCellsCtr(Stencil::Core::SI.nCellsCtr),
 	nCellsBias(Stencil::Core::SI.nCellsBias),
@@ -273,7 +272,7 @@ namespace KFVM {
 	}
 
 	// Variable conversion context
-	Physics::VarConvert<eqType> varConv(refState,fProp.gamma);
+	Physics::VarConvert<eqType> varConv(refState,eosParams.gamma);
 	
 	// Populate stencil values
 	for (int nC=0; nC<nCellsFull; nC++) {
@@ -410,7 +409,7 @@ namespace KFVM {
 	}
 
 	// Variable conversion context
-	Physics::VarConvert<eqType> varConv(refState,fProp.gamma);
+	Physics::VarConvert<eqType> varConv(refState,eosParams.gamma);
 	
 	// Populate stencil values
 	for (int nC=0; nC<nCellsFull; nC++) {

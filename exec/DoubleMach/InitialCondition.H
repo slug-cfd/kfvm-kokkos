@@ -2,13 +2,16 @@
 // must take (x,y,z) coordinates regardless of space dimension
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Physics::Hydro::SimVar;
   
   (void) z;
   
-  const Real gamm = 0.4; // 1.4 - 1.0
+  const Real gamm = eosParams.gamma - 1.0;
   const Real r3 = sqrt(3.0); // slope of shock
   Real rho,u,v,w,p;
 

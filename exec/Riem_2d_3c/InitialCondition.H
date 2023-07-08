@@ -2,12 +2,17 @@
 // must take (x,y,z) coordinates regardless of space dimension
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Physics::Hydro::SimVar;
   
   (void) z;
-  Real gamm = 0.4; // 1.4 - 1
+  
+  const Real gamm = eosParams.gamma - 1.0;
+  
   if(y > 0.8) {
     if(x > 0.8) {
       state[SimVar::dens] = 1.5;

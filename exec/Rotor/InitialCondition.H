@@ -6,12 +6,15 @@
 #endif
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Physics::MHD_GLM::SimVar;
   using Kokkos::sqrt;
   
-  const Real gam = 1.4,gamm = gam - 1.0;
+  const Real gamm = eosParams.gamma - 1.0;
   const Real r0 = 0.1,r1 = 0.115,r = sqrt(x*x + y*y + z*z);
   const Real fr = (r1 - r)/(r1 - r0);
   const Real pG = 1.0,u0 = 2.0;

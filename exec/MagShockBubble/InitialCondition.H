@@ -5,11 +5,14 @@
 
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Physics::MHD_GLM::SimVar;
   
-  const Real gam = 5.0/3.0,gamm = gam - 1.0;
+  const Real gamm = eosParams.gamma - 1.0;
   const Real r0sq = 0.15*0.15;
   const Real rsq = (SPACE_DIM == 2) ?
     ((x - 0.8)*(x - 0.8) + (y - 0.5)*(y - 0.5)) :

@@ -13,6 +13,7 @@
 #include <Definitions.H>
 
 #include "../Types.H"
+#include "../ParameterStructs.H"
 #include "../ProblemSetup.H"
 #include "../Geometry.H"
 #include "../physics/Physics_K.H"
@@ -33,15 +34,21 @@ namespace KFVM {
       DataViewType v;
       QuadRuleView ab,wt;
       Geometry geom;
+      EosParameters eosParams;
+      UserParameters userParams;
 
       IntegrateIC_K(const DataViewType& v_,
 		    const QuadRuleView& ab_,
 		    const QuadRuleView& wt_,
-		    const Geometry& geom_):
+		    const Geometry& geom_,
+		    const EosParameters& eosParams_,
+		    const UserParameters& userParams_):
 	v(v_),
 	ab(ab_),
 	wt(wt_),
-	geom(geom_) {}
+	geom(geom_),
+        eosParams(eosParams_),
+        userParams(userParams_) {}
 
       // 2D version
       KOKKOS_INLINE_FUNCTION
@@ -63,7 +70,7 @@ namespace KFVM {
 
 	    // IC at quadrature point
 	    Real state[NUM_VARS];
-	    InitialCondition(abX,abY,geom.zLo,state);
+	    InitialCondition(abX,abY,geom.zLo,eosParams,userParams,state);
 
 	    // Add each component into IC
 	    for (idx_t nV=0; nV<NUM_VARS; nV++) {
@@ -95,7 +102,7 @@ namespace KFVM {
 
 	      // IC at quadrature point
 	      Real state[NUM_VARS];
-	      InitialCondition(abX,abY,abZ,state);
+	      InitialCondition(abX,abY,abZ,eosParams,userParams,state);
 
 	      // Add each component into IC
 	      for (idx_t nV=0; nV<NUM_VARS; nV++) {
@@ -334,18 +341,18 @@ namespace KFVM {
     template<class UViewType,class WViewType>
     struct RK_WenoSelect_K {
       UViewType U,Uprev;
-      FluidProperties fProp;
+      EosParameters eosParams;
       Real wThresh;
       WViewType W;
 
       RK_WenoSelect_K(const UViewType& U_,
 		      const UViewType& Uprev_,
-                      const FluidProperties& fProp_,
+                      const EosParameters& eosParams_,
 		      const Real wThresh_,
 		      const WViewType& W_):
 	U(U_),
 	Uprev(Uprev_),
-        fProp(fProp_),
+        eosParams(eosParams_),
 	wThresh(wThresh_),
 	W(W_)
       {}
@@ -365,8 +372,8 @@ namespace KFVM {
 	}
 
 	// Calculate change in weno indicator
-	Real w0 = Physics::EOS<eqType>::weno(u0,fProp);
-	Real w1 = Physics::EOS<eqType>::weno(u1,fProp);
+	Real w0 = Physics::EOS<eqType>::weno(u0,eosParams);
+	Real w1 = Physics::EOS<eqType>::weno(u1,eosParams);
 	Real w = fabs(w1 - w0)/fmin(w0,w1);
 
 	// set flags based on indicator

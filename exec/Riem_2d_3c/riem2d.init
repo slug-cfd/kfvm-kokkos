@@ -16,8 +16,8 @@ time:rtol 1.e-3
 stencil:lfac 5
 
 # Set fluid properties
-properties:gamma 1.4
-properties:wenothresh 100.0
+eos:gamma 1.4
+eos:wenothresh 100.0
 
 # Output settings
 io:pdiconf ../../user/pdi_euler_xdmf.yml

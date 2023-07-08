@@ -2,14 +2,17 @@
 // must take (x,y,z) coordinates regardless of space dimension
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Kokkos::sin;
   using Physics::Hydro::SimVar;
   
   (void) y; (void) z;
 
-  const Real gam = 1.4,gamm = gam - 1.0;
+  const Real gamm = eosParams.gamma - 1.0;
   
   const Real rho = x < 0.5 ? 3.857143 : 1.0 + 0.2*sin(5.0*(x - 4.5));
   const Real u = x < 0.5 ? 2.629369 : 0.0;

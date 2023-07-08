@@ -30,11 +30,16 @@ void ivAddPert(Real x,Real y,Real xc,Real yc,Real R,Real Om,Real gamma,Real Ub[N
 }
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z,
+		      EosParameters eosParams,
+		      UserParameters userParams,
+		      Real state[NUM_VARS])
 {
   using Physics::Hydro::SimVar;
   
   (void) z;
+  
+  const Real gamm = eosParams.gamma - 1.0;
   
   Real xc = 0.0,yc = 0.0;
   Real R = 1.0,sig = 1.0,beta = 5.0*sqrt(2.0)*exp(0.5)/(4.0*M_PI);
@@ -44,7 +49,7 @@ void InitialCondition(Real x,Real y,Real z,Real state[NUM_VARS])
   state[SimVar::momx] = 1.0;
   state[SimVar::momy] = 1.0;
   state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = 1.0/0.4 + 1.0;
+  state[SimVar::etot] = 1.0/gamm + 1.0;
 
-  ivAddPert(x,y,xc,yc,R,Om,1.4,state);
+  ivAddPert(x,y,xc,yc,R,Om,eosParams.gamma,state);
 }
