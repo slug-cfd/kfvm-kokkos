@@ -6,19 +6,16 @@
 #endif
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,
-		      EosParameters eosParams,
-		      UserParameters userParams,
-		      Real state[NUM_VARS])
-{
-  using Physics::MHD_GLM::SimVar;
+void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
+                      UserParameters userParams, Real state[NUM_VARS]) {
   using Kokkos::fabs;
-  
+  using Physics::MHD_GLM::SimVar;
+
   const Real gamm = eosParams.gamma - 1.0;
-  const Real rhoL = 1.0,rhoR = 0.125;
-  const Real pL = 1.0,pR = 0.1;
-  const Real byL = 1.0,byR = -1.0,bx = 0.75;
-  
+  const Real rhoL = 1.0, rhoR = 0.125;
+  const Real pL = 1.0, pR = 0.1;
+  const Real byL = 1.0, byR = -1.0, bx = 0.75;
+
   // Background
   state[SimVar::momx] = 0.0;
   state[SimVar::momy] = 0.0;
@@ -31,10 +28,10 @@ void InitialCondition(Real x,Real y,Real z,
   if (fabs(x) <= 0.5) {
     state[SimVar::dens] = rhoL;
     state[SimVar::magy] = byL;
-    state[SimVar::etot] = pL/gamm + 0.5*(bx*bx + byL*byL);
+    state[SimVar::etot] = pL / gamm + 0.5 * (bx * bx + byL * byL);
   } else {
     state[SimVar::dens] = rhoR;
     state[SimVar::magy] = byR;
-    state[SimVar::etot] = pR/gamm + 0.5*(bx*bx + byR*byR);
+    state[SimVar::etot] = pR / gamm + 0.5 * (bx * bx + byR * byR);
   }
 }

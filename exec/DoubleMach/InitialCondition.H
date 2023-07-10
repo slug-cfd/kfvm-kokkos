@@ -2,20 +2,17 @@
 // must take (x,y,z) coordinates regardless of space dimension
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,
-		      EosParameters eosParams,
-		      UserParameters userParams,
-		      Real state[NUM_VARS])
-{
+void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
+                      UserParameters userParams, Real state[NUM_VARS]) {
   using Physics::Hydro::SimVar;
-  
-  (void) z;
-  
+
+  (void)z;
+
   const Real gamm = eosParams.gamma - 1.0;
   const Real r3 = sqrt(3.0); // slope of shock
-  Real rho,u,v,w,p;
+  Real rho, u, v, w, p;
 
-  if (y > r3*(x - 1.0/6.0)) {
+  if (y > r3 * (x - 1.0 / 6.0)) {
     rho = 8.0;
     u = 7.1447096;
     v = -4.125;
@@ -28,10 +25,10 @@ void InitialCondition(Real x,Real y,Real z,
     w = 0.0;
     p = 1.0;
   }
-  
+
   state[SimVar::dens] = rho;
-  state[SimVar::momx] = rho*u;
-  state[SimVar::momy] = rho*v;
-  state[SimVar::momz] = rho*w;
-  state[SimVar::etot] = p/gamm + rho*(u*u + v*v + w*w)/2.0;
+  state[SimVar::momx] = rho * u;
+  state[SimVar::momy] = rho * v;
+  state[SimVar::momz] = rho * w;
+  state[SimVar::etot] = p / gamm + rho * (u * u + v * v + w * w) / 2.0;
 }

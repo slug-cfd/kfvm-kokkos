@@ -1,9 +1,9 @@
 #ifndef DEFINITIONS_H_
 #define DEFINITIONS_H_
 
+#include "../../src/numeric/RKTypes.H"
 #include "../../src/physics/EquationTypes.H"
 #include "../../src/physics/RSTypes.H"
-#include "../../src/numeric/RKTypes.H"
 
 // Space dimension of problem
 #define SPACE_DIM 2
@@ -17,7 +17,7 @@
 // Floating point precision (1 for double, 0 for single)
 #define FLOAT_PRECISION 1
 
-//#define KFVM_EXEC_SERIAL
+// #define KFVM_EXEC_SERIAL
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
 constexpr KFVM::RSType rsType = KFVM::RSType::HLLC;

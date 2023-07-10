@@ -6,17 +6,15 @@
 #endif
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,
-		      EosParameters eosParams,
-		      UserParameters userParams,
-		      Real state[NUM_VARS])
-{
+void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
+                      UserParameters userParams, Real state[NUM_VARS]) {
   using Kokkos::cos;
   using Kokkos::sin;
   using Physics::LinAdv::SimVar;
-  
-  (void) x; (void) y; (void) z;
 
-  state[SimVar::u] = cos(2.0*M_PI*x);
-  
+  (void)x;
+  (void)y;
+  (void)z;
+
+  state[SimVar::u] = cos(2.0 * M_PI * x);
 }

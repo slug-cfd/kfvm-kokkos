@@ -9,21 +9,19 @@
 
 namespace KFVM {
 
-  namespace Physics {
+namespace Physics {
 
-    KOKKOS_INLINE_FUNCTION
-    Real hll(Real sL,Real sR,Real fL,Real fR,Real uL,Real uR)
-    {
-      return ((sR*fL - sL*fR) + sL*sR*(uR - uL))/(sR - sL);
-    }
+KOKKOS_INLINE_FUNCTION
+Real hll(Real sL, Real sR, Real fL, Real fR, Real uL, Real uR) {
+  return ((sR * fL - sL * fR) + sL * sR * (uR - uL)) / (sR - sL);
+}
 
-    KOKKOS_INLINE_FUNCTION
-    Real hllState(Real sL,Real sR,Real fL,Real fR,Real uL,Real uR)
-    {
-      return ((sR*uR - sL*uL) + (fL - fR))/(sR - sL);
-    }
-    
-  } // end namespace Physics
+KOKKOS_INLINE_FUNCTION
+Real hllState(Real sL, Real sR, Real fL, Real fR, Real uL, Real uR) {
+  return ((sR * uR - sL * uL) + (fL - fR)) / (sR - sL);
+}
+
+} // end namespace Physics
 
 } // end namespace KFVM
 

@@ -5,77 +5,77 @@
 
 namespace KFVM {
 
-  namespace Physics {
+namespace Physics {
 
-    namespace Hydro {
+namespace Hydro {
 
-      struct SimVar {
-        enum var { dens = 0, momx, momy, momz, etot};
-      };
-      struct PrimVar {
-        enum var { dens = 0, velx, vely, velz, pres};
-      };
-      struct AuxVar {
-        enum var { velx = 0, vely, velz, eint, pres};
-      };
+struct SimVar {
+  enum var { dens = 0, momx, momy, momz, etot };
+};
+struct PrimVar {
+  enum var { dens = 0, velx, vely, velz, pres };
+};
+struct AuxVar {
+  enum var { velx = 0, vely, velz, eint, pres };
+};
 
-      typedef Real ConsVec[5];
-      typedef Real PrimVec[5];
+typedef Real ConsVec[5];
+typedef Real PrimVec[5];
 
-    } // end namespace Hydro
+} // end namespace Hydro
 
-    namespace MHD_GLM {
+namespace MHD_GLM {
 
-      struct SimVar {
-        enum var { dens = 0, momx, momy, momz, etot, magx, magy, magz, psi };
-      };
-      struct PrimVar {
-        enum var { dens = 0, velx, vely, velz, prsg, magx, magy, magz, psi };
-      };
-      struct AuxVar {
-        enum var { velx = 0, vely, velz, eint, prsg, prsb };
-      };
+struct SimVar {
+  enum var { dens = 0, momx, momy, momz, etot, magx, magy, magz, psi };
+};
+struct PrimVar {
+  enum var { dens = 0, velx, vely, velz, prsg, magx, magy, magz, psi };
+};
+struct AuxVar {
+  enum var { velx = 0, vely, velz, eint, prsg, prsb };
+};
 
-      typedef Real ConsVec[9];
-      typedef Real PrimVec[9];
+typedef Real ConsVec[9];
+typedef Real PrimVec[9];
 
-    } // end namespace MHD_GLM
+} // end namespace MHD_GLM
 
-    namespace SRHydro {
+namespace SRHydro {
 
-      struct SimVar {
-        enum var { dens = 0, momx, momy, momz, etot};
-      };
-      struct PrimVar {
-        enum var { rho = 0, velx, vely, velz, lorz, pres};
-      };
-      struct AuxVar {
-        enum var { rho = 0, velx, vely, velz, lorz, pres};
-      };
+struct SimVar {
+  enum var { dens = 0, momx, momy, momz, etot };
+};
+struct PrimVar {
+  enum var { rho = 0, velx, vely, velz, lorz, pres };
+};
+struct AuxVar {
+  enum var { rho = 0, velx, vely, velz, lorz, pres };
+};
 
-      typedef Real ConsVec[5];
-      typedef Real PrimVec[6];
+typedef Real ConsVec[5];
+typedef Real PrimVec[6];
 
-    } // end namespace SRHydro
+} // end namespace SRHydro
 
-    namespace LinAdv {
+namespace LinAdv {
 
-      struct SimVar {
-        enum var { u = 0};
-      };
-      struct PrimVar {
-        enum var { u = 0};
-      };
-      struct AuxVar {
-        enum var { u = 0};
-      };
+struct SimVar {
+  enum var { u = 0 };
+};
+struct PrimVar {
+  enum var { u = 0 };
+};
+struct AuxVar {
+  enum var { u = 0 };
+};
 
-      typedef Real ConsVec[1];
-      typedef Real PrimVec[1];
+typedef Real ConsVec[1];
+typedef Real PrimVec[1];
 
-    } // end namespace SRHydro
+} // namespace LinAdv
 
-  } // end namespace Physics
+} // end namespace Physics
 
 } // end namespace KFVM
 
