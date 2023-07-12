@@ -102,10 +102,12 @@ struct AuxVars<EquationType::Hydro, UViewType> {
 template <RSType rst>
 struct RiemannSolverX_K<EquationType::Hydro, rst> {
   FaceDataView U;
+  Geometry<geomType> geom;
   EosParameters eosParams;
 
-  RiemannSolverX_K(const FaceDataView &U_, const EosParameters &eosParams_)
-      : U(U_), eosParams(eosParams_) {}
+  RiemannSolverX_K(const FaceDataView &U_, const Geometry<geomType> &geom_,
+                   const EosParameters &eosParams_)
+      : U(U_), geom(geom_), eosParams(eosParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
@@ -113,27 +115,34 @@ struct RiemannSolverX_K<EquationType::Hydro, rst> {
     using Hydro::ConsVec;
     using Hydro::PrimVec;
 
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
+    const idx_t nQuadZ = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
 
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // pull out states and convert to primitive
-      ConsVec uL, uR, F;
-      PrimVec vL, vR;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
-        uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
-      }
-      EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uR, vR);
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+      for (idx_t nR = 0; nR < nQuadZ; nR++) {
+        // get metric derivatives
+        const Vec4 metric =
+            geom.xiMetricDeriv(KFVM_D_DECL(i, j, k), KFVM_D_DECL(-0.5, nQ, nR));
 
-      // Calculate flux
-      Real vq = HydroRS<rst>::RiemannSolve_X(eosParams.gamma, uL, uR, vL, vR, F);
-      maxVel = vq > maxVel ? vq : maxVel;
+        // pull out states and convert to primitive
+        ConsVec uL, uR, F;
+        PrimVec vL, vR;
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
+          uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uL, vL);
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uR, vR);
 
-      // Overwrite states with flux
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        U(KFVM_D_DECL(i, j, k), 0, nQ, nV) = F[nV];
-        U(KFVM_D_DECL(i, j, k), 1, nQ, nV) = F[nV];
+        // Calculate flux
+        Real vq =
+            HydroRS<rst>::RiemannSolve_X(eosParams.gamma, metric, uL, uR, vL, vR, F);
+        maxVel = vq > maxVel ? vq : maxVel;
+
+        // Overwrite states with flux
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          U(KFVM_D_DECL(i, j, k), 0, nQ, nV) = F[nV];
+          U(KFVM_D_DECL(i, j, k), 1, nQ, nV) = F[nV];
+        }
       }
     }
   }
@@ -142,10 +151,12 @@ struct RiemannSolverX_K<EquationType::Hydro, rst> {
 template <RSType rst>
 struct RiemannSolverY_K<EquationType::Hydro, rst> {
   FaceDataView U;
+  Geometry<geomType> geom;
   EosParameters eosParams;
 
-  RiemannSolverY_K(const FaceDataView &U_, const EosParameters &eosParams_)
-      : U(U_), eosParams(eosParams_) {}
+  RiemannSolverY_K(const FaceDataView &U_, const Geometry<geomType> &geom_,
+                   const EosParameters &eosParams_)
+      : U(U_), geom(geom_), eosParams(eosParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
@@ -153,26 +164,34 @@ struct RiemannSolverY_K<EquationType::Hydro, rst> {
     using Hydro::ConsVec;
     using Hydro::PrimVec;
 
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // pull out states and convert to primitive
-      ConsVec uL, uR, F;
-      PrimVec vL, vR;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
-        uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
-      }
-      EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uR, vR);
+    const idx_t nQuadZ = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
 
-      // Calculate flux
-      Real vq = HydroRS<rst>::RiemannSolve_Y(eosParams.gamma, uL, uR, vL, vR, F);
-      maxVel = vq > maxVel ? vq : maxVel;
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+      for (idx_t nR = 0; nR < nQuadZ; nR++) {
+        // get metric derivatives
+        const Vec4 metric =
+            geom.etaMetricDeriv(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, -0.5, nR));
 
-      // Overwrite states with flux
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        U(KFVM_D_DECL(i, j, k), 0, nQ, nV) = F[nV];
-        U(KFVM_D_DECL(i, j, k), 1, nQ, nV) = F[nV];
+        // pull out states and convert to primitive
+        ConsVec uL, uR, F;
+        PrimVec vL, vR;
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
+          uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uL, vL);
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uR, vR);
+
+        // Calculate flux
+        Real vq =
+            HydroRS<rst>::RiemannSolve_Y(eosParams.gamma, metric, uL, uR, vL, vR, F);
+        maxVel = vq > maxVel ? vq : maxVel;
+
+        // Overwrite states with flux
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          U(KFVM_D_DECL(i, j, k), 0, nQ, nV) = F[nV];
+          U(KFVM_D_DECL(i, j, k), 1, nQ, nV) = F[nV];
+        }
       }
     }
   }
@@ -181,10 +200,12 @@ struct RiemannSolverY_K<EquationType::Hydro, rst> {
 template <RSType rst>
 struct RiemannSolverZ_K<EquationType::Hydro, rst> {
   FaceDataView U;
+  Geometry<geomType> geom;
   EosParameters eosParams;
 
-  RiemannSolverZ_K(const FaceDataView &U_, const EosParameters &eosParams_)
-      : U(U_), eosParams(eosParams_) {}
+  RiemannSolverZ_K(const FaceDataView &U_, const Geometry<geomType> &geom_,
+                   const EosParameters &eosParams_)
+      : U(U_), geom(geom_), eosParams(eosParams_) {}
 
 #if (SPACE_DIM == 3)
   KOKKOS_INLINE_FUNCTION
@@ -192,25 +213,31 @@ struct RiemannSolverZ_K<EquationType::Hydro, rst> {
     using Hydro::ConsVec;
     using Hydro::PrimVec;
 
-    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
-      // pull out states and convert to primitive
-      ConsVec uL, uR, F;
-      PrimVec vL, vR;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
-        uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
-      }
-      EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uR, vR);
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+      for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
+        // get metric derivatives
+        const Vec4 metric = geom.zetaMetricDeriv(i, j, k, nQ, nR, -0.5);
 
-      // Calculate flux
-      Real vq = HydroRS<rst>::RiemannSolve_Z(eosParams.gamma, uL, uR, vL, vR, F);
-      maxVel = vq > maxVel ? vq : maxVel;
+        // pull out states and convert to primitive
+        ConsVec uL, uR, F;
+        PrimVec vL, vR;
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
+          uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uL, vL);
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, uR, vR);
 
-      // Overwrite states with flux
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        U(i, j, k, 0, nQ, nV) = F[nV];
-        U(i, j, k, 1, nQ, nV) = F[nV];
+        // Calculate flux
+        Real vq =
+            HydroRS<rst>::RiemannSolve_Z(eosParams.gamma, metric, uL, uR, vL, vR, F);
+        maxVel = vq > maxVel ? vq : maxVel;
+
+        // Overwrite states with flux
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          U(i, j, k, 0, nQ, nV) = F[nV];
+          U(i, j, k, 1, nQ, nV) = F[nV];
+        }
       }
     }
   }
@@ -245,7 +272,7 @@ struct SourceTerms_K<EquationType::Hydro, UViewType> {
   DiffMatView D;
   QuadRuleView ab;
   EosParameters eosParams;
-  Geometry geom;
+  Geometry<geomType> geom;
   Real t;
 
   SourceTerms_K(const SourceDataView &source_,
@@ -253,28 +280,21 @@ struct SourceTerms_K<EquationType::Hydro, UViewType> {
                             const FaceDataView &rsZ_),
                 const UViewType &U_, const WenoFlagView &wenoFlag_, const DiffMatView &D_,
                 const QuadRuleView &ab_, const EosParameters &eosParams_,
-                const Geometry &geom_, const Real t_)
+                const Geometry<geomType> &geom_, const Real t_)
       : source(source_), KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), U(U_),
         wenoFlag(wenoFlag_), D(D_), ab(ab_), eosParams(eosParams_), geom(geom_), t(t_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
-    // Get coordinates of cell center
-    Real xc = geom.xCoord(i);
-    Real yc = geom.yCoord(j);
-#if (SPACE_DIM == 2)
-    Real zc = geom.zCoord(0);
-#else
-    Real zc = geom.zCoord(k);
-#endif
-
     const int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+
     for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
-      Real x = Numeric::sclAb(xc, geom.dx, ab(nQ));
       for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        Real y = Numeric::sclAb(yc, geom.dy, ab(nR));
         for (int nS = 0; nS < nzQuad; nS++) {
-          Real z = SPACE_DIM == 2 ? zc : Numeric::sclAb(zc, geom.dz, ab(nS));
+          // Quad point in physical coordinates
+          Vec3 xyz =
+              geom.physCoord(KFVM_D_DECL(i, j, k), KFVM_D_DECL(ab(nQ), ab(nR), ab(nS)));
+
           Hydro::ConsVec state, force;
           // Real state[10],force[10];
           // Extract state and clear force vector
@@ -284,7 +304,7 @@ struct SourceTerms_K<EquationType::Hydro, UViewType> {
           }
 
           // Fill force with user defined terms
-          Hydro::SourceTerm(t, x, y, z, state, force);
+          Hydro::SourceTerm(t, xyz.v1, xyz.v2, xyz.v3, state, force);
 
           // overwrite source with forcing
           for (int nV = 0; nV < NUM_VARS; nV++) {

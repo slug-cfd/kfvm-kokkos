@@ -32,12 +32,12 @@ template <class DataViewType>
 struct IntegrateIC_K {
   DataViewType v;
   QuadRuleView ab, wt;
-  Geometry geom;
+  Geometry<geomType> geom;
   EosParameters eosParams;
   UserParameters userParams;
 
   IntegrateIC_K(const DataViewType &v_, const QuadRuleView &ab_, const QuadRuleView &wt_,
-                const Geometry &geom_, const EosParameters &eosParams_,
+                const Geometry<geomType> &geom_, const EosParameters &eosParams_,
                 const UserParameters &userParams_)
       : v(v_), ab(ab_), wt(wt_), geom(geom_), eosParams(eosParams_),
         userParams(userParams_) {}
@@ -45,28 +45,24 @@ struct IntegrateIC_K {
   // 2D version
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j) const {
-    // Center of cell (i,j)
-    Real xCtr = geom.xCoord(i), yCtr = geom.yCoord(j);
-
     // Zero out state
     for (idx_t nV = 0; nV < NUM_VARS; nV++) {
       v(i, j, nV) = Real(0.0);
     }
 
     // Loop over quadrature points and accumulate integral
-    for (idx_t nX = 0; nX < NUM_QUAD_PTS; nX++) {
-      for (idx_t nY = 0; nY < NUM_QUAD_PTS; nY++) {
-        // Quadrature point
-        Real abX = sclAb(xCtr, geom.dx, ab(nX));
-        Real abY = sclAb(yCtr, geom.dy, ab(nY));
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+      for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
+        // Get physical space coordinate and Jacobian
+        Vec4 xyzJ = geom.physCoordJac(i, j, 0, ab(nQ), ab(nR), 0.0);
 
         // IC at quadrature point
         Real state[NUM_VARS];
-        InitialCondition(abX, abY, geom.zLo, eosParams, userParams, state);
+        InitialCondition(xyzJ.v1, xyzJ.v2, xyzJ.v3, eosParams, userParams, state);
 
         // Add each component into IC
         for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-          v(i, j, nV) += wt(nX) * wt(nY) * state[nV];
+          v(i, j, nV) += xyzJ.v4 * wt(nQ) * wt(nR) * state[nV];
         }
       }
     }
@@ -75,30 +71,25 @@ struct IntegrateIC_K {
   // 3D version
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j, const idx_t k) const {
-    // Center of cell (i,j,k)
-    Real xCtr = geom.xCoord(i), yCtr = geom.yCoord(j), zCtr = geom.zCoord(k);
-
     // Zero out state
     for (idx_t nV = 0; nV < NUM_VARS; nV++) {
       v(i, j, k, nV) = Real(0.0);
     }
 
     // Loop over quadrature points and accumulate integral
-    for (idx_t nX = 0; nX < NUM_QUAD_PTS; nX++) {
-      for (idx_t nY = 0; nY < NUM_QUAD_PTS; nY++) {
-        for (idx_t nZ = 0; nZ < NUM_QUAD_PTS; nZ++) {
-          // Quadrature point
-          Real abX = sclAb(xCtr, geom.dx, ab(nX));
-          Real abY = sclAb(yCtr, geom.dy, ab(nY));
-          Real abZ = sclAb(zCtr, geom.dz, ab(nZ));
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+      for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
+        for (idx_t nS = 0; nS < NUM_QUAD_PTS; nS++) {
+          // Get physical space coordinate and Jacobian
+          Vec4 xyzJ = geom.physCoordJac(i, j, k, ab(nQ), ab(nR), ab(nS));
 
           // IC at quadrature point
           Real state[NUM_VARS];
-          InitialCondition(abX, abY, abZ, eosParams, userParams, state);
+          InitialCondition(xyzJ.v1, xyzJ.v2, xyzJ.v3, eosParams, userParams, state);
 
           // Add each component into IC
           for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-            v(i, j, k, nV) += wt(nX) * wt(nY) * wt(nZ) * state[nV];
+            v(i, j, k, nV) += xyzJ.v4 * wt(nQ) * wt(nR) * wt(nS) * state[nV];
           }
         }
       }
@@ -113,13 +104,14 @@ struct IntegrateRHS_K {
   SourceDataView sources;
   bool haveSources;
   QuadRuleView ab, wt;
-  Geometry geom;
+  Geometry<geomType> geom;
 
   IntegrateRHS_K(const RhsViewType &rhs_,
                  KFVM_D_DECL(const FaceDataView &flX_, const FaceDataView &flY_,
                              const FaceDataView &flZ_),
                  const SourceDataView &sources_, bool haveSources_,
-                 const QuadRuleView &ab_, const QuadRuleView &wt_, const Geometry &geom_)
+                 const QuadRuleView &ab_, const QuadRuleView &wt_,
+                 const Geometry<geomType> &geom_)
       : rhs(rhs_), KFVM_D_DECL(flX(flX_), flY(flY_), flZ(flZ_)), sources(sources_),
         haveSources(haveSources_), ab(ab_), wt(wt_), geom(geom_) {}
 
@@ -136,10 +128,10 @@ struct IntegrateRHS_K {
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         // x-direction
         rhs(i, j, nV) +=
-            wt(nQ) * (flX(i, j, 1, nQ, nV) - flX(i + 1, j, 0, nQ, nV)) / geom.dx;
+            wt(nQ) * (flX(i, j, 1, nQ, nV) - flX(i + 1, j, 0, nQ, nV)) / geom.dXi;
         // y-direction
         rhs(i, j, nV) +=
-            wt(nQ) * (flY(i, j, 1, nQ, nV) - flY(i, j + 1, 0, nQ, nV)) / geom.dy;
+            wt(nQ) * (flY(i, j, 1, nQ, nV) - flY(i, j + 1, 0, nQ, nV)) / geom.dEta;
       }
     }
 
@@ -147,8 +139,9 @@ struct IntegrateRHS_K {
       // Integrate source terms
       for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
         for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
+          Vec4 xyzJ = geom.physCoordJac(i, j, 0, ab(nQ), ab(nR), 0.0);
           for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-            rhs(i, j, nV) += wt(nQ) * wt(nR) * sources(i, j, nQ, nR, nV);
+            rhs(i, j, nV) += xyzJ.v4 * wt(nQ) * wt(nR) * sources(i, j, nQ, nR, nV);
           }
         }
       }
@@ -169,11 +162,14 @@ struct IntegrateRHS_K {
           idx_t qIdx = nQ * NUM_QUAD_PTS + nR;
           Real qWt = wt(nQ) * wt(nR);
           rhs(i, j, k, nV) +=
-              qWt * (flX(i, j, k, 0, qIdx, nV) - flX(i + 1, j, k, 1, qIdx, nV)) / geom.dx;
+              qWt * (flX(i, j, k, 0, qIdx, nV) - flX(i + 1, j, k, 1, qIdx, nV)) /
+              geom.dXi;
           rhs(i, j, k, nV) +=
-              qWt * (flY(i, j, k, 0, qIdx, nV) - flY(i, j + 1, k, 1, qIdx, nV)) / geom.dy;
+              qWt * (flY(i, j, k, 0, qIdx, nV) - flY(i, j + 1, k, 1, qIdx, nV)) /
+              geom.dEta;
           rhs(i, j, k, nV) +=
-              qWt * (flZ(i, j, k, 0, qIdx, nV) - flZ(i, j, k + 1, 1, qIdx, nV)) / geom.dz;
+              qWt * (flZ(i, j, k, 0, qIdx, nV) - flZ(i, j, k + 1, 1, qIdx, nV)) /
+              geom.dZeta;
         }
       }
     }
@@ -183,9 +179,10 @@ struct IntegrateRHS_K {
       for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
         for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
           for (idx_t nS = 0; nS < NUM_QUAD_PTS; nS++) {
+            Vec4 xyzJ = geom.physCoordJac(i, j, k, ab(nQ), ab(nR), ab(nS));
             for (idx_t nV = 0; nV < NUM_VARS; nV++) {
               rhs(i, j, k, nV) +=
-                  wt(nQ) * wt(nR) * wt(nS) * sources(i, j, k, nQ, nR, nS, nV);
+                  xyzJ.v4 * wt(nQ) * wt(nR) * wt(nS) * sources(i, j, k, nQ, nR, nS, nV);
             }
           }
         }

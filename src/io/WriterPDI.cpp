@@ -15,14 +15,14 @@ namespace KFVM {
 
 namespace IO {
 
-WriterPDI::WriterPDI(ProblemSetup &ps_, const Geometry &geom_)
+WriterPDI::WriterPDI(ProblemSetup &ps_, const Geometry<geomType> &geom_)
     : ps(ps_), geom(geom_),
       U_host("U_host",
              KFVM_D_DECL(ps.nX + 2 * ps.rad, ps.nY + 2 * ps.rad, ps.nZ + 2 * ps.rad)),
       weno_host("weno_host", KFVM_D_DECL(ps.nX, ps.nY, ps.nZ)),
       nX_g(ps.layoutMPI.nbX * ps.nX), nY_g(ps.layoutMPI.nbY * ps.nY),
-      nZ_g(ps.layoutMPI.nbZ * ps.nZ), xCoord(nX_g + 1, Real(0.0)),
-      yCoord(nY_g + 1, Real(0.0)), zCoord(nZ_g + 1, Real(0.0)) {
+      nZ_g(ps.layoutMPI.nbZ * ps.nZ), xiCoord(nX_g + 1, Real(0.0)),
+      etaCoord(nY_g + 1, Real(0.0)), zetaCoord(nZ_g + 1, Real(0.0)) {
   // Generate base filename and make directories as needed
   std::ostringstream oss;
   oss << ps.dataDir << "/R" << ps.rad << "_NX" << ps.nX * ps.nbX << "_NY"
@@ -39,14 +39,14 @@ WriterPDI::WriterPDI(ProblemSetup &ps_, const Geometry &geom_)
   // Note that these are nodal, hence one longer than number of cells
   // Note also that ps.xLo is used and *not* geom.xLo (need global low)
   for (int n = 0; n <= nX_g; n++) {
-    xCoord[n] = n * geom.dx + ps.xLo_g;
+    xiCoord[n] = n * geom.dXi + ps.xLo_g;
   }
   for (int n = 0; n <= nY_g; n++) {
-    yCoord[n] = n * geom.dy + ps.yLo_g;
+    etaCoord[n] = n * geom.dEta + ps.yLo_g;
   }
-  Real dz = (SPACE_DIM == 2 ? geom.dmin : geom.dz);
+  Real dZeta = (SPACE_DIM == 2 ? geom.dmin : geom.dZeta);
   for (int n = 0; n <= nZ_g; n++) {
-    zCoord[n] = n * dz + ps.zLo_g;
+    zetaCoord[n] = n * dZeta + ps.zLo_g;
   }
 
   // Gather up solution metadata and give it to PDI
@@ -61,8 +61,8 @@ WriterPDI::WriterPDI(ProblemSetup &ps_, const Geometry &geom_)
   PDI_multi_expose("", "ncell_g", (void *)ncell_global.data(), PDI_OUT, "ncell_l",
                    (void *)ncell_local.data(), PDI_OUT, "nghost", (void *)nghost.data(),
                    PDI_OUT, "start_idx", (void *)start_idx.data(), PDI_OUT, "xcoord",
-                   (void *)xCoord.data(), PDI_OUT, "ycoord", (void *)yCoord.data(),
-                   PDI_OUT, "zcoord", (void *)zCoord.data(), PDI_OUT, "gamma",
+                   (void *)xiCoord.data(), PDI_OUT, "ycoord", (void *)etaCoord.data(),
+                   PDI_OUT, "zcoord", (void *)zetaCoord.data(), PDI_OUT, "gamma",
                    (void *)&ps.eosParams.gamma, PDI_OUT, "comm",
                    (void *)&ps.layoutMPI.commWorld, PDI_OUT, NULL);
 }

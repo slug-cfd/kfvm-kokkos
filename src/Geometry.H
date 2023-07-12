@@ -10,48 +10,127 @@
 
 #include <Definitions.H>
 
+#include "Dimension.H"
+#include "GeometryTypes.H"
 #include "ProblemSetup.H"
 #include "Types.H"
 
 namespace KFVM {
 
-// Store local geometry information
-//   e.g. xLo is the lower bound for this rank's x-coordinate
-struct Geometry {
-  // Grid spacing
-  const Real dx, dy, dz, dmin;
-  // Bounding box
-  const Real xLo, xUp, yLo, yUp, zLo, zUp;
+template <GeometryType gt>
+struct Geometry {};
+
+// Specialization for cartesian geometry
+// Simplest case, here computational and physical space are the same
+template <>
+struct Geometry<GeometryType::Cartesian> {
+  // Grid spacing (computational domain)
+  const Real dXi, dEta, dZeta, dmin;
+
+  // Bounding box (computational domain)
+  const Real xiLo, xiUp, etaLo, etaUp, zetaLo, zetaUp;
 
   // Construct from Problemsetup object
   Geometry(const ProblemSetup &ps)
-      : dx((ps.xUp_g - ps.xLo_g) / (ps.nX * ps.nbX)),
-        dy((ps.yUp_g - ps.yLo_g) / (ps.nY * ps.nbY)),
-        dz((ps.zUp_g - ps.zLo_g) / (ps.nZ * ps.nbZ)),
-        xLo(ps.xLo_g + dx * ps.layoutMPI.bxLo), xUp(ps.xLo_g + dx * ps.layoutMPI.bxUp),
-        yLo(ps.yLo_g + dy * ps.layoutMPI.byLo), yUp(ps.yLo_g + dy * ps.layoutMPI.byUp),
-        zLo(ps.zLo_g + dz * ps.layoutMPI.bzLo), zUp(ps.zLo_g + dz * ps.layoutMPI.bzUp),
+      : dXi((ps.xUp_g - ps.xLo_g) / (ps.nX * ps.nbX)),
+        dEta((ps.yUp_g - ps.yLo_g) / (ps.nY * ps.nbY)),
+        dZeta((ps.zUp_g - ps.zLo_g) / (ps.nZ * ps.nbZ)),
+        xiLo(ps.xLo_g + dXi * ps.layoutMPI.bxLo),
+        xiUp(ps.xLo_g + dXi * ps.layoutMPI.bxUp),
+        etaLo(ps.yLo_g + dEta * ps.layoutMPI.byLo),
+        etaUp(ps.yLo_g + dEta * ps.layoutMPI.byUp),
+        zetaLo(ps.zLo_g + dZeta * ps.layoutMPI.bzLo),
+        zetaUp(ps.zLo_g + dZeta * ps.layoutMPI.bzUp),
 #if (SPACE_DIM == 2)
-        dmin(std::fmin(dx, dy))
+        dmin(std::fmin(dXi, dEta))
 #else
-        dmin(std::fmin(dx, std::fmin(dy, dz)))
+        dmin(std::fmin(dXi, std::fmin(dEta, dZeta)))
 #endif
   {
   }
 
   // Convenience functions to calculate coordinates at cell centers
   KOKKOS_INLINE_FUNCTION
-  Real xCoord(idx_t n) const { return dx * (Real(n) + Real(0.5)) + xLo; }
+  Real xiCoord(const idx_t n) const { return dXi * (Real(n) + Real(0.5)) + xiLo; }
 
   KOKKOS_INLINE_FUNCTION
-  Real yCoord(idx_t n) const { return dy * (Real(n) + Real(0.5)) + yLo; }
+  Real etaCoord(const idx_t n) const { return dEta * (Real(n) + Real(0.5)) + etaLo; }
 
   KOKKOS_INLINE_FUNCTION
-  Real zCoord(idx_t n) const { return dz * (Real(n) + Real(0.5)) + zLo; }
+  Real zetaCoord(const idx_t n) const { return dZeta * (Real(n) + Real(0.5)) + zetaLo; }
+
+  KOKKOS_INLINE_FUNCTION
+  Real jacobian(const Real xi, const Real eta, const Real zeta) const { return 1.0; }
+
+  KOKKOS_INLINE_FUNCTION
+  Vec3 physCoord(const Real xi, const Real eta, const Real zeta) const {
+    return {xi, eta, zeta};
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Vec3 physCoord(const idx_t i, const idx_t j) const {
+    const Real xi = xiCoord(i), eta = etaCoord(j);
+    return {xi, eta, zetaLo};
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Vec3 physCoord(const idx_t i, const idx_t j, const idx_t k) const {
+    const Real xi = xiCoord(i), eta = etaCoord(j);
+    const Real zeta = SPACE_DIM == 2 ? zetaLo : zetaCoord(k);
+    return {xi, eta, zeta};
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Vec3 physCoord(const idx_t i, const idx_t j, const Real abXi, const Real abEta) const {
+    const Real xi = xiCoord(i) + dXi * abXi, eta = etaCoord(j) + dEta * abEta;
+    return {xi, eta, zetaLo};
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Vec3 physCoord(const idx_t i, const idx_t j, const idx_t k, const Real abXi,
+                 const Real abEta, const Real abZeta) const {
+    const Real xi = xiCoord(i) + dXi * abXi, eta = etaCoord(j) + dEta * abEta;
+    const Real zeta = SPACE_DIM == 2 ? zetaLo : zetaCoord(k) + dZeta * abZeta;
+    return {xi, eta, zeta};
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Vec4 physCoordJac(const idx_t i, const idx_t j, const idx_t k, const Real abXi,
+                    const Real abEta, const Real abZeta) const {
+    const Real xi = xiCoord(i) + dXi * abXi, eta = etaCoord(j) + dEta * abEta;
+    const Real zeta = SPACE_DIM == 2 ? zetaLo : zetaCoord(k) + dZeta * abZeta;
+    const Real J = jacobian(xi, eta, zeta);
+    return {xi, eta, zeta, J};
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Vec4 xiMetricDeriv(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+                     KFVM_D_DECL(const Real abXi, const Real abEta,
+                                 const Real abZeta)) const {
+    return {1.0, 0.0, 0.0, 1.0};
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Vec4 etaMetricDeriv(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+                      KFVM_D_DECL(const Real abXi, const Real abEta,
+                                  const Real abZeta)) const {
+    return {0.0, 1.0, 0.0, 1.0};
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Vec4 zetaMetricDeriv(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+                       KFVM_D_DECL(const Real abXi, const Real abEta,
+                                   const Real abZeta)) const {
+    return {0.0, 0.0, 1.0, 1.0};
+  }
 
  private:
   Geometry() = delete;
 };
+
+// Specialization for cylindrical geometry
+// Ordered as (r,y,theta), axisymmetric in 2d
+
 } // namespace KFVM
 
 #endif

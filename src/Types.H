@@ -33,6 +33,15 @@ typedef int64_t idx_t;
 // Type for small flags
 typedef uint8_t flag_t;
 
+// 3 and 4 vectors
+struct Vec3 {
+  Real v1, v2, v3;
+};
+
+struct Vec4 {
+  Real v1, v2, v3, v4;
+};
+
 // Enumeration of face names associated to [2*SPACE_DIM] entry in FaceDataView
 enum FaceLabel { west = 0, east, south, north, bottom, top };
 

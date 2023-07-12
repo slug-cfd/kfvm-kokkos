@@ -96,33 +96,32 @@ struct CellBcWest_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct CellBcWest_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   idx_t rad, nX;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  CellBcWest_K(const DataViewType &v_, const Geometry &geom_, idx_t rad_, idx_t nX_,
-               Real t_, EosParameters &eosParams_, UserParameters &userParams_)
+  CellBcWest_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+               idx_t nX_, Real t_, EosParameters &eosParams_, UserParameters &userParams_)
       : v(v_), geom(geom_), rad(rad_), nX(nX_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
+#if (SPACE_DIM == 2)
+    const idx_t k = 0;
+#endif
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get cell center in halo
-      Real x = geom.xCoord(-nH - 1);
-      Real y = geom.yCoord(j - rad);
-#if (SPACE_DIM == 2)
-      const idx_t k = 0;
-      Real z = geom.zLo;
-#else
-      Real z = geom.zCoord(k - rad);
-#endif
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(-nH - 1, j - rad, k - rad));
+
       // query user defined BCs
       Real state[NUM_VARS];
-      CellWest(v, rad, nX, j, k, nH, x, y, z, t, eosParams, userParams, state);
+      CellWest(v, rad, nX, j, k, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
+               state);
+
       // Copy idx_to view
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(KFVM_D_DECL(rad - nH - 1, j, k), nV) = state[nV];
@@ -178,33 +177,32 @@ struct CellBcEast_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct CellBcEast_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   idx_t rad, nX;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  CellBcEast_K(const DataViewType &v_, const Geometry &geom_, idx_t rad_, idx_t nX_,
-               Real t_, EosParameters &eosParams_, UserParameters &userParams_)
+  CellBcEast_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+               idx_t nX_, Real t_, EosParameters &eosParams_, UserParameters &userParams_)
       : v(v_), geom(geom_), rad(rad_), nX(nX_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
+#if (SPACE_DIM == 2)
+    const idx_t k = 0;
+#endif
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get cell center in halo
-      Real x = geom.xCoord(nX + nH);
-      Real y = geom.yCoord(j - rad);
-#if (SPACE_DIM == 2)
-      const idx_t k = 0;
-      Real z = geom.zLo;
-#else
-      Real z = geom.zCoord(k - rad);
-#endif
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(nX + nH, j - rad, k - rad));
+
       // query user defined BCs
       Real state[NUM_VARS];
-      CellEast(v, rad, nX, j, k, nH, x, y, z, t, eosParams, userParams, state);
+      CellEast(v, rad, nX, j, k, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
+               state);
+
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(KFVM_D_DECL(nX + rad + nH, j, k), nV) = state[nV];
@@ -259,33 +257,33 @@ struct CellBcSouth_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct CellBcSouth_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   idx_t rad, nY;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  CellBcSouth_K(const DataViewType &v_, const Geometry &geom_, idx_t rad_, idx_t nY_,
-                Real t_, EosParameters &eosParams_, UserParameters &userParams_)
+  CellBcSouth_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+                idx_t nY_, Real t_, EosParameters &eosParams_,
+                UserParameters &userParams_)
       : v(v_), geom(geom_), rad(rad_), nY(nY_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+#if (SPACE_DIM == 2)
+    const idx_t k = 0;
+#endif
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get cell center in halo
-      Real x = geom.xCoord(i - rad);
-      Real y = geom.yCoord(-nH - 1);
-#if (SPACE_DIM == 2)
-      const idx_t k = 0;
-      Real z = geom.zLo;
-#else
-      Real z = geom.zCoord(k - rad);
-#endif
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(i - rad, -nH - 1, k - rad));
+
       // query user defined BCs
       Real state[NUM_VARS];
-      CellSouth(v, rad, nY, i, k, nH, x, y, z, t, eosParams, userParams, state);
+      CellSouth(v, rad, nY, i, k, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
+                state);
+
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(KFVM_D_DECL(i, rad - nH - 1, k), nV) = state[nV];
@@ -341,33 +339,33 @@ struct CellBcNorth_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct CellBcNorth_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   idx_t rad, nY;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  CellBcNorth_K(const DataViewType &v_, const Geometry &geom_, idx_t rad_, idx_t nY_,
-                Real t_, EosParameters &eosParams_, UserParameters &userParams_)
+  CellBcNorth_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+                idx_t nY_, Real t_, EosParameters &eosParams_,
+                UserParameters &userParams_)
       : v(v_), geom(geom_), rad(rad_), nY(nY_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+#if (SPACE_DIM == 2)
+    const idx_t k = 0;
+#endif
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get cell center in halo
-      Real x = geom.xCoord(i - rad);
-      Real y = geom.yCoord(nY + nH);
-#if (SPACE_DIM == 2)
-      const idx_t k = 0;
-      Real z = geom.zLo;
-#else
-      Real z = geom.zCoord(k - rad);
-#endif
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(i - rad, nY + nH, k - rad));
+
       // query user defined BCs
       Real state[NUM_VARS];
-      CellNorth(v, rad, nY, i, k, nH, x, y, z, t, eosParams, userParams, state);
+      CellNorth(v, rad, nY, i, k, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
+                state);
+
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(KFVM_D_DECL(i, nY + rad + nH, k), nV) = state[nV];
@@ -421,14 +419,15 @@ struct CellBcBottom_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct CellBcBottom_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   idx_t rad, nZ;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  CellBcBottom_K(const DataViewType &v_, const Geometry &geom_, idx_t rad_, idx_t nZ_,
-                 Real t_, EosParameters &eosParams_, UserParameters &userParams_)
+  CellBcBottom_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+                 idx_t nZ_, Real t_, EosParameters &eosParams_,
+                 UserParameters &userParams_)
       : v(v_), geom(geom_), rad(rad_), nZ(nZ_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
@@ -437,12 +436,13 @@ struct CellBcBottom_K<DataViewType, BCType::user> {
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get cell center in halo
-      Real x = geom.xCoord(i - rad);
-      Real y = geom.yCoord(j - rad);
-      Real z = geom.zCoord(-nH - 1);
+      Vec3 xyz = geom.physCoord(i - rad, j - rad, -nH - 1);
+
       // query user defined BCs
       Real state[NUM_VARS];
-      CellBottom(v, rad, nZ, i, j, nH, x, y, z, t, eosParams, userParams, state);
+      CellBottom(v, rad, nZ, i, j, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
+                 state);
+
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(i, j, rad - nH - 1, nV) = state[nV];
@@ -496,14 +496,14 @@ struct CellBcTop_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct CellBcTop_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   idx_t rad, nZ;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  CellBcTop_K(const DataViewType &v_, const Geometry &geom_, idx_t rad_, idx_t nZ_,
-              Real t_, EosParameters &eosParams_, UserParameters &userParams_)
+  CellBcTop_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+              idx_t nZ_, Real t_, EosParameters &eosParams_, UserParameters &userParams_)
       : v(v_), geom(geom_), rad(rad_), nZ(nZ_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
@@ -512,12 +512,13 @@ struct CellBcTop_K<DataViewType, BCType::user> {
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get cell center in halo
-      Real x = geom.xCoord(i - rad);
-      Real y = geom.yCoord(j - rad);
-      Real z = geom.zCoord(nZ + nH);
+      Vec3 xyz = geom.physCoord(i - rad, j - rad, nZ + nH);
+
       // query user defined BCs
       Real state[NUM_VARS];
-      CellTop(v, rad, nZ, i, j, nH, x, y, z, t, eosParams, userParams, state);
+      CellTop(v, rad, nZ, i, j, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
+              state);
+
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(i, j, nZ + rad + nH, nV) = state[nV];
@@ -569,14 +570,15 @@ struct FaceBcWest_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct FaceBcWest_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   QuadRuleView ab;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  FaceBcWest_K(const DataViewType &v_, const Geometry &geom_, const QuadRuleView &ab_,
-               Real t_, EosParameters &eosParams_, UserParameters &userParams_)
+  FaceBcWest_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+               const QuadRuleView &ab_, Real t_, EosParameters &eosParams_,
+               UserParameters &userParams_)
       : v(v_), geom(geom_), ab(ab_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
@@ -584,11 +586,13 @@ struct FaceBcWest_K<DataViewType, BCType::user> {
   void operator()(const idx_t j) const {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
-      // Get quadrature point global location
-      Real y = Numeric::sclAb(geom.yCoord(j), geom.dy, ab(nQ));
+      // Coordinate in physical space
+      Vec3 xyz = geom.physCoord(0, j, 0, -0.5, ab(nQ), 0.0);
+
       // query user defined BCs
       Real state[NUM_VARS];
-      FaceWest(v, j, 0, nQ, geom.xLo, y, geom.zLo, t, eosParams, userParams, state);
+      FaceWest(v, j, 0, nQ, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams, state);
+
       // Copy state over
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(j, 0, nQ, nV) = state[nV];
@@ -601,13 +605,14 @@ struct FaceBcWest_K<DataViewType, BCType::user> {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        // Get quadrature point global location
-        Real y = Numeric::sclAb(geom.yCoord(j), geom.dy, ab(nQ));
-        Real z = Numeric::sclAb(geom.zCoord(k), geom.dz, ab(nR));
+        // Coordinate in physical space
+        Vec3 xyz = geom.physCoord(0, j, k, -0.5, ab(nQ), ab(nR));
+
         // query user defined BCs
         Real state[NUM_VARS];
-        FaceWest(v, j, k, nQ * NUM_QUAD_PTS + nR, geom.xLo, y, z, t, eosParams,
+        FaceWest(v, j, k, nQ * NUM_QUAD_PTS + nR, xyz.v1, xyz.v2, xyz.v3, t, eosParams,
                  userParams, state);
+
         // Copy state over
         for (idx_t nV = 0; nV < NUM_VARS; nV++) {
           v(j, k, 0, nQ * NUM_QUAD_PTS + nR, nV) = state[nV];
@@ -660,26 +665,30 @@ struct FaceBcEast_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct FaceBcEast_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   QuadRuleView ab;
+  idx_t nX;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  FaceBcEast_K(const DataViewType &v_, const Geometry &geom_, const QuadRuleView &ab_,
-               Real t_, EosParameters &eosParams_, UserParameters &userParams_)
-      : v(v_), geom(geom_), ab(ab_), t(t_), eosParams(eosParams_),
+  FaceBcEast_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+               const QuadRuleView &ab_, idx_t nX_, Real t_, EosParameters &eosParams_,
+               UserParameters &userParams_)
+      : v(v_), geom(geom_), ab(ab_), nX(nX_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t j) const {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
-      // Get quadrature point global location
-      Real y = Numeric::sclAb(geom.yCoord(j), geom.dy, ab(nQ));
+      // Coordinate in physical space
+      Vec3 xyz = geom.physCoord(nX - 1, j, 0, 0.5, ab(nQ), 0.0);
+
       // query user defined BCs
       Real state[NUM_VARS];
-      FaceEast(v, j, 0, nQ, geom.xUp, y, geom.zLo, t, eosParams, userParams, state);
+      FaceEast(v, j, 0, nQ, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams, state);
+
       // Copy state over
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(j, 1, nQ, nV) = state[nV];
@@ -692,13 +701,14 @@ struct FaceBcEast_K<DataViewType, BCType::user> {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        // Get quadrature point global location
-        Real y = Numeric::sclAb(geom.yCoord(j), geom.dy, ab(nQ));
-        Real z = Numeric::sclAb(geom.zCoord(k), geom.dz, ab(nR));
+        // Coordinate in physical space
+        Vec3 xyz = geom.physCoord(nX - 1, j, k, 0.5, ab(nQ), ab(nR));
+
         // query user defined BCs
         Real state[NUM_VARS];
-        FaceEast(v, j, k, nQ * NUM_QUAD_PTS + nR, geom.xUp, y, z, t, eosParams,
+        FaceEast(v, j, k, nQ * NUM_QUAD_PTS + nR, xyz.v1, xyz.v2, xyz.v3, t, eosParams,
                  userParams, state);
+
         // Copy state over
         for (idx_t nV = 0; nV < NUM_VARS; nV++) {
           v(j, k, 1, nQ * NUM_QUAD_PTS + nR, nV) = state[nV];
@@ -751,14 +761,15 @@ struct FaceBcSouth_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct FaceBcSouth_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   QuadRuleView ab;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  FaceBcSouth_K(const DataViewType &v_, const Geometry &geom_, const QuadRuleView &ab_,
-                Real t_, EosParameters &eosParams_, UserParameters &userParams_)
+  FaceBcSouth_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+                const QuadRuleView &ab_, Real t_, EosParameters &eosParams_,
+                UserParameters &userParams_)
       : v(v_), geom(geom_), ab(ab_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
@@ -766,11 +777,13 @@ struct FaceBcSouth_K<DataViewType, BCType::user> {
   void operator()(const idx_t i) const {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
-      // Get quadrature point global location
-      Real x = Numeric::sclAb(geom.xCoord(i), geom.dx, ab(nQ));
+      // Coordinate in physical space
+      Vec3 xyz = geom.physCoord(i, 0, 0, ab(nQ), -0.5, 0.0);
+
       // query user defined BCs
       Real state[NUM_VARS];
-      FaceSouth(v, i, 0, nQ, x, geom.yLo, geom.zLo, t, eosParams, userParams, state);
+      FaceSouth(v, i, 0, nQ, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams, state);
+
       // Copy idx_to view
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(i, 0, nQ, nV) = state[nV];
@@ -783,13 +796,14 @@ struct FaceBcSouth_K<DataViewType, BCType::user> {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        // Get quadrature point global location
-        Real x = Numeric::sclAb(geom.xCoord(i), geom.dx, ab(nQ));
-        Real z = Numeric::sclAb(geom.zCoord(k), geom.dz, ab(nR));
+        // Coordinate in physical space
+        Vec3 xyz = geom.physCoord(i, 0, k, ab(nQ), -0.5, ab(nR));
+
         // query user defined BCs
         Real state[NUM_VARS];
-        FaceSouth(v, i, k, nQ * NUM_QUAD_PTS + nR, x, geom.yLo, z, t, eosParams,
+        FaceSouth(v, i, k, nQ * NUM_QUAD_PTS + nR, xyz.v1, xyz.v2, xyz.v3, t, eosParams,
                   userParams, state);
+
         // Copy idx_to view
         for (idx_t nV = 0; nV < NUM_VARS; nV++) {
           v(i, k, 0, nQ * NUM_QUAD_PTS + nR, nV) = state[nV];
@@ -842,26 +856,30 @@ struct FaceBcNorth_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct FaceBcNorth_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   QuadRuleView ab;
+  idx_t nY;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  FaceBcNorth_K(const DataViewType &v_, const Geometry &geom_, const QuadRuleView &ab_,
-                Real t_, EosParameters &eosParams_, UserParameters &userParams_)
-      : v(v_), geom(geom_), ab(ab_), t(t_), eosParams(eosParams_),
+  FaceBcNorth_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+                const QuadRuleView &ab_, idx_t nY_, Real t_, EosParameters &eosParams_,
+                UserParameters &userParams_)
+      : v(v_), geom(geom_), ab(ab_), nY(nY_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i) const {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
-      // Get quadrature point global location
-      Real x = Numeric::sclAb(geom.xCoord(i), geom.dx, ab(nQ));
+      // Coordinate in physical space
+      Vec3 xyz = geom.physCoord(i, nY - 1, 0, ab(nQ), 0.5, 0.0);
+
       // query user defined BCs
       Real state[NUM_VARS];
-      FaceNorth(v, i, 0, nQ, x, geom.yUp, geom.zLo, t, eosParams, userParams, state);
+      FaceNorth(v, i, 0, nQ, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams, state);
+
       // copy state over
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(i, 1, nQ, nV) = state[nV];
@@ -874,13 +892,14 @@ struct FaceBcNorth_K<DataViewType, BCType::user> {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        // Get quadrature point global location
-        Real x = Numeric::sclAb(geom.xCoord(i), geom.dx, ab(nQ));
-        Real z = Numeric::sclAb(geom.zCoord(k), geom.dz, ab(nR));
+        // Coordinate in physical space
+        Vec3 xyz = geom.physCoord(i, nY - 1, k, ab(nQ), 0.5, ab(nR));
+
         // query user defined BCs
         Real state[NUM_VARS];
-        FaceNorth(v, i, k, nQ * NUM_QUAD_PTS + nR, x, geom.yUp, z, t, eosParams,
+        FaceNorth(v, i, k, nQ * NUM_QUAD_PTS + nR, xyz.v1, xyz.v2, xyz.v3, t, eosParams,
                   userParams, state);
+
         // copy state over
         for (idx_t nV = 0; nV < NUM_VARS; nV++) {
           v(i, k, 1, nQ * NUM_QUAD_PTS + nR, nV) = state[nV];
@@ -931,14 +950,15 @@ struct FaceBcBottom_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct FaceBcBottom_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   QuadRuleView ab;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  FaceBcBottom_K(const DataViewType &v_, const Geometry &geom_, const QuadRuleView &ab_,
-                 Real t_, EosParameters &eosParams_, UserParameters &userParams_)
+  FaceBcBottom_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+                 const QuadRuleView &ab_, Real t_, EosParameters &eosParams_,
+                 UserParameters &userParams_)
       : v(v_), geom(geom_), ab(ab_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
@@ -947,13 +967,14 @@ struct FaceBcBottom_K<DataViewType, BCType::user> {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        // Get quadrature point global location
-        Real x = Numeric::sclAb(geom.xCoord(i), geom.dx, ab(nQ));
-        Real y = Numeric::sclAb(geom.yCoord(j), geom.dy, ab(nR));
+        // Coordinate in physical space
+        Vec3 xyz = geom.physCoord(i, j, 0, ab(nQ), ab(nR), -0.5);
+
         // query user defined BCs
         Real state[NUM_VARS];
-        FaceBottom(v, i, j, nQ * NUM_QUAD_PTS + nR, x, y, geom.zLo, t, eosParams,
+        FaceBottom(v, i, j, nQ * NUM_QUAD_PTS + nR, xyz.v1, xyz.v2, xyz.v3, t, eosParams,
                    userParams, state);
+
         // copy state over
         for (idx_t nV = 0; nV < NUM_VARS; nV++) {
           v(i, j, 0, nQ * NUM_QUAD_PTS + nR, nV) = state[nV];
@@ -1004,15 +1025,17 @@ struct FaceBcTop_K<DataViewType, BCType::reflecting, RefCoeff> {
 template <class DataViewType>
 struct FaceBcTop_K<DataViewType, BCType::user> {
   DataViewType v;
-  Geometry geom;
+  Geometry<geomType> geom;
   QuadRuleView ab;
+  idx_t nZ;
   Real t;
   EosParameters eosParams;
   UserParameters userParams;
 
-  FaceBcTop_K(const DataViewType &v_, const Geometry &geom_, const QuadRuleView &ab_,
-              Real t_, EosParameters &eosParams_, UserParameters &userParams_)
-      : v(v_), geom(geom_), ab(ab_), t(t_), eosParams(eosParams_),
+  FaceBcTop_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+              const QuadRuleView &ab_, idx_t nZ_, Real t_, EosParameters &eosParams_,
+              UserParameters &userParams_)
+      : v(v_), geom(geom_), ab(ab_), nZ(nZ_), t(t_), eosParams(eosParams_),
         userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
@@ -1020,13 +1043,14 @@ struct FaceBcTop_K<DataViewType, BCType::user> {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        // Get quadrature point global location
-        Real x = Numeric::sclAb(geom.xCoord(i), geom.dx, ab(nQ));
-        Real y = Numeric::sclAb(geom.yCoord(j), geom.dy, ab(nR));
+        // Coordinate in physical space
+        Vec3 xyz = geom.physCoord(i, j, nZ - 1, ab(nQ), ab(nR), 0.5);
+
         // query user defined BCs
         Real state[NUM_VARS];
-        FaceTop(v, i, j, nQ * NUM_QUAD_PTS + nR, x, y, geom.zUp, t, eosParams, userParams,
-                state);
+        FaceTop(v, i, j, nQ * NUM_QUAD_PTS + nR, xyz.v1, xyz.v2, xyz.v3, t, eosParams,
+                userParams, state);
+
         // copy state over
         for (idx_t nV = 0; nV < NUM_VARS; nV++) {
           v(i, j, 1, nQ * NUM_QUAD_PTS + nR, nV) = state[nV];

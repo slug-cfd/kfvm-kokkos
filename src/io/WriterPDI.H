@@ -18,11 +18,11 @@ namespace IO {
 
 class WriterPDI {
   ProblemSetup &ps;
-  const Geometry geom;
+  const Geometry<geomType> geom;
   HostConsDataView U_host;
   HostWenoFlagView weno_host;
   int nX_g, nY_g, nZ_g;
-  std::vector<Real> xCoord, yCoord, zCoord;
+  std::vector<Real> xiCoord, etaCoord, zetaCoord;
   std::string prefix;
   std::string filename_h5;
   std::string filename_xmf;
@@ -40,7 +40,7 @@ class WriterPDI {
   void writeCkptPDI(ConsDataView, WenoFlagView, int, Real, Real);
 
  public:
-  WriterPDI(ProblemSetup &, const Geometry &);
+  WriterPDI(ProblemSetup &, const Geometry<geomType> &);
   void writePlot(ConsDataView, AuxDataView, WenoFlagView, int, Real);
   void writeCkpt(ConsDataView, WenoFlagView, int, Real, Real);
   void readCkpt(ConsDataView, WenoFlagView, int &, Real &, Real &);

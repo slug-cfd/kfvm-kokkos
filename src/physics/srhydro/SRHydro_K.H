@@ -241,7 +241,7 @@ struct SourceTerms_K<EquationType::SRHydro, UViewType> {
   DiffMatView D;
   QuadRuleView ab;
   EosParameters eosParams;
-  Geometry geom;
+  Geometry<geomType> geom;
   Real t;
 
   SourceTerms_K(const SourceDataView source_,
@@ -249,28 +249,20 @@ struct SourceTerms_K<EquationType::SRHydro, UViewType> {
                             const FaceDataView &rsZ_),
                 const UViewType &U_, const WenoFlagView &wenoFlag_, const DiffMatView &D_,
                 const QuadRuleView &ab_, const EosParameters &eosParams_,
-                const Geometry &geom_, const Real t_)
+                const Geometry<geomType> &geom_, const Real t_)
       : source(source_), KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), U(U_),
         wenoFlag(wenoFlag_), D(D_), ab(ab_), eosParams(eosParams_), geom(geom_), t(t_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
-    // Get coordinates of cell center
-    Real xc = geom.xCoord(i);
-    Real yc = geom.yCoord(j);
-#if (SPACE_DIM == 2)
-    Real zc = geom.zCoord(0);
-#else
-    Real zc = geom.zCoord(k);
-#endif
-
     const int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
     for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
-      Real x = Numeric::sclAb(xc, geom.dx, ab(nQ));
       for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        Real y = Numeric::sclAb(yc, geom.dy, ab(nR));
         for (int nS = 0; nS < nzQuad; nS++) {
-          Real z = SPACE_DIM == 2 ? zc : Numeric::sclAb(zc, geom.dz, ab(nS));
+          // Quad point in physical coordinates
+          Vec3 xyz =
+              geom.physCoord(KFVM_D_DECL(i, j, k), KFVM_D_DECL(ab(nQ), ab(nR), ab(nS)));
+
           SRHydro::ConsVec state, force;
           // Extract state and clear force vector
           for (int nV = 0; nV < NUM_VARS; nV++) {
@@ -279,7 +271,7 @@ struct SourceTerms_K<EquationType::SRHydro, UViewType> {
           }
 
           // Fill force with user defined terms
-          SRHydro::SourceTerm(t, x, y, z, state, force);
+          SRHydro::SourceTerm(t, xyz.v1, xyz.v2, xyz.v3, state, force);
 
           // overwrite source with forcing
           for (int nV = 0; nV < NUM_VARS; nV++) {

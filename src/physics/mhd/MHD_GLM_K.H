@@ -336,7 +336,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
   DiffMatView D;
   QuadRuleView ab;
   EosParameters eosParams;
-  Geometry geom;
+  Geometry<geomType> geom;
   Real t;
 
   SourceTerms_K(const SourceDataView source_,
@@ -344,7 +344,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
                             const FaceDataView &rsZ_),
                 const UViewType &U_, const WenoFlagView &wenoFlag_, const DiffMatView &D_,
                 const QuadRuleView &ab_, const EosParameters &eosParams_,
-                const Geometry &geom_, const Real t_)
+                const Geometry<geomType> &geom_, const Real t_)
       : source(source_), KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), U(U_),
         wenoFlag(wenoFlag_), D(D_), ab(ab_), eosParams(eosParams_), geom(geom_), t(t_) {}
 
@@ -354,15 +354,6 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
     using MHD_GLM::SimVar;
 
     const int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
-
-    // Get cell center coordinate
-    const Real xc = geom.xCoord(i);
-    const Real yc = geom.yCoord(j);
-#if (SPACE_DIM == 2)
-    const Real zc = geom.zCoord(0);
-#else
-    const Real zc = geom.zCoord(k);
-#endif
 
     // Set up temporaries for divergence and psi gradient
 #if (SPACE_DIM == 2)
@@ -404,7 +395,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
           // Derivatives of B and psi, fall back on centered fd if PP corrected too far
           Real dbx, dby, dbz, dpx, dpy, dpz;
           if (wenoFlag(KFVM_D_DECL(i, j, k), 1) < 1.0) {
-            const Real tdx = 1.0 / (2.0 * geom.dx), tdy = 1.0 / (2.0 * geom.dy);
+            const Real tdx = 1.0 / (2.0 * geom.dXi), tdy = 1.0 / (2.0 * geom.dEta);
             dbx = tdx * (U(KFVM_D_DECL(i + 1, j, k), SimVar::magx) -
                          U(KFVM_D_DECL(i - 1, j, k), SimVar::magx));
             dby = tdy * (U(KFVM_D_DECL(i, j + 1, k), SimVar::magy) -
@@ -417,7 +408,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
             dbz = 0.0;
             dpz = 0.0;
 #else
-            const Real tdz = 1.0 / (2.0 * geom.dz);
+            const Real tdz = 1.0 / (2.0 * geom.dZeta);
             dbz = tdz * (U(i, j, k + 1, SimVar::magz) - U(i, j, k - 1, SimVar::magz));
             dpz = tdz * (U(i, j, k + 1, SimVar::psi) - U(i, j, k - 1, SimVar::psi));
 #endif
@@ -443,11 +434,12 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
 
     // Find and fill forcing
     for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
-      Real x = Numeric::sclAb(xc, geom.dx, ab(nQ));
       for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        Real y = Numeric::sclAb(yc, geom.dy, ab(nR));
         for (int nS = 0; nS < nzQuad; nS++) {
-          Real z = SPACE_DIM == 2 ? zc : Numeric::sclAb(zc, geom.dz, ab(nS));
+          // Quad point in physical coordinates
+          Vec3 xyz =
+              geom.physCoord(KFVM_D_DECL(i, j, k), KFVM_D_DECL(ab(nQ), ab(nR), ab(nS)));
+
           MHD_GLM::ConsVec state, force;
           // Extract state and clear force vector
           for (int nV = 0; nV < NUM_VARS; nV++) {
@@ -456,7 +448,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
           }
 
           // Fill force with user defined terms
-          MHD_GLM::SourceTerm(t, x, y, z, state, force);
+          MHD_GLM::SourceTerm(t, xyz.v1, xyz.v2, xyz.v3, state, force);
 
           // Define GLM source terms
           const Real vx = state[SimVar::momx] / state[SimVar::dens];
@@ -506,7 +498,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
     for (int n = 1; n <= NUM_QUAD_PTS; n++) {
       dvdx += D(nQ, n) * cellVals(KFVM_D_DECL(n - 1, nR, nS), nV);
     }
-    dvdx /= geom.dx;
+    dvdx /= geom.dXi;
     return dvdx;
   }
 
@@ -521,7 +513,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
     for (int n = 1; n <= NUM_QUAD_PTS; n++) {
       dvdy += D(nR, n) * cellVals(KFVM_D_DECL(nQ, n - 1, nS), nV);
     }
-    dvdy /= geom.dy;
+    dvdy /= geom.dEta;
     return dvdy;
   }
 
@@ -536,7 +528,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
     for (int n = 1; n <= NUM_QUAD_PTS; n++) {
       dvdz += D(nS, n) * cellVals(KFVM_D_DECL(nQ, nR, n - 1), nV);
     }
-    dvdz /= geom.dz;
+    dvdz /= geom.dZeta;
     return dvdz;
   }
 };

@@ -333,7 +333,7 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
           {KFVM_D_DECL(0, 0, 0)}, {KFVM_D_DECL(ps.nX + 1, ps.nY, ps.nZ)});
   Kokkos::parallel_reduce(
       "RiemannSolver::EW", fluxRng_EW,
-      Physics::RiemannSolverX_K<eqType, rsType>(faceVals.xDir, ps.eosParams),
+      Physics::RiemannSolverX_K<eqType, rsType>(faceVals.xDir, geom, ps.eosParams),
       Kokkos::Max<Real>(vEW));
 
   // North/South faces
@@ -342,7 +342,7 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
           {KFVM_D_DECL(0, 0, 0)}, {KFVM_D_DECL(ps.nX, ps.nY + 1, ps.nZ)});
   Kokkos::parallel_reduce(
       "RiemannSolver::NS", fluxRng_NS,
-      Physics::RiemannSolverY_K<eqType, rsType>(faceVals.yDir, ps.eosParams),
+      Physics::RiemannSolverY_K<eqType, rsType>(faceVals.yDir, geom, ps.eosParams),
       Kokkos::Max<Real>(vNS));
 
 #if (SPACE_DIM == 3)
@@ -352,7 +352,7 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
           {0, 0, 0}, {ps.nX, ps.nY, ps.nZ + 1});
   Kokkos::parallel_reduce(
       "RiemannSolver::TB", fluxRng_TB,
-      Physics::RiemannSolverZ_K<eqType, rsType>(faceVals.zDir, ps.eosParams),
+      Physics::RiemannSolverZ_K<eqType, rsType>(faceVals.zDir, geom, ps.eosParams),
       Kokkos::Max<Real>(vTB));
 #endif
 
@@ -1538,9 +1538,10 @@ void Solver::setEastBCExt(Real t) {
             eastBnd, bcCoeff.x));
     break;
   case BCType::user:
-    Kokkos::parallel_for("FaceBCs::East::User", bndRng,
-                         FaceBcEast_K<decltype(eastBnd), BCType::user>(
-                             eastBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
+    Kokkos::parallel_for(
+        "FaceBCs::East::User", bndRng,
+        FaceBcEast_K<decltype(eastBnd), BCType::user>(eastBnd, geom, qr.ab, ps.nX, t,
+                                                      ps.eosParams, ps.userParams));
     break;
   default:
     PrintSingle(ps, "Warning: Eastern face BC undefined.\n");
@@ -1611,9 +1612,10 @@ void Solver::setNorthBCExt(Real t) {
             northBnd, bcCoeff.y));
     break;
   case BCType::user:
-    Kokkos::parallel_for("FaceBCs::North::User", bndRng,
-                         FaceBcNorth_K<decltype(northBnd), BCType::user>(
-                             northBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
+    Kokkos::parallel_for(
+        "FaceBCs::North::User", bndRng,
+        FaceBcNorth_K<decltype(northBnd), BCType::user>(northBnd, geom, qr.ab, ps.nY, t,
+                                                        ps.eosParams, ps.userParams));
     break;
   default:
     PrintSingle(ps, "Warning: Northern face BC undefined.\n");
@@ -1678,7 +1680,7 @@ void Solver::setTopBCExt(Real t) {
   case BCType::user:
     Kokkos::parallel_for("FaceBCs::Top::User", bndRng,
                          FaceBcTop_K<decltype(topBnd), BCType::user>(
-                             topBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
+                             topBnd, geom, qr.ab, ps.nZ, t, ps.eosParams, ps.userParams));
     break;
   default:
     PrintSingle(ps, "Warning: Top face BC undefined.\n");

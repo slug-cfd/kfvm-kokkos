@@ -55,7 +55,7 @@ class Solver {
   // Differentiation matrix for source terms
   Numeric::DiffMat diffMat;
   // Grid geometry data
-  Geometry geom;
+  Geometry<geomType> geom;
   // IO object
   IO::WriterPDI writerPDI;
   // Stencil object for Riemann state reconstruction
