@@ -89,16 +89,16 @@ struct AuxVars<EquationType::Hydro, UViewType> {
       ua[nV] = U(KFVM_D_DECL(i, j, k), nV);
     }
 
+    V(KFVM_D_DECL(i, j, k), AuxVar::dens) = ua[SimVar::dens] / J;
+
     // Set velocities
-    V(KFVM_D_DECL(i, j, k), AuxVar::velx) =
-        U(KFVM_D_DECL(i, j, k), SimVar::momx) / U(KFVM_D_DECL(i, j, k), SimVar::dens);
-    V(KFVM_D_DECL(i, j, k), AuxVar::vely) =
-        U(KFVM_D_DECL(i, j, k), SimVar::momy) / U(KFVM_D_DECL(i, j, k), SimVar::dens);
-    V(KFVM_D_DECL(i, j, k), AuxVar::velz) =
-        U(KFVM_D_DECL(i, j, k), SimVar::momz) / U(KFVM_D_DECL(i, j, k), SimVar::dens);
+    V(KFVM_D_DECL(i, j, k), AuxVar::velx) = ua[SimVar::momx] / ua[SimVar::dens];
+    V(KFVM_D_DECL(i, j, k), AuxVar::vely) = ua[SimVar::momy] / ua[SimVar::dens];
+    V(KFVM_D_DECL(i, j, k), AuxVar::velz) = ua[SimVar::momz] / ua[SimVar::dens];
 
     // Internal energy and pressure
-    V(KFVM_D_DECL(i, j, k), AuxVar::eint) = EOS<EquationType::Hydro>::eint(J, ua);
+    V(KFVM_D_DECL(i, j, k), AuxVar::eint) =
+        EOS<EquationType::Hydro>::eint(J, ua) / V(KFVM_D_DECL(i, j, k), AuxVar::dens);
     V(KFVM_D_DECL(i, j, k), AuxVar::pres) =
         EOS<EquationType::Hydro>::pres(eosParams.gamma, J, ua);
   }
@@ -297,19 +297,20 @@ struct SourceTerms_K<EquationType::Hydro, UViewType> {
       for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
         for (int nS = 0; nS < nzQuad; nS++) {
           // Quad point in physical coordinates
-          Vec3 xyz =
-              geom.physCoord(KFVM_D_DECL(i, j, k), KFVM_D_DECL(ab(nQ), ab(nR), ab(nS)));
+          Vec4 xyzJ = geom.physCoordJac(KFVM_D_DECL(i, j, k),
+                                        KFVM_D_DECL(ab(nQ), ab(nR), ab(nS)));
 
           Hydro::ConsVec state, force;
           // Real state[10],force[10];
           // Extract state and clear force vector
           for (int nV = 0; nV < NUM_VARS; nV++) {
-            state[nV] = source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV);
+            state[nV] =
+                source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV) / xyzJ.v4;
             force[nV] = 0;
           }
 
           // Fill force with user defined terms
-          Hydro::SourceTerm(t, xyz.v1, xyz.v2, xyz.v3, state, force);
+          Hydro::SourceTerm(t, xyzJ.v1, xyzJ.v2, xyzJ.v3, state, force);
 
           // overwrite source with forcing
           for (int nV = 0; nV < NUM_VARS; nV++) {
@@ -347,9 +348,6 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
     using Kokkos::fmax;
     using Kokkos::fmin;
 
-    // Get mapped grid Jacobian
-    const Real J = geom.jacobian(KFVM_D_DECL(i, j, k));
-
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
 
     // Save reference state
@@ -357,7 +355,8 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
     for (int nV = 0; nV < NUM_VARS; nV++) {
       refState[nV] = U(KFVM_D_DECL(i, j, k), nV);
     }
-    Real rDens = refState[SimVar::dens];
+    const Real J = geom.jacobian(KFVM_D_DECL(i, j, k));
+    Real rDens = refState[SimVar::dens] / J;
     Real rPres = EOS<EquationType::Hydro>::pres(eosParams.gamma, J, refState);
 
     // Find ranges of density, pressure, and soundspeed
@@ -374,10 +373,11 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
           for (int nV = 0; nV < NUM_VARS; nV++) {
             state[nV] = U(KFVM_D_DECL(i + xo, j + yo, k + zo), nV);
           }
-          maxDens = fmax(maxDens, state[SimVar::dens]);
-          minDens = fmin(minDens, state[SimVar::dens]);
-          Real pres = EOS<EquationType::Hydro>::pres(eosParams.gamma, J, state);
-          Real sdsp = EOS<EquationType::Hydro>::soundspeed(eosParams.gamma, J, state);
+          const Real Jo = geom.jacobian(KFVM_D_DECL(i + xo, j + yo, k + zo));
+          maxDens = fmax(maxDens, state[SimVar::dens] / Jo);
+          minDens = fmin(minDens, state[SimVar::dens] / Jo);
+          Real pres = EOS<EquationType::Hydro>::pres(eosParams.gamma, Jo, state);
+          Real sdsp = EOS<EquationType::Hydro>::soundspeed(eosParams.gamma, Jo, state);
           minPres = fmin(minPres, pres);
           minSdSp = fmin(minSdSp, sdsp);
 #if (SPACE_DIM == 3)

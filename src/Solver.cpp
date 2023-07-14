@@ -35,6 +35,7 @@ namespace KFVM {
 
 Solver::Solver(ProblemSetup &ps_)
     : ps(ps_), geom(ps), writerPDI(ps, geom), stencil(ps.gp_lFac),
+      mesh(ps.nX + 1, ps.nY + 1, ps.nZ + 1),
       U_halo("U",
              KFVM_D_DECL(ps.nX + 2 * ps.rad, ps.nY + 2 * ps.rad, ps.nZ + 2 * ps.rad)),
       Uhat("Uhat", KFVM_D_DECL(ps.nX, ps.nY, ps.nZ)),
@@ -46,11 +47,14 @@ Solver::Solver(ProblemSetup &ps_)
       wenoSelector(ps), useSparseWeno(false), nTS(1), time(ps.initialTime),
       dt(ps.initialDeltaT), errEst(1.0), wThresh(-1.0), lastTimeStep(false), nRhsEval(0),
       nRejectUnphys(0), nRejectThresh(0) {
+  // Fill in mesh node positions
+  setMesh();
+
   // Fill IC from user defined function or restart file
   if (!ps.restart) {
     setIC();
     evalAuxiliary();
-    writerPDI.writePlot(U_halo, U_aux, wenoSelector.wenoFlagView, 0, time);
+    writerPDI.writePlot(mesh, U_halo, U_aux, wenoSelector.wenoFlagView, 0, time);
     writerPDI.writeCkpt(U_halo, wenoSelector.wenoFlagView, 0, time, dt);
   } else {
     // Read in checkpoint file and set state
@@ -76,6 +80,33 @@ Solver::Solver(ProblemSetup &ps_)
   }
 }
 
+void Solver::setMesh() {
+  Kokkos::Profiling::pushRegion("Solver::setMesh");
+
+  // Fill in curvilinear mesh for plot files
+  auto cmRng =
+      Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>, Kokkos::IndexType<idx_t>>(
+          {0, 0, 0}, {(ps.nX + 1), (ps.nY + 1), (ps.nZ + 1)});
+
+  Geometry<geomType> g(geom);
+  auto m = mesh;
+
+  Kokkos::parallel_for(
+      "Solver::setMesh", cmRng,
+      KOKKOS_LAMBDA(const idx_t i, const idx_t j, const idx_t k) {
+        Vec3 xyz = g.physCoord(i, j, k);
+        m.x(i, j, k) = xyz.v1;
+        m.y(i, j, k) = xyz.v2;
+        if (SPACE_DIM == 2) {
+          m.z(i, j, k) = k == 0 ? 0.0 : g.dmin;
+        } else {
+          m.z(i, j, k) = xyz.v3;
+        }
+      });
+
+  Kokkos::Profiling::popRegion();
+}
+
 // Solve system for full time range
 void Solver::Solve() {
   Kokkos::Profiling::pushRegion("Solver::Solve");
@@ -89,7 +120,7 @@ void Solver::Solve() {
     // Write out data files if needed
     if (nTS % ps.plotFreq == 0 || lastTimeStep || nTS == (ps.maxTimeSteps - 1)) {
       evalAuxiliary();
-      writerPDI.writePlot(U_halo, U_aux, wenoSelector.wenoFlagView, nTS, time);
+      writerPDI.writePlot(mesh, U_halo, U_aux, wenoSelector.wenoFlagView, nTS, time);
     }
     if (nTS % ps.ckptFreq == 0 || lastTimeStep || nTS == (ps.maxTimeSteps - 1)) {
       writerPDI.writeCkpt(U_halo, wenoSelector.wenoFlagView, nTS, time, dt);

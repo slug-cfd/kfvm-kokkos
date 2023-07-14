@@ -23,6 +23,7 @@ class WriterPDI {
   HostWenoFlagView weno_host;
   int nX_g, nY_g, nZ_g;
   std::vector<Real> xiCoord, etaCoord, zetaCoord;
+  HostMeshDataView meshx_host, meshy_host, meshz_host;
   std::string prefix;
   std::string filename_h5;
   std::string filename_xmf;
@@ -35,13 +36,14 @@ class WriterPDI {
   void writeAttributeVector(std::ofstream &, const char *, const char *, const char *,
                             const char *);
 
-  void writeXML(int, Real, bool);
-  void writePlotPDI(ConsDataView, AuxDataView, WenoFlagView, int, Real);
+  void writeCkptXML(int, Real);
+  void writePlotXML(int, Real);
+  void writePlotPDI(Mesh, ConsDataView, AuxDataView, WenoFlagView, int, Real);
   void writeCkptPDI(ConsDataView, WenoFlagView, int, Real, Real);
 
  public:
   WriterPDI(ProblemSetup &, const Geometry<geomType> &);
-  void writePlot(ConsDataView, AuxDataView, WenoFlagView, int, Real);
+  void writePlot(Mesh, ConsDataView, AuxDataView, WenoFlagView, int, Real);
   void writeCkpt(ConsDataView, WenoFlagView, int, Real, Real);
   void readCkpt(ConsDataView, WenoFlagView, int &, Real &, Real &);
 };

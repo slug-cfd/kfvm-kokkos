@@ -22,7 +22,10 @@ WriterPDI::WriterPDI(ProblemSetup &ps_, const Geometry<geomType> &geom_)
       weno_host("weno_host", KFVM_D_DECL(ps.nX, ps.nY, ps.nZ)),
       nX_g(ps.layoutMPI.nbX * ps.nX), nY_g(ps.layoutMPI.nbY * ps.nY),
       nZ_g(ps.layoutMPI.nbZ * ps.nZ), xiCoord(nX_g + 1, Real(0.0)),
-      etaCoord(nY_g + 1, Real(0.0)), zetaCoord(nZ_g + 1, Real(0.0)) {
+      etaCoord(nY_g + 1, Real(0.0)), zetaCoord(nZ_g + 1, Real(0.0)),
+      meshx_host("meshx_host", nX_g + 1, nY_g + 1, nZ_g + 1),
+      meshy_host("meshy_host", nX_g + 1, nY_g + 1, nZ_g + 1),
+      meshz_host("meshz_host", nX_g + 1, nY_g + 1, nZ_g + 1) {
   // Generate base filename and make directories as needed
   std::ostringstream oss;
   oss << ps.dataDir << "/R" << ps.rad << "_NX" << ps.nX * ps.nbX << "_NY"
@@ -67,8 +70,8 @@ WriterPDI::WriterPDI(ProblemSetup &ps_, const Geometry<geomType> &geom_)
                    (void *)&ps.layoutMPI.commWorld, PDI_OUT, NULL);
 }
 
-void WriterPDI::writePlot(ConsDataView U, AuxDataView V, WenoFlagView weno, int step,
-                          Real time) {
+void WriterPDI::writePlot(Mesh mesh, ConsDataView U, AuxDataView V, WenoFlagView weno,
+                          int step, Real time) {
   // Form filenames
   std::ostringstream oss;
   oss << ps.baseName << "_" << std::setw(7) << std::setfill('0') << step;
@@ -76,9 +79,9 @@ void WriterPDI::writePlot(ConsDataView U, AuxDataView V, WenoFlagView weno, int 
   filename_h5 = oss.str() + ".h5";
 
   if (ps.layoutMPI.rank == 0) {
-    writeXML(step, time, true);
+    writePlotXML(step, time);
   }
-  writePlotPDI(U, V, weno, step, time);
+  writePlotPDI(mesh, U, V, weno, step, time);
 }
 
 void WriterPDI::writeCkpt(ConsDataView U, WenoFlagView weno, int step, Real time,
@@ -90,13 +93,13 @@ void WriterPDI::writeCkpt(ConsDataView U, WenoFlagView weno, int step, Real time
   filename_h5 = oss.str() + ".h5";
 
   if (ps.layoutMPI.rank == 0) {
-    writeXML(step, time, false);
+    writeCkptXML(step, time);
   }
   writeCkptPDI(U, weno, step, time, dt);
 }
 
-void WriterPDI::writePlotPDI(ConsDataView U, AuxDataView V, WenoFlagView weno, int step,
-                             Real time) {
+void WriterPDI::writePlotPDI(Mesh mesh, ConsDataView U, AuxDataView V, WenoFlagView weno,
+                             int step, Real time) {
   std::string filename = prefix + "plot/" + filename_h5;
   int filename_size = filename.size();
   if (ps.layoutMPI.rank == 0) {
@@ -106,10 +109,15 @@ void WriterPDI::writePlotPDI(ConsDataView U, AuxDataView V, WenoFlagView weno, i
   // Copy data from GPU to host (no-op if already on host)
   Kokkos::deep_copy(U_host, U);
   Kokkos::deep_copy(weno_host, weno);
+  Kokkos::deep_copy(meshx_host, mesh.x);
+  Kokkos::deep_copy(meshy_host, mesh.y);
+  Kokkos::deep_copy(meshz_host, mesh.z);
 
   PDI_multi_expose("write_plot_data", "filename_size", (void *)&filename_size, PDI_OUT,
                    "filename", (void *)filename.c_str(), PDI_OUT, "time_step",
-                   (void *)&step, PDI_OUT, "time", (void *)&time, PDI_OUT, "cons_field",
+                   (void *)&step, PDI_OUT, "time", (void *)&time, PDI_OUT, "meshx",
+                   (void *)meshx_host.data(), PDI_OUT, "meshy", (void *)meshy_host.data(),
+                   PDI_OUT, "meshz", (void *)meshz_host.data(), PDI_OUT, "cons_field",
                    (void *)U_host.data(), PDI_OUT, "aux_field", (void *)V.data(), PDI_OUT,
                    "weno_field", (void *)weno_host.data(), PDI_OUT, NULL);
 }
@@ -154,8 +162,8 @@ void WriterPDI::readCkpt(ConsDataView U, WenoFlagView weno, int &step, Real &tim
   Kokkos::fence("WriterPDI::readCkpt(Finish copying restart data)");
 }
 
-void WriterPDI::writeXML(int step, Real time, bool plotMode) {
-  std::string sd(plotMode ? "plot/" : "ckpt/");
+void WriterPDI::writeCkptXML(int step, Real time) {
+  std::string sd("ckpt/");
   std::string filename = prefix + sd + filename_xmf;
   if (ps.layoutMPI.rank == 0) {
     std::printf("Writing file: %s\n", filename.c_str());
@@ -193,13 +201,13 @@ void WriterPDI::writeXML(int step, Real time, bool plotMode) {
   // Write all data fields as attributes
   switch (eqType) {
   case EquationType::MHD_GLM:
-    writeAttrMHD_GLM(ofs, plotMode);
+    writeAttrMHD_GLM(ofs, false);
     break;
   case EquationType::SRHydro:
-    writeAttrSRHydro(ofs, plotMode);
+    writeAttrSRHydro(ofs, false);
     break;
   default:
-    writeAttrHydro(ofs, plotMode);
+    writeAttrHydro(ofs, false);
   }
   writeAttributeScalar(ofs, "weno");
   writeAttributeScalar(ofs, "fomx");
@@ -211,14 +219,71 @@ void WriterPDI::writeXML(int step, Real time, bool plotMode) {
   ofs.close();
 }
 
+void WriterPDI::writePlotXML(int step, Real time) {
+  std::string sd("plot/");
+  std::string filename = prefix + sd + filename_xmf;
+  if (ps.layoutMPI.rank == 0) {
+    std::printf("Writing file: %s\n", filename.c_str());
+  }
+
+  // Create Xdmf file
+  std::ofstream ofs(filename, std::ios::trunc);
+
+  // Write header, open Xdmf and domain
+  ofs << "<?xml version=\"1.0\" ?>\n"
+      << "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n"
+      << "<Xdmf Version=\"2.0\">\n"
+      << "  <Domain>" << std::endl;
+
+  // Create grid, topology, and geometry
+  ofs << "    <Grid Name=\"Structured Grid\" GridType=\"Uniform\">\n"
+      << "      <Time Value=\"" << time << "\" />\n"
+      << "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\"" << (nZ_g + 1)
+      << " " << (nY_g + 1) << " " << (nX_g + 1) << "\"/>\n"
+      << "      <Geometry GeometryType=\"X_Y_Z\">\n"
+      << "        <DataItem Dimensions=\"" << (nZ_g + 1) << " " << (nY_g + 1) << " "
+      << (nX_g + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
+      << "          " << filename_h5 << ":/meshx\n"
+      << "        </DataItem>\n"
+      << "        <DataItem Dimensions=\"" << (nZ_g + 1) << " " << (nY_g + 1) << " "
+      << (nX_g + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
+      << "          " << filename_h5 << ":/meshy\n"
+      << "        </DataItem>\n"
+      << "        <DataItem Dimensions=\"" << (nZ_g + 1) << " " << (nY_g + 1) << " "
+      << (nX_g + 1) << "\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">\n"
+      << "          " << filename_h5 << ":/meshz\n"
+      << "        </DataItem>\n"
+      << "      </Geometry>\n"
+      << std::endl;
+
+  // Write all data fields as attributes
+  switch (eqType) {
+  case EquationType::MHD_GLM:
+    writeAttrMHD_GLM(ofs, true);
+    break;
+  case EquationType::SRHydro:
+    writeAttrSRHydro(ofs, true);
+    break;
+  default:
+    writeAttrHydro(ofs, true);
+  }
+
+  // Close grid, domain, Xdmf
+  ofs << "    </Grid>\n  </Domain>\n</Xdmf>" << std::endl;
+
+  // Close file
+  ofs.close();
+}
+
 void WriterPDI::writeAttrHydro(std::ofstream &ofs, bool plotMode) {
   writeAttributeScalar(ofs, "dens");
-  writeAttributeVector(ofs, "mom", "momx", "momy", "momz");
-  writeAttributeScalar(ofs, "etot");
   if (plotMode) {
     writeAttributeVector(ofs, "vel", "velx", "vely", "velz");
     writeAttributeScalar(ofs, "eint");
     writeAttributeScalar(ofs, "pres");
+  } else {
+    writeAttributeVector(ofs, "mom", "momx", "momy", "momz");
+    writeAttributeScalar(ofs, "etot");
   }
 }
 

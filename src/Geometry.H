@@ -21,8 +21,15 @@
 
 namespace KFVM {
 
+struct Mesh {
+  MeshDataView x, y, z;
+  Mesh(const idx_t nX, const idx_t nY, const idx_t nZ)
+      : x("meshx", nX, nY, nZ), y("meshy", nX, nY, nZ), z("meshz", nX, nY, nZ) {}
+};
+
 template <GeometryType gt>
-struct Geometry {};
+struct Geometry {
+};
 
 // Specialization for cartesian geometry
 // Simplest case, here computational and physical space are the same
@@ -133,8 +140,7 @@ struct Geometry<GeometryType::Cartesian> {
     return {0.0, 0.0, 1.0, 1.0};
   }
 
- private:
-  Geometry() = delete;
+  Geometry() = default;
 };
 
 // Specialization for cartesian geometry
@@ -227,6 +233,17 @@ struct Geometry<GeometryType::Polar> {
   }
 
   KOKKOS_INLINE_FUNCTION
+  Vec4 physCoordJac(const idx_t i, const idx_t j, const Real abXi,
+                    const Real abEta) const {
+    using Kokkos::cos;
+    using Kokkos::sin;
+    const Real xi = xiCoord(i) + dXi * abXi, eta = etaCoord(j) + dEta * abEta;
+    const Real zeta = zetaLo;
+    const Real J = jacobian(xi, eta, zeta);
+    return {xi * cos(eta), xi * sin(eta), zeta, J};
+  }
+
+  KOKKOS_INLINE_FUNCTION
   Vec4 physCoordJac(const idx_t i, const idx_t j, const idx_t k, const Real abXi,
                     const Real abEta, const Real abZeta) const {
     using Kokkos::cos;
@@ -261,8 +278,7 @@ struct Geometry<GeometryType::Polar> {
     return {0.0, 0.0, 1.0, xi};
   }
 
- private:
-  Geometry() = delete;
+  Geometry() = default;
 };
 
 } // namespace KFVM

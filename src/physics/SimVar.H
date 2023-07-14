@@ -16,7 +16,7 @@ struct PrimVar {
   enum var { dens = 0, velx, vely, velz, pres };
 };
 struct AuxVar {
-  enum var { velx = 0, vely, velz, eint, pres };
+  enum var { dens = 0, velx, vely, velz, eint, pres };
 };
 
 typedef Real ConsVec[5];

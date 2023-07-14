@@ -99,6 +99,8 @@ typedef Kokkos::View<Real ***[NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_VARS
                      MemSpace>
     SourceDataView;
 #endif
+typedef Kokkos::View<Real ***, MemSpace> MeshDataView;
+typedef Kokkos::View<Real ***, Kokkos::LayoutLeft, Kokkos::HostSpace> HostMeshDataView;
 
 // Kokkos views for quadrature rules and differentiation matrices
 typedef Kokkos::View<Real[NUM_QUAD_PTS], MemSpace> QuadRuleView;

@@ -62,6 +62,8 @@ class Solver {
   Stencil::Stencil stencil;
   // Boundary condition coefficients
   Physics::BCCoeffs<eqType> bcCoeff;
+  // Possibly curvilinear mesh node positions
+  Mesh mesh;
   // Cell-based data
   ConsDataView U_halo, Uprev_halo, Uhat, Utmp, RHS;
   // Auxiliary data (cell-based but different number of components)
@@ -118,6 +120,7 @@ class Solver {
   void Solve();
   void TakeStep();
 
+  void setMesh();
   void setIC();
 
   void evalAuxiliary();
