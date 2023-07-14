@@ -15,71 +15,75 @@ namespace Physics {
 template <>
 struct EOS<EquationType::Hydro> {
   KOKKOS_INLINE_FUNCTION
-  static void cons2prim(const Real gam, const Hydro::ConsVec U, Hydro::PrimVec V) {
+  static void cons2prim(const Real gamma, const Real J, const Hydro::ConsVec U,
+                        Hydro::PrimVec V) {
     using Hydro::PrimVar;
     using Hydro::SimVar;
 
-    V[PrimVar::dens] = U[SimVar::dens];
+    V[PrimVar::dens] = U[SimVar::dens] / J;
     V[PrimVar::velx] = U[SimVar::momx] / U[SimVar::dens];
     V[PrimVar::vely] = U[SimVar::momy] / U[SimVar::dens];
     V[PrimVar::velz] = U[SimVar::momz] / U[SimVar::dens];
-    V[PrimVar::pres] = pres(gam, U);
+    V[PrimVar::pres] = pres(gamma, J, U);
   }
 
   KOKKOS_INLINE_FUNCTION
-  static void prim2cons(const Real gam, const Hydro::PrimVec V, Hydro::ConsVec U) {
+  static void prim2cons(const Real gamma, const Real J, const Hydro::PrimVec V,
+                        Hydro::ConsVec U) {
     using Hydro::PrimVar;
     using Hydro::SimVar;
 
-    U[SimVar::dens] = V[PrimVar::dens];
-    U[SimVar::momx] = V[PrimVar::dens] * V[PrimVar::velx];
-    U[SimVar::momy] = V[PrimVar::dens] * V[PrimVar::vely];
-    U[SimVar::momz] = V[PrimVar::dens] * V[PrimVar::velz];
-    U[SimVar::etot] = V[PrimVar::pres] / (gam - Real(1.0)) +
-                      Real(0.5) * (V[PrimVar::velx] * V[PrimVar::velx] +
-                                   V[PrimVar::vely] * V[PrimVar::vely] +
-                                   V[PrimVar::velz] * V[PrimVar::velz]);
+    U[SimVar::dens] = J * V[PrimVar::dens];
+    U[SimVar::momx] = J * V[PrimVar::dens] * V[PrimVar::velx];
+    U[SimVar::momy] = J * V[PrimVar::dens] * V[PrimVar::vely];
+    U[SimVar::momz] = J * V[PrimVar::dens] * V[PrimVar::velz];
+    U[SimVar::etot] = J * (V[PrimVar::pres] / (gamma - 1.0) +
+                           0.5 * V[PrimVar::dens] *
+                               (V[PrimVar::velx] * V[PrimVar::velx] +
+                                V[PrimVar::vely] * V[PrimVar::vely] +
+                                V[PrimVar::velz] * V[PrimVar::velz]));
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real ekin(const Hydro::ConsVec U) {
+  static Real ekin(const Real J, const Hydro::ConsVec U) {
     using Hydro::SimVar;
-    return Real(0.5) *
-           (U[SimVar::momx] * U[SimVar::momx] + U[SimVar::momy] * U[SimVar::momy] +
-            U[SimVar::momz] * U[SimVar::momz]) /
-           U[SimVar::dens];
+    const Real rho = U[SimVar::dens] / J;
+    const Real vx = U[SimVar::momx] / U[SimVar::dens];
+    const Real vy = U[SimVar::momy] / U[SimVar::dens];
+    const Real vz = U[SimVar::momz] / U[SimVar::dens];
+    return Real(0.5) * rho * (vx * vx + vy * vy + vz * vz);
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real eint(const Hydro::ConsVec U) {
+  static Real eint(const Real J, const Hydro::ConsVec U) {
     using Hydro::SimVar;
-    return (U[SimVar::etot] - ekin(U));
+    return (U[SimVar::etot] / J - ekin(J, U));
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real weno(const Hydro::ConsVec U, const EosParameters &eosParams) {
+  static Real weno(const EosParameters &eosParams, const Real J, const Hydro::ConsVec U) {
     using Hydro::SimVar;
-    return pres(eosParams.gamma, U);
+    return pres(eosParams.gamma, J, U);
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real positivity(const Hydro::ConsVec U) {
+  static Real positivity(const Real J, const Hydro::ConsVec U) {
     using Hydro::SimVar;
     using Kokkos::fmin;
     // Ensure that density and internal energy are positive
-    return fmin(U[SimVar::dens], eint(U));
+    return fmin(U[SimVar::dens], eint(J, U));
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real pres(const Real gamma, const Hydro::ConsVec U) {
-    return (gamma - Real(1.0)) * eint(U);
+  static Real pres(const Real gamma, const Real J, const Hydro::ConsVec U) {
+    return (gamma - Real(1.0)) * eint(J, U);
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real soundspeed(const Real gamma, const Hydro::ConsVec U) {
+  static Real soundspeed(const Real gamma, const Real J, const Hydro::ConsVec U) {
     using Hydro::SimVar;
     using Kokkos::sqrt;
-    return sqrt(gamma * pres(gamma, U) / U[SimVar::dens]);
+    return sqrt(gamma * pres(gamma, J, U) * J / U[SimVar::dens]);
   }
 };
 

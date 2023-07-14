@@ -16,10 +16,15 @@
 #include <Definitions.H>
 
 #include "Dimension.H"
+#include "GeometryTypes.H"
 #include "LayoutMPI.H"
 #include "ParameterStructs.H"
 #include "Types.H"
 #include "physics/EquationTypes.H"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace KFVM {
 
@@ -175,6 +180,12 @@ struct ProblemSetup {
       if (!success) {
         std::cout << "Warning!!!! Line could not be parsed: " << line << std::endl;
       }
+    }
+
+    // Convert bounds to pi multiples if appropriate
+    if (geomType == GeometryType::Polar) {
+      yLo_g *= M_PI;
+      yUp_g *= M_PI;
     }
 
     // setup the MPI layout, add better error handling later

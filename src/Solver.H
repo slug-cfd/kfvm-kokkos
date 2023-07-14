@@ -35,7 +35,7 @@ struct WenoSelector {
   uint32_t minSize, currSize, nWeno;
   WenoSelector(const ProblemSetup &ps);
   template <class UViewType>
-  void update(UViewType, UViewType, const Real);
+  void update(UViewType, UViewType, const Geometry<geomType> &, const Real);
   auto tileRange(int i, int j, int k) const {
     idx_t xUp = i == (ntX - 1) ? ps.nX : (i + 1) * tX;
     idx_t yUp = j == (ntY - 1) ? ps.nY : (j + 1) * tY;

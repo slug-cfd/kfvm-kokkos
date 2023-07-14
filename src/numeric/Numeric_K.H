@@ -260,10 +260,12 @@ template <class UViewType, class KViewType>
 struct RKFSAL_ErrEst_K {
   UViewType U;
   KViewType Uhat;
+  Geometry<geomType> geom;
   Real atol, rtol;
 
-  RKFSAL_ErrEst_K(const UViewType &U_, const KViewType &Uhat_, Real atol_, Real rtol_)
-      : U(U_), Uhat(Uhat_), atol(atol_), rtol(rtol_) {}
+  RKFSAL_ErrEst_K(const UViewType &U_, const KViewType &Uhat_,
+                  const Geometry<geomType> &geom_, Real atol_, Real rtol_)
+      : U(U_), Uhat(Uhat_), geom(geom_), atol(atol_), rtol(rtol_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k), Real &err,
@@ -273,6 +275,9 @@ struct RKFSAL_ErrEst_K {
     using Kokkos::isnan;
     using Kokkos::pow;
 
+    // Get mapped grid Jacobian
+    const Real J = geom.jacobian(KFVM_D_DECL(i, j, k));
+
     bool hasNan = false;
     Real state[NUM_VARS];
     for (int nV = 0; nV < NUM_VARS; nV++) {
@@ -281,7 +286,7 @@ struct RKFSAL_ErrEst_K {
       hasNan = hasNan || isnan(u);
       err += pow((u - uhat) / (atol + rtol * fmax(fabs(u), fabs(uhat))), 2);
     }
-    Real pos = hasNan ? -Real(1.0) : Physics::EOS<eqType>::positivity(state);
+    Real pos = hasNan ? -Real(1.0) : Physics::EOS<eqType>::positivity(J, state);
     posFlag = posFlag > pos ? pos : posFlag;
   }
 };
@@ -289,14 +294,16 @@ struct RKFSAL_ErrEst_K {
 template <class UViewType, class WViewType>
 struct RK_WenoSelect_K {
   UViewType U, Uprev;
+  Geometry<geomType> geom;
   EosParameters eosParams;
   Real wThresh;
   WViewType W;
 
   RK_WenoSelect_K(const UViewType &U_, const UViewType &Uprev_,
-                  const EosParameters &eosParams_, const Real wThresh_,
-                  const WViewType &W_)
-      : U(U_), Uprev(Uprev_), eosParams(eosParams_), wThresh(wThresh_), W(W_) {}
+                  const Geometry<geomType> &geom_, const EosParameters &eosParams_,
+                  const Real wThresh_, const WViewType &W_)
+      : U(U_), Uprev(Uprev_), geom(geom_), eosParams(eosParams_), wThresh(wThresh_),
+        W(W_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
@@ -304,6 +311,9 @@ struct RK_WenoSelect_K {
     using Kokkos::fabs;
     using Kokkos::fmax;
     using Kokkos::fmin;
+
+    // Get mapped grid Jacobian
+    const Real J = geom.jacobian(KFVM_D_DECL(i, j, k));
 
     // Extract states
     Real u0[NUM_VARS], u1[NUM_VARS];
@@ -313,8 +323,8 @@ struct RK_WenoSelect_K {
     }
 
     // Calculate change in weno indicator
-    Real w0 = Physics::EOS<eqType>::weno(u0, eosParams);
-    Real w1 = Physics::EOS<eqType>::weno(u1, eosParams);
+    Real w0 = Physics::EOS<eqType>::weno(eosParams, J, u0);
+    Real w1 = Physics::EOS<eqType>::weno(eosParams, J, u1);
     Real w = fabs(w1 - w0) / fmin(w0, w1);
 
     // set flags based on indicator

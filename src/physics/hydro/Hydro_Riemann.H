@@ -38,8 +38,8 @@ void hydroSpeed(const Real gamma, const Vec4 &metric, const Real vnL, const Real
   using Kokkos::fmin;
   using Kokkos::sqrt;
 
-  Real a = fmax(EOS<EquationType::Hydro>::soundspeed(gamma, uL),
-                EOS<EquationType::Hydro>::soundspeed(gamma, uR));
+  Real a = fmax(EOS<EquationType::Hydro>::soundspeed(gamma, metric.v4, uL),
+                EOS<EquationType::Hydro>::soundspeed(gamma, metric.v4, uR));
 
   Real M = sqrt(metric.v1 * metric.v1 + metric.v2 * metric.v2 + metric.v3 * metric.v3);
 

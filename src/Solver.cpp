@@ -110,8 +110,9 @@ void Solver::evalAuxiliary() {
   auto U = trimCellHalo(U_halo);
   auto cellRng = interiorCellRange();
 
-  Kokkos::parallel_for("Solver::evalAuxiliary", cellRng,
-                       Physics::AuxVars<eqType, decltype(U)>(U, U_aux, ps.eosParams));
+  Kokkos::parallel_for(
+      "Solver::evalAuxiliary", cellRng,
+      Physics::AuxVars<eqType, decltype(U)>(U, U_aux, geom, ps.eosParams));
 
   Kokkos::Profiling::popRegion();
 }
@@ -191,10 +192,10 @@ void Solver::TakeStep() {
     // Estimate the error and test positivity
     Real errNewLoc = 0.0, posFlag = 1.0;
     const Real nDofs = ps.nX * ps.nY * ps.nZ * ps.nbX * ps.nbY * ps.nbZ * NUM_VARS;
-    Kokkos::parallel_reduce(
-        "ErrorEstimate", cellRng,
-        Numeric::RKFSAL_ErrEst_K<decltype(U), decltype(RHS)>(U, Uhat, ps.atol, ps.rtol),
-        errNewLoc, Kokkos::Min<Real>(posFlag));
+    Kokkos::parallel_reduce("ErrorEstimate", cellRng,
+                            Numeric::RKFSAL_ErrEst_K<decltype(U), decltype(RHS)>(
+                                U, Uhat, geom, ps.atol, ps.rtol),
+                            errNewLoc, Kokkos::Min<Real>(posFlag));
     Real errNew = timeStepErrEstComm(errNewLoc);
     errNew = 1.0 / std::sqrt(errNew / nDofs);
 
@@ -233,7 +234,7 @@ void Solver::TakeStep() {
       errEst = errNew;
 
       // Update the weno selector
-      wenoSelector.update(U, Uprev, wThresh);
+      wenoSelector.update(U, Uprev, geom, wThresh);
 
       // Move current state to past
       Kokkos::deep_copy(Uprev, U);
@@ -452,7 +453,7 @@ void Solver::reconstructRiemannStates(ConsDataView sol_halo) {
   Kokkos::parallel_for("PosPres", cellRng,
                        Physics::PositivityPreserve_K<eqType, decltype(U)>(
                            U, KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir),
-                           haveSources, sourceTerms, wenoSelector.wenoFlagView,
+                           haveSources, sourceTerms, wenoSelector.wenoFlagView, geom,
                            ps.eosParams));
 }
 
@@ -500,7 +501,8 @@ WenoSelector::WenoSelector(const ProblemSetup &ps_)
 }
 
 template <class UViewType>
-void WenoSelector::update(UViewType U, UViewType Uprev, const Real wThresh) {
+void WenoSelector::update(UViewType U, UViewType Uprev, const Geometry<geomType> &geom,
+                          const Real wThresh) {
   if (ps.eosParams.wenoThresh < 0.0) {
     // don't need to manage any of this if weno is used everywhere
     return;
@@ -514,7 +516,7 @@ void WenoSelector::update(UViewType U, UViewType Uprev, const Real wThresh) {
   nWeno = 0;
   Kokkos::parallel_reduce("Solver::WenoSelector::update(flag)", cellRng,
                           Numeric::RK_WenoSelect_K<UViewType, decltype(wenoFlagView)>(
-                              U, Uprev, ps.eosParams, wThresh, wenoFlagView),
+                              U, Uprev, geom, ps.eosParams, wThresh, wenoFlagView),
                           nWeno);
 
   // Clear map and reallocate workspace if needed
