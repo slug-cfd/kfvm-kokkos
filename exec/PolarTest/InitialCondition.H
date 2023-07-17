@@ -20,7 +20,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real g = -1.0 / (r * r);
   const Real gx = g * cos(phi), gy = g * sin(phi);
 
-  Real rho, p;
+  Real rho;
 
   // Density with perturbation
   const Real Ri = R1 + A * cos(12.0 * phi);
@@ -32,16 +32,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
     rho = rhoL;
   }
 
-  // Pressure hydrostatic ignoring density perturbation
-  if (r <= 1.0) {
-    p = P0 - 0.5 * rhoL * r;
-  } else if (r <= R1) {
-    p = P0 + rhoL * (1.0 / r - 1.5);
-  } else if (r <= R2) {
-    p = P0 + rhoL * (1.0 / R1 - 1.5) + rhoH * (1.0 / r - 1.0 / R1);
-  } else {
-    p = P0 + rhoL * (1.0 / r + 1.0 / R1 - 1.5 - 1.0 / R2) + rhoH * (1.0 / R2 - 1.0 / R1);
-  }
+  Real p = r < 1.2 ? P0 : 1.0;
 
   state[SimVar::dens] = rho;
   state[SimVar::momx] = 0.0;

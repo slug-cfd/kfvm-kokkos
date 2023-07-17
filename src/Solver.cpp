@@ -453,7 +453,7 @@ void Solver::reconstructRiemannStates(ConsDataView sol_halo) {
               KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), sourceTerms,
               haveSources, wenoSelector.stenWork, wenoSelector.wenoFlagMap,
               KFVM_D_DECL(stencil.lOff, stencil.tOff, stencil.ttOff), stencil.subIdx,
-              stencil.faceWeights, stencil.cellWeights, stencil.derivWeights,
+              stencil.faceWeights, stencil.cellWeights, stencil.derivWeights, geom,
               ps.eosParams));
     }
   } else {
@@ -470,7 +470,7 @@ void Solver::reconstructRiemannStates(ConsDataView sol_halo) {
                   KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), sourceTerms,
                   haveSources, wenoSelector.stenWork, wenoSelector.wenoFlagMap,
                   KFVM_D_DECL(stencil.lOff, stencil.tOff, stencil.ttOff), stencil.subIdx,
-                  stencil.faceWeights, stencil.cellWeights, stencil.derivWeights,
+                  stencil.faceWeights, stencil.cellWeights, stencil.derivWeights, geom,
                   ps.eosParams));
         }
       }
@@ -1321,13 +1321,13 @@ void Solver::setWestBCExt(ConsDataView sol_halo, Real t) {
   case BCType::outflow:
     Kokkos::parallel_for(
         "CellBCs::West", bndRng,
-        CellBcWest_K<decltype(sol_halo), BCType::outflow>(sol_halo, ps.rad, ps.nX));
+        CellBcWest_K<decltype(sol_halo), BCType::outflow>(sol_halo, geom, ps.rad, ps.nX));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
         "CellBCs::West", bndRng,
         CellBcWest_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.x)>(
-            sol_halo, bcCoeff.x, ps.rad, ps.nX));
+            sol_halo, geom, bcCoeff.x, ps.rad, ps.nX));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1356,13 +1356,13 @@ void Solver::setEastBCExt(ConsDataView sol_halo, Real t) {
   case BCType::outflow:
     Kokkos::parallel_for(
         "CellBCs::East", bndRng,
-        CellBcEast_K<decltype(sol_halo), BCType::outflow>(sol_halo, ps.rad, ps.nX));
+        CellBcEast_K<decltype(sol_halo), BCType::outflow>(sol_halo, geom, ps.rad, ps.nX));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
         "CellBCs::East", bndRng,
         CellBcEast_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.x)>(
-            sol_halo, bcCoeff.x, ps.rad, ps.nX));
+            sol_halo, geom, bcCoeff.x, ps.rad, ps.nX));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1389,15 +1389,15 @@ void Solver::setSouthBCExt(ConsDataView sol_halo, Real t) {
 
   switch (ps.bcType[FaceLabel::south]) {
   case BCType::outflow:
-    Kokkos::parallel_for(
-        "CellBCs::South", bndRng,
-        CellBcSouth_K<decltype(sol_halo), BCType::outflow>(sol_halo, ps.rad, ps.nY));
+    Kokkos::parallel_for("CellBCs::South", bndRng,
+                         CellBcSouth_K<decltype(sol_halo), BCType::outflow>(
+                             sol_halo, geom, ps.rad, ps.nY));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
         "CellBCs::South", bndRng,
         CellBcSouth_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.y)>(
-            sol_halo, bcCoeff.y, ps.rad, ps.nY));
+            sol_halo, geom, bcCoeff.y, ps.rad, ps.nY));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1424,15 +1424,15 @@ void Solver::setNorthBCExt(ConsDataView sol_halo, Real t) {
 
   switch (ps.bcType[FaceLabel::north]) {
   case BCType::outflow:
-    Kokkos::parallel_for(
-        "CellBCs::North", bndRng,
-        CellBcNorth_K<decltype(sol_halo), BCType::outflow>(sol_halo, ps.rad, ps.nY));
+    Kokkos::parallel_for("CellBCs::North", bndRng,
+                         CellBcNorth_K<decltype(sol_halo), BCType::outflow>(
+                             sol_halo, geom, ps.rad, ps.nY));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
         "CellBCs::North", bndRng,
         CellBcNorth_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.y)>(
-            sol_halo, bcCoeff.y, ps.rad, ps.nY));
+            sol_halo, geom, bcCoeff.y, ps.rad, ps.nY));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1455,15 +1455,15 @@ void Solver::setBottomBCExt(ConsDataView sol_halo, Real t) {
 
   switch (ps.bcType[FaceLabel::bottom]) {
   case BCType::outflow:
-    Kokkos::parallel_for(
-        "CellBCs::Bottom", bndRng,
-        CellBcBottom_K<decltype(sol_halo), BCType::outflow>(sol_halo, ps.rad, ps.nZ));
+    Kokkos::parallel_for("CellBCs::Bottom", bndRng,
+                         CellBcBottom_K<decltype(sol_halo), BCType::outflow>(
+                             sol_halo, geom, ps.rad, ps.nZ));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
         "CellBCs::Bottom", bndRng,
         CellBcBottom_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.z)>(
-            sol_halo, bcCoeff.z, ps.rad, ps.nZ));
+            sol_halo, geom, bcCoeff.z, ps.rad, ps.nZ));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1487,13 +1487,13 @@ void Solver::setTopBCExt(ConsDataView sol_halo, Real t) {
   case BCType::outflow:
     Kokkos::parallel_for(
         "CellBCs::Top", bndRng,
-        CellBcTop_K<decltype(sol_halo), BCType::outflow>(sol_halo, ps.rad, ps.nZ));
+        CellBcTop_K<decltype(sol_halo), BCType::outflow>(sol_halo, geom, ps.rad, ps.nZ));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
         "CellBCs::Top", bndRng,
         CellBcTop_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.z)>(
-            sol_halo, bcCoeff.z, ps.rad, ps.nZ));
+            sol_halo, geom, bcCoeff.z, ps.rad, ps.nZ));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1531,7 +1531,7 @@ void Solver::setWestBCExt(Real t) {
     Kokkos::parallel_for(
         "FaceBCs::West::Reflecting", bndRng,
         FaceBcWest_K<decltype(westBnd), BCType::reflecting, decltype(bcCoeff.x)>(
-            westBnd, bcCoeff.x));
+            westBnd, geom, qr.ab, bcCoeff.x));
     break;
   case BCType::user:
     Kokkos::parallel_for("FaceBCs::West::User", bndRng,
@@ -1568,7 +1568,7 @@ void Solver::setEastBCExt(Real t) {
     Kokkos::parallel_for(
         "FaceBCs::East::Reflecting", bndRng,
         FaceBcEast_K<decltype(eastBnd), BCType::reflecting, decltype(bcCoeff.x)>(
-            eastBnd, bcCoeff.x));
+            eastBnd, geom, qr.ab, bcCoeff.x, ps.nX));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1605,7 +1605,7 @@ void Solver::setSouthBCExt(Real t) {
     Kokkos::parallel_for(
         "FaceBCs::South::Reflecting", bndRng,
         FaceBcSouth_K<decltype(southBnd), BCType::reflecting, decltype(bcCoeff.y)>(
-            southBnd, bcCoeff.y));
+            southBnd, geom, qr.ab, bcCoeff.y));
     break;
   case BCType::user:
     Kokkos::parallel_for("FaceBCs::South::User", bndRng,
@@ -1642,7 +1642,7 @@ void Solver::setNorthBCExt(Real t) {
     Kokkos::parallel_for(
         "FaceBCs::North::Reflecting", bndRng,
         FaceBcNorth_K<decltype(northBnd), BCType::reflecting, decltype(bcCoeff.y)>(
-            northBnd, bcCoeff.y));
+            northBnd, geom, qr.ab, bcCoeff.y, ps.nY));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1676,7 +1676,7 @@ void Solver::setBottomBCExt(Real t) {
     Kokkos::parallel_for(
         "FaceBCs::Bottom::Reflecting", bndRng,
         FaceBcBottom_K<decltype(bottomBnd), BCType::reflecting, decltype(bcCoeff.z)>(
-            bottomBnd, bcCoeff.z));
+            bottomBnd, geom, qr.ab, bcCoeff.z));
     break;
   case BCType::user:
     Kokkos::parallel_for("FaceBCs::Bottom::User", bndRng,
@@ -1708,7 +1708,7 @@ void Solver::setTopBCExt(Real t) {
     Kokkos::parallel_for(
         "FaceBCs::Top::Reflecting", bndRng,
         FaceBcTop_K<decltype(topBnd), BCType::reflecting, decltype(bcCoeff.z)>(
-            topBnd, bcCoeff.z));
+            topBnd, geom, qr.ab, bcCoeff.z, ps.nZ));
     break;
   case BCType::user:
     Kokkos::parallel_for("FaceBCs::Top::User", bndRng,

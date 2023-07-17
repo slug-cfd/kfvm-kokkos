@@ -7,7 +7,7 @@
 #include "../../src/physics/RSTypes.H"
 
 // Space dimension of problem
-#define SPACE_DIM 2
+#define SPACE_DIM 3
 
 // Stencil radius (2-4)
 #define STENCIL_RADIUS 2

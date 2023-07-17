@@ -14,6 +14,8 @@ template <EquationType ET, class UViewType>
 struct AuxVars {};
 template <EquationType ET>
 class VarConvert {};
+template <EquationType ET>
+struct CompSpaceVars {};
 template <EquationType ET, RSType RS>
 struct RiemannSolverX_K {};
 template <EquationType ET, RSType RS>

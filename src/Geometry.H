@@ -278,6 +278,22 @@ struct Geometry<GeometryType::Polar> {
     return {0.0, 0.0, 1.0, xi};
   }
 
+  KOKKOS_INLINE_FUNCTION
+  Mat3 metricDerivs(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+                    KFVM_D_DECL(const Real abXi, const Real abEta,
+                                const Real abZeta)) const {
+    const Real xi = xiCoord(i) + dXi * abXi, eta = etaCoord(j) + dEta * abEta;
+    return {cos(eta), sin(eta), 0.0, -sin(eta) / xi, cos(eta) / xi, 0.0, 0.0, 0.0, 1.0};
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Mat3 invMetricDerivs(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+                       KFVM_D_DECL(const Real abXi, const Real abEta,
+                                   const Real abZeta)) const {
+    const Real xi = xiCoord(i) + dXi * abXi, eta = etaCoord(j) + dEta * abEta;
+    return {cos(eta), -xi * sin(eta), 0.0, sin(eta), xi * cos(eta), 0.0, 0.0, 0.0, 1.0};
+  }
+
   Geometry() = default;
 };
 

@@ -12,6 +12,7 @@
 #include "ParameterStructs.H"
 #include "Types.H"
 #include "numeric/Numeric.H"
+#include "physics/EquationTypes.H"
 #include "physics/Physics_K.H"
 
 namespace KFVM {
@@ -50,49 +51,864 @@ namespace {
 #include "UserBCs.H"
 }
 
-// ---------------- Western Cell BC definitions. ---------------------------------
+// Cell outflow conditions
 template <class DataViewType>
 struct CellBcWest_K<DataViewType, BCType::outflow> {
   DataViewType v;
+  Geometry<geomType> geom;
   idx_t rad, nX;
 
-  CellBcWest_K(const DataViewType &v_, idx_t rad_, idx_t nX_)
-      : v(v_), rad(rad_), nX(nX_) {}
+  CellBcWest_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+               idx_t nX_)
+      : v(v_), geom(geom_), rad(rad_), nX(nX_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(KFVM_D_DECL(rad + nH, j, k));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(rad - nH - 1, j, k));
+      const Real rJ = dJ / sJ;
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(rad - nH - 1, j, k), nV) = v(KFVM_D_DECL(rad + nH, j, k), nV);
+        v(KFVM_D_DECL(rad - nH - 1, j, k), nV) = rJ * v(KFVM_D_DECL(rad + nH, j, k), nV);
+      }
+    }
+  }
+};
+
+template <class DataViewType>
+struct CellBcEast_K<DataViewType, BCType::outflow> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  idx_t rad, nX;
+
+  CellBcEast_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+               idx_t nX_)
+      : v(v_), geom(geom_), rad(rad_), nX(nX_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(KFVM_D_DECL(nX + rad - nH - 1, j, k));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(nX + rad + nH, j, k));
+      const Real rJ = dJ / sJ;
+      // Loop over SimVars
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(KFVM_D_DECL(nX + rad + nH, j, k), nV) =
+            rJ * v(KFVM_D_DECL(nX + rad - nH - 1, j, k), nV);
+      }
+    }
+  }
+};
+
+template <class DataViewType>
+struct CellBcSouth_K<DataViewType, BCType::outflow> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  idx_t rad, nY;
+
+  CellBcSouth_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+                idx_t nY_)
+      : v(v_), geom(geom_), rad(rad_), nY(nY_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(KFVM_D_DECL(i, rad + nH, k));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(i, rad - nH - 1, k));
+      const Real rJ = dJ / sJ;
+      // Loop over SimVars
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(KFVM_D_DECL(i, rad - nH - 1, k), nV) = rJ * v(KFVM_D_DECL(i, rad + nH, k), nV);
+      }
+    }
+  }
+};
+
+template <class DataViewType>
+struct CellBcNorth_K<DataViewType, BCType::outflow> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  idx_t rad, nY;
+
+  CellBcNorth_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+                idx_t nY_)
+      : v(v_), geom(geom_), rad(rad_), nY(nY_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(KFVM_D_DECL(i, nY + rad - nH - 1, k));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(i, nY + rad + nH, k));
+      const Real rJ = dJ / sJ;
+      // Loop over SimVars
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(KFVM_D_DECL(i, nY + rad + nH, k), nV) =
+            rJ * v(KFVM_D_DECL(i, nY + rad - nH - 1, k), nV);
+      }
+    }
+  }
+};
+
+template <class DataViewType>
+struct CellBcBottom_K<DataViewType, BCType::outflow> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  idx_t rad, nZ;
+
+  CellBcBottom_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+                 idx_t nZ_)
+      : v(v_), geom(geom_), rad(rad_), nZ(nZ_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const idx_t i, const idx_t j) const {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(i, j, rad + nH);
+      const Real dJ = geom.jacobian(i, j, rad - nH - 1);
+      const Real rJ = dJ / sJ;
+      // Loop over SimVars
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(i, j, rad - nH - 1, nV) = rJ * v(i, j, rad + nH, nV);
+      }
+    }
+  }
+};
+
+template <class DataViewType>
+struct CellBcTop_K<DataViewType, BCType::outflow> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  idx_t rad, nZ;
+
+  CellBcTop_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+              idx_t nZ_)
+      : v(v_), geom(geom_), rad(rad_), nZ(nZ_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const idx_t i, const idx_t j) const {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(i, j, nZ + rad - nH - 1);
+      const Real dJ = geom.jacobian(i, j, nZ + rad + nH);
+      const Real rJ = dJ / sJ;
+      // Loop over SimVars
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(i, j, nZ + rad + nH, nV) = rJ * v(i, j, nZ + rad - nH - 1, nV);
+      }
+    }
+  }
+};
+
+// Face outflow conditions
+template <class DataViewType>
+struct FaceBcWest_K<DataViewType, BCType::outflow> {
+  DataViewType v;
+
+  FaceBcWest_K(const DataViewType &v_) : v(v_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
+    // Loop over quadrature points
+    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
+    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
+      // Loop over SimVars
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(KFVM_DM_DECL(j, k), 0, nQ, nV) = v(KFVM_DM_DECL(j, k), 1, nQ, nV);
+      }
+    }
+  }
+};
+
+template <class DataViewType>
+struct FaceBcEast_K<DataViewType, BCType::outflow> {
+  DataViewType v;
+
+  FaceBcEast_K(const DataViewType &v_) : v(v_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
+    // Loop over quadrature points
+    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
+    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
+      // Loop over SimVars
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(KFVM_DM_DECL(j, k), 1, nQ, nV) = v(KFVM_DM_DECL(j, k), 0, nQ, nV);
+      }
+    }
+  }
+};
+
+template <class DataViewType>
+struct FaceBcSouth_K<DataViewType, BCType::outflow> {
+  DataViewType v;
+
+  FaceBcSouth_K(const DataViewType &v_) : v(v_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+    // Loop over quadrature points
+    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
+    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
+      // Loop over SimVars
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(KFVM_DM_DECL(i, k), 0, nQ, nV) = v(KFVM_DM_DECL(i, k), 1, nQ, nV);
+      }
+    }
+  }
+};
+
+template <class DataViewType>
+struct FaceBcNorth_K<DataViewType, BCType::outflow> {
+  DataViewType v;
+
+  FaceBcNorth_K(const DataViewType &v_) : v(v_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+    // Loop over quadrature points
+    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
+    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
+      // Loop over SimVars
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(KFVM_DM_DECL(i, k), 1, nQ, nV) = v(KFVM_DM_DECL(i, k), 0, nQ, nV);
+      }
+    }
+  }
+};
+
+template <class DataViewType>
+struct FaceBcBottom_K<DataViewType, BCType::outflow> {
+  DataViewType v;
+
+  FaceBcBottom_K(const DataViewType &v_) : v(v_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const idx_t i, const idx_t j) const {
+    // Loop over quadrature points
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
+      // Loop over SimVars
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(i, j, 0, nQ, nV) = v(i, j, 1, nQ, nV);
+      }
+    }
+  }
+};
+
+template <class DataViewType>
+struct FaceBcTop_K<DataViewType, BCType::outflow> {
+  DataViewType v;
+
+  FaceBcTop_K(const DataViewType &v_) : v(v_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const idx_t i, const idx_t j) const {
+    // Loop over quadrature points
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
+      // Loop over SimVars
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(i, j, 1, nQ, nV) = v(i, j, 0, nQ, nV);
+      }
+    }
+  }
+};
+
+// Cell reflecting conditions
+template <class DataViewType, class RefCoeff>
+struct CellBcWest_K<DataViewType, BCType::reflecting, RefCoeff> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  RefCoeff pf;
+  idx_t rad, nX;
+
+  CellBcWest_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+               const RefCoeff &pf_, idx_t rad_, idx_t nX_)
+      : v(v_), geom(geom_), pf(pf_), rad(rad_), nX(nX_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(KFVM_D_DECL(rad + nH, j, k));
+      const Mat3 sMD =
+          geom.metricDerivs(KFVM_D_DECL(rad + nH, j, k), KFVM_D_DECL(0, 0, 0));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(rad - nH - 1, j, k));
+      const Mat3 dMD =
+          geom.invMetricDerivs(KFVM_D_DECL(rad - nH - 1, j, k), KFVM_D_DECL(0, 0, 0));
+
+      // Extract variables from source cell, remove J factor
+      Real vars[NUM_VARS];
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        vars[nV] = v(KFVM_D_DECL(rad + nH, j, k), nV) / sJ;
+      }
+
+      // Convert vector valued quantities to computational space
+      Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+      // Reflect needed components
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        vars[nV] *= pf(nV);
+      }
+
+      // Convert back to physical quantities
+      Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+      // Apply destination jacobian and store
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(KFVM_D_DECL(rad - nH - 1, j, k), nV) = dJ * vars[nV];
       }
     }
   }
 };
 
 template <class DataViewType, class RefCoeff>
-struct CellBcWest_K<DataViewType, BCType::reflecting, RefCoeff> {
+struct CellBcEast_K<DataViewType, BCType::reflecting, RefCoeff> {
   DataViewType v;
+  Geometry<geomType> geom;
   RefCoeff pf;
   idx_t rad, nX;
 
-  CellBcWest_K(const DataViewType &v_, const RefCoeff &pf_, idx_t rad_, idx_t nX_)
-      : v(v_), pf(pf_), rad(rad_), nX(nX_) {}
+  CellBcEast_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+               const RefCoeff &pf_, idx_t rad_, idx_t nX_)
+      : v(v_), geom(geom_), pf(pf_), rad(rad_), nX(nX_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
-      // Loop over SimVars
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(KFVM_D_DECL(nX + rad - nH - 1, j, k));
+      const Mat3 sMD =
+          geom.metricDerivs(KFVM_D_DECL(nX + rad - nH - 1, j, k), KFVM_D_DECL(0, 0, 0));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(nX + rad + nH, j, k));
+      const Mat3 dMD =
+          geom.invMetricDerivs(KFVM_D_DECL(nX + rad + nH, j, k), KFVM_D_DECL(0, 0, 0));
+
+      // Extract variables from source cell, remove J factor
+      Real vars[NUM_VARS];
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(rad - nH - 1, j, k), nV) =
-            pf(nV) * v(KFVM_D_DECL(rad + nH, j, k), nV);
+        vars[nV] = v(KFVM_D_DECL(nX + rad - nH - 1, j, k), nV) / sJ;
+      }
+
+      // Convert vector valued quantities to computational space
+      Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+      // Reflect needed components
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        vars[nV] *= pf(nV);
+      }
+
+      // Convert back to physical quantities
+      Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+      // Apply destination jacobian and store
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(KFVM_D_DECL(nX + rad + nH, j, k), nV) = dJ * vars[nV];
       }
     }
   }
 };
 
+template <class DataViewType, class RefCoeff>
+struct CellBcSouth_K<DataViewType, BCType::reflecting, RefCoeff> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  RefCoeff pf;
+  idx_t rad, nY;
+
+  CellBcSouth_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+                const RefCoeff &pf_, idx_t rad_, idx_t nY_)
+      : v(v_), geom(geom_), pf(pf_), rad(rad_), nY(nY_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(KFVM_D_DECL(i, rad + nH, k));
+      const Mat3 sMD =
+          geom.metricDerivs(KFVM_D_DECL(i, rad + nH, k), KFVM_D_DECL(0, 0, 0));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(i, rad - nH - 1, k));
+      const Mat3 dMD =
+          geom.invMetricDerivs(KFVM_D_DECL(i, rad - nH - 1, k), KFVM_D_DECL(0, 0, 0));
+
+      // Extract variables from source cell, remove J factor
+      Real vars[NUM_VARS];
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        vars[nV] = v(KFVM_D_DECL(i, rad + nH, k), nV) / sJ;
+      }
+
+      // Convert vector valued quantities to computational space
+      Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+      // Reflect needed components
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        vars[nV] *= pf(nV);
+      }
+
+      // Convert back to physical quantities
+      Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+      // Apply destination jacobian and store
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(KFVM_D_DECL(i, rad - nH - 1, k), nV) = dJ * vars[nV];
+      }
+    }
+  }
+};
+
+template <class DataViewType, class RefCoeff>
+struct CellBcNorth_K<DataViewType, BCType::reflecting, RefCoeff> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  RefCoeff pf;
+  idx_t rad, nY;
+
+  CellBcNorth_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+                const RefCoeff &pf_, idx_t rad_, idx_t nY_)
+      : v(v_), geom(geom_), pf(pf_), rad(rad_), nY(nY_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(KFVM_D_DECL(i, nY + rad - nH - 1, k));
+      const Mat3 sMD =
+          geom.metricDerivs(KFVM_D_DECL(i, nY + rad - nH - 1, k), KFVM_D_DECL(0, 0, 0));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(i, nY + rad + nH, k));
+      const Mat3 dMD =
+          geom.invMetricDerivs(KFVM_D_DECL(i, nY + rad + nH, k), KFVM_D_DECL(0, 0, 0));
+
+      // Extract variables from source cell, remove J factor
+      Real vars[NUM_VARS];
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        vars[nV] = v(KFVM_D_DECL(i, nY + rad - nH - 1, k), nV) / sJ;
+      }
+
+      // Convert vector valued quantities to computational space
+      Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+      // Reflect needed components
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        vars[nV] *= pf(nV);
+      }
+
+      // Convert back to physical quantities
+      Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+      // Apply destination jacobian and store
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(KFVM_D_DECL(i, nY + rad + nH, k), nV) = dJ * vars[nV];
+      }
+    }
+  }
+};
+
+template <class DataViewType, class RefCoeff>
+struct CellBcBottom_K<DataViewType, BCType::reflecting, RefCoeff> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  RefCoeff pf;
+  idx_t rad, nZ;
+
+  CellBcBottom_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+                 const RefCoeff &pf_, idx_t rad_, idx_t nZ_)
+      : v(v_), geom(geom_), pf(pf_), rad(rad_), nZ(nZ_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const idx_t i, const idx_t j) const {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(KFVM_D_DECL(i, j, rad + nH));
+      const Mat3 sMD =
+          geom.metricDerivs(KFVM_D_DECL(i, j, rad + nH), KFVM_D_DECL(0, 0, 0));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(i, j, rad - nH - 1));
+      const Mat3 dMD =
+          geom.invMetricDerivs(KFVM_D_DECL(i, j, rad - nH - 1), KFVM_D_DECL(0, 0, 0));
+
+      // Extract variables from source cell, remove J factor
+      Real vars[NUM_VARS];
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        vars[nV] = v(i, j, rad + nH, nV) / sJ;
+      }
+
+      // Convert vector valued quantities to computational space
+      Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+      // Reflect needed components
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        vars[nV] *= pf(nV);
+      }
+
+      // Convert back to physical quantities
+      Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+      // Apply destination jacobian and store
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(i, j, rad - nH - 1, nV) = dJ * vars[nV];
+      }
+    }
+  }
+};
+
+template <class DataViewType, class RefCoeff>
+struct CellBcTop_K<DataViewType, BCType::reflecting, RefCoeff> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  RefCoeff pf;
+  idx_t rad, nZ;
+
+  CellBcTop_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+              const RefCoeff &pf_, idx_t rad_, idx_t nZ_)
+      : v(v_), geom(geom_), pf(pf_), rad(rad_), nZ(nZ_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const idx_t i, const idx_t j) const {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get Jacobians at source and target points
+      const Real sJ = geom.jacobian(KFVM_D_DECL(i, j, nZ + rad - nH - 1));
+      const Mat3 sMD =
+          geom.metricDerivs(KFVM_D_DECL(i, j, nZ + rad - nH - 1), KFVM_D_DECL(0, 0, 0));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(i, j, nZ + rad + nH));
+      const Mat3 dMD =
+          geom.invMetricDerivs(KFVM_D_DECL(i, j, nZ + rad + nH), KFVM_D_DECL(0, 0, 0));
+
+      // Extract variables from source cell, remove J factor
+      Real vars[NUM_VARS];
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        vars[nV] = v(i, j, nZ + rad - nH - 1, nV) / sJ;
+      }
+
+      // Convert vector valued quantities to computational space
+      Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+      // Reflect needed components
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        vars[nV] *= pf(nV);
+      }
+
+      // Convert back to physical quantities
+      Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+      // Apply destination jacobian and store
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        v(i, j, nZ + rad + nH, nV) = dJ * vars[nV];
+      }
+    }
+  }
+};
+
+// Face reflecting conditions
+template <class DataViewType, class RefCoeff>
+struct FaceBcWest_K<DataViewType, BCType::reflecting, RefCoeff> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  QuadRuleView ab;
+  RefCoeff pf;
+
+  FaceBcWest_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+               const QuadRuleView &ab_, const RefCoeff &pf_)
+      : v(v_), geom(geom_), ab(ab_), pf(pf_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
+    // Loop over quadrature points
+    const idx_t nQuadZ = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+      for (idx_t nR = 0; nR < nQuadZ; nR++) {
+        // Get Jacobians at source and target points
+        const Mat3 sMD =
+            geom.metricDerivs(KFVM_D_DECL(0, j, k), KFVM_D_DECL(-0.5, ab(nQ), ab(nR)));
+        const Mat3 dMD =
+            geom.invMetricDerivs(KFVM_D_DECL(0, j, k), KFVM_D_DECL(-0.5, ab(nQ), ab(nR)));
+
+        // Extract variables from source cell, remove J factor
+        Real vars[NUM_VARS];
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] = v(KFVM_DM_DECL(j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+
+        // Convert vector valued quantities to computational space
+        Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+        // Reflect needed components
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] *= pf(nV);
+        }
+
+        // Convert back to physical quantities
+        Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+        // Store reflected variables
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          v(KFVM_DM_DECL(j, k), 0, nR * NUM_QUAD_PTS + nQ, nV) = vars[nV];
+        }
+      }
+    }
+  }
+};
+
+template <class DataViewType, class RefCoeff>
+struct FaceBcEast_K<DataViewType, BCType::reflecting, RefCoeff> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  QuadRuleView ab;
+  RefCoeff pf;
+  idx_t nX;
+
+  FaceBcEast_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+               const QuadRuleView &ab_, const RefCoeff &pf_, const idx_t nX_)
+      : v(v_), geom(geom_), ab(ab_), pf(pf_), nX(nX_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
+    // Loop over quadrature points
+    const idx_t nQuadZ = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+      for (idx_t nR = 0; nR < nQuadZ; nR++) {
+        // Get Jacobians at source and target points
+        const Mat3 sMD =
+            geom.metricDerivs(KFVM_D_DECL(nX, j, k), KFVM_D_DECL(0.5, ab(nQ), ab(nR)));
+        const Mat3 dMD =
+            geom.invMetricDerivs(KFVM_D_DECL(nX, j, k), KFVM_D_DECL(0.5, ab(nQ), ab(nR)));
+
+        // Extract variables from source cell, remove J factor
+        Real vars[NUM_VARS];
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] = v(KFVM_DM_DECL(j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+
+        // Convert vector valued quantities to computational space
+        Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+        // Reflect needed components
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] *= pf(nV);
+        }
+
+        // Convert back to physical quantities
+        Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+        // Store reflected variables
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          v(KFVM_DM_DECL(j, k), 1, nR * NUM_QUAD_PTS + nQ, nV) = vars[nV];
+        }
+      }
+    }
+  }
+};
+
+template <class DataViewType, class RefCoeff>
+struct FaceBcSouth_K<DataViewType, BCType::reflecting, RefCoeff> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  QuadRuleView ab;
+  RefCoeff pf;
+
+  FaceBcSouth_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+                const QuadRuleView &ab_, const RefCoeff &pf_)
+      : v(v_), geom(geom_), ab(ab_), pf(pf_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+    // Loop over quadrature points
+    const idx_t nQuadZ = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+      for (idx_t nR = 0; nR < nQuadZ; nR++) {
+        // Get Jacobians at source and target points
+        const Mat3 sMD =
+            geom.metricDerivs(KFVM_D_DECL(i, 0, k), KFVM_D_DECL(ab(nQ), -0.5, ab(nR)));
+        const Mat3 dMD =
+            geom.invMetricDerivs(KFVM_D_DECL(i, 0, k), KFVM_D_DECL(ab(nQ), -0.5, ab(nR)));
+
+        // Extract variables from source cell, remove J factor
+        Real vars[NUM_VARS];
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] = v(KFVM_DM_DECL(i, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+
+        // Convert vector valued quantities to computational space
+        Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+        // Reflect needed components
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] *= pf(nV);
+        }
+
+        // Convert back to physical quantities
+        Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+        // Store reflected variables
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          v(KFVM_DM_DECL(i, k), 0, nR * NUM_QUAD_PTS + nQ, nV) = vars[nV];
+        }
+      }
+    }
+  }
+};
+
+template <class DataViewType, class RefCoeff>
+struct FaceBcNorth_K<DataViewType, BCType::reflecting, RefCoeff> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  QuadRuleView ab;
+  RefCoeff pf;
+  idx_t nY;
+
+  FaceBcNorth_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+                const QuadRuleView &ab_, const RefCoeff &pf_, const idx_t nY_)
+      : v(v_), geom(geom_), ab(ab_), pf(pf_), nY(nY_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+    // Loop over quadrature points
+    const idx_t nQuadZ = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+      for (idx_t nR = 0; nR < nQuadZ; nR++) {
+        // Get Jacobians at source and target points
+        const Mat3 sMD =
+            geom.metricDerivs(KFVM_D_DECL(i, nY, k), KFVM_D_DECL(ab(nQ), 0.5, ab(nR)));
+        const Mat3 dMD =
+            geom.invMetricDerivs(KFVM_D_DECL(i, nY, k), KFVM_D_DECL(ab(nQ), 0.5, ab(nR)));
+
+        // Extract variables from source cell, remove J factor
+        Real vars[NUM_VARS];
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] = v(KFVM_DM_DECL(i, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+
+        // Convert vector valued quantities to computational space
+        Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+        // Reflect needed components
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] *= pf(nV);
+        }
+
+        // Convert back to physical quantities
+        Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+        // Store reflected variables
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          v(KFVM_DM_DECL(i, k), 1, nR * NUM_QUAD_PTS + nQ, nV) = vars[nV];
+        }
+      }
+    }
+  }
+};
+
+template <class DataViewType, class RefCoeff>
+struct FaceBcBottom_K<DataViewType, BCType::reflecting, RefCoeff> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  QuadRuleView ab;
+  RefCoeff pf;
+
+  FaceBcBottom_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+                 const QuadRuleView &ab_, const RefCoeff &pf_)
+      : v(v_), geom(geom_), ab(ab_), pf(pf_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const idx_t i, const idx_t j) const {
+    // Loop over quadrature points
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+      for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
+        // Get Jacobians at source and target points
+        const Mat3 sMD =
+            geom.metricDerivs(KFVM_D_DECL(i, j, 0), KFVM_D_DECL(ab(nQ), ab(nR), -0.5));
+        const Mat3 dMD =
+            geom.invMetricDerivs(KFVM_D_DECL(i, j, 0), KFVM_D_DECL(ab(nQ), ab(nR), -0.5));
+
+        // Extract variables from source cell, remove J factor
+        Real vars[NUM_VARS];
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] = v(i, j, 1, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+
+        // Convert vector valued quantities to computational space
+        Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+        // Reflect needed components
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] *= pf(nV);
+        }
+
+        // Convert back to physical quantities
+        Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+        // Store reflected variables
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          v(i, j, 0, nR * NUM_QUAD_PTS + nQ, nV) = vars[nV];
+        }
+      }
+    }
+  }
+};
+
+template <class DataViewType, class RefCoeff>
+struct FaceBcTop_K<DataViewType, BCType::reflecting, RefCoeff> {
+  DataViewType v;
+  Geometry<geomType> geom;
+  QuadRuleView ab;
+  RefCoeff pf;
+  idx_t nZ;
+
+  FaceBcTop_K(const DataViewType &v_, const Geometry<geomType> &geom_,
+              const QuadRuleView &ab_, const RefCoeff &pf_, const idx_t nZ_)
+      : v(v_), geom(geom_), ab(ab_), pf(pf_), nZ(nZ_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const idx_t i, const idx_t j) const {
+    // Loop over quadrature points
+    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+      for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
+        // Get Jacobians at source and target points
+        const Mat3 sMD =
+            geom.metricDerivs(KFVM_D_DECL(i, j, nZ), KFVM_D_DECL(ab(nQ), ab(nR), 0.5));
+        const Mat3 dMD =
+            geom.invMetricDerivs(KFVM_D_DECL(i, j, nZ), KFVM_D_DECL(ab(nQ), ab(nR), 0.5));
+
+        // Extract variables from source cell, remove J factor
+        Real vars[NUM_VARS];
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] = v(i, j, 0, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+
+        // Convert vector valued quantities to computational space
+        Physics::CompSpaceVars<eqType>::convert(sMD, vars);
+
+        // Reflect needed components
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          vars[nV] *= pf(nV);
+        }
+
+        // Convert back to physical quantities
+        Physics::CompSpaceVars<eqType>::convert(dMD, vars);
+
+        // Store reflected variables
+        for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+          v(i, j, 1, nR * NUM_QUAD_PTS + nQ, nV) = vars[nV];
+        }
+      }
+    }
+  }
+};
+
+// User conditions
 template <class DataViewType>
 struct CellBcWest_K<DataViewType, BCType::user> {
   DataViewType v;
@@ -125,443 +941,6 @@ struct CellBcWest_K<DataViewType, BCType::user> {
       // Copy idx_to view
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(KFVM_D_DECL(rad - nH - 1, j, k), nV) = state[nV];
-      }
-    }
-  }
-};
-
-// ---------------- Eastern Cell BC definitions. ---------------------------------
-template <class DataViewType>
-struct CellBcEast_K<DataViewType, BCType::outflow> {
-  DataViewType v;
-  idx_t rad, nX;
-
-  CellBcEast_K(const DataViewType &v_, idx_t rad_, idx_t nX_)
-      : v(v_), rad(rad_), nX(nX_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(nX + rad + nH, j, k), nV) =
-            v(KFVM_D_DECL(nX + rad - nH - 1, j, k), nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType, class RefCoeff>
-struct CellBcEast_K<DataViewType, BCType::reflecting, RefCoeff> {
-  DataViewType v;
-  RefCoeff pf;
-  idx_t rad, nX;
-
-  CellBcEast_K(const DataViewType &v_, const RefCoeff &pf_, idx_t rad_, idx_t nX_)
-      : v(v_), pf(pf_), rad(rad_), nX(nX_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(nX + rad + nH, j, k), nV) =
-            pf(nV) * v(KFVM_D_DECL(nX + rad - nH - 1, j, k), nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType>
-struct CellBcEast_K<DataViewType, BCType::user> {
-  DataViewType v;
-  Geometry<geomType> geom;
-  idx_t rad, nX;
-  Real t;
-  EosParameters eosParams;
-  UserParameters userParams;
-
-  CellBcEast_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
-               idx_t nX_, Real t_, EosParameters &eosParams_, UserParameters &userParams_)
-      : v(v_), geom(geom_), rad(rad_), nX(nX_), t(t_), eosParams(eosParams_),
-        userParams(userParams_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
-#if (SPACE_DIM == 2)
-    const idx_t k = 0;
-#endif
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Get cell center in halo
-      Vec3 xyz = geom.physCoord(KFVM_D_DECL(nX + nH, j - rad, k - rad));
-
-      // query user defined BCs
-      Real state[NUM_VARS];
-      CellEast(v, rad, nX, j, k, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
-               state);
-
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(nX + rad + nH, j, k), nV) = state[nV];
-      }
-    }
-  }
-};
-
-// ---------------- Southern Cell BC definitions. ---------------------------------
-template <class DataViewType>
-struct CellBcSouth_K<DataViewType, BCType::outflow> {
-  DataViewType v;
-  idx_t rad, nY;
-
-  CellBcSouth_K(const DataViewType &v_, idx_t rad_, idx_t nY_)
-      : v(v_), rad(rad_), nY(nY_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(i, rad - nH - 1, k), nV) = v(KFVM_D_DECL(i, rad + nH, k), nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType, class RefCoeff>
-struct CellBcSouth_K<DataViewType, BCType::reflecting, RefCoeff> {
-  DataViewType v;
-  RefCoeff pf;
-  idx_t rad, nY;
-
-  CellBcSouth_K(const DataViewType &v_, const RefCoeff &pf_, idx_t rad_, idx_t nY_)
-      : v(v_), pf(pf_), rad(rad_), nY(nY_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(i, rad - nH - 1, k), nV) =
-            pf(nV) * v(KFVM_D_DECL(i, rad + nH, k), nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType>
-struct CellBcSouth_K<DataViewType, BCType::user> {
-  DataViewType v;
-  Geometry<geomType> geom;
-  idx_t rad, nY;
-  Real t;
-  EosParameters eosParams;
-  UserParameters userParams;
-
-  CellBcSouth_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
-                idx_t nY_, Real t_, EosParameters &eosParams_,
-                UserParameters &userParams_)
-      : v(v_), geom(geom_), rad(rad_), nY(nY_), t(t_), eosParams(eosParams_),
-        userParams(userParams_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
-#if (SPACE_DIM == 2)
-    const idx_t k = 0;
-#endif
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Get cell center in halo
-      Vec3 xyz = geom.physCoord(KFVM_D_DECL(i - rad, -nH - 1, k - rad));
-
-      // query user defined BCs
-      Real state[NUM_VARS];
-      CellSouth(v, rad, nY, i, k, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
-                state);
-
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(i, rad - nH - 1, k), nV) = state[nV];
-      }
-    }
-  }
-};
-
-// ---------------- Northern Cell BC definitions. ---------------------------------
-template <class DataViewType>
-struct CellBcNorth_K<DataViewType, BCType::outflow> {
-  DataViewType v;
-  idx_t rad, nY;
-
-  CellBcNorth_K(const DataViewType &v_, idx_t rad_, idx_t nY_)
-      : v(v_), rad(rad_), nY(nY_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(i, nY + rad + nH, k), nV) =
-            v(KFVM_D_DECL(i, nY + rad - nH - 1, k), nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType, class RefCoeff>
-struct CellBcNorth_K<DataViewType, BCType::reflecting, RefCoeff> {
-  DataViewType v;
-  RefCoeff pf;
-  idx_t rad, nY;
-
-  CellBcNorth_K(const DataViewType &v_, const RefCoeff &pf_, idx_t rad_, idx_t nY_)
-      : v(v_), pf(pf_), rad(rad_), nY(nY_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(i, nY + rad + nH, k), nV) =
-            pf(nV) * v(KFVM_D_DECL(i, nY + rad - nH - 1, k), nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType>
-struct CellBcNorth_K<DataViewType, BCType::user> {
-  DataViewType v;
-  Geometry<geomType> geom;
-  idx_t rad, nY;
-  Real t;
-  EosParameters eosParams;
-  UserParameters userParams;
-
-  CellBcNorth_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
-                idx_t nY_, Real t_, EosParameters &eosParams_,
-                UserParameters &userParams_)
-      : v(v_), geom(geom_), rad(rad_), nY(nY_), t(t_), eosParams(eosParams_),
-        userParams(userParams_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
-#if (SPACE_DIM == 2)
-    const idx_t k = 0;
-#endif
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Get cell center in halo
-      Vec3 xyz = geom.physCoord(KFVM_D_DECL(i - rad, nY + nH, k - rad));
-
-      // query user defined BCs
-      Real state[NUM_VARS];
-      CellNorth(v, rad, nY, i, k, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
-                state);
-
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(i, nY + rad + nH, k), nV) = state[nV];
-      }
-    }
-  }
-};
-
-// ---------------- Bottom Cell BC definitions. ---------------------------------
-template <class DataViewType>
-struct CellBcBottom_K<DataViewType, BCType::outflow> {
-  DataViewType v;
-  idx_t rad, nZ;
-
-  CellBcBottom_K(const DataViewType &v_, idx_t rad_, idx_t nZ_)
-      : v(v_), rad(rad_), nZ(nZ_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const idx_t i, const idx_t j) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, rad - nH - 1, nV) = v(i, j, rad + nH, nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType, class RefCoeff>
-struct CellBcBottom_K<DataViewType, BCType::reflecting, RefCoeff> {
-  DataViewType v;
-  RefCoeff pf;
-  idx_t rad, nZ;
-
-  CellBcBottom_K(const DataViewType &v_, const RefCoeff &pf_, idx_t rad_, idx_t nZ_)
-      : v(v_), pf(pf_), rad(rad_), nZ(nZ_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const idx_t i, const idx_t j) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, rad - nH - 1, nV) = pf(nV) * v(i, j, rad + nH, nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType>
-struct CellBcBottom_K<DataViewType, BCType::user> {
-  DataViewType v;
-  Geometry<geomType> geom;
-  idx_t rad, nZ;
-  Real t;
-  EosParameters eosParams;
-  UserParameters userParams;
-
-  CellBcBottom_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
-                 idx_t nZ_, Real t_, EosParameters &eosParams_,
-                 UserParameters &userParams_)
-      : v(v_), geom(geom_), rad(rad_), nZ(nZ_), t(t_), eosParams(eosParams_),
-        userParams(userParams_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const idx_t i, const idx_t j) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Get cell center in halo
-      Vec3 xyz = geom.physCoord(i - rad, j - rad, -nH - 1);
-
-      // query user defined BCs
-      Real state[NUM_VARS];
-      CellBottom(v, rad, nZ, i, j, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
-                 state);
-
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, rad - nH - 1, nV) = state[nV];
-      }
-    }
-  }
-};
-
-// ---------------- Top Cell BC definitions. ---------------------------------
-template <class DataViewType>
-struct CellBcTop_K<DataViewType, BCType::outflow> {
-  DataViewType v;
-  idx_t rad, nZ;
-
-  CellBcTop_K(const DataViewType &v_, idx_t rad_, idx_t nZ_)
-      : v(v_), rad(rad_), nZ(nZ_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const idx_t i, const idx_t j) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, nZ + rad + nH, nV) = v(i, j, nZ + rad - nH - 1, nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType, class RefCoeff>
-struct CellBcTop_K<DataViewType, BCType::reflecting, RefCoeff> {
-  DataViewType v;
-  RefCoeff pf;
-  idx_t rad, nZ;
-
-  CellBcTop_K(const DataViewType &v_, const RefCoeff &pf_, idx_t rad_, idx_t nZ_)
-      : v(v_), pf(pf_), rad(rad_), nZ(nZ_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const idx_t i, const idx_t j) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, nZ + rad + nH, nV) = pf(nV) * v(i, j, nZ + rad - nH - 1, nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType>
-struct CellBcTop_K<DataViewType, BCType::user> {
-  DataViewType v;
-  Geometry<geomType> geom;
-  idx_t rad, nZ;
-  Real t;
-  EosParameters eosParams;
-  UserParameters userParams;
-
-  CellBcTop_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
-              idx_t nZ_, Real t_, EosParameters &eosParams_, UserParameters &userParams_)
-      : v(v_), geom(geom_), rad(rad_), nZ(nZ_), t(t_), eosParams(eosParams_),
-        userParams(userParams_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const idx_t i, const idx_t j) const {
-    // Loop over halo
-    for (idx_t nH = 0; nH < rad; nH++) {
-      // Get cell center in halo
-      Vec3 xyz = geom.physCoord(i - rad, j - rad, nZ + nH);
-
-      // query user defined BCs
-      Real state[NUM_VARS];
-      CellTop(v, rad, nZ, i, j, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
-              state);
-
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, nZ + rad + nH, nV) = state[nV];
-      }
-    }
-  }
-};
-
-// ---------------- West Face BC definitions. ---------------------------------
-template <class DataViewType>
-struct FaceBcWest_K<DataViewType, BCType::outflow> {
-  DataViewType v;
-
-  FaceBcWest_K(const DataViewType &v_) : v(v_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
-    // Loop over quadrature points
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_DM_DECL(j, k), 0, nQ, nV) = v(KFVM_DM_DECL(j, k), 1, nQ, nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType, class RefCoeff>
-struct FaceBcWest_K<DataViewType, BCType::reflecting, RefCoeff> {
-  DataViewType v;
-  RefCoeff pf;
-
-  FaceBcWest_K(const DataViewType &v_, const RefCoeff &pf_) : v(v_), pf(pf_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
-    // Loop over quadrature points
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_DM_DECL(j, k), 0, nQ, nV) = pf(nV) * v(KFVM_DM_DECL(j, k), 1, nQ, nV);
       }
     }
   }
@@ -622,41 +1001,38 @@ struct FaceBcWest_K<DataViewType, BCType::user> {
   }
 };
 
-// ---------------- East Face BC definitions. ---------------------------------
 template <class DataViewType>
-struct FaceBcEast_K<DataViewType, BCType::outflow> {
+struct CellBcEast_K<DataViewType, BCType::user> {
   DataViewType v;
+  Geometry<geomType> geom;
+  idx_t rad, nX;
+  Real t;
+  EosParameters eosParams;
+  UserParameters userParams;
 
-  FaceBcEast_K(const DataViewType &v_) : v(v_) {}
+  CellBcEast_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+               idx_t nX_, Real t_, EosParameters &eosParams_, UserParameters &userParams_)
+      : v(v_), geom(geom_), rad(rad_), nX(nX_), t(t_), eosParams(eosParams_),
+        userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
-    // Loop over quadrature points
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
+#if (SPACE_DIM == 2)
+    const idx_t k = 0;
+#endif
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get cell center in halo
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(nX + nH, j - rad, k - rad));
+
+      // query user defined BCs
+      Real state[NUM_VARS];
+      CellEast(v, rad, nX, j, k, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
+               state);
+
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_DM_DECL(j, k), 1, nQ, nV) = v(KFVM_DM_DECL(j, k), 0, nQ, nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType, class RefCoeff>
-struct FaceBcEast_K<DataViewType, BCType::reflecting, RefCoeff> {
-  DataViewType v;
-  RefCoeff pf;
-
-  FaceBcEast_K(const DataViewType &v_, const RefCoeff &pf_) : v(v_), pf(pf_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
-    // Loop over quadrature points
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_DM_DECL(j, k), 1, nQ, nV) = pf(nV) * v(KFVM_DM_DECL(j, k), 0, nQ, nV);
+        v(KFVM_D_DECL(nX + rad + nH, j, k), nV) = state[nV];
       }
     }
   }
@@ -718,41 +1094,39 @@ struct FaceBcEast_K<DataViewType, BCType::user> {
   }
 };
 
-// ---------------- South Face BC definitions. ---------------------------------
 template <class DataViewType>
-struct FaceBcSouth_K<DataViewType, BCType::outflow> {
+struct CellBcSouth_K<DataViewType, BCType::user> {
   DataViewType v;
+  Geometry<geomType> geom;
+  idx_t rad, nY;
+  Real t;
+  EosParameters eosParams;
+  UserParameters userParams;
 
-  FaceBcSouth_K(const DataViewType &v_) : v(v_) {}
+  CellBcSouth_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+                idx_t nY_, Real t_, EosParameters &eosParams_,
+                UserParameters &userParams_)
+      : v(v_), geom(geom_), rad(rad_), nY(nY_), t(t_), eosParams(eosParams_),
+        userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
-    // Loop over quadrature points
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
+#if (SPACE_DIM == 2)
+    const idx_t k = 0;
+#endif
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get cell center in halo
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(i - rad, -nH - 1, k - rad));
+
+      // query user defined BCs
+      Real state[NUM_VARS];
+      CellSouth(v, rad, nY, i, k, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
+                state);
+
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_DM_DECL(i, k), 0, nQ, nV) = v(KFVM_DM_DECL(i, k), 1, nQ, nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType, class RefCoeff>
-struct FaceBcSouth_K<DataViewType, BCType::reflecting, RefCoeff> {
-  DataViewType v;
-  RefCoeff pf;
-
-  FaceBcSouth_K(const DataViewType &v_, const RefCoeff &pf_) : v(v_), pf(pf_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
-    // Loop over quadrature points
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_DM_DECL(i, k), 0, nQ, nV) = pf(nV) * v(KFVM_DM_DECL(i, k), 1, nQ, nV);
+        v(KFVM_D_DECL(i, rad - nH - 1, k), nV) = state[nV];
       }
     }
   }
@@ -813,41 +1187,39 @@ struct FaceBcSouth_K<DataViewType, BCType::user> {
   }
 };
 
-// ---------------- North Face BC definitions. ---------------------------------
 template <class DataViewType>
-struct FaceBcNorth_K<DataViewType, BCType::outflow> {
+struct CellBcNorth_K<DataViewType, BCType::user> {
   DataViewType v;
+  Geometry<geomType> geom;
+  idx_t rad, nY;
+  Real t;
+  EosParameters eosParams;
+  UserParameters userParams;
 
-  FaceBcNorth_K(const DataViewType &v_) : v(v_) {}
+  CellBcNorth_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+                idx_t nY_, Real t_, EosParameters &eosParams_,
+                UserParameters &userParams_)
+      : v(v_), geom(geom_), rad(rad_), nY(nY_), t(t_), eosParams(eosParams_),
+        userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
-    // Loop over quadrature points
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
+#if (SPACE_DIM == 2)
+    const idx_t k = 0;
+#endif
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get cell center in halo
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(i - rad, nY + nH, k - rad));
+
+      // query user defined BCs
+      Real state[NUM_VARS];
+      CellNorth(v, rad, nY, i, k, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
+                state);
+
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_DM_DECL(i, k), 1, nQ, nV) = v(KFVM_DM_DECL(i, k), 0, nQ, nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType, class RefCoeff>
-struct FaceBcNorth_K<DataViewType, BCType::reflecting, RefCoeff> {
-  DataViewType v;
-  RefCoeff pf;
-
-  FaceBcNorth_K(const DataViewType &v_, const RefCoeff &pf_) : v(v_), pf(pf_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
-    // Loop over quadrature points
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_DM_DECL(i, k), 1, nQ, nV) = pf(nV) * v(KFVM_DM_DECL(i, k), 0, nQ, nV);
+        v(KFVM_D_DECL(i, nY + rad + nH, k), nV) = state[nV];
       }
     }
   }
@@ -909,39 +1281,36 @@ struct FaceBcNorth_K<DataViewType, BCType::user> {
   }
 };
 
-// ---------------- Bottom Face BC definitions. ---------------------------------
 template <class DataViewType>
-struct FaceBcBottom_K<DataViewType, BCType::outflow> {
+struct CellBcBottom_K<DataViewType, BCType::user> {
   DataViewType v;
+  Geometry<geomType> geom;
+  idx_t rad, nZ;
+  Real t;
+  EosParameters eosParams;
+  UserParameters userParams;
 
-  FaceBcBottom_K(const DataViewType &v_) : v(v_) {}
+  CellBcBottom_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+                 idx_t nZ_, Real t_, EosParameters &eosParams_,
+                 UserParameters &userParams_)
+      : v(v_), geom(geom_), rad(rad_), nZ(nZ_), t(t_), eosParams(eosParams_),
+        userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j) const {
-    // Loop over quadrature points
-    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get cell center in halo
+      Vec3 xyz = geom.physCoord(i - rad, j - rad, -nH - 1);
+
+      // query user defined BCs
+      Real state[NUM_VARS];
+      CellBottom(v, rad, nZ, i, j, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
+                 state);
+
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, 0, nQ, nV) = v(i, j, 1, nQ, nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType, class RefCoeff>
-struct FaceBcBottom_K<DataViewType, BCType::reflecting, RefCoeff> {
-  DataViewType v;
-  RefCoeff pf;
-
-  FaceBcBottom_K(const DataViewType &v_, const RefCoeff &pf_) : v(v_), pf(pf_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const idx_t i, const idx_t j) const {
-    // Loop over quadrature points
-    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, 0, nQ, nV) = pf(nV) * v(i, j, 1, nQ, nV);
+        v(i, j, rad - nH - 1, nV) = state[nV];
       }
     }
   }
@@ -984,39 +1353,35 @@ struct FaceBcBottom_K<DataViewType, BCType::user> {
   }
 };
 
-// ---------------- Top Face BC definitions. ---------------------------------
 template <class DataViewType>
-struct FaceBcTop_K<DataViewType, BCType::outflow> {
+struct CellBcTop_K<DataViewType, BCType::user> {
   DataViewType v;
+  Geometry<geomType> geom;
+  idx_t rad, nZ;
+  Real t;
+  EosParameters eosParams;
+  UserParameters userParams;
 
-  FaceBcTop_K(const DataViewType &v_) : v(v_) {}
+  CellBcTop_K(const DataViewType &v_, const Geometry<geomType> &geom_, idx_t rad_,
+              idx_t nZ_, Real t_, EosParameters &eosParams_, UserParameters &userParams_)
+      : v(v_), geom(geom_), rad(rad_), nZ(nZ_), t(t_), eosParams(eosParams_),
+        userParams(userParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j) const {
-    // Loop over quadrature points
-    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
+    // Loop over halo
+    for (idx_t nH = 0; nH < rad; nH++) {
+      // Get cell center in halo
+      Vec3 xyz = geom.physCoord(i - rad, j - rad, nZ + nH);
+
+      // query user defined BCs
+      Real state[NUM_VARS];
+      CellTop(v, rad, nZ, i, j, nH, xyz.v1, xyz.v2, xyz.v3, t, eosParams, userParams,
+              state);
+
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, 1, nQ, nV) = v(i, j, 0, nQ, nV);
-      }
-    }
-  }
-};
-
-template <class DataViewType, class RefCoeff>
-struct FaceBcTop_K<DataViewType, BCType::reflecting, RefCoeff> {
-  DataViewType v;
-  RefCoeff pf;
-
-  FaceBcTop_K(const DataViewType &v_, const RefCoeff &pf_) : v(v_), pf(pf_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const idx_t i, const idx_t j) const {
-    // Loop over quadrature points
-    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
-      // Loop over SimVars
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, 1, nQ, nV) = pf(nV) * v(i, j, 0, nQ, nV);
+        v(i, j, nZ + rad + nH, nV) = state[nV];
       }
     }
   }

@@ -134,6 +134,7 @@ struct KernelWenoRecon_K {
   FaceWtView faceWeight;
   CellWtView cellWeight;
   DerivWtView derivWeight;
+  Geometry<geomType> geom;
   EosParameters eosParams;
   const int nCellsFull, nCellsCtr, nCellsBias;
   const int nSub, nBias, nIndic, nqFace_d;
@@ -149,17 +150,17 @@ struct KernelWenoRecon_K {
                                 const OffsetView &ttOff_),
                     const SubIdxView &subIdx_, const FaceWtView &face_,
                     const CellWtView &cell_, const DerivWtView &deriv_,
-                    const EosParameters &eosParams_)
+                    const Geometry<geomType> &geom_, const EosParameters &eosParams_)
       : U(U_), KFVM_D_DECL(nX(nX_), nY(nY_), nZ(nZ_)),
         KFVM_D_DECL(tX(tX_), tY(tY_), tZ(tZ_)),
         KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), source(source_),
         haveSource(haveSource_), Work(Work_), wenoMap(wenoMap_),
         KFVM_D_DECL(lOff(lOff_), tOff(tOff_), ttOff(ttOff_)), subIdx(subIdx_),
-        faceWeight(face_), cellWeight(cell_), derivWeight(deriv_), eosParams(eosParams_),
-        nCellsFull(Stencil::Core::SI.nCellsFull), nCellsCtr(Stencil::Core::SI.nCellsCtr),
-        nCellsBias(Stencil::Core::SI.nCellsBias), nSub(Stencil::Core::SI.nSub),
-        nBias(Stencil::Core::SI.nBias), nIndic(Stencil::Core::SI.nIndic),
-        nqFace_d(Stencil::Core::SI.nqFace_d),
+        faceWeight(face_), cellWeight(cell_), derivWeight(deriv_), geom(geom_),
+        eosParams(eosParams_), nCellsFull(Stencil::Core::SI.nCellsFull),
+        nCellsCtr(Stencil::Core::SI.nCellsCtr), nCellsBias(Stencil::Core::SI.nCellsBias),
+        nSub(Stencil::Core::SI.nSub), nBias(Stencil::Core::SI.nBias),
+        nIndic(Stencil::Core::SI.nIndic), nqFace_d(Stencil::Core::SI.nqFace_d),
 #if (SPACE_DIM == 2)
         gHi(0.7), gLo(0.7), eps(1.e-8)
 #else
@@ -237,7 +238,8 @@ struct KernelWenoRecon_K {
     }
 
     // Variable conversion context
-    Physics::VarConvert<eqType> varConv(refState, eosParams.gamma);
+    const Real J = geom.jacobian(KFVM_D_DECL(i, j, k));
+    Physics::VarConvert<eqType> varConv(refState, eosParams.gamma, J);
 
     // Populate stencil values
     for (int nC = 0; nC < nCellsFull; nC++) {
@@ -368,7 +370,8 @@ struct KernelWenoRecon_K {
     }
 
     // Variable conversion context
-    Physics::VarConvert<eqType> varConv(refState, eosParams.gamma);
+    const Real J = geom.jacobian(KFVM_D_DECL(i, j, k));
+    Physics::VarConvert<eqType> varConv(refState, eosParams.gamma, J);
 
     // Populate stencil values
     for (int nC = 0; nC < nCellsFull; nC++) {

@@ -24,15 +24,17 @@ namespace Physics {
 
 template <>
 class VarConvert<EquationType::Hydro> {
-  const Real gamm;
-  const Real rho, u, v, w, vsq;
+  const Real gamm, J;
+  const Real rho, u, v, w, hvsq;
 
  public:
   KOKKOS_INLINE_FUNCTION
-  VarConvert(const Hydro::ConsVec ref_, Real gam_)
-      : gamm(gam_ - Real(1.0)), rho(ref_[Hydro::SimVar::dens]),
-        u(ref_[Hydro::SimVar::momx] / rho), v(ref_[Hydro::SimVar::momy] / rho),
-        w(ref_[Hydro::SimVar::momz] / rho), vsq(Real(0.5) * (u * u + v * v + w * w)) {}
+  VarConvert(const Hydro::ConsVec ref_, Real gam_, Real J_)
+      : gamm(gam_ - Real(1.0)), J(J_), rho(ref_[Hydro::SimVar::dens] / J),
+        u(ref_[Hydro::SimVar::momx] / ref_[Hydro::SimVar::dens]),
+        v(ref_[Hydro::SimVar::momy] / ref_[Hydro::SimVar::dens]),
+        w(ref_[Hydro::SimVar::momz] / ref_[Hydro::SimVar::dens]),
+        hvsq(Real(0.5) * (u * u + v * v + w * w)) {}
 
   template <class T>
   KOKKOS_INLINE_FUNCTION void cons2LinPrim(T &state) {
@@ -40,12 +42,16 @@ class VarConvert<EquationType::Hydro> {
 
     // Doing etot first allows state to be overwritten safely
     state(SimVar::etot) =
-        gamm * (vsq * state(SimVar::dens) - u * state(SimVar::momx) -
-                v * state(SimVar::momy) - w * state(SimVar::momz) + state(SimVar::etot));
+        gamm *
+        (hvsq * state(SimVar::dens) - u * state(SimVar::momx) - v * state(SimVar::momy) -
+         w * state(SimVar::momz) + state(SimVar::etot)) /
+        J;
 
-    state(SimVar::momx) = (state(SimVar::momx) - u * state(SimVar::dens)) / rho;
-    state(SimVar::momy) = (state(SimVar::momy) - v * state(SimVar::dens)) / rho;
-    state(SimVar::momz) = (state(SimVar::momz) - w * state(SimVar::dens)) / rho;
+    state(SimVar::momx) = (state(SimVar::momx) - u * state(SimVar::dens)) / (J * rho);
+    state(SimVar::momy) = (state(SimVar::momy) - v * state(SimVar::dens)) / (J * rho);
+    state(SimVar::momz) = (state(SimVar::momz) - w * state(SimVar::dens)) / (J * rho);
+
+    state(SimVar::dens) /= J;
   }
 
   template <class T>
@@ -53,13 +59,37 @@ class VarConvert<EquationType::Hydro> {
     using Hydro::SimVar;
 
     // Doing etot first allows state to be overwritten safely
-    state(SimVar::etot) = (vsq * state(SimVar::dens) + rho * u * state(SimVar::momx) +
-                           rho * v * state(SimVar::momy) + rho * w * state(SimVar::momz) +
-                           state(SimVar::etot) / gamm);
+    state(SimVar::etot) =
+        J * (hvsq * state(SimVar::dens) + rho * u * state(SimVar::momx) +
+             rho * v * state(SimVar::momy) + rho * w * state(SimVar::momz) +
+             state(SimVar::etot) / gamm);
 
-    state(SimVar::momx) = (rho * state(SimVar::momx) + u * state(SimVar::dens));
-    state(SimVar::momy) = (rho * state(SimVar::momy) + v * state(SimVar::dens));
-    state(SimVar::momz) = (rho * state(SimVar::momz) + w * state(SimVar::dens));
+    state(SimVar::momx) = J * (rho * state(SimVar::momx) + u * state(SimVar::dens));
+    state(SimVar::momy) = J * (rho * state(SimVar::momy) + v * state(SimVar::dens));
+    state(SimVar::momz) = J * (rho * state(SimVar::momz) + w * state(SimVar::dens));
+
+    state(SimVar::dens) *= J;
+  }
+};
+
+template <>
+struct CompSpaceVars<EquationType::Hydro> {
+
+  // Pass metric or inverse metric derivatives to go each direction
+  KOKKOS_INLINE_FUNCTION static void convert(const Mat3 &mDeriv, Hydro::ConsVec state) {
+    using Hydro::SimVar;
+
+    const Real mXi = mDeriv.g11 * state[SimVar::momx] + mDeriv.g12 * state[SimVar::momy] +
+                     mDeriv.g13 * state[SimVar::momz];
+    const Real mEta = mDeriv.g21 * state[SimVar::momx] +
+                      mDeriv.g22 * state[SimVar::momy] + mDeriv.g23 * state[SimVar::momz];
+    const Real mZeta = mDeriv.g31 * state[SimVar::momx] +
+                       mDeriv.g32 * state[SimVar::momy] +
+                       mDeriv.g33 * state[SimVar::momz];
+
+    state[SimVar::momx] = mXi;
+    state[SimVar::momy] = mEta;
+    state[SimVar::momz] = mZeta;
   }
 };
 
@@ -415,6 +445,9 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
 
     Real rDensDiffP = maxDens - rDens, rDensDiffM = rDens - minDens;
 
+    wenoFlag(KFVM_D_DECL(i, j, k), 1) = 1.0;
+    return;
+
     // Enforce positive density
     // Find mixing amount
     Real theta = Real(1.0);
@@ -500,6 +533,8 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
         }
       }
     }
+
+    return;
 
     // Enforce positive pressure
     // Find mixing amount

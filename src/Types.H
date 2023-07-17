@@ -42,6 +42,11 @@ struct Vec4 {
   Real v1, v2, v3, v4;
 };
 
+// 3x3 matrix, mostly for metric derivatives
+struct Mat3 {
+  Real g11, g12, g13, g21, g22, g23, g31, g32, g33;
+};
+
 // Enumeration of face names associated to [2*SPACE_DIM] entry in FaceDataView
 enum FaceLabel { west = 0, east, south, north, bottom, top };
 

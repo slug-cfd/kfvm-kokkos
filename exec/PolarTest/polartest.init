@@ -1,11 +1,11 @@
 # Set mesh resolution and extent
-mesh:resolution 256 512 16
+mesh:resolution 128 128 16
 mesh:numblocks 1 1 1
-mesh:extent 1.0 6.0 0.0 2.0 0.0 0.125
+mesh:extent 1.0 6.0 0.0 2.0 0.0 0.625
 
 # Set time information
 time:initial 0.0
-time:final 2.0
+time:final 10.0
 time:initialdt 1.e-10
 time:cfl 2.0
 time:maxsteps 5000
@@ -17,11 +17,11 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
-eos:wenothresh 10.0
+eos:wenothresh -1.0
 
 # Output settings
 io:pdiconf ../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename PolarTest
-io:plotfreq 10
-io:ckptfreq 10
+io:plotfreq 20
+io:ckptfreq 40
