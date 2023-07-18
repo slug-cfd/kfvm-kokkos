@@ -966,7 +966,7 @@ struct FaceBcWest_K<DataViewType, BCType::user> {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       // Coordinate in physical space
-      Vec3 xyz = geom.physCoord(0, j, 0, -0.5, ab(nQ), 0.0);
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(0, j, 0), KFVM_D_DECL(-0.5, ab(nQ), 0.0));
 
       // query user defined BCs
       Real state[NUM_VARS];
@@ -985,7 +985,8 @@ struct FaceBcWest_K<DataViewType, BCType::user> {
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
         // Coordinate in physical space
-        Vec3 xyz = geom.physCoord(0, j, k, -0.5, ab(nQ), ab(nR));
+        Vec3 xyz =
+            geom.physCoord(KFVM_D_DECL(0, j, k), KFVM_D_DECL(-0.5, ab(nQ), ab(nR)));
 
         // query user defined BCs
         Real state[NUM_VARS];
@@ -1059,7 +1060,7 @@ struct FaceBcEast_K<DataViewType, BCType::user> {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       // Coordinate in physical space
-      Vec3 xyz = geom.physCoord(nX - 1, j, 0, 0.5, ab(nQ), 0.0);
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(nX - 1, j, 0), KFVM_D_DECL(0.5, ab(nQ), 0.0));
 
       // query user defined BCs
       Real state[NUM_VARS];
@@ -1078,7 +1079,8 @@ struct FaceBcEast_K<DataViewType, BCType::user> {
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
         // Coordinate in physical space
-        Vec3 xyz = geom.physCoord(nX - 1, j, k, 0.5, ab(nQ), ab(nR));
+        Vec3 xyz =
+            geom.physCoord(KFVM_D_DECL(nX - 1, j, k), KFVM_D_DECL(0.5, ab(nQ), ab(nR)));
 
         // query user defined BCs
         Real state[NUM_VARS];
@@ -1152,7 +1154,7 @@ struct FaceBcSouth_K<DataViewType, BCType::user> {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       // Coordinate in physical space
-      Vec3 xyz = geom.physCoord(i, 0, 0, ab(nQ), -0.5, 0.0);
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(i, 0, 0), KFVM_D_DECL(ab(nQ), -0.5, 0.0));
 
       // query user defined BCs
       Real state[NUM_VARS];
@@ -1171,7 +1173,8 @@ struct FaceBcSouth_K<DataViewType, BCType::user> {
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
         // Coordinate in physical space
-        Vec3 xyz = geom.physCoord(i, 0, k, ab(nQ), -0.5, ab(nR));
+        Vec3 xyz =
+            geom.physCoord(KFVM_D_DECL(i, 0, k), KFVM_D_DECL(ab(nQ), -0.5, ab(nR)));
 
         // query user defined BCs
         Real state[NUM_VARS];
@@ -1246,7 +1249,7 @@ struct FaceBcNorth_K<DataViewType, BCType::user> {
     // Loop over quadrature points
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       // Coordinate in physical space
-      Vec3 xyz = geom.physCoord(i, nY - 1, 0, ab(nQ), 0.5, 0.0);
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(i, nY - 1, 0), KFVM_D_DECL(ab(nQ), 0.5, 0.0));
 
       // query user defined BCs
       Real state[NUM_VARS];
@@ -1265,7 +1268,8 @@ struct FaceBcNorth_K<DataViewType, BCType::user> {
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
         // Coordinate in physical space
-        Vec3 xyz = geom.physCoord(i, nY - 1, k, ab(nQ), 0.5, ab(nR));
+        Vec3 xyz =
+            geom.physCoord(KFVM_D_DECL(i, nY - 1, k), KFVM_D_DECL(ab(nQ), 0.5, ab(nR)));
 
         // query user defined BCs
         Real state[NUM_VARS];
@@ -1301,7 +1305,7 @@ struct CellBcBottom_K<DataViewType, BCType::user> {
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get cell center in halo
-      Vec3 xyz = geom.physCoord(i - rad, j - rad, -nH - 1);
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(i - rad, j - rad, -nH - 1));
 
       // query user defined BCs
       Real state[NUM_VARS];
@@ -1337,7 +1341,8 @@ struct FaceBcBottom_K<DataViewType, BCType::user> {
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
         // Coordinate in physical space
-        Vec3 xyz = geom.physCoord(i, j, 0, ab(nQ), ab(nR), -0.5);
+        Vec3 xyz =
+            geom.physCoord(KFVM_D_DECL(i, j, 0), KFVM_D_DECL(ab(nQ), ab(nR), -0.5));
 
         // query user defined BCs
         Real state[NUM_VARS];
@@ -1372,7 +1377,7 @@ struct CellBcTop_K<DataViewType, BCType::user> {
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get cell center in halo
-      Vec3 xyz = geom.physCoord(i - rad, j - rad, nZ + nH);
+      Vec3 xyz = geom.physCoord(KFVM_D_DECL(i - rad, j - rad, nZ + nH));
 
       // query user defined BCs
       Real state[NUM_VARS];
@@ -1409,7 +1414,8 @@ struct FaceBcTop_K<DataViewType, BCType::user> {
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
         // Coordinate in physical space
-        Vec3 xyz = geom.physCoord(i, j, nZ - 1, ab(nQ), ab(nR), 0.5);
+        Vec3 xyz =
+            geom.physCoord(KFVM_D_DECL(i, j, nZ - 1), KFVM_D_DECL(ab(nQ), ab(nR), 0.5));
 
         // query user defined BCs
         Real state[NUM_VARS];

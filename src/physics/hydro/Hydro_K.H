@@ -154,8 +154,9 @@ struct RiemannSolverX_K<EquationType::Hydro, rst> {
 
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < nQuadZ; nR++) {
-        // get metric derivatives
-        const Vec4 metric =
+        // get metric terms
+        const Real J = geom.jacobian(KFVM_D_DECL(i, j, k), KFVM_D_DECL(-0.5, nQ, nR));
+        const Vec3 metric =
             geom.xiMetricDeriv(KFVM_D_DECL(i, j, k), KFVM_D_DECL(-0.5, nQ, nR));
 
         // pull out states and convert to primitive
@@ -165,12 +166,12 @@ struct RiemannSolverX_K<EquationType::Hydro, rst> {
           uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
           uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
         }
-        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, metric.v4, uL, vL);
-        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, metric.v4, uR, vR);
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, J, uL, vL);
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, J, uR, vR);
 
         // Calculate flux
         Real vq =
-            HydroRS<rst>::RiemannSolve_X(eosParams.gamma, metric, uL, uR, vL, vR, F);
+            HydroRS<rst>::RiemannSolve_X(eosParams.gamma, metric, J, uL, uR, vL, vR, F);
         maxVel = vq > maxVel ? vq : maxVel;
 
         // Overwrite states with flux
@@ -203,8 +204,9 @@ struct RiemannSolverY_K<EquationType::Hydro, rst> {
 
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < nQuadZ; nR++) {
-        // get metric derivatives
-        const Vec4 metric =
+        // get metric terms
+        const Real J = geom.jacobian(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, -0.5, nR));
+        const Vec3 metric =
             geom.etaMetricDeriv(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, -0.5, nR));
 
         // pull out states and convert to primitive
@@ -214,12 +216,12 @@ struct RiemannSolverY_K<EquationType::Hydro, rst> {
           uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
           uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
         }
-        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, metric.v4, uL, vL);
-        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, metric.v4, uR, vR);
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, J, uL, vL);
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, J, uR, vR);
 
         // Calculate flux
         Real vq =
-            HydroRS<rst>::RiemannSolve_Y(eosParams.gamma, metric, uL, uR, vL, vR, F);
+            HydroRS<rst>::RiemannSolve_Y(eosParams.gamma, metric, J, uL, uR, vL, vR, F);
         maxVel = vq > maxVel ? vq : maxVel;
 
         // Overwrite states with flux
@@ -250,8 +252,9 @@ struct RiemannSolverZ_K<EquationType::Hydro, rst> {
 
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        // get metric derivatives
-        const Vec4 metric = geom.zetaMetricDeriv(i, j, k, nQ, nR, -0.5);
+        // get metric terms
+        const Real J = geom.jacobian(i, j, k, nQ, nR, -0.5);
+        const Vec3 metric = geom.zetaMetricDeriv(i, j, k, nQ, nR, -0.5);
 
         // pull out states and convert to primitive
         ConsVec uL, uR, F;
@@ -260,12 +263,12 @@ struct RiemannSolverZ_K<EquationType::Hydro, rst> {
           uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
           uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
         }
-        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, metric.v4, uL, vL);
-        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, metric.v4, uR, vR);
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, J, uL, vL);
+        EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, J, uR, vR);
 
         // Calculate flux
         Real vq =
-            HydroRS<rst>::RiemannSolve_Z(eosParams.gamma, metric, uL, uR, vL, vR, F);
+            HydroRS<rst>::RiemannSolve_Z(eosParams.gamma, metric, J, uL, uR, vL, vR, F);
         maxVel = vq > maxVel ? vq : maxVel;
 
         // Overwrite states with flux

@@ -94,7 +94,7 @@ void Solver::setMesh() {
   Kokkos::parallel_for(
       "Solver::setMesh", cmRng,
       KOKKOS_LAMBDA(const idx_t i, const idx_t j, const idx_t k) {
-        Vec3 xyz = g.physCoord(i, j, k);
+        Vec3 xyz = g.physCoord(KFVM_D_DECL(i, j, k));
         m.x(i, j, k) = xyz.v1;
         m.y(i, j, k) = xyz.v2;
         if (SPACE_DIM == 2) {

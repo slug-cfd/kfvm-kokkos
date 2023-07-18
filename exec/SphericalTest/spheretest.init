@@ -1,7 +1,7 @@
 # Set mesh resolution and extent
-mesh:resolution 256 256 16
+mesh:resolution 128 32 128
 mesh:numblocks 1 1 1
-mesh:extent 1.0 6.0 0.0 0.5 0.0 0.625
+mesh:extent 1.0 6.0 0.45 0.55 0.0 2.0
 
 # Set time information
 time:initial 0.0
@@ -22,6 +22,6 @@ eos:wenothresh -1.0
 # Output settings
 io:pdiconf ../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename PolarTest
+io:basename SphericalTest
 io:plotfreq 20
 io:ckptfreq 40

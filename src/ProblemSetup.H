@@ -186,6 +186,11 @@ struct ProblemSetup {
     if (geomType == GeometryType::Polar) {
       yLo_g *= M_PI;
       yUp_g *= M_PI;
+    } else if (geomType == GeometryType::Spherical) {
+      yLo_g *= M_PI;
+      yUp_g *= M_PI;
+      zLo_g *= M_PI;
+      zUp_g *= M_PI;
     }
 
     // setup the MPI layout, add better error handling later

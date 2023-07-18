@@ -54,7 +54,8 @@ struct IntegrateIC_K {
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
         // Get physical space coordinate and Jacobian
-        Vec4 xyzJ = geom.physCoordJac(i, j, 0, ab(nQ), ab(nR), 0.0);
+        Vec4 xyzJ =
+            geom.physCoordJac(KFVM_D_DECL(i, j, 0), KFVM_D_DECL(ab(nQ), ab(nR), 0.0));
 
         // IC at quadrature point
         Real state[NUM_VARS];
@@ -81,7 +82,8 @@ struct IntegrateIC_K {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
         for (idx_t nS = 0; nS < NUM_QUAD_PTS; nS++) {
           // Get physical space coordinate and Jacobian
-          Vec4 xyzJ = geom.physCoordJac(i, j, k, ab(nQ), ab(nR), ab(nS));
+          Vec4 xyzJ = geom.physCoordJac(KFVM_D_DECL(i, j, k),
+                                        KFVM_D_DECL(ab(nQ), ab(nR), ab(nS)));
 
           // IC at quadrature point
           Real state[NUM_VARS];
@@ -139,7 +141,8 @@ struct IntegrateRHS_K {
       // Integrate source terms
       for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
         for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
-          Vec4 xyzJ = geom.physCoordJac(i, j, 0, ab(nQ), ab(nR), 0.0);
+          Vec4 xyzJ =
+              geom.physCoordJac(KFVM_D_DECL(i, j, 0), KFVM_D_DECL(ab(nQ), ab(nR), 0.0));
           for (idx_t nV = 0; nV < NUM_VARS; nV++) {
             rhs(i, j, nV) += xyzJ.v4 * wt(nQ) * wt(nR) * sources(i, j, nQ, nR, nV);
           }
@@ -179,7 +182,8 @@ struct IntegrateRHS_K {
       for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
         for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
           for (idx_t nS = 0; nS < NUM_QUAD_PTS; nS++) {
-            Vec4 xyzJ = geom.physCoordJac(i, j, k, ab(nQ), ab(nR), ab(nS));
+            Vec4 xyzJ = geom.physCoordJac(KFVM_D_DECL(i, j, k),
+                                          KFVM_D_DECL(ab(nQ), ab(nR), ab(nS)));
             for (idx_t nV = 0; nV < NUM_VARS; nV++) {
               rhs(i, j, k, nV) +=
                   xyzJ.v4 * wt(nQ) * wt(nR) * wt(nS) * sources(i, j, k, nQ, nR, nS, nV);
