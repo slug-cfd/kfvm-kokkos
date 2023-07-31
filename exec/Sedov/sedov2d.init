@@ -5,10 +5,10 @@ mesh:extent -0.5 0.5 -0.5 0.5
 
 # Set time information
 time:initial 0.0
-time:final 0.2
+time:final 2.0
 time:initialdt 1.e-10
 time:cfl 1.5
-time:maxsteps 5
+time:maxsteps 3000
 time:atol 1.e-3
 time:rtol 1.e-3
 
@@ -23,8 +23,9 @@ eos:wenothresh 20.0
 io:pdiconf ../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename Sedov
-io:plotfreq 50
+io:plotfreq 10
 io:ckptfreq 20
+io:restartfile data/R2_NX256_NY256/ckpt/Sedov_0000987.h5
 
 # Problem specific settings
 user:r 0.015625

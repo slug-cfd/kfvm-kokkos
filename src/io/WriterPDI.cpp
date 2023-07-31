@@ -289,15 +289,16 @@ void WriterPDI::writeAttrHydro(std::ofstream &ofs, bool plotMode) {
 
 void WriterPDI::writeAttrMHD_GLM(std::ofstream &ofs, bool plotMode) {
   writeAttributeScalar(ofs, "dens");
-  writeAttributeVector(ofs, "mom", "momx", "momy", "momz");
   writeAttributeVector(ofs, "mag", "magx", "magy", "magz");
-  writeAttributeScalar(ofs, "etot");
-  writeAttributeScalar(ofs, "psi");
   if (plotMode) {
     writeAttributeVector(ofs, "vel", "velx", "vely", "velz");
     writeAttributeScalar(ofs, "eint");
     writeAttributeScalar(ofs, "prsg");
     writeAttributeScalar(ofs, "prsb");
+  } else {
+    writeAttributeVector(ofs, "mom", "momx", "momy", "momz");
+    writeAttributeScalar(ofs, "etot");
+    writeAttributeScalar(ofs, "psi");
   }
 }
 

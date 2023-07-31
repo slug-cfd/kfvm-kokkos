@@ -24,4 +24,4 @@ io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename FieldLoop
 io:plotfreq 20
-io:ckptfreq 20
+io:ckptfreq 50

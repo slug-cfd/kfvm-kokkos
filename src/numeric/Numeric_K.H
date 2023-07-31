@@ -11,6 +11,7 @@
 #include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
+#include <limits>
 
 #include "../Geometry.H"
 #include "../ParameterStructs.H"
@@ -290,7 +291,8 @@ struct RKFSAL_ErrEst_K {
       hasNan = hasNan || isnan(u);
       err += pow((u - uhat) / (atol + rtol * fmax(fabs(u), fabs(uhat))), 2);
     }
-    Real pos = hasNan ? -Real(1.0) : Physics::EOS<eqType>::positivity(J, state);
+    Real pos = hasNan ? -std::numeric_limits<Real>::max()
+                      : Physics::EOS<eqType>::positivity(J, state);
     posFlag = posFlag > pos ? pos : posFlag;
   }
 };

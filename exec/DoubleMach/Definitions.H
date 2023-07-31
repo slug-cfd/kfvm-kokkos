@@ -1,6 +1,7 @@
 #ifndef DEFINITIONS_H_
 #define DEFINITIONS_H_
 
+#include "../../src/GeometryTypes.H"
 #include "../../src/numeric/RKTypes.H"
 #include "../../src/physics/EquationTypes.H"
 #include "../../src/physics/RSTypes.H"
@@ -19,6 +20,7 @@
 
 // #define KFVM_EXEC_HOST
 
+constexpr KFVM::GeometryType geomType = KFVM::GeometryType::Cartesian;
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
 constexpr KFVM::RSType rsType = KFVM::RSType::HLLC;
 constexpr KFVM::RKType rkType = KFVM::RKType::SSP4_3_2;

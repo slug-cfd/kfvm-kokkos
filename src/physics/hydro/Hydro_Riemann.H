@@ -5,11 +5,11 @@
 
 #include <Definitions.H>
 
+#include "../../Geometry.H"
 #include "../../Types.H"
 #include "../EquationTypes.H"
 #include "../Riemann.H"
 #include "../SimVar.H"
-#include "Geometry.H"
 #include "Hydro_EOS.H"
 
 namespace KFVM {
@@ -26,7 +26,7 @@ void hydroFlux(Real gamma, const Vec3 &metric, const Real J, const Real vNorm,
   F[SimVar::momx] = U[SimVar::momx] * vNorm + J * metric.v1 * V[PrimVar::pres];
   F[SimVar::momy] = U[SimVar::momy] * vNorm + J * metric.v2 * V[PrimVar::pres];
   F[SimVar::momz] = U[SimVar::momz] * vNorm + J * metric.v3 * V[PrimVar::pres];
-  F[SimVar::etot] = (U[SimVar::etot] + V[PrimVar::pres]) * vNorm;
+  F[SimVar::etot] = (U[SimVar::etot] + J * V[PrimVar::pres]) * vNorm;
 }
 
 // Wavespeed estimates

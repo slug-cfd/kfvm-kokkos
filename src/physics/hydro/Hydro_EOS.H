@@ -51,7 +51,7 @@ struct EOS<EquationType::Hydro> {
     const Real vx = U[SimVar::momx] / U[SimVar::dens];
     const Real vy = U[SimVar::momy] / U[SimVar::dens];
     const Real vz = U[SimVar::momz] / U[SimVar::dens];
-    return Real(0.5) * rho * (vx * vx + vy * vy + vz * vz);
+    return 0.5 * rho * (vx * vx + vy * vy + vz * vz);
   }
 
   KOKKOS_INLINE_FUNCTION
@@ -76,7 +76,7 @@ struct EOS<EquationType::Hydro> {
 
   KOKKOS_INLINE_FUNCTION
   static Real pres(const Real gamma, const Real J, const Hydro::ConsVec U) {
-    return (gamma - Real(1.0)) * eint(J, U);
+    return (gamma - 1.0) * eint(J, U);
   }
 
   KOKKOS_INLINE_FUNCTION

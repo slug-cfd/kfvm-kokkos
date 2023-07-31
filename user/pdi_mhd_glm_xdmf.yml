@@ -11,23 +11,16 @@ cons_datasets: &cons_datasets
   weno: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   fomx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
 
-all_datasets: &all_datasets
+aux_datasets: &aux_datasets
   dens: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]']}
-  momx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
-  momy: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
-  momz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
-  etot: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
-  magx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
-  magy: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
-  magz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
-  psi: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]']}
-  weno: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
-  fomx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   velx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]']}
   vely: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   velz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
-  eint: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   prsg: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  magx: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  magy: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  magz: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
+  eint: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
   prsb: { type: array, subtype: double, size: ['$ncell_g[2]', '$ncell_g[1]', '$ncell_g[0]'] }
 
 fld_dataset_selection: &fld_dataset_selection
@@ -96,30 +89,30 @@ psi_description: &psi_description
     size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     start: [8, '$nghost[2]', '$nghost[1]', '$nghost[0]']
   dataset_selection: *fld_dataset_selection
+
+densA_description: &densA_description
+  dataset: dens
+  memory_selection:
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [0, 0, 0, 0]
+  dataset_selection: *fld_dataset_selection
   
 velx_description: &velx_description
   dataset: velx
   memory_selection:
     size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
-    start: [0, 0, 0, 0]
+    start: [1, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 vely_description: &vely_description
   dataset: vely
   memory_selection:
     size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
-    start: [1, 0, 0, 0]
+    start: [2, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 velz_description: &velz_description
   dataset: velz
-  memory_selection:
-    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
-    start: [2, 0, 0, 0]
-  dataset_selection: *fld_dataset_selection
-
-eint_description: &eint_description
-  dataset: eint
   memory_selection:
     size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     start: [3, 0, 0, 0]
@@ -132,11 +125,39 @@ prsg_description: &prsg_description
     start: [4, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
+magxA_description: &magxA_description
+  dataset: magx
+  memory_selection:
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [5, 0, 0, 0]
+  dataset_selection: *fld_dataset_selection
+
+magyA_description: &magyA_description
+  dataset: magy
+  memory_selection:
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [6, 0, 0, 0]
+  dataset_selection: *fld_dataset_selection
+
+magzA_description: &magzA_description
+  dataset: magz
+  memory_selection:
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [7, 0, 0, 0]
+  dataset_selection: *fld_dataset_selection
+
+eint_description: &eint_description
+  dataset: eint
+  memory_selection:
+    size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    start: [8, 0, 0, 0]
+  dataset_selection: *fld_dataset_selection
+
 prsb_description: &prsb_description
   dataset: prsb
   memory_selection:
     size: [1, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
-    start: [5, 0, 0, 0]
+    start: [9, 0, 0, 0]
   dataset_selection: *fld_dataset_selection
 
 weno_description: &weno_description
@@ -172,6 +193,9 @@ pdi:
   data:
     filename_size: int
     filename: { type: array, subtype: char, size: $filename_size }
+    meshx: { type: array, subtype: double, size: ['$ncell_g[2] + 1', '$ncell_g[1] + 1', '$ncell_g[0] + 1'] }
+    meshy: { type: array, subtype: double, size: ['$ncell_g[2] + 1', '$ncell_g[1] + 1', '$ncell_g[0] + 1'] }
+    meshz: { type: array, subtype: double, size: ['$ncell_g[2] + 1', '$ncell_g[1] + 1', '$ncell_g[0] + 1'] }
     cons_field:
       type: array
       subtype: double
@@ -179,7 +203,7 @@ pdi:
     aux_field:
       type: array
       subtype: double
-      size: [6, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+      size: [10, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
     weno_field:
       type: array
       subtype: double
@@ -192,37 +216,28 @@ pdi:
     decl_hdf5:
       
     - file: ${filename}
-      datasets: *all_datasets
+      datasets: *aux_datasets
       on_event: write_plot_data
       collision_policy: replace
       communicator: '$comm'
       write:
         time:
         time_step:
-        xcoord:
-        ycoord:
-        zcoord:
+        meshx:
+        meshy:
+        meshz:
         gamma:
-        cons_field:
-          - *dens_description
-          - *momx_description
-          - *momy_description
-          - *momz_description
-          - *etot_description
-          - *magx_description
-          - *magy_description
-          - *magz_description
-          - *psi_description
         aux_field:
+          - *densA_description
           - *velx_description
           - *vely_description
           - *velz_description
-          - *eint_description
           - *prsg_description
+          - *magxA_description
+          - *magyA_description
+          - *magzA_description
+          - *eint_description
           - *prsb_description
-        weno_field:
-          - *weno_description
-          - *fomx_description
       
     - file: ${filename}
       datasets: *cons_datasets

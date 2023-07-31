@@ -64,15 +64,23 @@ struct CellBcWest_K<DataViewType, BCType::outflow> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
+    // Interface value to expand around
+    Real itf[NUM_VARS];
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      itf[nV] = 1.5 * v(KFVM_D_DECL(rad, j, k), nV) / geom.jacobian(KFVM_D_DECL(0, j, k));
+      itf[nV] -=
+          0.5 * v(KFVM_D_DECL(rad + 1, j, k), nV) / geom.jacobian(KFVM_D_DECL(1, j, k));
+    }
+
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get Jacobians at source and target points
-      const Real sJ = geom.jacobian(KFVM_D_DECL(rad + nH, j, k));
-      const Real dJ = geom.jacobian(KFVM_D_DECL(rad - nH - 1, j, k));
-      const Real rJ = dJ / sJ;
+      const Real sJ = geom.jacobian(KFVM_D_DECL(nH, j, k));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(-nH - 1, j, k));
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(rad - nH - 1, j, k), nV) = rJ * v(KFVM_D_DECL(rad + nH, j, k), nV);
+        v(KFVM_D_DECL(rad - nH - 1, j, k), nV) =
+            dJ * (2.0 * itf[nV] - v(KFVM_D_DECL(rad + nH, j, k), nV) / sJ);
       }
     }
   }
@@ -90,16 +98,24 @@ struct CellBcEast_K<DataViewType, BCType::outflow> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t j, const idx_t k)) const {
+    // Interface value to expand around
+    Real itf[NUM_VARS];
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      itf[nV] = 1.5 * v(KFVM_D_DECL(nX + rad - 1, j, k), nV) /
+                geom.jacobian(KFVM_D_DECL(nX - 1, j, k));
+      itf[nV] -= 0.5 * v(KFVM_D_DECL(nX + rad - 2, j, k), nV) /
+                 geom.jacobian(KFVM_D_DECL(nX - 2, j, k));
+    }
+
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get Jacobians at source and target points
-      const Real sJ = geom.jacobian(KFVM_D_DECL(nX + rad - nH - 1, j, k));
-      const Real dJ = geom.jacobian(KFVM_D_DECL(nX + rad + nH, j, k));
-      const Real rJ = dJ / sJ;
+      const Real sJ = geom.jacobian(KFVM_D_DECL(nX - nH - 1, j, k));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(nX + nH, j, k));
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(KFVM_D_DECL(nX + rad + nH, j, k), nV) =
-            rJ * v(KFVM_D_DECL(nX + rad - nH - 1, j, k), nV);
+            dJ * (2.0 * itf[nV] - v(KFVM_D_DECL(nX + rad - nH - 1, j, k), nV) / sJ);
       }
     }
   }
@@ -117,15 +133,23 @@ struct CellBcSouth_K<DataViewType, BCType::outflow> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+    // Interface value to expand around
+    Real itf[NUM_VARS];
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      itf[nV] = 1.5 * v(KFVM_D_DECL(i, rad, k), nV) / geom.jacobian(KFVM_D_DECL(i, 0, k));
+      itf[nV] -=
+          0.5 * v(KFVM_D_DECL(i, rad + 1, k), nV) / geom.jacobian(KFVM_D_DECL(i, 1, k));
+    }
+
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get Jacobians at source and target points
-      const Real sJ = geom.jacobian(KFVM_D_DECL(i, rad + nH, k));
-      const Real dJ = geom.jacobian(KFVM_D_DECL(i, rad - nH - 1, k));
-      const Real rJ = dJ / sJ;
+      const Real sJ = geom.jacobian(KFVM_D_DECL(i, nH, k));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(i, -nH - 1, k));
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(KFVM_D_DECL(i, rad - nH - 1, k), nV) = rJ * v(KFVM_D_DECL(i, rad + nH, k), nV);
+        v(KFVM_D_DECL(i, rad - nH - 1, k), nV) =
+            dJ * (2.0 * itf[nV] - v(KFVM_D_DECL(i, rad + nH, k), nV) / sJ);
       }
     }
   }
@@ -143,16 +167,24 @@ struct CellBcNorth_K<DataViewType, BCType::outflow> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_DM_DECL(const idx_t i, const idx_t k)) const {
+    // Interface value to expand around
+    Real itf[NUM_VARS];
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      itf[nV] = 1.5 * v(KFVM_D_DECL(i, nY + rad - 1, k), nV) /
+                geom.jacobian(KFVM_D_DECL(i, nY - 1, k));
+      itf[nV] -= 0.5 * v(KFVM_D_DECL(i, nY + rad - 2, k), nV) /
+                 geom.jacobian(KFVM_D_DECL(i, nY - 2, k));
+    }
+
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get Jacobians at source and target points
-      const Real sJ = geom.jacobian(KFVM_D_DECL(i, nY + rad - nH - 1, k));
-      const Real dJ = geom.jacobian(KFVM_D_DECL(i, nY + rad + nH, k));
-      const Real rJ = dJ / sJ;
+      const Real sJ = geom.jacobian(KFVM_D_DECL(i, nY - nH - 1, k));
+      const Real dJ = geom.jacobian(KFVM_D_DECL(i, nY + nH, k));
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         v(KFVM_D_DECL(i, nY + rad + nH, k), nV) =
-            rJ * v(KFVM_D_DECL(i, nY + rad - nH - 1, k), nV);
+            dJ * (2.0 * itf[nV] - v(KFVM_D_DECL(i, nY + rad - nH - 1, k), nV) / sJ);
       }
     }
   }
@@ -170,15 +202,22 @@ struct CellBcBottom_K<DataViewType, BCType::outflow> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j) const {
+    // Interface value to expand around
+    Real itf[NUM_VARS];
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      itf[nV] = 1.5 * v(KFVM_D_DECL(i, j, rad), nV) / geom.jacobian(KFVM_D_DECL(i, j, 0));
+      itf[nV] -=
+          0.5 * v(KFVM_D_DECL(i, j, rad + 1), nV) / geom.jacobian(KFVM_D_DECL(i, j, 1));
+    }
+
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get Jacobians at source and target points
-      const Real sJ = geom.jacobian(i, j, rad + nH);
-      const Real dJ = geom.jacobian(i, j, rad - nH - 1);
-      const Real rJ = dJ / sJ;
+      const Real sJ = geom.jacobian(i, j, nH);
+      const Real dJ = geom.jacobian(i, j, -nH - 1);
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, rad - nH - 1, nV) = rJ * v(i, j, rad + nH, nV);
+        v(i, j, rad - nH - 1, nV) = dJ * (2.0 * itf[nV] - v(i, j, rad + nH, nV) / sJ);
       }
     }
   }
@@ -196,15 +235,24 @@ struct CellBcTop_K<DataViewType, BCType::outflow> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j) const {
+    // Interface value to expand around
+    Real itf[NUM_VARS];
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      itf[nV] = 1.5 * v(KFVM_D_DECL(i, j, nZ + rad - 1), nV) /
+                geom.jacobian(KFVM_D_DECL(i, j, nZ - 1));
+      itf[nV] -= 0.5 * v(KFVM_D_DECL(i, j, nZ + rad - 2), nV) /
+                 geom.jacobian(KFVM_D_DECL(i, j, nZ - 2));
+    }
+
     // Loop over halo
     for (idx_t nH = 0; nH < rad; nH++) {
       // Get Jacobians at source and target points
-      const Real sJ = geom.jacobian(i, j, nZ + rad - nH - 1);
-      const Real dJ = geom.jacobian(i, j, nZ + rad + nH);
-      const Real rJ = dJ / sJ;
+      const Real sJ = geom.jacobian(i, j, nZ - nH - 1);
+      const Real dJ = geom.jacobian(i, j, nZ + nH);
       // Loop over SimVars
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        v(i, j, nZ + rad + nH, nV) = rJ * v(i, j, nZ + rad - nH - 1, nV);
+        v(i, j, nZ + rad + nH, nV) =
+            dJ * (2.0 * itf[nV] - v(i, j, nZ + rad - nH - 1, nV) / sJ);
       }
     }
   }

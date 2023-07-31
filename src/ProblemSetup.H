@@ -182,17 +182,6 @@ struct ProblemSetup {
       }
     }
 
-    // Convert bounds to pi multiples if appropriate
-    if (geomType == GeometryType::Polar) {
-      yLo_g *= M_PI;
-      yUp_g *= M_PI;
-    } else if (geomType == GeometryType::Spherical) {
-      yLo_g *= M_PI;
-      yUp_g *= M_PI;
-      zLo_g *= M_PI;
-      zUp_g *= M_PI;
-    }
-
     // setup the MPI layout, add better error handling later
     if (!layoutMPI.distributeBlocks(nbX, nbY, nbZ, nX, nY, nZ, bcType)) {
       std::printf("Error!!!! Number of blocks must equal number of MPI ranks, have: "

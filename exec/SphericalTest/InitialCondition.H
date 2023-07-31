@@ -6,6 +6,8 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
   using Kokkos::atan2;
   using Kokkos::cos;
+  using Kokkos::exp;
+  using Kokkos::sin;
   using Kokkos::sqrt;
   using Physics::Hydro::SimVar;
 
@@ -13,28 +15,21 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   (void)y;
   (void)z;
 
-  const Real rhoH = 10.0, rhoL = 1.0;
-  const Real R1 = 2.0, R2 = 4.0, P0 = 10.0, A = 0.1;
+  const Real a0 = 100.0, a = 10.0, b = 0.0;
 
-  const Real r = sqrt(x * x + y * y + z * z), phi = atan2(y, x);
+  const Real r = sqrt(x * x + y * y + z * z), rxy = sqrt(x * x + y * y);
+  const Real phi = atan2(y, x), theta = atan2(rxy, z);
 
-  Real rho;
-
-  // Density with perturbation
-  const Real Ri = R1 + A * cos(12.0 * phi);
-  if (r <= Ri) {
-    rho = rhoL;
-  } else if (r <= R2) {
-    rho = rhoH;
-  } else {
-    rho = rhoL;
-  }
-
-  Real p = r < 1.2 ? P0 : 1.0;
+  const Real rho = 1.0 + exp(-a * a * (r - b) * (r - b));
+  const Real vr = a0 * r;
+  const Real vx = vr * sin(theta) * cos(phi), vy = vr * sin(theta) * sin(phi);
+  const Real vz = vr * cos(theta);
+  const Real p = 1.0 / eosParams.gamma;
 
   state[SimVar::dens] = rho;
-  state[SimVar::momx] = 0.0;
-  state[SimVar::momy] = 0.0;
-  state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = p / (eosParams.gamma - 1.0);
+  state[SimVar::momx] = rho * vx;
+  state[SimVar::momy] = rho * vy;
+  state[SimVar::momz] = rho * vz;
+  state[SimVar::etot] =
+      p / (eosParams.gamma - 1.0) + 0.5 * rho * (vx * vx + vy * vy + vz * vz);
 }

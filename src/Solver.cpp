@@ -2,7 +2,6 @@
 // Purpose: The solver class is responsible for holding the
 //          solution and evolving it through time
 
-#include <Kokkos_Bitset.hpp>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -50,6 +49,14 @@ Solver::Solver(ProblemSetup &ps_)
   // Fill in mesh node positions
   setMesh();
 
+  // DEBUG
+  auto J = geom.metricDerivs(KFVM_D_DECL(24, 36, 2), KFVM_D_DECL(0.5, 0.0, 0.0));
+  auto Jinv = geom.invMetricDerivs(KFVM_D_DECL(24, 36, 2), KFVM_D_DECL(0.5, 0.0, 0.0));
+  std::printf("J: [[%e,%e,%e],[%e,%e,%e],[%e,%e,%e]]\n", J.g11, J.g12, J.g13, J.g21,
+              J.g22, J.g23, J.g31, J.g32, J.g33);
+  std::printf("Jinv: [[%e,%e,%e],[%e,%e,%e],[%e,%e,%e]]\n", Jinv.g11, Jinv.g12, Jinv.g13,
+              Jinv.g21, Jinv.g22, Jinv.g23, Jinv.g31, Jinv.g32, Jinv.g33);
+
   // Fill IC from user defined function or restart file
   if (!ps.restart) {
     setIC();
@@ -94,14 +101,12 @@ void Solver::setMesh() {
   Kokkos::parallel_for(
       "Solver::setMesh", cmRng,
       KOKKOS_LAMBDA(const idx_t i, const idx_t j, const idx_t k) {
-        Vec3 xyz = g.physCoord(KFVM_D_DECL(i, j, k));
+        // Need lower vertex of each cell
+        // note loop bounds go one further that total number of cells
+        Vec3 xyz = g.physCoord(i, j, k, -0.5, -0.5, -0.5);
         m.x(i, j, k) = xyz.v1;
         m.y(i, j, k) = xyz.v2;
-        if (SPACE_DIM == 2) {
-          m.z(i, j, k) = k == 0 ? 0.0 : g.dmin;
-        } else {
-          m.z(i, j, k) = xyz.v3;
-        }
+        m.z(i, j, k) = xyz.v3;
       });
 
   Kokkos::Profiling::popRegion();
@@ -228,6 +233,7 @@ void Solver::TakeStep() {
                                 U, Uhat, geom, ps.atol, ps.rtol),
                             errNewLoc, Kokkos::Min<Real>(posFlag));
     Real errNew = timeStepErrEstComm(errNewLoc);
+    errNew = std::fmax(errNew, 1.e-14); // Very rare work around for exact solutions
     errNew = 1.0 / std::sqrt(errNew / nDofs);
 
     // Set a new time step size
@@ -247,7 +253,7 @@ void Solver::TakeStep() {
 
     if (gStat == TSStatus::UNPHYSICAL) {
       // Solution is unphysical, reject and reduce dt
-      PrintSingle(ps, ", cfl = %f\n    Rejected: Unphysical\n", cfl);
+      PrintSingle(ps, ", cfl = %f\n    Rejected: Unphysical (flag = %e)\n", cfl, posFlag);
       // first set to quarter of max cfl, then start halving
       dt = firstUnphys ? std::fmin(0.25 * ps.cfl * geom.dmin / maxVel, dt / 4.0)
                        : dt / 2.0;
@@ -334,7 +340,7 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
     Kokkos::parallel_reduce(
         "CalculateCH_GLM", cellRng,
         Physics::SpeedEstimate_K<eqType>(
-            KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), ps.eosParams),
+            KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), geom, ps.eosParams),
         Kokkos::Max<Real>(ch_glm));
     Kokkos::fence("Solver::evalRHS(GLM reduction)");
     ps.eosParams.ch_glm = glmSpeedComm(ch_glm);
@@ -365,7 +371,7 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
           {KFVM_D_DECL(0, 0, 0)}, {KFVM_D_DECL(ps.nX + 1, ps.nY, ps.nZ)});
   Kokkos::parallel_reduce(
       "RiemannSolver::EW", fluxRng_EW,
-      Physics::RiemannSolverX_K<eqType, rsType>(faceVals.xDir, geom, ps.eosParams),
+      Physics::RiemannSolverX_K<eqType, rsType>(faceVals.xDir, geom, qr.ab, ps.eosParams),
       Kokkos::Max<Real>(vEW));
 
   // North/South faces
@@ -374,7 +380,7 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
           {KFVM_D_DECL(0, 0, 0)}, {KFVM_D_DECL(ps.nX, ps.nY + 1, ps.nZ)});
   Kokkos::parallel_reduce(
       "RiemannSolver::NS", fluxRng_NS,
-      Physics::RiemannSolverY_K<eqType, rsType>(faceVals.yDir, geom, ps.eosParams),
+      Physics::RiemannSolverY_K<eqType, rsType>(faceVals.yDir, geom, qr.ab, ps.eosParams),
       Kokkos::Max<Real>(vNS));
 
 #if (SPACE_DIM == 3)
@@ -384,7 +390,7 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
           {0, 0, 0}, {ps.nX, ps.nY, ps.nZ + 1});
   Kokkos::parallel_reduce(
       "RiemannSolver::TB", fluxRng_TB,
-      Physics::RiemannSolverZ_K<eqType, rsType>(faceVals.zDir, geom, ps.eosParams),
+      Physics::RiemannSolverZ_K<eqType, rsType>(faceVals.zDir, geom, qr.ab, ps.eosParams),
       Kokkos::Max<Real>(vTB));
 #endif
 
@@ -441,6 +447,7 @@ void Solver::reconstructRiemannStates(ConsDataView sol_halo) {
                              sourceTerms, haveSources,
                              KFVM_D_DECL(stencil.lOff, stencil.tOff, stencil.ttOff),
                              stencil.faceWeights, stencil.cellWeights));
+
     // Weno reconstruction if needed
     if (wenoSelector.nWeno > 0) {
       auto flagRng =

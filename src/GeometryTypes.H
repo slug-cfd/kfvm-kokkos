@@ -4,7 +4,7 @@
 namespace KFVM {
 
 // List of all supported geometry types
-enum GeometryType { Cartesian = 0, Polar, Spherical };
+enum GeometryType { Cartesian = 0, Polar, Cylindrical, Spherical, Wedge };
 
 } // namespace KFVM
 

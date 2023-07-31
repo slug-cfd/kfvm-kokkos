@@ -13,28 +13,10 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   (void)y;
   (void)z;
 
-  const Real rhoH = 10.0, rhoL = 1.0;
-  const Real R1 = 2.0, R2 = 4.0, P0 = 10.0, A = 0.1;
+  const Real r = sqrt(x * x + (y - 1.0) * (y - 1.0));
+  const Real p = r < 0.2 ? 10.0 : 1.0;
 
-  const Real r = sqrt(x * x + y * y), phi = atan2(y, x);
-  const Real g = -1.0 / (r * r);
-  const Real gx = g * cos(phi), gy = g * sin(phi);
-
-  Real rho;
-
-  // Density with perturbation
-  const Real Ri = R1 + A * cos(12.0 * phi);
-  if (r <= Ri) {
-    rho = rhoL;
-  } else if (r <= R2) {
-    rho = rhoH;
-  } else {
-    rho = rhoL;
-  }
-
-  Real p = r < 1.2 ? P0 : 1.0;
-
-  state[SimVar::dens] = rho;
+  state[SimVar::dens] = 1.0;
   state[SimVar::momx] = 0.0;
   state[SimVar::momy] = 0.0;
   state[SimVar::momz] = 0.0;

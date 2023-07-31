@@ -15,6 +15,14 @@ KOKKOS_INLINE_FUNCTION void CellWest(const DataViewType &U, int rad, int nX, int
                                      int nH, Real x, Real y, Real z, Real t,
                                      EosParameters eosParams, UserParameters userParams,
                                      Real state[NUM_VARS]) {
+  using Kokkos::atan2;
+  using Kokkos::cos;
+  using Kokkos::exp;
+  using Kokkos::pow;
+  using Kokkos::sin;
+  using Kokkos::sqrt;
+  using Physics::Hydro::SimVar;
+
   // Void casts to ignore unused parameter warnings
   (void)U;
   (void)rad;
@@ -29,12 +37,39 @@ KOKKOS_INLINE_FUNCTION void CellWest(const DataViewType &U, int rad, int nX, int
   (void)eosParams;
   (void)userParams;
   (void)state;
+
+  const Real a0 = 100.0, at = a0 / (1.0 + a0 * t), a = 10.0, b = 0.0;
+
+  const Real r = sqrt(x * x + y * y + z * z), rxy = sqrt(x * x + y * y);
+  const Real phi = atan2(y, x), theta = atan2(rxy, z);
+  const Real rsc = r * at / a0;
+
+  const Real rho = pow(at / a0, 3) * (1.0 + exp(-a * a * (rsc - b) * (rsc - b)));
+  const Real vr = at * r;
+  const Real vx = vr * sin(theta) * cos(phi), vy = vr * sin(theta) * sin(phi);
+  const Real vz = vr * cos(theta);
+  const Real p = pow(at / a0, 3.0 * eosParams.gamma) / eosParams.gamma;
+
+  state[SimVar::dens] = rho;
+  state[SimVar::momx] = rho * vx;
+  state[SimVar::momy] = rho * vy;
+  state[SimVar::momz] = rho * vz;
+  state[SimVar::etot] =
+      p / (eosParams.gamma - 1.0) + 0.5 * rho * (vx * vx + vy * vy + vz * vz);
 }
 
 template <class DataViewType>
 KOKKOS_INLINE_FUNCTION void FaceWest(const DataViewType &U, int j, int k, int nQ, Real x,
                                      Real y, Real z, Real t, EosParameters eosParams,
                                      UserParameters userParams, Real state[NUM_VARS]) {
+  using Kokkos::atan2;
+  using Kokkos::cos;
+  using Kokkos::exp;
+  using Kokkos::pow;
+  using Kokkos::sin;
+  using Kokkos::sqrt;
+  using Physics::Hydro::SimVar;
+
   // Void casts to ignore unused parameter warnings
   (void)U;
   (void)j;
@@ -47,6 +82,25 @@ KOKKOS_INLINE_FUNCTION void FaceWest(const DataViewType &U, int j, int k, int nQ
   (void)eosParams;
   (void)userParams;
   (void)state;
+
+  const Real a0 = 100.0, at = a0 / (1.0 + a0 * t), a = 10.0, b = 0.0;
+
+  const Real r = sqrt(x * x + y * y + z * z), rxy = sqrt(x * x + y * y);
+  const Real phi = atan2(y, x), theta = atan2(rxy, z);
+  const Real rsc = r * at / a0;
+
+  const Real rho = pow(at / a0, 3) * (1.0 + exp(-a * a * (rsc - b) * (rsc - b)));
+  const Real vr = at * r;
+  const Real vx = vr * sin(theta) * cos(phi), vy = vr * sin(theta) * sin(phi);
+  const Real vz = vr * cos(theta);
+  const Real p = pow(at / a0, 3.0 * eosParams.gamma) / eosParams.gamma;
+
+  state[SimVar::dens] = rho;
+  state[SimVar::momx] = rho * vx;
+  state[SimVar::momy] = rho * vy;
+  state[SimVar::momz] = rho * vz;
+  state[SimVar::etot] =
+      p / (eosParams.gamma - 1.0) + 0.5 * rho * (vx * vx + vy * vy + vz * vz);
 }
 
 // Eastern boundary

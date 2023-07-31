@@ -110,27 +110,28 @@ struct AuxVars<EquationType::Hydro, UViewType> {
     using Hydro::ConsVec;
     using Hydro::SimVar;
 
-    // Get grid mapping Jacobian
+    // Get grid mapping Jacobian and metric terms
     const Real J = geom.jacobian(KFVM_D_DECL(i, j, k));
 
-    // Try not to assume the order of SimVars
+    // Conservative variables
     ConsVec ua;
     for (int nV = 0; nV < NUM_VARS; nV++) {
       ua[nV] = U(KFVM_D_DECL(i, j, k), nV);
     }
 
+    // Density is direct scaling
     V(KFVM_D_DECL(i, j, k), AuxVar::dens) = ua[SimVar::dens] / J;
 
-    // Set velocities
-    V(KFVM_D_DECL(i, j, k), AuxVar::velx) = ua[SimVar::momx] / ua[SimVar::dens];
-    V(KFVM_D_DECL(i, j, k), AuxVar::vely) = ua[SimVar::momy] / ua[SimVar::dens];
-    V(KFVM_D_DECL(i, j, k), AuxVar::velz) = ua[SimVar::momz] / ua[SimVar::dens];
-
-    // Internal energy and pressure
+    // Internal energy and pressure from EOS calls
     V(KFVM_D_DECL(i, j, k), AuxVar::eint) =
         EOS<EquationType::Hydro>::eint(J, ua) / V(KFVM_D_DECL(i, j, k), AuxVar::dens);
     V(KFVM_D_DECL(i, j, k), AuxVar::pres) =
         EOS<EquationType::Hydro>::pres(eosParams.gamma, J, ua);
+
+    // Set velocities, ua[dens] already has J factor
+    V(KFVM_D_DECL(i, j, k), AuxVar::velx) = ua[SimVar::momx] / ua[SimVar::dens];
+    V(KFVM_D_DECL(i, j, k), AuxVar::vely) = ua[SimVar::momy] / ua[SimVar::dens];
+    V(KFVM_D_DECL(i, j, k), AuxVar::velz) = ua[SimVar::momz] / ua[SimVar::dens];
   }
 };
 
@@ -138,11 +139,12 @@ template <RSType rst>
 struct RiemannSolverX_K<EquationType::Hydro, rst> {
   FaceDataView U;
   Geometry<geomType> geom;
+  QuadRuleView ab;
   EosParameters eosParams;
 
   RiemannSolverX_K(const FaceDataView &U_, const Geometry<geomType> &geom_,
-                   const EosParameters &eosParams_)
-      : U(U_), geom(geom_), eosParams(eosParams_) {}
+                   const QuadRuleView &ab_, const EosParameters &eosParams_)
+      : U(U_), geom(geom_), ab(ab_), eosParams(eosParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
@@ -155,9 +157,10 @@ struct RiemannSolverX_K<EquationType::Hydro, rst> {
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < nQuadZ; nR++) {
         // get metric terms
-        const Real J = geom.jacobian(KFVM_D_DECL(i, j, k), KFVM_D_DECL(-0.5, nQ, nR));
+        const Real J =
+            geom.jacobian(KFVM_D_DECL(i, j, k), KFVM_D_DECL(-0.5, ab(nQ), ab(nR)));
         const Vec3 metric =
-            geom.xiMetricDeriv(KFVM_D_DECL(i, j, k), KFVM_D_DECL(-0.5, nQ, nR));
+            geom.xiMetricDeriv(KFVM_D_DECL(i, j, k), KFVM_D_DECL(-0.5, ab(nQ), ab(nR)));
 
         // pull out states and convert to primitive
         ConsVec uL, uR, F;
@@ -176,8 +179,8 @@ struct RiemannSolverX_K<EquationType::Hydro, rst> {
 
         // Overwrite states with flux
         for (int nV = 0; nV < NUM_VARS; nV++) {
-          U(KFVM_D_DECL(i, j, k), 0, nQ, nV) = F[nV];
-          U(KFVM_D_DECL(i, j, k), 1, nQ, nV) = F[nV];
+          U(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV) = F[nV];
+          U(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV) = F[nV];
         }
       }
     }
@@ -188,11 +191,12 @@ template <RSType rst>
 struct RiemannSolverY_K<EquationType::Hydro, rst> {
   FaceDataView U;
   Geometry<geomType> geom;
+  QuadRuleView ab;
   EosParameters eosParams;
 
   RiemannSolverY_K(const FaceDataView &U_, const Geometry<geomType> &geom_,
-                   const EosParameters &eosParams_)
-      : U(U_), geom(geom_), eosParams(eosParams_) {}
+                   const QuadRuleView &ab_, const EosParameters &eosParams_)
+      : U(U_), geom(geom_), ab(ab_), eosParams(eosParams_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
@@ -205,9 +209,10 @@ struct RiemannSolverY_K<EquationType::Hydro, rst> {
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < nQuadZ; nR++) {
         // get metric terms
-        const Real J = geom.jacobian(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, -0.5, nR));
+        const Real J =
+            geom.jacobian(KFVM_D_DECL(i, j, k), KFVM_D_DECL(ab(nQ), -0.5, ab(nR)));
         const Vec3 metric =
-            geom.etaMetricDeriv(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, -0.5, nR));
+            geom.etaMetricDeriv(KFVM_D_DECL(i, j, k), KFVM_D_DECL(ab(nQ), -0.5, ab(nR)));
 
         // pull out states and convert to primitive
         ConsVec uL, uR, F;
@@ -226,8 +231,8 @@ struct RiemannSolverY_K<EquationType::Hydro, rst> {
 
         // Overwrite states with flux
         for (int nV = 0; nV < NUM_VARS; nV++) {
-          U(KFVM_D_DECL(i, j, k), 0, nQ, nV) = F[nV];
-          U(KFVM_D_DECL(i, j, k), 1, nQ, nV) = F[nV];
+          U(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV) = F[nV];
+          U(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV) = F[nV];
         }
       }
     }
@@ -238,11 +243,12 @@ template <RSType rst>
 struct RiemannSolverZ_K<EquationType::Hydro, rst> {
   FaceDataView U;
   Geometry<geomType> geom;
+  QuadRuleView ab;
   EosParameters eosParams;
 
   RiemannSolverZ_K(const FaceDataView &U_, const Geometry<geomType> &geom_,
-                   const EosParameters &eosParams_)
-      : U(U_), geom(geom_), eosParams(eosParams_) {}
+                   const QuadRuleView &ab_, const EosParameters &eosParams_)
+      : U(U_), geom(geom_), ab(ab_), eosParams(eosParams_) {}
 
 #if (SPACE_DIM == 3)
   KOKKOS_INLINE_FUNCTION
@@ -253,8 +259,8 @@ struct RiemannSolverZ_K<EquationType::Hydro, rst> {
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (idx_t nR = 0; nR < NUM_QUAD_PTS; nR++) {
         // get metric terms
-        const Real J = geom.jacobian(i, j, k, nQ, nR, -0.5);
-        const Vec3 metric = geom.zetaMetricDeriv(i, j, k, nQ, nR, -0.5);
+        const Real J = geom.jacobian(i, j, k, ab(nQ), ab(nR), -0.5);
+        const Vec3 metric = geom.zetaMetricDeriv(i, j, k, ab(nQ), ab(nR), -0.5);
 
         // pull out states and convert to primitive
         ConsVec uL, uR, F;
@@ -273,8 +279,8 @@ struct RiemannSolverZ_K<EquationType::Hydro, rst> {
 
         // Overwrite states with flux
         for (int nV = 0; nV < NUM_VARS; nV++) {
-          U(i, j, k, 0, nQ, nV) = F[nV];
-          U(i, j, k, 1, nQ, nV) = F[nV];
+          U(i, j, k, 0, nR * NUM_QUAD_PTS + nQ, nV) = F[nV];
+          U(i, j, k, 1, nR * NUM_QUAD_PTS + nQ, nV) = F[nV];
         }
       }
     }
@@ -285,12 +291,14 @@ struct RiemannSolverZ_K<EquationType::Hydro, rst> {
 template <>
 struct SpeedEstimate_K<EquationType::Hydro> {
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
+  Geometry<geomType> geom;
   EosParameters eosParams;
 
   SpeedEstimate_K(KFVM_D_DECL(const FaceDataView &rsX_, const FaceDataView &rsY_,
                               const FaceDataView &rsZ_),
-                  const EosParameters &eosParams_)
-      : KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), eosParams(eosParams_) {}
+                  const Geometry<geomType> &geom_, const EosParameters &eosParams_)
+      : KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), geom(geom_), eosParams(eosParams_) {
+  }
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
@@ -448,36 +456,33 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
 
     Real rDensDiffP = maxDens - rDens, rDensDiffM = rDens - minDens;
 
-    wenoFlag(KFVM_D_DECL(i, j, k), 1) = 1.0;
-    return;
-
     // Enforce positive density
     // Find mixing amount
     Real theta = Real(1.0);
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       // West face
-      Real rho = rsX(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
+      Real rho = rsX(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens) / J;
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // East face
-      rho = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, SimVar::dens);
+      rho = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, SimVar::dens) / J;
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // South face
-      rho = rsY(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
+      rho = rsY(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens) / J;
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // North face
-      rho = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, SimVar::dens);
+      rho = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, SimVar::dens) / J;
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
 #if (SPACE_DIM == 3)
       // Bottom face
-      rho = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
+      rho = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens) / J;
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // Top face
-      rho = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, SimVar::dens);
+      rho = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, SimVar::dens) / J;
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
 #endif
@@ -490,7 +495,7 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
         for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
           for (int nS = 0; nS < nzQuad; nS++) {
             Real rho =
-                source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::dens);
+                source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::dens) / J;
             theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
             theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
           }
@@ -536,8 +541,6 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
         }
       }
     }
-
-    return;
 
     // Enforce positive pressure
     // Find mixing amount
