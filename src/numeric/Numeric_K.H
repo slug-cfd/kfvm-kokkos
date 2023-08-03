@@ -11,6 +11,7 @@
 #include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
+#include <limits>
 
 #include "../Geometry.H"
 #include "../ParameterStructs.H"
@@ -289,17 +290,22 @@ struct RKFSAL_ErrEst_K {
   }
 };
 
-template <class UViewType, class WViewType>
-struct RK_WenoSelect_K {
-  UViewType U, Uprev;
+// KXRCF Indicator as defined in https://doi.org/10.1016/j.apnum.2003.11.002 and
+// https://doi.org/10.1016/j.apnum.2020.03.013
+template <class WViewType>
+struct WenoSelect_K {
+  FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
+  QuadRuleView wt;
   EosParameters eosParams;
   Real wThresh;
   WViewType W;
 
-  RK_WenoSelect_K(const UViewType &U_, const UViewType &Uprev_,
-                  const EosParameters &eosParams_, const Real wThresh_,
-                  const WViewType &W_)
-      : U(U_), Uprev(Uprev_), eosParams(eosParams_), wThresh(wThresh_), W(W_) {}
+  WenoSelect_K(KFVM_D_DECL(const FaceDataView &rsX_, const FaceDataView &rsY_,
+                           const FaceDataView &rsZ_),
+               const QuadRuleView &wt_, const EosParameters &eosParams_,
+               const Real wThresh_, const WViewType &W_)
+      : KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), wt(wt_), eosParams(eosParams_),
+        wThresh(wThresh_), W(W_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
@@ -308,35 +314,108 @@ struct RK_WenoSelect_K {
     using Kokkos::fmax;
     using Kokkos::fmin;
 
-    // Extract states
-    Real u0[NUM_VARS], u1[NUM_VARS];
-    for (int nV = 0; nV < NUM_VARS; nV++) {
-      u0[nV] = Uprev(KFVM_D_DECL(i, j, k), nV);
-      u1[nV] = U(KFVM_D_DECL(i, j, k), nV);
+    const int nQuadZ = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+    Real numer = 0.0, denom = 0.0, minVal = std::numeric_limits<Real>::max();
+
+    for (int nR = 0; nR < nQuadZ; nR++) {
+      const Real wtR = SPACE_DIM == 2 ? 1.0 : wt(nR);
+      for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+        const Real wtQ = wt(nQ);
+        Real uIn[NUM_VARS], uOut[NUM_VARS]; // Inner and outer states
+        Real vPF, wIn, wOut;                // normal velocity prefactor and indicators
+
+        // West face
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          uIn[nV] = rsX(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
+          uOut[nV] = rsX(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+        // Positive is into on West face
+        vPF = Physics::EOS<eqType>::flowdirx(uIn) > 0.0 ? 1.0 : 0.0;
+        wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
+        wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
+        minVal = fmin(minVal, wIn);
+        numer += vPF * wtR * wtQ * (wOut - wIn);
+        denom += vPF * wtR * wtQ;
+
+        // East face
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          uIn[nV] = rsX(KFVM_D_DECL(i + 1, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
+          uOut[nV] = rsX(KFVM_D_DECL(i + 1, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+        // Negative is into on East face
+        vPF = Physics::EOS<eqType>::flowdirx(uIn) < 0.0 ? 1.0 : 0.0;
+        wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
+        wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
+        minVal = fmin(minVal, wIn);
+        numer += vPF * wtR * wtQ * (wOut - wIn);
+        denom += vPF * wtR * wtQ;
+
+        // South face
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          uIn[nV] = rsY(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
+          uOut[nV] = rsY(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+        // Positive is into on South face
+        vPF = Physics::EOS<eqType>::flowdiry(uIn) > 0.0 ? 1.0 : 0.0;
+        wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
+        wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
+        minVal = fmin(minVal, wIn);
+        numer += vPF * wtR * wtQ * (wOut - wIn);
+        denom += vPF * wtR * wtQ;
+
+        // North face
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          uIn[nV] = rsY(KFVM_D_DECL(i, j + 1, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
+          uOut[nV] = rsY(KFVM_D_DECL(i, j + 1, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+        // Negative is into on North face
+        vPF = Physics::EOS<eqType>::flowdiry(uIn) < 0.0 ? 1.0 : 0.0;
+        wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
+        wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
+        minVal = fmin(minVal, wIn);
+        numer += vPF * wtR * wtQ * (wOut - wIn);
+        denom += vPF * wtR * wtQ;
+
+#if (SPACE_DIM == 3)
+        // Bottom face
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          uIn[nV] = rsZ(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
+          uOut[nV] = rsZ(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+        // Positive is into on Bottom face
+        vPF = Physics::EOS<eqType>::flowdirz(uIn) > 0.0 ? 1.0 : 0.0;
+        wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
+        wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
+        minVal = fmin(minVal, wIn);
+        numer += vPF * wtR * wtQ * (wOut - wIn);
+        denom += vPF * wtR * wtQ;
+
+        // Top face
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          uIn[nV] = rsY(KFVM_D_DECL(i, j, k + 1), 0, nR * NUM_QUAD_PTS + nQ, nV);
+          uOut[nV] = rsY(KFVM_D_DECL(i, j, k + 1), 1, nR * NUM_QUAD_PTS + nQ, nV);
+        }
+        // Negative is into on Top face
+        vPF = Physics::EOS<eqType>::flowdirz(uIn) < 0.0 ? 1.0 : 0.0;
+        wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
+        wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
+        minVal = fmin(minVal, wIn);
+        numer += vPF * wtR * wtQ * (wOut - wIn);
+        denom += vPF * wtR * wtQ;
+#endif
+      }
     }
 
     // Calculate change in weno indicator
-    Real w0 = Physics::EOS<eqType>::weno(u0, eosParams);
-    Real w1 = Physics::EOS<eqType>::weno(u1, eosParams);
-    Real w = fabs(w1 - w0) / fmin(w0, w1);
+    denom = minVal * fmax(denom, 1.e-8);
+    const Real w = fabs(numer) / denom;
 
-    // set flags based on indicator
-    if (w < wThresh) {
-      // weno not required, decrement counter
-      W(KFVM_D_DECL(i, j, k), 0) = fmax(0.0, W(KFVM_D_DECL(i, j, k), 0) - 1.0);
-    } else {
-      // Set counter for full weno
-      W(KFVM_D_DECL(i, j, k), 0) = Real(STENCIL_RADIUS + 1);
-    }
-
-    // Also set flags based on last call to PP limiter
-    if (W(KFVM_D_DECL(i, j, k), 1) < 1.0 && W(KFVM_D_DECL(i, j, k), 0) < 2.0) {
-      W(KFVM_D_DECL(i, j, k), 0) = 2.0;
-    }
-
-    // Increment counter if flag set
-    if (W(KFVM_D_DECL(i, j, k), 0) > 0.0) {
+    // set flags based on indicator and last call to PP limiter
+    if (w >= wThresh || W(KFVM_D_DECL(i, j, k), 1) < 1.0) {
+      W(KFVM_D_DECL(i, j, k), 0) = 1.0;
       nWeno++;
+    } else {
+      W(KFVM_D_DECL(i, j, k), 0) = 0.0;
     }
   }
 };

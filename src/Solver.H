@@ -34,8 +34,8 @@ struct WenoSelector {
   idx_t tX, tY, tZ;  // Tile size
   uint32_t minSize, currSize, nWeno;
   WenoSelector(const ProblemSetup &ps);
-  template <class UViewType>
-  void update(UViewType, UViewType, const Real);
+  void update(KFVM_D_DECL(FaceDataView, FaceDataView, FaceDataView), const QuadRuleView &,
+              const Real);
   auto tileRange(int i, int j, int k) const {
     idx_t xUp = i == (ntX - 1) ? ps.nX : (i + 1) * tX;
     idx_t yUp = j == (ntY - 1) ? ps.nY : (j + 1) * tY;
@@ -87,8 +87,6 @@ class Solver {
   int nTS;
   Real time, dt, errEst;
   bool lastTimeStep;
-  // Threshold for WENO reconstruction
-  Real wThresh;
   // Count RHS evals and step rejections
   int nRhsEval, nRejectUnphys, nRejectThresh;
 
@@ -123,7 +121,9 @@ class Solver {
   void evalAuxiliary();
 
   Real evalRHS(ConsDataView, Real);
-  void reconstructRiemannStates(ConsDataView);
+  void reconRiemStatesHighOrder(ConsDataView);
+  void reconRiemStatesSparseWeno(ConsDataView);
+  void reconRiemStatesTiledWeno(ConsDataView);
   Real findFluxes();
 
   void setCellBCs(ConsDataView, Real);

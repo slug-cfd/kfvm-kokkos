@@ -17,11 +17,17 @@ stencil:lfac 10
 
 # Set fluid properties
 eos:gamma 1.4
-eos:wenothresh 500.0
+eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename MagBlast
-io:plotfreq 50
-io:ckptfreq 20
+io:plotfreq 20
+io:ckptfreq 50
+
+# User defined settings
+user:r 0.1
+user:pin 1000.0
+user:pout 0.1
+user:bx 100.0

@@ -193,6 +193,24 @@ struct EOS<EquationType::SRHydro> {
   }
 
   KOKKOS_INLINE_FUNCTION
+  static Real flowdirx(const SRHydro::ConsVec U) {
+    using SRHydro::SimVar;
+    return U[SimVar::momx] > 0.0 ? 1.0 : (U[SimVar::momx] < 0.0 ? -1.0 : 0.0);
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real flowdiry(const SRHydro::ConsVec U) {
+    using SRHydro::SimVar;
+    return U[SimVar::momy] > 0.0 ? 1.0 : (U[SimVar::momy] < 0.0 ? -1.0 : 0.0);
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real flowdirz(const SRHydro::ConsVec U) {
+    using SRHydro::SimVar;
+    return U[SimVar::momz] > 0.0 ? 1.0 : (U[SimVar::momz] < 0.0 ? -1.0 : 0.0);
+  }
+
+  KOKKOS_INLINE_FUNCTION
   static Real eint(const Real gam, const Real p, const SRHydro::ConsVec U) {
     using SRHydro::SimVar;
 

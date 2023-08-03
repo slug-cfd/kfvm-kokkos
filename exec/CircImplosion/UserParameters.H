@@ -1,13 +1,15 @@
 struct UserParameters : ParameterStructs {
-  Real par;
+  Real A, M;
 
-  UserParameters() : par(0.0) {}
+  UserParameters() : A(0.01), M(4.0) {}
 
   bool set(const std::string &fld, const std::string &val) {
     std::size_t pos;
 
-    if (fld == "par") {
-      par = std::stof(val, &pos);
+    if (fld == "a") {
+      A = std::stof(val, &pos);
+    } else if (fld == "m") {
+      M = std::stof(val, &pos);
     } else {
       return false;
     }

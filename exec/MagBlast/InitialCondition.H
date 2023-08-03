@@ -12,11 +12,11 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   using Physics::MHD_GLM::SimVar;
 
   const Real gamm = eosParams.gamma - 1.0;
-  const Real r0sq = 0.01;
+  const Real Rsq = userParams.R * userParams.R;
   const Real rsq = SPACE_DIM == 2 ? x * x + y * y : x * x + y * y + z * z;
-  const Real pG = rsq <= r0sq ? 1000.0 : 0.1;
+  const Real pG = rsq <= Rsq ? userParams.pIn : userParams.pOut;
 
-  Real rho = 1.0, bx = 100.0 / sqrt(4.0 * M_PI);
+  const Real rho = 1.0, bx = userParams.bx;
 
   state[SimVar::dens] = rho;
 

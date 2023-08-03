@@ -2,10 +2,12 @@
 #define HYDRO_K_H_
 
 #include <cstdint>
-
-#include <Kokkos_Core.hpp>
 #include <limits>
 #include <math.h>
+
+#include <Kokkos_Core.hpp>
+
+#include <Definitions.H>
 
 #include "../../Dimension.H"
 #include "../../Geometry.H"
@@ -14,7 +16,6 @@
 #include "../EquationTypes.H"
 #include "../RSTypes.H"
 #include "../SimVar.H"
-#include "Definitions.H"
 #include "Hydro_EOS.H"
 #include "Hydro_Riemann.H"
 
@@ -591,46 +592,54 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
   KOKKOS_INLINE_FUNCTION
   Real eulerPresPos(const Real gamma, const Real pmin, const Hydro::ConsVec refState,
                     const Hydro::ConsVec state) const {
+    using Hydro::ConsVec;
     using Hydro::SimVar;
-    using Kokkos::sqrt;
+    using Kokkos::fabs;
+    using Kokkos::fmin;
 
-    Real emin = pmin / (gamma - Real(1.0));
+    Real a = 0.0, b = 0.1, c, dpa, dpc;
+    ConsVec stTheta;
+    dpa = EOS<EquationType::Hydro>::pres(gamma, refState) - pmin;
 
-    Real A = Real(2.0) * (state[SimVar::dens] - refState[SimVar::dens]) *
-             (state[SimVar::etot] - refState[SimVar::etot]);
-    A -= ((state[SimVar::momx] - refState[SimVar::momx]) *
-              (state[SimVar::momx] - refState[SimVar::momx]) +
-          (state[SimVar::momy] - refState[SimVar::momy]) *
-              (state[SimVar::momy] - refState[SimVar::momy]) +
-          (state[SimVar::momz] - refState[SimVar::momz]) *
-              (state[SimVar::momz] - refState[SimVar::momz]));
+    // Scan b forward until sign changes
+    for (int nIter = 0; nIter < 9; nIter++) {
+      for (int nV = 0; nV < NUM_VARS; nV++) {
+        stTheta[nV] = refState[nV] + b * (state[nV] - refState[nV]);
+      }
 
-    Real B = Real(2.0) *
-             (refState[SimVar::dens] * (state[SimVar::etot] - refState[SimVar::etot]) +
-              refState[SimVar::etot] * (state[SimVar::dens] - refState[SimVar::dens]));
-    B -= Real(2.0) *
-         ((state[SimVar::momx] - refState[SimVar::momx]) * refState[SimVar::momx] +
-          (state[SimVar::momy] - refState[SimVar::momy]) * refState[SimVar::momy] +
-          (state[SimVar::momz] - refState[SimVar::momz]) * refState[SimVar::momz]);
-    B -= Real(2.0) * emin * (state[SimVar::dens] - refState[SimVar::dens]);
+      dpc = EOS<EquationType::Hydro>::pres(gamma, stTheta) - pmin;
 
-    Real C = Real(2.0) * refState[SimVar::dens] * (refState[SimVar::etot] - emin);
-    C -= (refState[SimVar::momx] * refState[SimVar::momx] +
-          refState[SimVar::momy] * refState[SimVar::momy] +
-          refState[SimVar::momz] * refState[SimVar::momz]);
-
-    Real rtdisc = sqrt(B * B - Real(4.0) * A * C);
-    Real th1 = (-B + rtdisc) / (Real(2.0) * A), th2 = (-B - rtdisc) / (Real(2.0) * A);
-
-    if (Real(0.0) <= th1 && th1 <= Real(1.0) && Real(0.0) <= th2 && th2 <= Real(1.0)) {
-      return th1 < th2 ? th1 : th2;
-    } else if (Real(0.0) <= th1 && th1 <= Real(1.0)) {
-      return th1;
-    } else if (Real(0.0) <= th2 && th2 <= Real(1.0)) {
-      return th2;
-    } else {
-      return Real(0.0);
+      if (dpa * dpc < 0.0) {
+        break;
+      } else {
+        // slide interval forward
+        a += 0.1;
+        b += 0.1;
+        dpa = dpc;
+      }
     }
+
+    // Now do bisection since root is bracketed
+    for (int nIter = 0; nIter < 10; nIter++) {
+      // Midpoint and states
+      c = Real(0.5) * (a + b);
+      for (int nV = 0; nV < NUM_VARS; nV++) {
+        stTheta[nV] = refState[nV] + c * (state[nV] - refState[nV]);
+      }
+
+      // Pressure differences at states a and c
+      dpc = EOS<EquationType::Hydro>::pres(gamma, stTheta) - pmin;
+
+      if (dpc * dpa < 0.0) {
+        b = c;
+      } else {
+        a = c;
+        dpa = dpc;
+      }
+    }
+
+    // Round down to lower bound to guarantee a valid state
+    return a;
   }
 };
 

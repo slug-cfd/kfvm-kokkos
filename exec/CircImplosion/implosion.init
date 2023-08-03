@@ -1,7 +1,7 @@
 # Set mesh resolution and extent
-mesh:resolution 1536 3072
+mesh:resolution 64 64 64
 mesh:numblocks 1 1 1
-mesh:extent 0.0 1.0 -1.0 1.0
+mesh:extent 0.0 1.0 0.0 1.0 0.0 1.0
 
 # Set time information
 time:initial 0.0
@@ -17,11 +17,15 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.666666666666666
-eos:wenothresh 10.0
+eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename CircImplosionRef
-io:plotfreq 100
+io:basename CircImplosion
+io:plotfreq 20
 io:ckptfreq 20
+
+# User specified values
+user:a 0.0
+user:m 4.0

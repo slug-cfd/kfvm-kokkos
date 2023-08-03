@@ -54,6 +54,24 @@ struct EOS<EquationType::MHD_GLM> {
   }
 
   KOKKOS_INLINE_FUNCTION
+  static Real flowdirx(const MHD_GLM::ConsVec U) {
+    using MHD_GLM::SimVar;
+    return U[SimVar::momx] > 0.0 ? 1.0 : (U[SimVar::momx] < 0.0 ? -1.0 : 0.0);
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real flowdiry(const MHD_GLM::ConsVec U) {
+    using MHD_GLM::SimVar;
+    return U[SimVar::momy] > 0.0 ? 1.0 : (U[SimVar::momy] < 0.0 ? -1.0 : 0.0);
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real flowdirz(const MHD_GLM::ConsVec U) {
+    using MHD_GLM::SimVar;
+    return U[SimVar::momz] > 0.0 ? 1.0 : (U[SimVar::momz] < 0.0 ? -1.0 : 0.0);
+  }
+
+  KOKKOS_INLINE_FUNCTION
   static Real ekin(const MHD_GLM::ConsVec U) {
     using MHD_GLM::SimVar;
     return Real(0.5) *
@@ -79,7 +97,11 @@ struct EOS<EquationType::MHD_GLM> {
 
   KOKKOS_INLINE_FUNCTION
   static Real weno(const MHD_GLM::ConsVec U, const EosParameters &eosParams) {
-    return prsg(eosParams.gamma, U);
+    using Kokkos::log;
+    using Kokkos::pow;
+    using MHD_GLM::SimVar;
+
+    return log(prsg(eosParams.gamma, U) / pow(U[SimVar::dens], eosParams.gamma));
   }
 
   KOKKOS_INLINE_FUNCTION

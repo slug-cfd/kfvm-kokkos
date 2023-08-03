@@ -17,7 +17,7 @@
 // Floating point precision (1 for double, 0 for single)
 #define FLOAT_PRECISION 1
 
-// #define KFVM_EXEC_HOST
+// #define KFVM_EXEC_SERIAL
 
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
 constexpr KFVM::RSType rsType = KFVM::RSType::HLLC;

@@ -57,9 +57,30 @@ struct EOS<EquationType::Hydro> {
   }
 
   KOKKOS_INLINE_FUNCTION
+  static Real flowdirx(const Hydro::ConsVec U) {
+    using Hydro::SimVar;
+    return U[SimVar::momx] > 0.0 ? 1.0 : (U[SimVar::momx] < 0.0 ? -1.0 : 0.0);
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real flowdiry(const Hydro::ConsVec U) {
+    using Hydro::SimVar;
+    return U[SimVar::momy] > 0.0 ? 1.0 : (U[SimVar::momy] < 0.0 ? -1.0 : 0.0);
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real flowdirz(const Hydro::ConsVec U) {
+    using Hydro::SimVar;
+    return U[SimVar::momz] > 0.0 ? 1.0 : (U[SimVar::momz] < 0.0 ? -1.0 : 0.0);
+  }
+
+  KOKKOS_INLINE_FUNCTION
   static Real weno(const Hydro::ConsVec U, const EosParameters &eosParams) {
     using Hydro::SimVar;
-    return pres(eosParams.gamma, U);
+    using Kokkos::log;
+    using Kokkos::pow;
+
+    return log(pres(eosParams.gamma, U) / pow(U[SimVar::dens], eosParams.gamma));
   }
 
   KOKKOS_INLINE_FUNCTION

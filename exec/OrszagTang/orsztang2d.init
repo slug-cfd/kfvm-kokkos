@@ -5,7 +5,7 @@ mesh:extent 0.0 1.0 0.0 1.0
 
 # Set time information
 time:initial 0.0
-time:final 0.5
+time:final 1.0
 time:initialdt 1.e-10
 time:cfl 1.5
 time:maxsteps 4000
@@ -17,11 +17,12 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.666666666666666
-eos:wenothresh 20.0
+eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename OrszagTang
-io:plotfreq 100
-io:ckptfreq 20
+io:plotfreq 20
+io:ckptfreq 50
+io:restartfile data/R2_NX256_NY256/ckpt/OrszagTang_0000441.h5
