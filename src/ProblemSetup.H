@@ -4,12 +4,12 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
 #include <fstream>
-#include <iostream>
-#include <ostream>
 #include <sstream>
 #include <string>
+
+#include <fmt/color.h>
+#include <fmt/core.h>
 
 #include <mpi.h>
 
@@ -64,6 +64,9 @@ struct ProblemSetup {
   EosParameters eosParams;
   UserParameters userParams;
 
+  // Verbosity of output information
+  int verbose;
+
   // Simple constructor setting many default values
   ProblemSetup()
       : rad(STENCIL_RADIUS), layoutMPI(), gp_lFac(20.0), gp_bpow(Real(STENCIL_RADIUS)),
@@ -72,7 +75,7 @@ struct ProblemSetup {
         finalTime(1.0), initialDeltaT(1.e-10), atol(1.e-4), rtol(1.e-4),
         rejectionThresh(0.8), rejectionLimit(4), cfl(SPACE_DIM == 3 ? 0.5 : 0.75),
         pdiConf(""), dataDir("data"), baseName("default"), plotFreq(100), ckptFreq(50),
-        restart(false) {
+        restart(false), verbose(0) {
     // Ensure that source terms are always enabled in MHD
     haveSourceTerms = haveSourceTerms || (eqType == EquationType::MHD_GLM);
   }
@@ -80,49 +83,49 @@ struct ProblemSetup {
   void print() {
     if (layoutMPI.rank == 0) {
       // Print mesh information
-      std::printf("Mesh:\n");
-      std::printf("  nX: %ld\n", nX);
-      std::printf("  nY: %ld\n", nY);
-      std::printf("  nZ: %ld\n", nZ);
-      std::printf("  nbX: %ld\n", nbX);
-      std::printf("  nbY: %ld\n", nbY);
-      std::printf("  nbZ: %ld\n", nbZ);
-      std::printf("  x extent: %f -- %f\n", xLo_g, xUp_g);
-      std::printf("  y extent: %f -- %f\n", yLo_g, yUp_g);
-      std::printf("  z extent: %f -- %f\n", zLo_g, zUp_g);
+      fmt::print("Mesh:\n");
+      fmt::print("  nX: {}\n", nX);
+      fmt::print("  nY: {}\n", nY);
+      fmt::print("  nZ: {}\n", nZ);
+      fmt::print("  nbX: {}\n", nbX);
+      fmt::print("  nbY: {}\n", nbY);
+      fmt::print("  nbZ: {}\n", nbZ);
+      fmt::print("  x extent: {} -- {}\n", xLo_g, xUp_g);
+      fmt::print("  y extent: {} -- {}\n", yLo_g, yUp_g);
+      fmt::print("  z extent: {} -- {}\n", zLo_g, zUp_g);
 
       // Print time information
-      std::printf("Time:\n");
-      std::printf("  initial: %f\n", initialTime);
-      std::printf("  final: %f\n", finalTime);
-      std::printf("  initial dt: %e\n", initialDeltaT);
-      std::printf("  atol: %e\n", atol);
-      std::printf("  rtol: %e\n", rtol);
-      std::printf("  rejectionlimit: %d\n", rejectionLimit);
-      std::printf("  rejectionthresh: %f\n", rejectionThresh);
-      std::printf("  cfl: %f\n", cfl);
-      std::printf("  maxsteps: %d\n", maxTimeSteps);
+      fmt::print("Time:\n");
+      fmt::print("  initial: {:f}\n", initialTime);
+      fmt::print("  final: {:f}\n", finalTime);
+      fmt::print("  initial dt: {:e}\n", initialDeltaT);
+      fmt::print("  atol: {:e}\n", atol);
+      fmt::print("  rtol: {:e}\n", rtol);
+      fmt::print("  rejectionlimit: {}\n", rejectionLimit);
+      fmt::print("  rejectionthresh: {:f}\n", rejectionThresh);
+      fmt::print("  cfl: {:f}\n", cfl);
+      fmt::print("  maxsteps: {}\n", maxTimeSteps);
 
       // Print stencil information
-      std::printf("Stencil:\n");
-      std::printf("  Radius: %ld\n", rad);
-      std::printf("  lfac: %f\n", gp_lFac);
-      std::printf("  bpow: %f\n", gp_bpow);
+      fmt::print("Stencil:\n");
+      fmt::print("  Radius: {}\n", rad);
+      fmt::print("  lfac: {:f}\n", gp_lFac);
+      fmt::print("  bpow: {:f}\n", gp_bpow);
 
       // Print eos parameters
-      std::printf("EOS:\n");
-      std::printf("  gamma: %f\n", eosParams.gamma);
-      std::printf("  wenothresh: %f\n", eosParams.wenoThresh);
+      fmt::print("EOS:\n");
+      fmt::print("  gamma: {:f}\n", eosParams.gamma);
+      fmt::print("  wenothresh: {:f}\n", eosParams.wenoThresh);
 
       // Print io information
-      std::printf("IO:\n");
-      std::printf("  pdiconf: %s\n", pdiConf.c_str());
-      std::printf("  datadir: %s\n", dataDir.c_str());
-      std::printf("  basename: %s\n", baseName.c_str());
-      std::printf("  plotfreq: %d\n", plotFreq);
-      std::printf("  ckptfreq: %d\n", ckptFreq);
+      fmt::print("IO:\n");
+      fmt::print("  pdiconf: {}\n", pdiConf);
+      fmt::print("  datadir: {}\n", dataDir);
+      fmt::print("  basename: {}\n", baseName);
+      fmt::print("  plotfreq: {}\n", plotFreq);
+      fmt::print("  ckptfreq: {}\n", ckptFreq);
       if (restart) {
-        std::printf("  restartfile: %s\n", restartFile.c_str());
+        fmt::print("  restartfile: {}\n", restartFile);
       }
     }
   }
@@ -133,9 +136,10 @@ struct ProblemSetup {
     inFile.open(fname);
     bool opened = inFile.is_open();
     if (opened) {
-      std::printf("Setting options from input file: %s\n", fname);
+      fmt::print("Setting options from input file: {}\n", fname);
     } else {
-      std::printf("Error!!!! Could not open input file: %s\n", fname);
+      fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::red),
+                 "Error!!!! Could not open input file: {}\n", fname);
       return false;
     }
 
@@ -168,20 +172,23 @@ struct ProblemSetup {
       } else if (category == "io") {
         success = setIO(setting);
       } else {
-        std::cout << "Warning!!!! Ignoring line from input file: " << line << std::endl;
+        fmt::print(fmt::fg(fmt::color::golden_rod),
+                   "[Warning] Ignoring line from input file: {}\n", line);
       }
 
       // Report malformed lines
       if (!success) {
-        std::cout << "Warning!!!! Line could not be parsed: " << line << std::endl;
+        fmt::print(fmt::fg(fmt::color::golden_rod),
+                   "[Warning] Line could not be parsed: {}\n", line);
       }
     }
 
     // setup the MPI layout, add better error handling later
     if (!layoutMPI.distributeBlocks(nbX, nbY, nbZ, nX, nY, nZ, bcType)) {
-      std::printf("Error!!!! Number of blocks must equal number of MPI ranks, have: "
-                  "%ld*%ld*%ld != %d\n",
-                  nbX, nbY, nbZ, layoutMPI.size);
+      fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::red),
+                 "[Error] Number of blocks must equal number of MPI ranks, have: "
+                 "{}*{}*{} != {}\n",
+                 nbX, nbY, nbZ, layoutMPI.size);
       return false;
     }
 
@@ -343,6 +350,9 @@ struct ProblemSetup {
     } else if (category == "restartfile") {
       std::getline(lStream, restartFile);
       restart = true;
+    } else if (category == "verbose") {
+      std::getline(lStream, value, ' ');
+      verbose = std::stoi(value, &pos);
     } else {
       return false;
     }

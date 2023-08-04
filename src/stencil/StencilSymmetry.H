@@ -2,9 +2,11 @@
 #define STENCILSYMMETRY_H_
 
 #include <array>
-#include <cstdio>
 #include <utility>
 #include <vector>
+
+#include <fmt/color.h>
+#include <fmt/core.h>
 
 #include "../Types.H"
 
@@ -77,7 +79,8 @@ struct StencilSymmetry {
           dWts(nP, j) = rWts(symMap[nP].first, idxMap[nP][j]);
         }
       } else {
-        std::printf("Symmetry missing for %d in StencilSymmetry::mapWeights\n", nP);
+        fmt::print(fmt::fg(fmt::color::golden_rod),
+                   "Symmetry missing for {} in StencilSymmetry::mapWeights\n", nP);
       }
     }
   }

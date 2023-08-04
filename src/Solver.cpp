@@ -2,7 +2,6 @@
 // Purpose: The solver class is responsible for holding the
 //          solution and evolving it through time
 
-#include <Kokkos_Bitset.hpp>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -81,7 +80,7 @@ void Solver::Solve() {
   // Evolve in time, recording solutions as needed
   // nTS already set to 1 for non-restart, or to whatever the restart value is
   for (; nTS < ps.maxTimeSteps && !lastTimeStep; ++nTS) {
-    PrintSingle(ps, "Step %d: time = %e\n", nTS, time);
+    Print::Single(ps, "Step {}: time = {}\n", nTS, time);
     TakeStep();
 
     // Write out data files if needed
@@ -94,10 +93,10 @@ void Solver::Solve() {
     }
   }
 
-  PrintSingle(ps,
-              "Time stepping completed\n  %d RHS evals and %d/%d rejected "
-              "(accuracy/unphysical) steps\n",
-              nRhsEval, nRejectThresh, nRejectUnphys);
+  Print::Single(ps,
+                "Time stepping completed\n  {} RHS evals and {}/{} rejected "
+                "(accuracy/unphysical) steps\n",
+                nRhsEval, nRejectThresh, nRejectUnphys);
 
   Kokkos::Profiling::popRegion();
 }
@@ -134,7 +133,7 @@ void Solver::TakeStep() {
   Real maxVel, v;
   for (int nT = 0; nT < ps.rejectionLimit; nT++) {
     maxVel = 0.0;
-    PrintSingle(ps, "  Attempt %d: dt = %e\n", nT + 1, dt);
+    Print::SingleV1(ps, "  Attempt {}: dt = {}\n", nT + 1, dt);
 
     // Trim halos off
     auto U = trimCellHalo(U_halo);
@@ -212,7 +211,7 @@ void Solver::TakeStep() {
 
     if (gStat == TSStatus::UNPHYSICAL) {
       // Solution is unphysical, reject and reduce dt
-      PrintSingle(ps, "  cfl = %f\n    Rejected: Unphysical\n", cfl);
+      Print::AlertSingle(ps, "  cfl = {:f}\n    Rejected: Unphysical\n", cfl);
       // first set to quarter of max cfl, then start halving
       dt = firstUnphys ? std::fmin(0.25 * ps.cfl * geom.dmin / maxVel, dt / 4.0)
                        : dt / 2.0;
@@ -222,7 +221,7 @@ void Solver::TakeStep() {
       nRejectUnphys++;
     } else if (gStat == TSStatus::ACCEPTED) {
       // Step is accepted
-      PrintSingle(ps, "  cfl = %f\n", cfl);
+      Print::SingleV1(ps, "  cfl = {:f}\n", cfl);
       accepted = true;
       time += dt;
       Real dterr = dt * dtfac, dtcfl = ps.cfl * geom.dmin / maxVel;
@@ -234,11 +233,11 @@ void Solver::TakeStep() {
       break;
     } else if (gStat == TSStatus::TOLERANCE) {
       // otherwise step is rejected, try again with new smaller dt
-      PrintSingle(ps, "  cfl = %f\n    Rejected: Tolerance\n", cfl);
+      Print::AlertSingle(ps, "  cfl = {:f}\n    Rejected: Tolerance\n", cfl);
       dt = dt * dtfac;
       nRejectThresh++;
     } else {
-      PrintSingle(ps, "Warning: Unknown time step status\n");
+      Print::WarnSingle(ps, "Warning: Unknown time step status\n");
       lastTimeStep = true;
       break;
     }
@@ -246,11 +245,11 @@ void Solver::TakeStep() {
 
   // Error out if step was rejected too many times or has stagnated
   if (!accepted) {
-    PrintSingle(ps, "Warning: Time step was rejected too many times\n");
+    Print::WarnSingle(ps, "Warning: Time step was rejected too many times\n");
     lastTimeStep = true;
   }
   if (dt < ps.initialDeltaT) {
-    PrintSingle(ps, "Warning: Time step stagnated\n");
+    Print::WarnSingle(ps, "Warning: Time step stagnated\n");
     lastTimeStep = true;
   }
 
@@ -540,15 +539,15 @@ void WenoSelector::update(KFVM_D_DECL(FaceDataView rsX, FaceDataView rsY,
       nWeno);
 
   // Clear map and reallocate workspace if needed
-  PrintAll(ps, "    %d (%f%%) cells flagged for WENO on rank %d\n", nWeno,
-           (100.0 * nWeno) / (ps.nX * ps.nY * ps.nZ), ps.layoutMPI.rank);
+  Print::AnyV2(ps, "    {} ({:f}%) cells flagged for WENO on rank {}\n", nWeno,
+               (100.0 * nWeno) / (ps.nX * ps.nY * ps.nZ), ps.layoutMPI.rank);
   wenoFlagMap.clear();
   assert(wenoFlagMap.rehash(nWeno));
   if (wenoFlagMap.capacity() > currSize) {
     uint32_t newSize = std::max(wenoFlagMap.capacity(), 2 * currSize);
     // Note that capacity != nWeno generally
-    PrintAll(ps, "    Realloc workspace from %u to %u on rank %d\n", currSize, newSize,
-             ps.layoutMPI.rank);
+    Print::AlertAny(ps, "Realloc workspace from {} to {} on rank {}\n", currSize, newSize,
+                    ps.layoutMPI.rank);
     Kokkos::realloc(stenWork, newSize);
     currSize = newSize;
   }
@@ -1325,7 +1324,7 @@ void Solver::setWestBCExt(ConsDataView sol_halo, Real t) {
                                                        ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Western cell BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Western cell BC undefined.\n");
   }
 }
 
@@ -1360,7 +1359,7 @@ void Solver::setEastBCExt(ConsDataView sol_halo, Real t) {
                                                        ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Eastern cell BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Eastern cell BC undefined.\n");
   }
 }
 
@@ -1395,7 +1394,7 @@ void Solver::setSouthBCExt(ConsDataView sol_halo, Real t) {
                                                         ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Southern cell BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Southern cell BC undefined.\n");
   }
 }
 
@@ -1430,7 +1429,7 @@ void Solver::setNorthBCExt(ConsDataView sol_halo, Real t) {
                                                         ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Northern cell BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Northern cell BC undefined.\n");
   }
 }
 
@@ -1461,7 +1460,7 @@ void Solver::setBottomBCExt(ConsDataView sol_halo, Real t) {
                                                          ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Bottom cell BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Bottom cell BC undefined.\n");
   }
 }
 
@@ -1491,7 +1490,7 @@ void Solver::setTopBCExt(ConsDataView sol_halo, Real t) {
                                                       ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Top cell BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Top cell BC undefined.\n");
   }
 }
 #endif
@@ -1528,7 +1527,7 @@ void Solver::setWestBCExt(Real t) {
                              westBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Western face BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Western face BC undefined.\n");
   }
 }
 
@@ -1565,7 +1564,7 @@ void Solver::setEastBCExt(Real t) {
                              eastBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Eastern face BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Eastern face BC undefined.\n");
   }
 }
 
@@ -1601,7 +1600,7 @@ void Solver::setSouthBCExt(Real t) {
                              southBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Southern face BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Southern face BC undefined.\n");
   }
 }
 
@@ -1638,7 +1637,7 @@ void Solver::setNorthBCExt(Real t) {
                              northBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Northern face BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Northern face BC undefined.\n");
   }
 }
 
@@ -1671,7 +1670,7 @@ void Solver::setBottomBCExt(Real t) {
                              bottomBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Bottom face BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Bottom face BC undefined.\n");
   }
 }
 
@@ -1703,7 +1702,7 @@ void Solver::setTopBCExt(Real t) {
                              topBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;
   default:
-    PrintSingle(ps, "Warning: Top face BC undefined.\n");
+    Print::WarnSingle(ps, "Warning: Top face BC undefined.\n");
   }
 }
 #endif

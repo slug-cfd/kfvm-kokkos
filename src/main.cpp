@@ -2,6 +2,9 @@
 #include <string>
 #include <typeinfo>
 
+#include <fmt/color.h>
+#include <fmt/core.h>
+
 #include <mpi.h>
 
 #include <Kokkos_Core.hpp>
@@ -10,6 +13,7 @@
 
 #include <Definitions.H>
 
+#include "PrinterMPI.H"
 #include "ProblemSetup.H"
 #include "Solver.H"
 #include "Types.H"
@@ -21,8 +25,6 @@ int main(int argc, char *argv[]) {
   {
     Kokkos::initialize(argc, argv);
     {
-      std::printf("Kokkos initialized with default execution space: %s\n",
-                  typeid(KFVM::ExecSpace).name());
       if (argc > 1) {
         // Create Problemsetup object
         KFVM::ProblemSetup ps;
@@ -42,7 +44,8 @@ int main(int argc, char *argv[]) {
         PDI_finalize();
         PC_tree_destroy(&pdi_conf);
       } else {
-        std::printf("Error!!!! Input file must be provided. Exiting now\n");
+        fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::red),
+                   "[Error] Input file must be provided. Exiting now\n");
       }
     }
     Kokkos::finalize();

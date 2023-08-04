@@ -15,6 +15,7 @@ find_package (Kokkos REQUIRED)
 find_package (KokkosKernels REQUIRED)
 find_package (PDI REQUIRED)
 find_package (LAPACK REQUIRED)
+find_package (fmt REQUIRED)
 
 set (USER_DIR ${CMAKE_BINARY_DIR})
 

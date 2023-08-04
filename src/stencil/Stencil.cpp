@@ -1,6 +1,7 @@
-#include <cstdio>
 #include <utility>
 #include <vector>
+
+#include <fmt/core.h>
 
 #include <Kokkos_Core.hpp>
 
@@ -248,7 +249,7 @@ template <class WType>
 void testPV(const WType &wts, idx_t numQuad,
             KFVM_D_DECL(const std::vector<double> &xs, const std::vector<double> &ys,
                         const std::vector<double> &zs)) {
-  std::printf("\n");
+  fmt::print("\n");
   for (idx_t nQ = 0; nQ < numQuad; nQ++) {
     double cv = 0.0, KFVM_D_DECL(xv = 0.0, yv = 0.0, zv = 0.0);
     for (idx_t j = 0; j < xs.size(); j++) {
@@ -260,9 +261,9 @@ void testPV(const WType &wts, idx_t numQuad,
 #endif
     }
 #if (SPACE_DIM == 2)
-    std::printf("    nQ %d: (c,x,y) = (%lf,%lf,%lf)\n", nQ, cv, xv, yv);
+    fmt::print("    nQ {}: (c,x,y) = ({},{},{})\n", nQ, cv, xv, yv);
 #else
-    std::printf("    nQ %d: (c,x,y,z) = (%lf,%lf,%lf,%lf)\n", nQ, cv, xv, yv, zv);
+    fmt::print("    nQ {}: (c,x,y,z) = ({},{},{},{},{})\n", nQ, cv, xv, yv, zv);
 #endif
   }
 }

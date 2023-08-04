@@ -25,6 +25,7 @@ io:datadir data
 io:basename AstroJetLD
 io:plotfreq 100
 io:ckptfreq 20
+io:verbose 1
 
 # User specific options
 user:inletradius 0.05

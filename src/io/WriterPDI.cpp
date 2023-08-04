@@ -1,13 +1,11 @@
 #include <array>
 #include <filesystem>
-#include <iomanip>
-#include <iostream>
-#include <sstream>
 #include <string>
 #include <vector>
 
 #include <pdi.h>
 
+#include "../PrinterMPI.H"
 #include "../Types.H"
 #include "WriterPDI.H"
 
@@ -70,10 +68,8 @@ WriterPDI::WriterPDI(ProblemSetup &ps_, const Geometry &geom_)
 void WriterPDI::writePlot(ConsDataView U, AuxDataView V, WenoFlagView weno, int step,
                           Real time) {
   // Form filenames
-  std::ostringstream oss;
-  oss << ps.baseName << "_" << std::setw(7) << std::setfill('0') << step;
-  filename_xmf = oss.str() + ".xmf";
-  filename_h5 = oss.str() + ".h5";
+  filename_xmf = fmt::format("{}_{:07d}.xmf", ps.baseName, step);
+  filename_h5 = fmt::format("{}_{:07d}.h5", ps.baseName, step);
 
   if (ps.layoutMPI.rank == 0) {
     writeXML(step, time, true);
@@ -84,10 +80,8 @@ void WriterPDI::writePlot(ConsDataView U, AuxDataView V, WenoFlagView weno, int 
 void WriterPDI::writeCkpt(ConsDataView U, WenoFlagView weno, int step, Real time,
                           Real dt) {
   // Form filenames
-  std::ostringstream oss;
-  oss << ps.baseName << "_" << std::setw(7) << std::setfill('0') << step;
-  filename_xmf = oss.str() + ".xmf";
-  filename_h5 = oss.str() + ".h5";
+  filename_xmf = fmt::format("{}_{:07d}.xmf", ps.baseName, step);
+  filename_h5 = fmt::format("{}_{:07d}.h5", ps.baseName, step);
 
   if (ps.layoutMPI.rank == 0) {
     writeXML(step, time, false);
@@ -99,9 +93,7 @@ void WriterPDI::writePlotPDI(ConsDataView U, AuxDataView V, WenoFlagView weno, i
                              Real time) {
   std::string filename = prefix + "plot/" + filename_h5;
   int filename_size = filename.size();
-  if (ps.layoutMPI.rank == 0) {
-    std::printf("Writing file: %s\n", filename.c_str());
-  }
+  Print::Single(ps, "Writing file: {}\n", filename);
 
   // Copy data from GPU to host (no-op if already on host)
   Kokkos::deep_copy(U_host, U);
@@ -118,9 +110,7 @@ void WriterPDI::writeCkptPDI(ConsDataView U, WenoFlagView weno, int step, Real t
                              Real dt) {
   std::string filename = prefix + "ckpt/" + filename_h5;
   int filename_size = filename.size();
-  if (ps.layoutMPI.rank == 0) {
-    std::printf("Writing file: %s\n", filename.c_str());
-  }
+  Print::Single(ps, "Writing file: {}\n", filename);
 
   // Copy data from GPU to host (no-op if already on host)
   Kokkos::deep_copy(U_host, U);
@@ -137,9 +127,7 @@ void WriterPDI::writeCkptPDI(ConsDataView U, WenoFlagView weno, int step, Real t
 void WriterPDI::readCkpt(ConsDataView U, WenoFlagView weno, int &step, Real &time,
                          Real &dt) {
   int filename_size = ps.restartFile.size();
-  if (ps.layoutMPI.rank == 0) {
-    std::printf("Restarting from: %s\n", ps.restartFile.c_str());
-  }
+  Print::Single(ps, "Restarting from: {}\n", ps.restartFile);
 
   PDI_multi_expose("read_ckpt_data", "restart_filename_size", (void *)&filename_size,
                    PDI_OUT, "restart_filename", (void *)ps.restartFile.c_str(), PDI_OUT,
@@ -157,9 +145,7 @@ void WriterPDI::readCkpt(ConsDataView U, WenoFlagView weno, int &step, Real &tim
 void WriterPDI::writeXML(int step, Real time, bool plotMode) {
   std::string sd(plotMode ? "plot/" : "ckpt/");
   std::string filename = prefix + sd + filename_xmf;
-  if (ps.layoutMPI.rank == 0) {
-    std::printf("Writing file: %s\n", filename.c_str());
-  }
+  Print::Single(ps, "Writing file: {}\n", filename);
 
   // Create Xdmf file
   std::ofstream ofs(filename, std::ios::trunc);
