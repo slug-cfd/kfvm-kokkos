@@ -37,7 +37,7 @@ typedef uint8_t flag_t;
 enum FaceLabel { west = 0, east, south, north, bottom, top };
 
 // Supported boundary conditions
-enum BCType { periodic = 0, outflow, reflecting, user };
+enum BCType { periodic = 0, outflow, reflecting, noslip, user };
 
 // Time stepper status codes
 enum TSStatus { ACCEPTED = 0, TOLERANCE, UNPHYSICAL };

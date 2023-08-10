@@ -97,11 +97,10 @@ struct EOS<EquationType::MHD_GLM> {
 
   KOKKOS_INLINE_FUNCTION
   static Real weno(const MHD_GLM::ConsVec U, const EosParameters &eosParams) {
-    using Kokkos::log;
     using Kokkos::pow;
     using MHD_GLM::SimVar;
 
-    return log(prsg(eosParams.gamma, U) / pow(U[SimVar::dens], eosParams.gamma));
+    return prsg(eosParams.gamma, U) / pow(U[SimVar::dens], eosParams.gamma);
   }
 
   KOKKOS_INLINE_FUNCTION

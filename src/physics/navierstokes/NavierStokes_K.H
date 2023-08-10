@@ -1,10 +1,13 @@
-#ifndef MHD_GLM_K_H_
-#define MHD_GLM_K_H_
+#ifndef NAVIERSTOKES_K_H_
+#define NAVIERSTOKES_K_H_
 
 #include <cstdint>
+#include <limits>
+#include <math.h>
 
 #include <Kokkos_Core.hpp>
-#include <limits.h>
+
+#include <Definitions.H>
 
 #include "../../Dimension.H"
 #include "../../Geometry.H"
@@ -13,39 +16,35 @@
 #include "../EquationTypes.H"
 #include "../RSTypes.H"
 #include "../SimVar.H"
-#include "Definitions.H"
-#include "MHD_GLM_EOS.H"
-#include "MHD_GLM_Riemann.H"
-#include "Numeric.H"
+#include "NavierStokes_EOS.H"
+#include "NavierStokes_Riemann.H"
 
 namespace KFVM {
 
 namespace Physics {
 
 template <>
-class VarConvert<EquationType::MHD_GLM> {
+class VarConvert<EquationType::NavierStokes> {
   const Real gamm;
-  const Real rho, u, v, w, bx, by, bz, rPsi, vsq;
+  const Real rho, u, v, w, vsq;
 
  public:
   KOKKOS_INLINE_FUNCTION
-  VarConvert(const MHD_GLM::ConsVec ref_, Real gam_)
-      : gamm(gam_ - Real(1.0)), rho(ref_[MHD_GLM::SimVar::dens]),
-        u(ref_[MHD_GLM::SimVar::momx] / rho), v(ref_[MHD_GLM::SimVar::momy] / rho),
-        w(ref_[MHD_GLM::SimVar::momz] / rho), bx(ref_[MHD_GLM::SimVar::magx]),
-        by(ref_[MHD_GLM::SimVar::magy]), bz(ref_[MHD_GLM::SimVar::magz]),
-        rPsi(ref_[MHD_GLM::SimVar::psi]), vsq((u * u + v * v + w * w) / Real(2.0)) {}
+  VarConvert(const NavierStokes::ConsVec ref_, Real gam_)
+      : gamm(gam_ - Real(1.0)), rho(ref_[NavierStokes::SimVar::dens]),
+        u(ref_[NavierStokes::SimVar::momx] / rho),
+        v(ref_[NavierStokes::SimVar::momy] / rho),
+        w(ref_[NavierStokes::SimVar::momz] / rho),
+        vsq(Real(0.5) * (u * u + v * v + w * w)) {}
 
   template <class T>
   KOKKOS_INLINE_FUNCTION void cons2LinPrim(T &state) {
-    using MHD_GLM::SimVar;
+    using NavierStokes::SimVar;
 
     // Doing etot first allows state to be overwritten safely
     state(SimVar::etot) =
-        gamm *
-        (vsq * state(SimVar::dens) + state(SimVar::etot) - u * state(SimVar::momx) -
-         v * state(SimVar::momy) - w * state(SimVar::momz) - bx * state(SimVar::magx) -
-         by * state(SimVar::magy) - bz * state(SimVar::magz) - rPsi * state(SimVar::psi));
+        gamm * (vsq * state(SimVar::dens) - u * state(SimVar::momx) -
+                v * state(SimVar::momy) - w * state(SimVar::momz) + state(SimVar::etot));
 
     state(SimVar::momx) = (state(SimVar::momx) - u * state(SimVar::dens)) / rho;
     state(SimVar::momy) = (state(SimVar::momy) - v * state(SimVar::dens)) / rho;
@@ -54,14 +53,12 @@ class VarConvert<EquationType::MHD_GLM> {
 
   template <class T>
   KOKKOS_INLINE_FUNCTION void linPrim2Cons(T &state) {
-    using MHD_GLM::SimVar;
+    using NavierStokes::SimVar;
 
     // Doing etot first allows state to be overwritten safely
-    state(SimVar::etot) =
-        (vsq * state(SimVar::dens) + rho * u * state(SimVar::momx) +
-         rho * v * state(SimVar::momy) + rho * w * state(SimVar::momz) +
-         bx * state(SimVar::magx) + by * state(SimVar::magy) + bz * state(SimVar::magz) +
-         state(SimVar::etot) / gamm + rPsi * state(SimVar::psi));
+    state(SimVar::etot) = (vsq * state(SimVar::dens) + rho * u * state(SimVar::momx) +
+                           rho * v * state(SimVar::momy) + rho * w * state(SimVar::momz) +
+                           state(SimVar::etot) / gamm);
 
     state(SimVar::momx) = (rho * state(SimVar::momx) + u * state(SimVar::dens));
     state(SimVar::momy) = (rho * state(SimVar::momy) + v * state(SimVar::dens));
@@ -70,7 +67,7 @@ class VarConvert<EquationType::MHD_GLM> {
 };
 
 template <class UViewType>
-struct AuxVars<EquationType::MHD_GLM, UViewType> {
+struct AuxVars<EquationType::NavierStokes, UViewType> {
   UViewType U;
   AuxDataView V;
   EosParameters eosParams;
@@ -80,14 +77,14 @@ struct AuxVars<EquationType::MHD_GLM, UViewType> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
-    using MHD_GLM::AuxVar;
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::SimVar;
+    using NavierStokes::AuxVar;
+    using NavierStokes::ConsVec;
+    using NavierStokes::SimVar;
 
     // Try not to assume the order of SimVars
-    ConsVec u;
+    ConsVec ua;
     for (int nV = 0; nV < NUM_VARS; nV++) {
-      u[nV] = U(KFVM_D_DECL(i, j, k), nV);
+      ua[nV] = U(KFVM_D_DECL(i, j, k), nV);
     }
 
     // Set velocities
@@ -98,16 +95,15 @@ struct AuxVars<EquationType::MHD_GLM, UViewType> {
     V(KFVM_D_DECL(i, j, k), AuxVar::velz) =
         U(KFVM_D_DECL(i, j, k), SimVar::momz) / U(KFVM_D_DECL(i, j, k), SimVar::dens);
 
-    // Internal energy and pressures
-    V(KFVM_D_DECL(i, j, k), AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(u);
-    V(KFVM_D_DECL(i, j, k), AuxVar::prsg) =
-        EOS<EquationType::MHD_GLM>::prsg(eosParams.gamma, u);
-    V(KFVM_D_DECL(i, j, k), AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(u);
+    // Internal energy and pressure
+    V(KFVM_D_DECL(i, j, k), AuxVar::eint) = EOS<EquationType::NavierStokes>::eint(ua);
+    V(KFVM_D_DECL(i, j, k), AuxVar::pres) =
+        EOS<EquationType::NavierStokes>::pres(eosParams.gamma, eosParams.Ma, ua);
   }
 };
 
 template <RSType rst>
-struct RiemannSolverX_K<EquationType::MHD_GLM, rst> {
+struct RiemannSolverX_K<EquationType::NavierStokes, rst> {
   FaceDataView U;
   EosParameters eosParams;
 
@@ -117,24 +113,25 @@ struct RiemannSolverX_K<EquationType::MHD_GLM, rst> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   Real &maxVel) const {
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::PrimVec;
+    using NavierStokes::ConsVec;
+    using NavierStokes::PrimVec;
 
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
+
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // Pull out states and convert to primitive
+      // pull out states and convert to primitive
       ConsVec uL, uR, F;
       PrimVec vL, vR;
       for (int nV = 0; nV < NUM_VARS; nV++) {
         uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
         uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uR, vR);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uL, vL);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uR, vR);
 
       // Calculate flux
-      Real vq = MHD_GLM_RS<rst>::RiemannSolve_X(eosParams.gamma, eosParams.ch_glm, uL, uR,
-                                                vL, vR, F);
+      Real vq = NavierStokesRS<rst>::RiemannSolve_X(eosParams.gamma, eosParams.Ma, uL, uR,
+                                                    vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux
@@ -147,7 +144,7 @@ struct RiemannSolverX_K<EquationType::MHD_GLM, rst> {
 };
 
 template <RSType rst>
-struct RiemannSolverY_K<EquationType::MHD_GLM, rst> {
+struct RiemannSolverY_K<EquationType::NavierStokes, rst> {
   FaceDataView U;
   EosParameters eosParams;
 
@@ -157,24 +154,24 @@ struct RiemannSolverY_K<EquationType::MHD_GLM, rst> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   Real &maxVel) const {
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::PrimVec;
+    using NavierStokes::ConsVec;
+    using NavierStokes::PrimVec;
 
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // Pull out states and convert to primitive
+      // pull out states and convert to primitive
       ConsVec uL, uR, F;
       PrimVec vL, vR;
       for (int nV = 0; nV < NUM_VARS; nV++) {
         uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
         uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uR, vR);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uL, vL);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uR, vR);
 
       // Calculate flux
-      Real vq = MHD_GLM_RS<rst>::RiemannSolve_Y(eosParams.gamma, eosParams.ch_glm, uL, uR,
-                                                vL, vR, F);
+      Real vq = NavierStokesRS<rst>::RiemannSolve_Y(eosParams.gamma, eosParams.Ma, uL, uR,
+                                                    vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux
@@ -187,7 +184,7 @@ struct RiemannSolverY_K<EquationType::MHD_GLM, rst> {
 };
 
 template <RSType rst>
-struct RiemannSolverZ_K<EquationType::MHD_GLM, rst> {
+struct RiemannSolverZ_K<EquationType::NavierStokes, rst> {
   FaceDataView U;
   EosParameters eosParams;
 
@@ -197,23 +194,23 @@ struct RiemannSolverZ_K<EquationType::MHD_GLM, rst> {
 #if (SPACE_DIM == 3)
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j, const idx_t k, Real &maxVel) const {
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::PrimVec;
+    using NavierStokes::ConsVec;
+    using NavierStokes::PrimVec;
 
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
-      // Pull out states and convert to primitive
+      // pull out states and convert to primitive
       ConsVec uL, uR, F;
       PrimVec vL, vR;
       for (int nV = 0; nV < NUM_VARS; nV++) {
         uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
         uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uR, vR);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uL, vL);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uR, vR);
 
       // Calculate flux
-      Real vq = MHD_GLM_RS<rst>::RiemannSolve_Z(eosParams.gamma, eosParams.ch_glm, uL, uR,
-                                                vL, vR, F);
+      Real vq = NavierStokesRS<rst>::RiemannSolve_Z(eosParams.gamma, eosParams.Ma, uL, uR,
+                                                    vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux
@@ -227,7 +224,7 @@ struct RiemannSolverZ_K<EquationType::MHD_GLM, rst> {
 };
 
 template <>
-struct SpeedEstimate_K<EquationType::MHD_GLM> {
+struct SpeedEstimate_K<EquationType::NavierStokes> {
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   EosParameters eosParams;
 
@@ -238,97 +235,286 @@ struct SpeedEstimate_K<EquationType::MHD_GLM> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
-                  Real &maxCh) const {
-    using Kokkos::fabs;
-    using Kokkos::fmax;
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::SimVar;
-
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-
-    const Real pf = 1.0;
-    Real cfDiff = 0.0;
-
-    // Check x-faces
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // pull out states
-      Real cf, cfDiffLoc, v;
-      ConsVec uM, uP;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uM[nV] = rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV);
-        uP[nV] = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, nV);
-      }
-
-      // Minus face
-      v = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uM);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
-
-      // Plus face
-      v = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uP);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
-    }
-
-    // Check y-faces
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // pull out states
-      Real cf, cfDiffLoc, v;
-      ConsVec uM, uP;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uM[nV] = rsY(KFVM_D_DECL(i, j, k), 1, nQ, nV);
-        uP[nV] = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, nV);
-      }
-
-      // Minus face
-      v = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uM);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
-
-      // Plus face
-      v = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uP);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
-    }
-
-#if (SPACE_DIM == 3)
-    // Check z-faces
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // pull out states
-      Real cf, cfDiffLoc, v;
-      ConsVec uM, uP;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uM[nV] = rsZ(i, j, k, 1, nQ, nV);
-        uP[nV] = rsZ(i, j, k + 1, 0, nQ, nV);
-      }
-
-      // Minus face
-      v = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uM);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
-
-      // Plus face
-      v = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uP);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
-    }
-#endif
-    maxCh = pf * cfDiff;
-  }
+                  Real &maxVel) const {}
 };
 
-namespace MHD_GLM {
+template <class UViewType, class RViewType>
+struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
+  UViewType U;
+  RViewType RHS;
+  Geometry geom;
+  EosParameters eosParams;
+
+  Viscosity_K(const UViewType &U_, const RViewType &RHS_, const Geometry geom_,
+              const EosParameters eosParams_)
+      : U(U_), RHS(RHS_), geom(geom_), eosParams(eosParams_) {}
+
+#if (SPACE_DIM == 2)
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
+    using Physics::NavierStokes::ConsVec;
+    using Physics::NavierStokes::PrimVar;
+    using Physics::NavierStokes::PrimVec;
+    using Physics::NavierStokes::SimVar;
+
+    const Real rdx = 1.0 / geom.dx, rdy = 1.0 / geom.dy;
+    const Real gamma = eosParams.gamma, Ma = eosParams.Ma, Re = eosParams.Re,
+               Pr = eosParams.Pr, alpha = Re * Pr * (gamma - 1.0) * Ma * Ma;
+
+    Real u[3][3], v[3][3], w[3][3], T[3][3];
+    for (int xo = -1; xo <= 1; xo++) {
+      for (int yo = -1; yo <= 1; yo++) {
+        ConsVec Uo;
+        PrimVec Vo;
+        for (int nV = 0; nV < NUM_VARS; nV++) {
+          Uo[nV] = U(i + xo, j + yo, nV);
+        }
+        Physics::EOS<EquationType::NavierStokes>::cons2prim(gamma, Ma, Uo, Vo);
+        u[xo + 1][yo + 1] = Vo[PrimVar::velx];
+        v[xo + 1][yo + 1] = Vo[PrimVar::vely];
+        w[xo + 1][yo + 1] = Vo[PrimVar::velz];
+        T[xo + 1][yo + 1] = Vo[PrimVar::temp];
+      }
+    }
+
+    // Face average viscosities
+    const Real muPx = 0.5 * (pow(T[1][1], 0.76) + pow(T[2][1], 0.76)),
+               muMx = 0.5 * (pow(T[1][1], 0.76) + pow(T[0][1], 0.76)),
+               muPy = 0.5 * (pow(T[1][1], 0.76) + pow(T[1][2], 0.76)),
+               muMy = 0.5 * (pow(T[1][1], 0.76) + pow(T[1][0], 0.76));
+
+    // Fluxes on x-faces
+    Real px[4], mx[4];
+    px[0] = 4.0 * rdx * (u[2][1] - u[1][1]) / 3.0;
+    px[0] -= rdy * (v[1][2] + v[2][2] - v[1][0] - v[2][0]) / 6.0;
+    px[0] *= muPx;
+
+    px[1] = rdy * (u[1][2] + u[2][2] - u[1][0] - u[2][0]) / 4.0;
+    px[1] += rdx * (v[2][1] - v[1][1]);
+    px[1] *= muPx;
+
+    px[2] = rdx * (w[2][1] - w[1][1]);
+    px[2] *= muPx;
+
+    mx[0] = 4.0 * rdx * (u[1][1] - u[0][1]) / 3.0;
+    mx[0] -= rdy * (v[0][2] + v[1][2] - v[0][0] - v[1][0]) / 6.0;
+    mx[0] *= muMx;
+
+    mx[1] = rdy * (u[0][2] + u[1][2] - u[0][0] - u[1][0]) / 4.0;
+    mx[1] += rdx * (v[1][1] - v[0][1]);
+    mx[1] *= muMx;
+
+    mx[2] = rdx * (w[1][1] - w[0][1]);
+    mx[2] *= muMx;
+
+    // Fluxes on y-faces
+    Real py[4], my[4];
+    py[0] = rdx * (v[2][2] + v[2][1] - v[0][2] - v[0][1]) / 4.0;
+    py[0] += rdy * (u[1][2] - u[1][1]);
+    py[0] *= muPy;
+
+    py[1] = 4.0 * rdy * (v[1][2] - v[1][1]) / 3.0;
+    py[1] -= rdx * (u[2][2] + u[2][1] - u[0][2] - u[0][1]) / 6.0;
+    py[1] *= muPy;
+
+    py[2] = rdy * (w[1][2] - w[1][1]);
+    py[2] *= muPy;
+
+    my[0] = rdx * (v[2][1] + v[2][0] - v[0][1] - v[0][0]) / 4.0;
+    my[0] += rdy * (u[1][1] - u[1][0]);
+    my[0] *= muMy;
+
+    my[1] = 4.0 * rdy * (v[1][1] - v[1][0]) / 3.0;
+    my[1] -= rdx * (u[2][1] + u[2][0] - u[0][1] - u[0][0]) / 6.0;
+    my[1] *= muMy;
+
+    my[2] = rdy * (w[1][1] - w[1][0]);
+    my[2] *= muMy;
+
+    // Temperature fluxes (What is face-centered kappa?)
+    px[3] = rdx * (T[2][1] - T[1][1]);
+    mx[3] = rdx * (T[1][1] - T[0][1]);
+    py[3] = rdy * (T[1][2] - T[1][1]);
+    my[3] = rdy * (T[1][1] - T[1][0]);
+
+    // Net momentum change
+    const Real rRe = 1.0 / Re;
+    const Real sru = rRe * (rdx * (px[0] - mx[0]) + rdy * (py[0] - my[0]));
+    const Real srv = rRe * (rdx * (px[1] - mx[1]) + rdy * (py[1] - my[1]));
+    const Real srw = rRe * (rdx * (px[2] - mx[2]) + rdy * (py[2] - my[2]));
+
+    // Net temperature term
+    const Real rAl = 1.0 / alpha;
+    const Real ste = rAl * (rdx * (px[3] - mx[3]) + rdy * (py[3] - my[3]));
+
+    // Add into RHS
+    RHS(i, j, SimVar::momx) += sru;
+    RHS(i, j, SimVar::momy) += srv;
+    RHS(i, j, SimVar::momz) += srw;
+    RHS(i, j, SimVar::etot) +=
+        ste + U(i, j, SimVar::dens) * (u[1][1] * sru + v[1][1] * srv + w[1][1] * srw);
+  }
+#else
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const idx_t i, const idx_t j, const idx_t k) const {
+    using Physics::NavierStokes::ConsVec;
+    using Physics::NavierStokes::PrimVar;
+    using Physics::NavierStokes::PrimVec;
+    using Physics::NavierStokes::SimVar;
+
+    const Real rdx = 1.0 / geom.dx, rdy = 1.0 / geom.dy, rdz = 1.0 / geom.dz;
+    const Real gamma = eosParams.gamma, Ma = eosParams.Ma, Re = eosParams.Re,
+               Pr = eosParams.Pr, alpha = Re * Pr * (gamma - 1.0) * Ma * Ma;
+
+    Real u[3][3][3], v[3][3][3], w[3][3][3], T[3][3][3];
+    for (int xo = -1; xo <= 1; xo++) {
+      for (int yo = -1; yo <= 1; yo++) {
+        for (int zo = -1; zo <= 1; zo++) {
+          ConsVec Uo;
+          PrimVec Vo;
+          for (int nV = 0; nV < NUM_VARS; nV++) {
+            Uo[nV] = U(i + xo, j + yo, k + zo, nV);
+          }
+          Physics::EOS<EquationType::NavierStokes>::cons2prim(gamma, Ma, Uo, Vo);
+          u[xo + 1][yo + 1][zo + 1] = Vo[PrimVar::velx];
+          v[xo + 1][yo + 1][zo + 1] = Vo[PrimVar::vely];
+          w[xo + 1][yo + 1][zo + 1] = Vo[PrimVar::velz];
+          T[xo + 1][yo + 1][zo + 1] = Vo[PrimVar::temp];
+        }
+      }
+    }
+
+    // Face average viscosities
+    const Real muPx = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[2][1][1], 0.76)),
+               muMx = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[0][1][1], 0.76)),
+               muPy = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[1][2][1], 0.76)),
+               muMy = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[1][0][1], 0.76)),
+               muPz = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[1][1][2], 0.76)),
+               muMz = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[1][1][0], 0.76));
+
+    // Fluxes on x-faces
+    Real px[4], mx[4];
+    px[0] = 4.0 * rdx * (u[2][1][1] - u[1][1][1]) / 3.0;
+    px[0] -= rdy * (v[1][2][1] + v[2][2][1] - v[1][0][1] - v[2][0][1]) / 6.0;
+    px[0] -= rdz * (w[1][1][2] + w[2][1][2] - w[1][1][0] - w[2][1][0]) / 6.0;
+    px[0] *= muPx;
+
+    px[1] = rdy * (u[1][2][1] + u[2][2][1] - u[1][0][1] - u[2][0][1]) / 4.0;
+    px[1] += rdx * (v[2][1][1] - v[1][1][1]);
+    px[1] *= muPx;
+
+    px[2] = rdz * (u[2][1][2] + u[1][1][2] - u[2][1][0] - u[1][1][0]) / 4.0;
+    px[2] += rdx * (w[2][1][1] - w[1][1][1]);
+    px[2] *= muPx;
+
+    mx[0] = 4.0 * rdx * (u[1][1][1] - u[0][1][1]) / 3.0;
+    mx[0] -= rdy * (v[0][2][1] + v[1][2][1] - v[0][0][1] - v[1][0][1]) / 6.0;
+    mx[0] -= rdz * (w[0][1][2] + w[1][1][2] - w[0][1][0] - w[1][1][0]) / 6.0;
+    mx[0] *= muMx;
+
+    mx[1] = rdy * (u[0][2][1] + u[1][2][1] - u[0][0][1] - u[1][0][1]) / 4.0;
+    mx[1] += rdx * (v[1][1][1] - v[0][1][1]);
+    mx[1] *= muMx;
+
+    mx[2] = rdz * (u[1][1][2] + u[0][1][2] - u[1][1][0] - u[0][1][0]) / 4.0;
+    mx[2] += rdx * (w[1][1][1] - w[0][1][1]);
+    mx[2] *= muMx;
+
+    // Fluxes on y-faces
+    Real py[4], my[4];
+    py[0] = rdx * (v[2][2][1] + v[2][1][1] - v[0][2][1] - v[0][1][1]) / 4.0;
+    py[0] += rdy * (u[1][2][1] - u[1][1][1]);
+    py[0] *= muPy;
+
+    py[1] = 4.0 * rdy * (v[1][2][1] - v[1][1][1]) / 3.0;
+    py[1] -= rdx * (u[2][2][1] + u[2][1][1] - u[0][2][1] - u[0][1][1]) / 6.0;
+    py[1] -= rdz * (w[1][2][2] + w[1][1][2] - w[1][2][0] - w[1][1][0]) / 6.0;
+    py[1] *= muPy;
+
+    py[2] = rdz * (v[1][2][2] + v[1][1][2] - v[1][2][0] - v[1][1][0]) / 4.0;
+    py[2] += rdy * (w[1][2][1] - w[1][1][1]);
+    py[2] *= muPy;
+
+    my[0] = rdx * (v[2][1][1] + v[2][0][1] - v[0][1][1] - v[0][0][1]) / 4.0;
+    my[0] += rdy * (u[1][1][1] - u[1][0][1]);
+    my[0] *= muMy;
+
+    my[1] = 4.0 * rdy * (v[1][1][1] - v[1][0][1]) / 3.0;
+    my[1] -= rdx * (u[2][1][1] + u[2][0][1] - u[0][1][1] - u[0][0][1]) / 6.0;
+    my[1] -= rdz * (w[1][1][2] + w[1][0][2] - w[1][1][0] - w[1][0][0]) / 6.0;
+    my[1] *= muMy;
+
+    my[2] = rdz * (v[1][1][2] + v[1][0][2] - v[1][1][0] - v[1][0][0]) / 4.0;
+    my[2] += rdy * (w[1][1][1] - w[1][0][1]);
+    my[2] *= muMy;
+
+    // Fluxes on z-faces
+    Real pz[4], mz[4];
+    pz[0] = rdx * (w[2][2][1] + w[2][1][1] - w[0][2][1] - w[0][1][1]) / 4.0;
+    pz[0] += rdz * (u[1][1][2] - u[1][1][1]);
+    pz[0] *= muPz;
+
+    pz[1] = rdy * (w[1][2][2] + w[1][2][1] - w[1][0][2] - w[1][0][1]) / 4.0;
+    pz[1] += rdz * (v[1][1][2] - v[1][1][1]);
+    pz[1] *= muPz;
+
+    pz[2] = 4.0 * rdz * (w[1][1][2] - w[1][1][1]) / 3.0;
+    pz[2] -= rdx * (u[2][2][1] + u[2][1][1] - u[0][2][1] - u[0][1][1]) / 6.0;
+    pz[2] -= rdy * (v[1][2][2] + v[1][2][1] - v[1][0][2] - v[1][0][1]) / 6.0;
+    pz[2] *= muPz;
+
+    mz[0] = rdx * (w[2][2][0] + w[2][1][0] - w[0][2][0] - w[0][1][0]) / 4.0;
+    mz[0] += rdz * (u[1][1][1] - u[1][1][0]);
+    mz[0] *= muMz;
+
+    mz[1] = rdy * (w[1][2][1] + w[1][2][0] - w[1][0][1] - w[1][0][0]) / 4.0;
+    mz[1] += rdz * (v[1][1][1] - v[1][1][0]);
+    mz[1] *= muMz;
+
+    mz[2] = 4.0 * rdz * (w[1][1][1] - w[1][1][0]) / 3.0;
+    mz[2] -= rdx * (u[2][2][0] + u[2][1][0] - u[0][2][0] - u[0][1][0]) / 6.0;
+    mz[2] -= rdy * (v[1][2][1] + v[1][2][0] - v[1][0][1] - v[1][0][0]) / 6.0;
+    mz[2] *= muMz;
+
+    // Temperature fluxes (What is face-centered kappa?)
+    px[3] = rdx * (T[2][1][1] - T[1][1][1]);
+    mx[3] = rdx * (T[1][1][1] - T[0][1][1]);
+    py[3] = rdy * (T[1][2][1] - T[1][1][1]);
+    my[3] = rdy * (T[1][1][1] - T[1][0][1]);
+    pz[3] = rdz * (T[1][1][2] - T[1][1][1]);
+    mz[3] = rdz * (T[1][1][1] - T[1][1][0]);
+
+    // Net momentum change
+    const Real rRe = 1.0 / Re;
+    const Real sru =
+        rRe * (rdx * (px[0] - mx[0]) + rdy * (py[0] - my[0]) + rdz * (pz[0] - mz[0]));
+    const Real srv =
+        rRe * (rdx * (px[1] - mx[1]) + rdy * (py[1] - my[1]) + rdz * (pz[1] - mz[1]));
+    const Real srw =
+        rRe * (rdx * (px[2] - mx[2]) + rdy * (py[2] - my[2]) + rdz * (pz[2] - mz[2]));
+
+    // Net temperature term
+    const Real rAl = 1.0 / alpha;
+    const Real ste =
+        rAl * (rdx * (px[3] - mx[3]) + rdy * (py[3] - my[3]) + rdz * (pz[3] - mz[3]));
+
+    // Add into RHS
+    RHS(i, j, k, SimVar::momx) += sru;
+    RHS(i, j, k, SimVar::momy) += srv;
+    RHS(i, j, k, SimVar::momz) += srw;
+    RHS(i, j, k, SimVar::etot) +=
+        ste + U(i, j, k, SimVar::dens) *
+                  (u[1][1][1] * sru + v[1][1][1] * srv + w[1][1][1] * srw);
+  }
+#endif
+};
+
+namespace NavierStokes {
 #include "SourceTerms.H"
 }
 
 template <class UViewType>
-struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
+struct SourceTerms_K<EquationType::NavierStokes, UViewType> {
   SourceDataView source;
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   UViewType U;
@@ -339,7 +525,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
   Geometry geom;
   Real t;
 
-  SourceTerms_K(const SourceDataView source_,
+  SourceTerms_K(const SourceDataView &source_,
                 KFVM_D_DECL(const FaceDataView &rsX_, const FaceDataView &rsY_,
                             const FaceDataView &rsZ_),
                 const UViewType &U_, const WenoFlagView &wenoFlag_, const DiffMatView &D_,
@@ -350,105 +536,24 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
-    using Kokkos::exp;
-    using MHD_GLM::SimVar;
+    // Get coordinates of cell center
+    Real xc = geom.xCoord(i);
+    Real yc = geom.yCoord(j);
+#if (SPACE_DIM == 2)
+    Real zc = geom.zCoord(0);
+#else
+    Real zc = geom.zCoord(k);
+#endif
 
     const int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
-
-    // Get cell center coordinate
-    const Real xc = geom.xCoord(i);
-    const Real yc = geom.yCoord(j);
-#if (SPACE_DIM == 2)
-    const Real zc = geom.zCoord(0);
-#else
-    const Real zc = geom.zCoord(k);
-#endif
-
-    // Set up temporaries for divergence and psi gradient
-#if (SPACE_DIM == 2)
-    Real divB[NUM_QUAD_PTS][NUM_QUAD_PTS][1];
-    Real gpsiDu[NUM_QUAD_PTS][NUM_QUAD_PTS][1];
-#else
-    Real divB[NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_QUAD_PTS];
-    Real gpsiDu[NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_QUAD_PTS];
-#endif
-    // get subviews of point values for this cell
-    auto cellVals =
-        Kokkos::subview(source, KFVM_D_DECL(i, j, k),
-                        KFVM_D_DECL(Kokkos::ALL, Kokkos::ALL, Kokkos::ALL), Kokkos::ALL);
-    auto wFaceVals =
-        Kokkos::subview(rsX, KFVM_D_DECL(i, j, k), 1, Kokkos::ALL, Kokkos::ALL);
-    auto eFaceVals =
-        Kokkos::subview(rsX, KFVM_D_DECL(i + 1, j, k), 0, Kokkos::ALL, Kokkos::ALL);
-    auto sFaceVals =
-        Kokkos::subview(rsY, KFVM_D_DECL(i, j, k), 1, Kokkos::ALL, Kokkos::ALL);
-    auto nFaceVals =
-        Kokkos::subview(rsY, KFVM_D_DECL(i, j + 1, k), 0, Kokkos::ALL, Kokkos::ALL);
-#if (SPACE_DIM == 3)
-    auto bFaceVals =
-        Kokkos::subview(rsZ, KFVM_D_DECL(i, j, k), 1, Kokkos::ALL, Kokkos::ALL);
-    auto tFaceVals =
-        Kokkos::subview(rsZ, KFVM_D_DECL(i, j, k + 1), 0, Kokkos::ALL, Kokkos::ALL);
-#endif
-
-    // Find field divergence and psi gradient terms
-    for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
-      for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        for (int nS = 0; nS < nzQuad; nS++) {
-          // Point values of velocity for gpsiDu
-          const Real rho = cellVals(KFVM_D_DECL(nQ, nR, nS), SimVar::dens);
-          const Real vx = cellVals(KFVM_D_DECL(nQ, nR, nS), SimVar::momx) / rho;
-          const Real vy = cellVals(KFVM_D_DECL(nQ, nR, nS), SimVar::momy) / rho;
-          const Real vz = cellVals(KFVM_D_DECL(nQ, nR, nS), SimVar::momz) / rho;
-
-          // Derivatives of B and psi, fall back on centered fd if PP corrected too far
-          Real dbx, dby, dbz, dpx, dpy, dpz;
-          if (wenoFlag(KFVM_D_DECL(i, j, k), 1) < 1.0) {
-            const Real tdx = 1.0 / (2.0 * geom.dx), tdy = 1.0 / (2.0 * geom.dy);
-            dbx = tdx * (U(KFVM_D_DECL(i + 1, j, k), SimVar::magx) -
-                         U(KFVM_D_DECL(i - 1, j, k), SimVar::magx));
-            dby = tdy * (U(KFVM_D_DECL(i, j + 1, k), SimVar::magy) -
-                         U(KFVM_D_DECL(i, j - 1, k), SimVar::magy));
-            dpx = tdx * (U(KFVM_D_DECL(i + 1, j, k), SimVar::psi) -
-                         U(KFVM_D_DECL(i - 1, j, k), SimVar::psi));
-            dpy = tdy * (U(KFVM_D_DECL(i, j + 1, k), SimVar::psi) -
-                         U(KFVM_D_DECL(i, j - 1, k), SimVar::psi));
-#if (SPACE_DIM == 2)
-            dbz = 0.0;
-            dpz = 0.0;
-#else
-            const Real tdz = 1.0 / (2.0 * geom.dz);
-            dbz = tdz * (U(i, j, k + 1, SimVar::magz) - U(i, j, k - 1, SimVar::magz));
-            dpz = tdz * (U(i, j, k + 1, SimVar::psi) - U(i, j, k - 1, SimVar::psi));
-#endif
-          } else {
-            dbx = diffX(cellVals, wFaceVals, eFaceVals, nQ, nR, nS, SimVar::magx);
-            dby = diffY(cellVals, sFaceVals, nFaceVals, nQ, nR, nS, SimVar::magy);
-            dpx = diffX(cellVals, wFaceVals, eFaceVals, nQ, nR, nS, SimVar::psi);
-            dpy = diffY(cellVals, sFaceVals, nFaceVals, nQ, nR, nS, SimVar::psi);
-#if (SPACE_DIM == 2)
-            dbz = 0.0;
-            dpz = 0.0;
-#else
-            dbz = diffZ(cellVals, bFaceVals, tFaceVals, nQ, nR, nS, SimVar::magz);
-            dpz = diffZ(cellVals, bFaceVals, tFaceVals, nQ, nR, nS, SimVar::psi);
-#endif
-          }
-
-          divB[nQ][nR][nS] = dbx + dby + dbz;
-          gpsiDu[nQ][nR][nS] = vx * dpx + vy * dpy + vz * dpz;
-        }
-      }
-    }
-
-    // Find and fill forcing
     for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       Real x = Numeric::sclAb(xc, geom.dx, ab(nQ));
       for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
         Real y = Numeric::sclAb(yc, geom.dy, ab(nR));
         for (int nS = 0; nS < nzQuad; nS++) {
           Real z = SPACE_DIM == 2 ? zc : Numeric::sclAb(zc, geom.dz, ab(nS));
-          MHD_GLM::ConsVec state, force;
+          NavierStokes::ConsVec state, force;
+          // Real state[10],force[10];
           // Extract state and clear force vector
           for (int nV = 0; nV < NUM_VARS; nV++) {
             state[nV] = source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV);
@@ -456,93 +561,20 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
           }
 
           // Fill force with user defined terms
-          MHD_GLM::SourceTerm(t, x, y, z, state, force);
+          NavierStokes::SourceTerm(t, x, y, z, state, force);
 
-          // Define GLM source terms
-          const Real vx = state[SimVar::momx] / state[SimVar::dens];
-          const Real vy = state[SimVar::momy] / state[SimVar::dens];
-          const Real vz = state[SimVar::momz] / state[SimVar::dens];
-
-          const Real uDb = vx * state[SimVar::magx] + vy * state[SimVar::magy] +
-                           vz * state[SimVar::magz];
-
-          // Fill source view with GLM and user forcing
-          source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::dens) =
-              force[SimVar::dens];
-
-          source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::momx) =
-              force[SimVar::momx] - divB[nQ][nR][nS] * state[SimVar::magx];
-          source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::momy) =
-              force[SimVar::momy] - divB[nQ][nR][nS] * state[SimVar::magy];
-          source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::momz) =
-              force[SimVar::momz] - divB[nQ][nR][nS] * state[SimVar::magz];
-
-          source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::etot) =
-              force[SimVar::etot] - divB[nQ][nR][nS] * uDb -
-              gpsiDu[nQ][nR][nS] * state[SimVar::psi];
-
-          source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::magx) =
-              force[SimVar::magx] - divB[nQ][nR][nS] * vx;
-          source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::magy) =
-              force[SimVar::magy] - divB[nQ][nR][nS] * vy;
-          source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::magz) =
-              force[SimVar::magz] - divB[nQ][nR][nS] * vz;
-
-          source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::psi) =
-              force[SimVar::psi] - gpsiDu[nQ][nR][nS];
+          // overwrite source with forcing
+          for (int nV = 0; nV < NUM_VARS; nV++) {
+            source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV) = force[nV];
+          }
         }
       }
     }
   }
-
-  template <class CellView, class MFaceView, class PFaceView>
-  KOKKOS_INLINE_FUNCTION Real diffX(CellView &cellVals, const MFaceView &mFace,
-                                    const PFaceView &pFace, const int nQ, const int nR,
-                                    const int nS, const int nV) const {
-    // Evaluate boundary terms
-    int faceIdx = SPACE_DIM == 2 ? nR : nR * NUM_QUAD_PTS + nS;
-    Real dvdx =
-        D(nQ, 0) * mFace(faceIdx, nV) + D(nQ, NUM_QUAD_PTS + 1) * pFace(faceIdx, nV);
-    for (int n = 1; n <= NUM_QUAD_PTS; n++) {
-      dvdx += D(nQ, n) * cellVals(KFVM_D_DECL(n - 1, nR, nS), nV);
-    }
-    dvdx /= geom.dx;
-    return dvdx;
-  }
-
-  template <class CellView, class MFaceView, class PFaceView>
-  KOKKOS_INLINE_FUNCTION Real diffY(CellView &cellVals, const MFaceView &mFace,
-                                    const PFaceView &pFace, const int nQ, const int nR,
-                                    const int nS, const int nV) const {
-    // Evaluate boundary terms
-    int faceIdx = SPACE_DIM == 2 ? nQ : nQ * NUM_QUAD_PTS + nS;
-    Real dvdy =
-        D(nR, 0) * mFace(faceIdx, nV) + D(nR, NUM_QUAD_PTS + 1) * pFace(faceIdx, nV);
-    for (int n = 1; n <= NUM_QUAD_PTS; n++) {
-      dvdy += D(nR, n) * cellVals(KFVM_D_DECL(nQ, n - 1, nS), nV);
-    }
-    dvdy /= geom.dy;
-    return dvdy;
-  }
-
-  template <class CellView, class MFaceView, class PFaceView>
-  KOKKOS_INLINE_FUNCTION Real diffZ(CellView &cellVals, const MFaceView &mFace,
-                                    const PFaceView &pFace, const int nQ, const int nR,
-                                    const int nS, const int nV) const {
-    // Evaluate boundary terms
-    int faceIdx = nQ * NUM_QUAD_PTS + nR;
-    Real dvdz =
-        D(nS, 0) * mFace(faceIdx, nV) + D(nS, NUM_QUAD_PTS + 1) * pFace(faceIdx, nV);
-    for (int n = 1; n <= NUM_QUAD_PTS; n++) {
-      dvdz += D(nS, n) * cellVals(KFVM_D_DECL(nQ, nR, n - 1), nV);
-    }
-    dvdz /= geom.dz;
-    return dvdz;
-  }
 };
 
 template <class UDataView>
-struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
+struct PositivityPreserve_K<EquationType::NavierStokes, UDataView> {
   UDataView U;
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   bool haveSources;
@@ -562,8 +594,8 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
     using Kokkos::fmax;
     using Kokkos::fmin;
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::SimVar;
+    using NavierStokes::ConsVec;
+    using NavierStokes::SimVar;
 
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
 
@@ -574,11 +606,11 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
     }
     Real rDens = refState[SimVar::dens];
 
-    // Find ranges of density, pressure, and soundspeed
+    // Find ranges of density, internal energy, and soundspeed
     Real maxDens = -std::numeric_limits<Real>::max();
     Real minDens = std::numeric_limits<Real>::max();
     Real minEint = std::numeric_limits<Real>::max();
-    Real minFms = std::numeric_limits<Real>::max();
+    Real minSdSp = std::numeric_limits<Real>::max();
     for (idx_t xo = -1; xo <= 1; xo++) {
       for (idx_t yo = -1; yo <= 1; yo++) {
 #if (SPACE_DIM == 3)
@@ -590,10 +622,10 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
           }
           maxDens = fmax(maxDens, state[SimVar::dens]);
           minDens = fmin(minDens, state[SimVar::dens]);
-          Real eint = EOS<EquationType::MHD_GLM>::eint(state);
-          Real fms = EOS<EquationType::MHD_GLM>::soundspeed(eosParams.gamma, state);
+          Real eint = EOS<EquationType::NavierStokes>::eint(state);
+          Real sdsp = EOS<EquationType::NavierStokes>::soundspeed(eosParams.gamma, state);
           minEint = fmin(minEint, eint);
-          minFms = fmin(minFms, fms);
+          minSdSp = fmin(minSdSp, sdsp);
 #if (SPACE_DIM == 3)
         }
 #endif
@@ -618,9 +650,9 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
     Real dzW = Real(0.0);
 #endif
     Real divV = (dxU + dyV + dzW) / Real(2.0); // Undivided difference
-    Real kappa1 = Real(0.2), kappa2 = Real(0.2);
+    Real kappa1 = Real(0.3), kappa2 = Real(0.3);
     Real eta =
-        fmin(Real(1.0), fmax(Real(0.0), -(kappa1 * minFms + divV) / (kappa1 * minFms)));
+        fmin(Real(1.0), fmax(Real(0.0), -(kappa1 * minSdSp + divV) / (kappa1 * minSdSp)));
 
     // Extend density and pressure ranges
     maxDens *= (Real(1.0) + kappa2 - kappa2 * eta);
@@ -630,8 +662,8 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
     Real rDensDiffP = maxDens - rDens, rDensDiffM = rDens - minDens;
 
     // Enforce positive density
-    // Find mixing amount given by face values
-    Real theta = minDens > 1.e-13 ? Real(1.0) : 0.0;
+    // Find mixing amount
+    Real theta = Real(1.0);
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       // West face
       Real rho = rsX(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
@@ -715,55 +747,49 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
       }
     }
 
-    // Enforce positive pressure
+    // Enforce positive internal energy
     // Find mixing amount
-    theta = minEint > 1.e-13 ? Real(1.0) : 0.0;
+    theta = Real(1.0);
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      Real ei;
       ConsVec state;
-
+      Real ei;
       // West face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
-
+      ei = EOS<EquationType::NavierStokes>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, nsEintPos(minEint, refState, state));
       // East face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
-
+      ei = EOS<EquationType::NavierStokes>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, nsEintPos(minEint, refState, state));
       // South face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsY(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
-
+      ei = EOS<EquationType::NavierStokes>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, nsEintPos(minEint, refState, state));
       // North face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
-
+      ei = EOS<EquationType::NavierStokes>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, nsEintPos(minEint, refState, state));
 #if (SPACE_DIM == 3)
       // Bottom face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
-
+      ei = EOS<EquationType::NavierStokes>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, nsEintPos(minEint, refState, state));
       // Top face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
+      ei = EOS<EquationType::NavierStokes>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, nsEintPos(minEint, refState, state));
 #endif
     }
 
@@ -777,9 +803,9 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
             for (int nV = 0; nV < NUM_VARS; nV++) {
               state[nV] = source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV);
             }
-            Real ei = EOS<EquationType::MHD_GLM>::eint(state);
+            Real ei = EOS<EquationType::NavierStokes>::eint(state);
             theta =
-                ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
+                ei >= minEint ? theta : fmin(theta, nsEintPos(minEint, refState, state));
           }
         }
       }
@@ -826,16 +852,16 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
   }
 
   KOKKOS_INLINE_FUNCTION
-  Real mhdEintPos(const Real emin, const MHD_GLM::ConsVec refState,
-                  const MHD_GLM::ConsVec state) const {
+  Real nsEintPos(const Real emin, const NavierStokes::ConsVec refState,
+                 const NavierStokes::ConsVec state) const {
     using Kokkos::fabs;
     using Kokkos::fmin;
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::SimVar;
+    using NavierStokes::ConsVec;
+    using NavierStokes::SimVar;
 
     Real a = 0.0, b = 0.1, c, dea, dec;
     ConsVec stTheta;
-    dea = EOS<EquationType::MHD_GLM>::eint(refState) - emin;
+    dea = EOS<EquationType::NavierStokes>::eint(refState) - emin;
 
     // Scan b forward until sign changes
     for (int nIter = 0; nIter < 9; nIter++) {
@@ -843,7 +869,7 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
         stTheta[nV] = refState[nV] + b * (state[nV] - refState[nV]);
       }
 
-      dec = EOS<EquationType::MHD_GLM>::eint(stTheta) - emin;
+      dec = EOS<EquationType::NavierStokes>::eint(stTheta) - emin;
 
       if (dea * dec < 0.0) {
         break;
@@ -863,8 +889,8 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
         stTheta[nV] = refState[nV] + c * (state[nV] - refState[nV]);
       }
 
-      // Pressure differences at states a and c
-      dec = EOS<EquationType::MHD_GLM>::eint(stTheta) - emin;
+      // Energy differences at states a and c
+      dec = EOS<EquationType::NavierStokes>::eint(stTheta) - emin;
 
       if (dec * dea < 0.0) {
         b = c;

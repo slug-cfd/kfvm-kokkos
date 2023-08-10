@@ -77,21 +77,6 @@ Real hydroHLL(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Cons
 }
 
 KOKKOS_INLINE_FUNCTION
-Real hllcSStar(Real rhoL, Real rhoR, Real pL, Real pR, Real uL, Real uR, Real sL,
-               Real sR) {
-  return ((pR - pL) + (rhoL * uL * (sL - uL) - rhoR * uR * (sR - uR))) /
-         (rhoL * (sL - uL) - rhoR * (sR - uR));
-}
-
-KOKKOS_INLINE_FUNCTION
-Real hllcPre(Real rho, Real u, Real s, Real sStar) { return rho * (s - u) / (s - sStar); }
-
-KOKKOS_INLINE_FUNCTION
-Real hllcEnergy(Real pre, Real rhoK, Real EK, Real pK, Real uK, Real sK, Real sS) {
-  return pre * (EK / rhoK + (sS - uK) * (sS + pK / (rhoK * (sK - uK))));
-}
-
-KOKKOS_INLINE_FUNCTION
 Real hydroHLLC(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::ConsVec uR,
                const Hydro::PrimVec vL, const Hydro::PrimVec vR, Hydro::ConsVec F) {
   using Hydro::ConsVec;
@@ -134,12 +119,6 @@ Real hydroHLLC(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Con
   }
 
   return fmax(fabs(sL), fabs(sR));
-}
-
-KOKKOS_INLINE_FUNCTION
-Real roeAvg(Real rhoL, Real rhoR, Real qL, Real qR) {
-  using Kokkos::sqrt;
-  return (qL * sqrt(rhoL) + qR * sqrt(rhoR)) / (sqrt(rhoL) + sqrt(rhoR));
 }
 
 // Carbuncle suppressed Roe solver

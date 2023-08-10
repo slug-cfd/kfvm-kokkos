@@ -21,6 +21,27 @@ Real hllState(Real sL, Real sR, Real fL, Real fR, Real uL, Real uR) {
   return ((sR * uR - sL * uL) + (fL - fR)) / (sR - sL);
 }
 
+KOKKOS_INLINE_FUNCTION
+Real hllcSStar(Real rhoL, Real rhoR, Real pL, Real pR, Real uL, Real uR, Real sL,
+               Real sR) {
+  return ((pR - pL) + (rhoL * uL * (sL - uL) - rhoR * uR * (sR - uR))) /
+         (rhoL * (sL - uL) - rhoR * (sR - uR));
+}
+
+KOKKOS_INLINE_FUNCTION
+Real hllcPre(Real rho, Real u, Real s, Real sStar) { return rho * (s - u) / (s - sStar); }
+
+KOKKOS_INLINE_FUNCTION
+Real hllcEnergy(Real pre, Real rhoK, Real EK, Real pK, Real uK, Real sK, Real sS) {
+  return pre * (EK / rhoK + (sS - uK) * (sS + pK / (rhoK * (sK - uK))));
+}
+
+KOKKOS_INLINE_FUNCTION
+Real roeAvg(Real rhoL, Real rhoR, Real qL, Real qR) {
+  using Kokkos::sqrt;
+  return (qL * sqrt(rhoL) + qR * sqrt(rhoR)) / (sqrt(rhoL) + sqrt(rhoR));
+}
+
 } // end namespace Physics
 
 } // end namespace KFVM

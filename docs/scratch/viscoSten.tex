@@ -1,0 +1,65 @@
+\documentclass{article}
+\usepackage{amsmath,amssymb,amsfonts}
+
+\begin{document}
+
+\section{Momentum terms}
+
+\begin{equation*}
+  \sigma_{ij} = \mu\left(\partial_i u_j + \partial_j u_i\right) - \frac{2}{3}\mu\partial_k u_k\delta_{ij}
+\end{equation*}
+
+\subsection{$X-$Faces}
+\begin{equation*}
+  \sigma_{i1} = \mu\left(\partial_i u + \partial_x u_i\right) - \frac{2}{3}\mu\partial_k u_k\delta_{i1}
+\end{equation*}
+
+\begin{align*}
+  \sigma_{11} &= \frac{4\mu}{3\Delta x}\begin{pmatrix} & \\ -1 & 1 \\ & \end{pmatrix}[u]_{xy} - \frac{\mu}{6\Delta y}\begin{pmatrix} 1 & 1 \\ & \\ -1 & -1 \end{pmatrix}[v]_{xy} - \frac{\mu}{6\Delta z}\begin{pmatrix} 1 & 1 \\ & \\ -1 & -1 \end{pmatrix}[w]_{xz}
+\end{align*}
+
+\begin{align*}
+  \sigma_{21} &= \frac{\mu}{4\Delta y}\begin{pmatrix} 1 & 1 \\ & \\ -1 & -1 \end{pmatrix}[u]_{xy} + \frac{\mu}{\Delta x}\begin{pmatrix} & \\ -1 & 1 \\ & \end{pmatrix}[v]_{xy}
+\end{align*}
+
+\begin{align*}
+  \sigma_{31} &= \frac{\mu}{4\Delta z}\begin{pmatrix} 1 & 1 \\ & \\ -1 & -1 \end{pmatrix}[u]_{xz} + \frac{\mu}{\Delta x}\begin{pmatrix} & \\ -1 & 1 \\ & \end{pmatrix}[w]_{xz}
+\end{align*}
+
+\subsection{$Y-$Faces}
+\begin{equation*}
+  \sigma_{i2} = \mu\left(\partial_i v + \partial_y u\right) - \frac{2}{3}\mu\partial_k u_k\delta_{i2}
+\end{equation*}
+
+\begin{equation*}
+  \sigma_{12} = \frac{\mu}{4\Delta x}\begin{pmatrix} -1 & & 1 \\ -1 & & 1 \end{pmatrix}[v]_{xy} + \frac{\mu}{\Delta y}\begin{pmatrix} & 1 & \\ & -1 & \end{pmatrix}[u]_{xy}
+\end{equation*}
+
+\begin{align*}
+  \sigma_{22} &= \frac{4\mu}{3\Delta y}\begin{pmatrix} & 1 & \\ & -1 & \end{pmatrix}[v]_{xy} - \frac{\mu}{6\Delta x}\begin{pmatrix} -1 & & 1 \\ -1 & & 1 \end{pmatrix}[u]_{xy} - \frac{\mu}{6\Delta z}\begin{pmatrix} -1 & & 1 \\ -1 & & 1 \end{pmatrix}[w]_{yz}
+\end{align*}
+
+\begin{equation*}
+  \sigma_{32} = \frac{\mu}{4\Delta z}\begin{pmatrix} -1 & & 1 \\ -1 & & 1 \end{pmatrix}[v]_{yz} + \frac{\mu}{\Delta y}\begin{pmatrix} & 1 & \\ & -1 & \end{pmatrix}[w]_{yz}
+\end{equation*}
+
+\subsection{$Z-$Faces}
+\begin{equation*}
+  \sigma_{i3} = \mu\left(\partial_i w + \partial_z u\right) - \frac{2}{3}\mu\partial_k u_k\delta_{i3}
+\end{equation*}
+
+\begin{equation*}
+  \sigma_{13} = \frac{\mu}{4\Delta x}\begin{pmatrix} -1 & & 1 \\ -1 & & 1 \end{pmatrix}[w]_{xz} + \frac{\mu}{\Delta z}\begin{pmatrix} & 1 & \\ & -1 & \end{pmatrix}[u]_{xz}
+\end{equation*}
+
+\begin{equation*}
+  \sigma_{23} = \frac{\mu}{4\Delta y}\begin{pmatrix} -1 & & 1 \\ -1 & & 1 \end{pmatrix}[w]_{yz} + \frac{\mu}{\Delta z}\begin{pmatrix} & 1 & \\ & -1 & \end{pmatrix}[v]_{yz}
+\end{equation*}
+
+\begin{align*}
+  \sigma_{33} &= \frac{4\mu}{3\Delta z}\begin{pmatrix} & 1 & \\ & -1 & \end{pmatrix}[w]_{xz} - \frac{\mu}{6\Delta x}\begin{pmatrix} -1 & & 1 \\ -1 & & 1 \end{pmatrix}[u]_{xz} - \frac{\mu}{6\Delta y}\begin{pmatrix} -1 & & 1 \\ -1 & & 1 \end{pmatrix}[v]_{yz}
+\end{align*}
+
+% \begin{pmatrix} & & \\ & & \\ & & \end{pmatrix}
+
+\end{document}

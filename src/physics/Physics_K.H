@@ -22,6 +22,8 @@ template <EquationType ET, RSType RS>
 struct RiemannSolverZ_K {};
 template <EquationType ET>
 struct SpeedEstimate_K {};
+template <EquationType ET, class UViewType, class RViewType>
+struct Viscosity_K {};
 template <EquationType ET, class UViewType>
 struct SourceTerms_K {};
 template <EquationType ET, class UViewType>
@@ -41,6 +43,11 @@ struct BCCoeffs {};
 #include "hydro/Hydro_BCCoeffs.H"
 #include "hydro/Hydro_EOS.H"
 #include "hydro/Hydro_K.H"
+
+// Navier-Stokes (hydro + Sutherland viscosity)
+#include "navierstokes/NavierStokes_BCCoeffs.H"
+#include "navierstokes/NavierStokes_EOS.H"
+#include "navierstokes/NavierStokes_K.H"
 
 // Ideal MHD with GLM
 #include "mhd/MHD_GLM_BCCoeffs.H"

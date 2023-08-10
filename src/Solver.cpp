@@ -381,6 +381,15 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
                            RHS, KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir),
                            sourceTerms, haveSources, qr.ab, qr.wt, geom));
 
+  // Add viscous terms for NS equations
+  if (eqType == EquationType::NavierStokes) {
+
+    Kokkos::parallel_for(
+        "Viscosity", cellRng,
+        Physics::Viscosity_K<EquationType::NavierStokes, decltype(U), decltype(RHS)>(
+            U, RHS, geom, ps.eosParams));
+  }
+
   Kokkos::fence("Solver::evalRHS(Speed reduction)");
 
   Kokkos::Profiling::popRegion();
@@ -1314,8 +1323,14 @@ void Solver::setWestBCExt(ConsDataView sol_halo, Real t) {
   case BCType::reflecting:
     Kokkos::parallel_for(
         "CellBCs::West", bndRng,
-        CellBcWest_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.x)>(
-            sol_halo, bcCoeff.x, ps.rad, ps.nX));
+        CellBcWest_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.reflectX)>(
+            sol_halo, bcCoeff.reflectX, ps.rad, ps.nX));
+    break;
+  case BCType::noslip:
+    Kokkos::parallel_for(
+        "CellBCs::West", bndRng,
+        CellBcWest_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.noslipX)>(
+            sol_halo, bcCoeff.noslipX, ps.rad, ps.nX));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1349,8 +1364,14 @@ void Solver::setEastBCExt(ConsDataView sol_halo, Real t) {
   case BCType::reflecting:
     Kokkos::parallel_for(
         "CellBCs::East", bndRng,
-        CellBcEast_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.x)>(
-            sol_halo, bcCoeff.x, ps.rad, ps.nX));
+        CellBcEast_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.reflectX)>(
+            sol_halo, bcCoeff.reflectX, ps.rad, ps.nX));
+    break;
+  case BCType::noslip:
+    Kokkos::parallel_for(
+        "CellBCs::East", bndRng,
+        CellBcEast_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.noslipX)>(
+            sol_halo, bcCoeff.noslipX, ps.rad, ps.nX));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1384,8 +1405,14 @@ void Solver::setSouthBCExt(ConsDataView sol_halo, Real t) {
   case BCType::reflecting:
     Kokkos::parallel_for(
         "CellBCs::South", bndRng,
-        CellBcSouth_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.y)>(
-            sol_halo, bcCoeff.y, ps.rad, ps.nY));
+        CellBcSouth_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.reflectY)>(
+            sol_halo, bcCoeff.reflectY, ps.rad, ps.nY));
+    break;
+  case BCType::noslip:
+    Kokkos::parallel_for(
+        "CellBCs::South", bndRng,
+        CellBcSouth_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.noslipY)>(
+            sol_halo, bcCoeff.noslipY, ps.rad, ps.nY));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1419,8 +1446,14 @@ void Solver::setNorthBCExt(ConsDataView sol_halo, Real t) {
   case BCType::reflecting:
     Kokkos::parallel_for(
         "CellBCs::North", bndRng,
-        CellBcNorth_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.y)>(
-            sol_halo, bcCoeff.y, ps.rad, ps.nY));
+        CellBcNorth_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.reflectY)>(
+            sol_halo, bcCoeff.reflectY, ps.rad, ps.nY));
+    break;
+  case BCType::noslip:
+    Kokkos::parallel_for(
+        "CellBCs::North", bndRng,
+        CellBcNorth_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.noslipY)>(
+            sol_halo, bcCoeff.noslipY, ps.rad, ps.nY));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1448,10 +1481,16 @@ void Solver::setBottomBCExt(ConsDataView sol_halo, Real t) {
         CellBcBottom_K<decltype(sol_halo), BCType::outflow>(sol_halo, ps.rad, ps.nZ));
     break;
   case BCType::reflecting:
+    Kokkos::parallel_for("CellBCs::Bottom", bndRng,
+                         CellBcBottom_K<decltype(sol_halo), BCType::reflecting,
+                                        decltype(bcCoeff.reflectZ)>(
+                             sol_halo, bcCoeff.reflectZ, ps.rad, ps.nZ));
+    break;
+  case BCType::noslip:
     Kokkos::parallel_for(
         "CellBCs::Bottom", bndRng,
-        CellBcBottom_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.z)>(
-            sol_halo, bcCoeff.z, ps.rad, ps.nZ));
+        CellBcBottom_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.noslipZ)>(
+            sol_halo, bcCoeff.noslipZ, ps.rad, ps.nZ));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1480,8 +1519,14 @@ void Solver::setTopBCExt(ConsDataView sol_halo, Real t) {
   case BCType::reflecting:
     Kokkos::parallel_for(
         "CellBCs::Top", bndRng,
-        CellBcTop_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.z)>(
-            sol_halo, bcCoeff.z, ps.rad, ps.nZ));
+        CellBcTop_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.reflectZ)>(
+            sol_halo, bcCoeff.reflectZ, ps.rad, ps.nZ));
+    break;
+  case BCType::noslip:
+    Kokkos::parallel_for(
+        "CellBCs::Top", bndRng,
+        CellBcTop_K<decltype(sol_halo), BCType::reflecting, decltype(bcCoeff.noslipZ)>(
+            sol_halo, bcCoeff.noslipZ, ps.rad, ps.nZ));
     break;
   case BCType::user:
     Kokkos::parallel_for(
@@ -1512,17 +1557,23 @@ void Solver::setWestBCExt(Real t) {
 
   switch (ps.bcType[FaceLabel::west]) {
   case BCType::outflow:
-    Kokkos::parallel_for("FaceBCs::West::Outflow", bndRng,
+    Kokkos::parallel_for("FaceBCs::West", bndRng,
                          FaceBcWest_K<decltype(westBnd), BCType::outflow>(westBnd));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
-        "FaceBCs::West::Reflecting", bndRng,
-        FaceBcWest_K<decltype(westBnd), BCType::reflecting, decltype(bcCoeff.x)>(
-            westBnd, bcCoeff.x));
+        "FaceBCs::West", bndRng,
+        FaceBcWest_K<decltype(westBnd), BCType::reflecting, decltype(bcCoeff.reflectX)>(
+            westBnd, bcCoeff.reflectX));
+    break;
+  case BCType::noslip:
+    Kokkos::parallel_for(
+        "FaceBCs::West", bndRng,
+        FaceBcWest_K<decltype(westBnd), BCType::reflecting, decltype(bcCoeff.noslipX)>(
+            westBnd, bcCoeff.noslipX));
     break;
   case BCType::user:
-    Kokkos::parallel_for("FaceBCs::West::User", bndRng,
+    Kokkos::parallel_for("FaceBCs::West", bndRng,
                          FaceBcWest_K<decltype(westBnd), BCType::user>(
                              westBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;
@@ -1549,17 +1600,23 @@ void Solver::setEastBCExt(Real t) {
 
   switch (ps.bcType[FaceLabel::east]) {
   case BCType::outflow:
-    Kokkos::parallel_for("FaceBCs::East::Outflow", bndRng,
+    Kokkos::parallel_for("FaceBCs::East", bndRng,
                          FaceBcEast_K<decltype(eastBnd), BCType::outflow>(eastBnd));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
-        "FaceBCs::East::Reflecting", bndRng,
-        FaceBcEast_K<decltype(eastBnd), BCType::reflecting, decltype(bcCoeff.x)>(
-            eastBnd, bcCoeff.x));
+        "FaceBCs::East", bndRng,
+        FaceBcEast_K<decltype(eastBnd), BCType::reflecting, decltype(bcCoeff.reflectX)>(
+            eastBnd, bcCoeff.reflectX));
+    break;
+  case BCType::noslip:
+    Kokkos::parallel_for(
+        "FaceBCs::East", bndRng,
+        FaceBcEast_K<decltype(eastBnd), BCType::reflecting, decltype(bcCoeff.noslipX)>(
+            eastBnd, bcCoeff.noslipX));
     break;
   case BCType::user:
-    Kokkos::parallel_for("FaceBCs::East::User", bndRng,
+    Kokkos::parallel_for("FaceBCs::East", bndRng,
                          FaceBcEast_K<decltype(eastBnd), BCType::user>(
                              eastBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;
@@ -1585,17 +1642,23 @@ void Solver::setSouthBCExt(Real t) {
 
   switch (ps.bcType[FaceLabel::south]) {
   case BCType::outflow:
-    Kokkos::parallel_for("FaceBCs::South::Outflow", bndRng,
+    Kokkos::parallel_for("FaceBCs::South", bndRng,
                          FaceBcSouth_K<decltype(southBnd), BCType::outflow>(southBnd));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
-        "FaceBCs::South::Reflecting", bndRng,
-        FaceBcSouth_K<decltype(southBnd), BCType::reflecting, decltype(bcCoeff.y)>(
-            southBnd, bcCoeff.y));
+        "FaceBCs::South", bndRng,
+        FaceBcSouth_K<decltype(southBnd), BCType::reflecting, decltype(bcCoeff.reflectY)>(
+            southBnd, bcCoeff.reflectY));
+    break;
+  case BCType::noslip:
+    Kokkos::parallel_for(
+        "FaceBCs::South", bndRng,
+        FaceBcSouth_K<decltype(southBnd), BCType::reflecting, decltype(bcCoeff.noslipY)>(
+            southBnd, bcCoeff.noslipY));
     break;
   case BCType::user:
-    Kokkos::parallel_for("FaceBCs::South::User", bndRng,
+    Kokkos::parallel_for("FaceBCs::South", bndRng,
                          FaceBcSouth_K<decltype(southBnd), BCType::user>(
                              southBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;
@@ -1622,17 +1685,23 @@ void Solver::setNorthBCExt(Real t) {
 
   switch (ps.bcType[FaceLabel::north]) {
   case BCType::outflow:
-    Kokkos::parallel_for("FaceBCs::North::Outflow", bndRng,
+    Kokkos::parallel_for("FaceBCs::North", bndRng,
                          FaceBcNorth_K<decltype(northBnd), BCType::outflow>(northBnd));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
-        "FaceBCs::North::Reflecting", bndRng,
-        FaceBcNorth_K<decltype(northBnd), BCType::reflecting, decltype(bcCoeff.y)>(
-            northBnd, bcCoeff.y));
+        "FaceBCs::North", bndRng,
+        FaceBcNorth_K<decltype(northBnd), BCType::reflecting, decltype(bcCoeff.reflectY)>(
+            northBnd, bcCoeff.reflectY));
+    break;
+  case BCType::noslip:
+    Kokkos::parallel_for(
+        "FaceBCs::North", bndRng,
+        FaceBcNorth_K<decltype(northBnd), BCType::reflecting, decltype(bcCoeff.noslipY)>(
+            northBnd, bcCoeff.noslipY));
     break;
   case BCType::user:
-    Kokkos::parallel_for("FaceBCs::North::User", bndRng,
+    Kokkos::parallel_for("FaceBCs::North", bndRng,
                          FaceBcNorth_K<decltype(northBnd), BCType::user>(
                              northBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;
@@ -1655,17 +1724,23 @@ void Solver::setBottomBCExt(Real t) {
 
   switch (ps.bcType[FaceLabel::bottom]) {
   case BCType::outflow:
-    Kokkos::parallel_for("FaceBCs::Bottom::Outflow", bndRng,
+    Kokkos::parallel_for("FaceBCs::Bottom", bndRng,
                          FaceBcBottom_K<decltype(bottomBnd), BCType::outflow>(bottomBnd));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
-        "FaceBCs::Bottom::Reflecting", bndRng,
-        FaceBcBottom_K<decltype(bottomBnd), BCType::reflecting, decltype(bcCoeff.z)>(
-            bottomBnd, bcCoeff.z));
+        "FaceBCs::Bottom", bndRng,
+        FaceBcBottom_K<decltype(bottomBnd), BCType::reflecting,
+                       decltype(bcCoeff.reflectZ)>(bottomBnd, bcCoeff.reflectZ));
+    break;
+  case BCType::noslip:
+    Kokkos::parallel_for(
+        "FaceBCs::Bottom", bndRng,
+        FaceBcBottom_K<decltype(bottomBnd), BCType::reflecting,
+                       decltype(bcCoeff.noslipZ)>(bottomBnd, bcCoeff.noslipZ));
     break;
   case BCType::user:
-    Kokkos::parallel_for("FaceBCs::Bottom::User", bndRng,
+    Kokkos::parallel_for("FaceBCs::Bottom", bndRng,
                          FaceBcBottom_K<decltype(bottomBnd), BCType::user>(
                              bottomBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;
@@ -1687,17 +1762,23 @@ void Solver::setTopBCExt(Real t) {
 
   switch (ps.bcType[FaceLabel::top]) {
   case BCType::outflow:
-    Kokkos::parallel_for("FaceBCs::Top::Outflow", bndRng,
+    Kokkos::parallel_for("FaceBCs::Top", bndRng,
                          FaceBcTop_K<decltype(topBnd), BCType::outflow>(topBnd));
     break;
   case BCType::reflecting:
     Kokkos::parallel_for(
-        "FaceBCs::Top::Reflecting", bndRng,
-        FaceBcTop_K<decltype(topBnd), BCType::reflecting, decltype(bcCoeff.z)>(
-            topBnd, bcCoeff.z));
+        "FaceBCs::Top", bndRng,
+        FaceBcTop_K<decltype(topBnd), BCType::reflecting, decltype(bcCoeff.reflectZ)>(
+            topBnd, bcCoeff.reflectZ));
+    break;
+  case BCType::noslip:
+    Kokkos::parallel_for(
+        "FaceBCs::Top", bndRng,
+        FaceBcTop_K<decltype(topBnd), BCType::reflecting, decltype(bcCoeff.noslipZ)>(
+            topBnd, bcCoeff.noslipZ));
     break;
   case BCType::user:
-    Kokkos::parallel_for("FaceBCs::Top::User", bndRng,
+    Kokkos::parallel_for("FaceBCs::Top", bndRng,
                          FaceBcTop_K<decltype(topBnd), BCType::user>(
                              topBnd, geom, qr.ab, t, ps.eosParams, ps.userParams));
     break;

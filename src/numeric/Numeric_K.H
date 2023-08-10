@@ -311,17 +311,16 @@ struct WenoSelect_K {
                   uint32_t &nWeno) const {
     using Kokkos::fabs;
     using Kokkos::fmax;
-    using Kokkos::fmin;
 
     const int nQuadZ = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
-    Real numer = 0.0, minVal = std::numeric_limits<Real>::max();
+    Real numer = 0.0, denom = 0.0, minVal = std::numeric_limits<Real>::max();
 
     for (int nR = 0; nR < nQuadZ; nR++) {
       const Real wtR = SPACE_DIM == 2 ? 1.0 : wts(nR);
       for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
         const Real wt = wtR * wts(nQ);
         Real uIn[NUM_VARS], uOut[NUM_VARS]; // Inner and outer states
-        Real wIn, wOut;                     // normal velocity prefactor and indicators
+        Real vPF, wIn, wOut;                // normal velocity prefactor and indicators
 
         // West face
         for (int nV = 0; nV < NUM_VARS; nV++) {
@@ -333,7 +332,7 @@ struct WenoSelect_K {
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
         minVal = fmin(minVal, fabs(wIn));
-        numer += vPF * wt * fabs(wOut - wIn);
+        numer += vPF * wt * (wOut - wIn);
         denom += vPF * wt;
 
         // East face
@@ -346,7 +345,7 @@ struct WenoSelect_K {
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
         minVal = fmin(minVal, fabs(wIn));
-        numer += vPF * wt * fabs(wOut - wIn);
+        numer += vPF * wt * (wOut - wIn);
         denom += vPF * wt;
 
         // South face
@@ -359,7 +358,7 @@ struct WenoSelect_K {
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
         minVal = fmin(minVal, fabs(wIn));
-        numer += vPF * wt * fabs(wOut - wIn);
+        numer += vPF * wt * (wOut - wIn);
         denom += vPF * wt;
 
         // North face
@@ -372,7 +371,7 @@ struct WenoSelect_K {
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
         minVal = fmin(minVal, fabs(wIn));
-        numer += vPF * wt * fabs(wOut - wIn);
+        numer += vPF * wt * (wOut - wIn);
         denom += vPF * wt;
 
 #if (SPACE_DIM == 3)
@@ -386,7 +385,7 @@ struct WenoSelect_K {
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
         minVal = fmin(minVal, fabs(wIn));
-        numer += vPF * wt * fabs(wOut - wIn);
+        numer += vPF * wt * (wOut - wIn);
         denom += vPF * wt;
 
         // Top face
@@ -399,7 +398,7 @@ struct WenoSelect_K {
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
         minVal = fmin(minVal, fabs(wIn));
-        numer += vPF * wt * fabs(wOut - wIn);
+        numer += vPF * wt * (wOut - wIn);
         denom += vPF * wt;
 #endif
       }

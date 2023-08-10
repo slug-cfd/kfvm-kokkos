@@ -13,18 +13,19 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   using Physics::Hydro::SimVar;
 
   const Real gamm = eosParams.gamma - 1.0;
+  const Real Masq = eosParams.Ma * eosParams.Ma;
+  const Real pd = eosParams.gamma * Masq * gamm;
 
-  const Real L = 1.0, u0 = 1.0, rho = 1.0, p0 = 100.0;
+  const Real rho = 1.0;
 
-  const Real u = u0 * sin(x / L) * cos(y / L) * cos(z / L);
-  const Real v = -u0 * cos(x / L) * sin(y / L) * cos(z / L);
+  const Real u = sin(x) * cos(y) * cos(z);
+  const Real v = -cos(x) * sin(y) * cos(z);
   const Real w = 0.0;
-  const Real p =
-      p0 + rho * (cos(2.0 * x / L) + cos(2.0 * y / L)) * (cos(2.0 * z / L) + 2.0) / 16.0;
+  const Real p = 1.0 + (cos(2.0 * x) + cos(2.0 * y)) * (cos(2.0 * z) + 2.0) / 16.0;
 
   state[SimVar::dens] = rho;
   state[SimVar::momx] = rho * u;
   state[SimVar::momy] = rho * v;
   state[SimVar::momz] = rho * w;
-  state[SimVar::etot] = p / gamm + 0.5 * rho * (u * u + v * v + w * w);
+  state[SimVar::etot] = p / pd + 0.5 * rho * (u * u + v * v + w * w);
 }

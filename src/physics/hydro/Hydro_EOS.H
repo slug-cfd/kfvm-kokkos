@@ -77,10 +77,10 @@ struct EOS<EquationType::Hydro> {
   KOKKOS_INLINE_FUNCTION
   static Real weno(const Hydro::ConsVec U, const EosParameters &eosParams) {
     using Hydro::SimVar;
-    using Kokkos::log;
+    // using Kokkos::log;
     using Kokkos::pow;
 
-    return log(pres(eosParams.gamma, U) / pow(U[SimVar::dens], eosParams.gamma));
+    return pres(eosParams.gamma, U) / pow(U[SimVar::dens], eosParams.gamma);
   }
 
   KOKKOS_INLINE_FUNCTION

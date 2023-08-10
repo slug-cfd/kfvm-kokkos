@@ -24,6 +24,23 @@ typedef Real PrimVec[5];
 
 } // end namespace Hydro
 
+namespace NavierStokes {
+
+struct SimVar {
+  enum var { dens = 0, momx, momy, momz, etot };
+};
+struct PrimVar {
+  enum var { dens = 0, velx, vely, velz, pres, temp };
+};
+struct AuxVar {
+  enum var { velx = 0, vely, velz, eint, pres };
+};
+
+typedef Real ConsVec[5];
+typedef Real PrimVec[6];
+
+} // end namespace NavierStokes
+
 namespace MHD_GLM {
 
 struct SimVar {

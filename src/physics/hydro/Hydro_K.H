@@ -329,12 +329,11 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
       refState[nV] = U(KFVM_D_DECL(i, j, k), nV);
     }
     Real rDens = refState[SimVar::dens];
-    Real rPres = EOS<EquationType::Hydro>::pres(eosParams.gamma, refState);
 
     // Find ranges of density, pressure, and soundspeed
     Real maxDens = -std::numeric_limits<Real>::max();
     Real minDens = std::numeric_limits<Real>::max();
-    Real minPres = std::numeric_limits<Real>::max();
+    Real minEint = std::numeric_limits<Real>::max();
     Real minSdSp = std::numeric_limits<Real>::max();
     for (idx_t xo = -1; xo <= 1; xo++) {
       for (idx_t yo = -1; yo <= 1; yo++) {
@@ -347,9 +346,9 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
           }
           maxDens = fmax(maxDens, state[SimVar::dens]);
           minDens = fmin(minDens, state[SimVar::dens]);
-          Real pres = EOS<EquationType::Hydro>::pres(eosParams.gamma, state);
+          Real eint = EOS<EquationType::Hydro>::eint(state);
           Real sdsp = EOS<EquationType::Hydro>::soundspeed(eosParams.gamma, state);
-          minPres = fmin(minPres, pres);
+          minEint = fmin(minEint, eint);
           minSdSp = fmin(minSdSp, sdsp);
 #if (SPACE_DIM == 3)
         }
@@ -382,7 +381,7 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
     // Extend density and pressure ranges
     maxDens *= (Real(1.0) + kappa2 - kappa2 * eta);
     minDens *= (Real(1.0) - kappa2 + kappa2 * eta);
-    minPres *= (Real(1.0) - kappa2 + kappa2 * eta);
+    minEint *= (Real(1.0) - kappa2 + kappa2 * eta);
 
     Real rDensDiffP = maxDens - rDens, rDensDiffM = rDens - minDens;
 
@@ -472,61 +471,49 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
       }
     }
 
-    // Enforce positive pressure
+    // Enforce positive internal energy
     // Find mixing amount
     theta = Real(1.0);
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       ConsVec state;
-      Real p;
+      Real ei;
       // West face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      p = EOS<EquationType::Hydro>::pres(eosParams.gamma, state);
-      theta = p >= minPres
-                  ? theta
-                  : fmin(theta, eulerPresPos(eosParams.gamma, minPres, refState, state));
+      ei = EOS<EquationType::Hydro>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, eulerEintPos(minEint, refState, state));
       // East face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, nV);
       }
-      p = EOS<EquationType::Hydro>::pres(eosParams.gamma, state);
-      theta = p >= minPres
-                  ? theta
-                  : fmin(theta, eulerPresPos(eosParams.gamma, minPres, refState, state));
+      ei = EOS<EquationType::Hydro>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, eulerEintPos(minEint, refState, state));
       // South face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsY(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      p = EOS<EquationType::Hydro>::pres(eosParams.gamma, state);
-      theta = p >= minPres
-                  ? theta
-                  : fmin(theta, eulerPresPos(eosParams.gamma, minPres, refState, state));
+      ei = EOS<EquationType::Hydro>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, eulerEintPos(minEint, refState, state));
       // North face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, nV);
       }
-      p = EOS<EquationType::Hydro>::pres(eosParams.gamma, state);
-      theta = p >= minPres
-                  ? theta
-                  : fmin(theta, eulerPresPos(eosParams.gamma, minPres, refState, state));
+      ei = EOS<EquationType::Hydro>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, eulerEintPos(minEint, refState, state));
 #if (SPACE_DIM == 3)
       // Bottom face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      p = EOS<EquationType::Hydro>::pres(eosParams.gamma, state);
-      theta = p >= minPres
-                  ? theta
-                  : fmin(theta, eulerPresPos(eosParams.gamma, minPres, refState, state));
+      ei = EOS<EquationType::Hydro>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, eulerEintPos(minEint, refState, state));
       // Top face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, nV);
       }
-      p = EOS<EquationType::Hydro>::pres(eosParams.gamma, state);
-      theta = p >= minPres
-                  ? theta
-                  : fmin(theta, eulerPresPos(eosParams.gamma, minPres, refState, state));
+      ei = EOS<EquationType::Hydro>::eint(state);
+      theta = ei >= minEint ? theta : fmin(theta, eulerEintPos(minEint, refState, state));
 #endif
     }
 
@@ -540,10 +527,9 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
             for (int nV = 0; nV < NUM_VARS; nV++) {
               state[nV] = source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV);
             }
-            Real p = EOS<EquationType::Hydro>::pres(eosParams.gamma, state);
-            theta = p >= minPres ? theta
-                                 : fmin(theta, eulerPresPos(eosParams.gamma, minPres,
-                                                            refState, state));
+            Real ei = EOS<EquationType::Hydro>::eint(state);
+            theta = ei >= minEint ? theta
+                                  : fmin(theta, eulerEintPos(minEint, refState, state));
           }
         }
       }
@@ -590,16 +576,16 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
   }
 
   KOKKOS_INLINE_FUNCTION
-  Real eulerPresPos(const Real gamma, const Real pmin, const Hydro::ConsVec refState,
+  Real eulerEintPos(const Real emin, const Hydro::ConsVec refState,
                     const Hydro::ConsVec state) const {
     using Hydro::ConsVec;
     using Hydro::SimVar;
     using Kokkos::fabs;
     using Kokkos::fmin;
 
-    Real a = 0.0, b = 0.1, c, dpa, dpc;
+    Real a = 0.0, b = 0.1, c, dea, dec;
     ConsVec stTheta;
-    dpa = EOS<EquationType::Hydro>::pres(gamma, refState) - pmin;
+    dea = EOS<EquationType::Hydro>::eint(refState) - emin;
 
     // Scan b forward until sign changes
     for (int nIter = 0; nIter < 9; nIter++) {
@@ -607,15 +593,15 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
         stTheta[nV] = refState[nV] + b * (state[nV] - refState[nV]);
       }
 
-      dpc = EOS<EquationType::Hydro>::pres(gamma, stTheta) - pmin;
+      dec = EOS<EquationType::Hydro>::eint(stTheta) - emin;
 
-      if (dpa * dpc < 0.0) {
+      if (dea * dec < 0.0) {
         break;
       } else {
         // slide interval forward
         a += 0.1;
         b += 0.1;
-        dpa = dpc;
+        dea = dec;
       }
     }
 
@@ -627,14 +613,14 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
         stTheta[nV] = refState[nV] + c * (state[nV] - refState[nV]);
       }
 
-      // Pressure differences at states a and c
-      dpc = EOS<EquationType::Hydro>::pres(gamma, stTheta) - pmin;
+      // Energy differences at states a and c
+      dec = EOS<EquationType::Hydro>::eint(stTheta) - emin;
 
-      if (dpc * dpa < 0.0) {
+      if (dec * dea < 0.0) {
         b = c;
       } else {
         a = c;
-        dpa = dpc;
+        dea = dec;
       }
     }
 
