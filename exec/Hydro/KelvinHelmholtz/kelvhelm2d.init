@@ -20,8 +20,9 @@ eos:gamma 1.4
 eos:wenothresh 20.0
 
 # Output settings
-io:pdiconf ../../user/pdi_euler_xdmf.yml
+io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename KelvHelm
 io:plotfreq 50
 io:ckptfreq 20
+io:verbose 1

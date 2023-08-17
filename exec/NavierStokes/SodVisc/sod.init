@@ -23,7 +23,7 @@ eos:reynolds 1000.0
 eos:prandtl 0.7
 
 # Output settings
-io:pdiconf ../../user/pdi_euler_xdmf.yml
+io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename SodX
 io:plotfreq 20

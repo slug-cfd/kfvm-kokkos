@@ -20,8 +20,9 @@ eos:gamma 0.0
 eos:wenothresh -1.0
 
 # Output settings
-io:pdiconf ../../user/pdi_linadv_xdmf.yml
+io:pdiconf ../../../user/pdi_linadv_xdmf.yml
 io:datadir data
 io:basename DispRel
 io:plotfreq 1
 io:ckptfreq 1
+io:verbose 2

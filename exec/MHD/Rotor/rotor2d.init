@@ -20,8 +20,9 @@ eos:gamma 1.4
 eos:wenothresh 50.0
 
 # Output settings
-io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
+io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename Rotor
 io:plotfreq 50
 io:ckptfreq 20
+io:verbose 1

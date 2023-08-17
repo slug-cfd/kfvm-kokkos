@@ -23,7 +23,7 @@ eos:prandtl 0.7
 eos:wenothresh 1.0
 
 # Output settings
-io:pdiconf ../../user/pdi_euler_xdmf.yml
+io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename TaylorGreen
 io:plotfreq 20

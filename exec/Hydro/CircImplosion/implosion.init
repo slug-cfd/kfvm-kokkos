@@ -20,11 +20,12 @@ eos:gamma 1.666666666666666
 eos:wenothresh 1.0
 
 # Output settings
-io:pdiconf ../../user/pdi_euler_xdmf.yml
+io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename CircImplosion
 io:plotfreq 20
 io:ckptfreq 20
+io:verbose 1
 
 # User specified values
 user:a 0.0

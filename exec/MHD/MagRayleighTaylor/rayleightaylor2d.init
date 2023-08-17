@@ -20,8 +20,9 @@ eos:gamma 1.666666666666
 eos:wenothresh 10.0
 
 # Output settings
-io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
+io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename MagRayleighTaylor
 io:plotfreq 500
 io:ckptfreq 100
+io:verbose 1

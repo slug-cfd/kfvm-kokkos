@@ -20,9 +20,9 @@ eos:gamma 1.666666666666666
 eos:wenothresh 1.0
 
 # Output settings
-io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
+io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename OrszagTang
 io:plotfreq 20
 io:ckptfreq 50
-io:restartfile data/R2_NX256_NY256/ckpt/OrszagTang_0000441.h5
+io:verbose 1

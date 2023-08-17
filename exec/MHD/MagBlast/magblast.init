@@ -20,11 +20,12 @@ eos:gamma 1.4
 eos:wenothresh 1.0
 
 # Output settings
-io:pdiconf ../../user/pdi_mhd_glm_xdmf.yml
+io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename MagBlast
 io:plotfreq 20
 io:ckptfreq 50
+io:verbose 1
 
 # User defined settings
 user:r 0.1
