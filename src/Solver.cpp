@@ -80,7 +80,8 @@ void Solver::Solve() {
   // Evolve in time, recording solutions as needed
   // nTS already set to 1 for non-restart, or to whatever the restart value is
   for (; nTS < ps.maxTimeSteps && !lastTimeStep; ++nTS) {
-    Print::Single(ps, "Step {}: time = {}\n", nTS, time);
+    Print::Single(ps, "Step {}: time = {:<.4} ({:<.4}%)\n", nTS, time,
+                  100.0 * time / ps.finalTime);
     TakeStep();
 
     // Write out data files if needed
@@ -97,6 +98,11 @@ void Solver::Solve() {
                 "Time stepping completed\n  {} RHS evals and {}/{} rejected "
                 "(accuracy/unphysical) steps\n",
                 nRhsEval, nRejectThresh, nRejectUnphys);
+  if (ps.eosParams.wenoThresh > 0.0) {
+    Print::Any(ps, "  {} ({:<.4}%) cells flagged for WENO on rank {}\n",
+               wenoSelector.nWeno, (100.0 * wenoSelector.nWeno) / (ps.nX * ps.nY * ps.nZ),
+               ps.layoutMPI.rank);
+  }
 
   Kokkos::Profiling::popRegion();
 }
@@ -133,7 +139,7 @@ void Solver::TakeStep() {
   Real maxVel, v;
   for (int nT = 0; nT < ps.rejectionLimit; nT++) {
     maxVel = 0.0;
-    Print::SingleV1(ps, "  Attempt {}: dt = {}\n", nT + 1, dt);
+    Print::SingleV1(ps, "  Attempt {}: dt = {:<.4}\n", nT + 1, dt);
 
     // Trim halos off
     auto U = trimCellHalo(U_halo);
@@ -211,7 +217,7 @@ void Solver::TakeStep() {
 
     if (gStat == TSStatus::UNPHYSICAL) {
       // Solution is unphysical, reject and reduce dt
-      Print::AlertSingle(ps, "  cfl = {:f}\n    Rejected: Unphysical\n", cfl);
+      Print::AlertSingle(ps, "  cfl = {:<.4}\n    Rejected: Unphysical\n", cfl);
       // first set to quarter of max cfl, then start halving
       dt = firstUnphys ? std::fmin(0.25 * ps.cfl * geom.dmin / maxVel, dt / 4.0)
                        : dt / 2.0;
@@ -221,7 +227,7 @@ void Solver::TakeStep() {
       nRejectUnphys++;
     } else if (gStat == TSStatus::ACCEPTED) {
       // Step is accepted
-      Print::SingleV1(ps, "  cfl = {:f}\n", cfl);
+      Print::SingleV1(ps, "  cfl = {:<.4}\n", cfl);
       accepted = true;
       time += dt;
       Real dterr = dt * dtfac, dtcfl = ps.cfl * geom.dmin / maxVel;
@@ -233,7 +239,7 @@ void Solver::TakeStep() {
       break;
     } else if (gStat == TSStatus::TOLERANCE) {
       // otherwise step is rejected, try again with new smaller dt
-      Print::AlertSingle(ps, "  cfl = {:f}\n    Rejected: Tolerance\n", cfl);
+      Print::AlertSingle(ps, "  cfl = {:<.4}\n    Rejected: Tolerance\n", cfl);
       dt = dt * dtfac;
       nRejectThresh++;
     } else {
@@ -287,7 +293,7 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
   // Reconstruct face states and set BCs
   if (useSparseWeno) {
     // Set threshold for WENO
-    const Real wThresh = ps.eosParams.wenoThresh * std::pow(geom.dmin, 2.0);
+    const Real wThresh = ps.eosParams.wenoThresh * std::pow(geom.dmin, 1.5);
 
     // First try HO reconstruction
     reconRiemStatesHighOrder(sol_halo);
@@ -297,13 +303,14 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
     wenoSelector.update(KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), qr.wt,
                         wThresh);
 
-    // Apply WENO sparsely and repair BCs
+    // Apply WENO sparsely
     reconRiemStatesSparseWeno(sol_halo);
-    setFaceBCs(t);
   } else {
     // Otherwise do full WENO tile-by-tile
     reconRiemStatesTiledWeno(sol_halo);
-    setFaceBCs(t);
+
+    // swap back to sparse weno if allowed
+    useSparseWeno = ps.eosParams.wenoThresh > 0.0;
   }
 
   auto cellRng = interiorCellRange();
@@ -339,6 +346,9 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
             sourceTerms, KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), U,
             wenoSelector.wenoFlagView, diffMat.diffMat, qr.ab, ps.eosParams, geom, t));
   }
+
+  // Set BCs on faces
+  setFaceBCs(t);
 
   // Call Riemann solver
   Real vEW = 0.0, vNS = 0.0, vTB = 0.0;
@@ -479,9 +489,6 @@ void Solver::reconRiemStatesTiledWeno(ConsDataView sol_halo) {
       }
     }
   }
-
-  // swap back to sparse weno if allowed
-  useSparseWeno = ps.eosParams.wenoThresh > 0.0;
 }
 
 // Set up weno selector and its logic
@@ -548,7 +555,7 @@ void WenoSelector::update(KFVM_D_DECL(FaceDataView rsX, FaceDataView rsY,
       nWeno);
 
   // Clear map and reallocate workspace if needed
-  Print::AnyV2(ps, "    {} ({:f}%) cells flagged for WENO on rank {}\n", nWeno,
+  Print::AnyV2(ps, "    {} ({:<.4}%) cells flagged for WENO on rank {}\n", nWeno,
                (100.0 * nWeno) / (ps.nX * ps.nY * ps.nZ), ps.layoutMPI.rank);
   wenoFlagMap.clear();
   assert(wenoFlagMap.rehash(nWeno));
