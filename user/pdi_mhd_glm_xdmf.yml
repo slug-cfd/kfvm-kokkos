@@ -169,6 +169,8 @@ pdi:
     comm: MPI_Comm
     restart_filename_size: int
     restart_filename: { type: array, subtype: char, size: $restart_filename_size }
+    stats_max_rows: int
+    stats_row_num: int
   data:
     filename_size: int
     filename: { type: array, subtype: char, size: $filename_size }
@@ -184,6 +186,10 @@ pdi:
       type: array
       subtype: double
       size: [2, '$ncell_l[2]', '$ncell_l[1]', '$ncell_l[0]']
+    stats_row:
+      type: array
+      subtype: double
+      size: [4]
 
   plugins:
     
@@ -272,3 +278,22 @@ pdi:
         weno_field:
           - *weno_description
           - *fomx_description
+
+    - file: ${filename}
+      on_event: write_flow_stats
+      collision_policy: write_into
+      communicator: '$comm'
+      datasets:
+        stats_data:
+          type: array
+          subtype: double
+          size: [$stats_max_rows, 3]
+      write:
+        stats_row:
+          - dataset: stats_data
+            memory_selection:
+              size: [4]
+              start: [0]
+            dataset_selection:
+              size: [1, 4]
+              start: [$stats_row_num, 0]

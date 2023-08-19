@@ -4,8 +4,6 @@
 // File: Geometry.H
 // Purpose: Hold grid geometry and convenience functions
 
-#include <cstdio>
-
 #include <Kokkos_Core.hpp>
 
 #include <Definitions.H>
@@ -20,6 +18,8 @@ namespace KFVM {
 struct Geometry {
   // Grid spacing
   const Real dx, dy, dz, dmin;
+  // Cell volume
+  const Real volume, dvol;
   // Bounding box
   const Real xLo, xUp, yLo, yUp, zLo, zUp;
 
@@ -32,9 +32,12 @@ struct Geometry {
         yLo(ps.yLo_g + dy * ps.layoutMPI.byLo), yUp(ps.yLo_g + dy * ps.layoutMPI.byUp),
         zLo(ps.zLo_g + dz * ps.layoutMPI.bzLo), zUp(ps.zLo_g + dz * ps.layoutMPI.bzUp),
 #if (SPACE_DIM == 2)
-        dmin(std::fmin(dx, dy))
+        dmin(std::fmin(dx, dy)), volume((ps.xUp_g - ps.xLo_g) * (ps.yUp_g - ps.yLo_g)),
+        dvol(dx * dy)
 #else
-        dmin(std::fmin(dx, std::fmin(dy, dz)))
+        dmin(std::fmin(dx, std::fmin(dy, dz))),
+        volume((ps.xUp_g - ps.xLo_g) * (ps.yUp_g - ps.yLo_g) * (ps.zUp_g - ps.zLo_g)),
+        dvol(dx * dy * dz)
 #endif
   {
   }

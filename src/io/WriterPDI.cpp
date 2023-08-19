@@ -20,7 +20,7 @@ WriterPDI::WriterPDI(ProblemSetup &ps_, const Geometry &geom_)
       weno_host("weno_host", KFVM_D_DECL(ps.nX, ps.nY, ps.nZ)),
       nX_g(ps.layoutMPI.nbX * ps.nX), nY_g(ps.layoutMPI.nbY * ps.nY),
       nZ_g(ps.layoutMPI.nbZ * ps.nZ), xCoord(nX_g + 1, Real(0.0)),
-      yCoord(nY_g + 1, Real(0.0)), zCoord(nZ_g + 1, Real(0.0)) {
+      yCoord(nY_g + 1, Real(0.0)), zCoord(nZ_g + 1, Real(0.0)), stats_row_num(0) {
   // Generate base filename and make directories as needed
   std::ostringstream oss;
   oss << ps.dataDir << "/R" << ps.rad << "_NX" << ps.nX * ps.nbX << "_NY"
@@ -62,7 +62,27 @@ WriterPDI::WriterPDI(ProblemSetup &ps_, const Geometry &geom_)
                    (void *)xCoord.data(), PDI_OUT, "ycoord", (void *)yCoord.data(),
                    PDI_OUT, "zcoord", (void *)zCoord.data(), PDI_OUT, "gamma",
                    (void *)&ps.eosParams.gamma, PDI_OUT, "comm",
-                   (void *)&ps.layoutMPI.commWorld, PDI_OUT, NULL);
+                   (void *)&ps.layoutMPI.commWorld, PDI_OUT, "stats_max_rows",
+                   (void *)&ps.maxTimeSteps, PDI_OUT, NULL);
+}
+
+void WriterPDI::writeFlowStats(const Physics::FlowStatsArray &stats, Real time) {
+  std::string filename = prefix + ps.baseName + "_stats.h5";
+  int filename_size = filename.size();
+
+  // Pull flow stats and time into a single array
+  std::array<Real, NUM_STATS + 1> stats_row;
+  stats_row[0] = time;
+  for (int nS = 0; nS < NUM_STATS; nS++) {
+    stats_row[nS + 1] = stats.data[nS];
+  }
+
+  PDI_multi_expose("write_flow_stats", "filename_size", (void *)&filename_size, PDI_OUT,
+                   "filename", (void *)filename.c_str(), PDI_OUT, "stats_row_num",
+                   (void *)&stats_row_num, PDI_OUT, "stats_row", (void *)stats_row.data(),
+                   PDI_OUT, NULL);
+
+  stats_row_num++;
 }
 
 void WriterPDI::writePlot(ConsDataView U, AuxDataView V, WenoFlagView weno, int step,

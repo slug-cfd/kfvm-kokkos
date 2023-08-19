@@ -48,6 +48,20 @@ struct AuxVars<EquationType::LinAdv, UViewType> {
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {}
 };
 
+template <class UViewType>
+struct FlowStats<EquationType::LinAdv, UViewType> {
+  UViewType U;
+  Geometry geom;
+  EosParameters eosParams;
+
+  FlowStats(const UViewType &U_, const Geometry &geom_, const EosParameters &eosParams_)
+      : U(U_), geom(geom_), eosParams(eosParams_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+                  FlowStatsArray &stat) const {}
+};
+
 template <RSType rst>
 struct RiemannSolverX_K<EquationType::LinAdv, rst> {
   FaceDataView U;

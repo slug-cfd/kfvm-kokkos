@@ -16,6 +16,7 @@ enum EquationType {
 
 constexpr std::array<std::size_t, NUM_EQUATION_TYPES> NUM_EQN_VARS{{5, 5, 9, 5, 1}};
 constexpr std::array<std::size_t, NUM_EQUATION_TYPES> NUM_EQN_AUX{{5, 5, 6, 6, 1}};
+constexpr std::array<std::size_t, NUM_EQUATION_TYPES> NUM_EQN_STATS{{2, 2, 3, 1, 1}};
 
 } // end namespace KFVM
 

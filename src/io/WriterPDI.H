@@ -11,6 +11,7 @@
 #include "../Geometry.H"
 #include "../ProblemSetup.H"
 #include "../Types.H"
+#include "../physics/SimVar.H"
 
 namespace KFVM {
 
@@ -26,6 +27,7 @@ class WriterPDI {
   std::string prefix;
   std::string filename_h5;
   std::string filename_xmf;
+  int stats_row_num;
 
   void writeAttrHydro(std::ofstream &, bool);
   void writeAttrMHD_GLM(std::ofstream &, bool);
@@ -41,6 +43,7 @@ class WriterPDI {
 
  public:
   WriterPDI(ProblemSetup &, const Geometry &);
+  void writeFlowStats(const Physics::FlowStatsArray &, Real);
   void writePlot(ConsDataView, AuxDataView, WenoFlagView, int, Real);
   void writeCkpt(ConsDataView, WenoFlagView, int, Real, Real);
   void readCkpt(ConsDataView, WenoFlagView, int &, Real &, Real &);

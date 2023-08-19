@@ -100,6 +100,78 @@ struct AuxVars<EquationType::Hydro, UViewType> {
   }
 };
 
+template <class UViewType>
+struct FlowStats<EquationType::Hydro, UViewType> {
+  UViewType U;
+  Geometry geom;
+  EosParameters eosParams;
+
+  FlowStats(const UViewType &U_, const Geometry &geom_, const EosParameters &eosParams_)
+      : U(U_), geom(geom_), eosParams(eosParams_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+                  FlowStatsArray &stat) const {
+    using Hydro::SimVar;
+    using Hydro::StatVar;
+
+    // Compute kinetic energy
+    const Real ek =
+        0.5 *
+        (U(KFVM_D_DECL(i, j, k), SimVar::momx) * U(KFVM_D_DECL(i, j, k), SimVar::momx) +
+         U(KFVM_D_DECL(i, j, k), SimVar::momy) * U(KFVM_D_DECL(i, j, k), SimVar::momy) +
+         U(KFVM_D_DECL(i, j, k), SimVar::momz) * U(KFVM_D_DECL(i, j, k), SimVar::momz)) /
+        U(KFVM_D_DECL(i, j, k), SimVar::dens);
+
+    // Compute velocity gradients
+    const Real dyu = 0.5 *
+                     (U(KFVM_D_DECL(i, j + 1, k), SimVar::momx) /
+                          U(KFVM_D_DECL(i, j + 1, k), SimVar::dens) -
+                      U(KFVM_D_DECL(i, j - 1, k), SimVar::momx) /
+                          U(KFVM_D_DECL(i, j - 1, k), SimVar::dens)) /
+                     geom.dy;
+    const Real dxv = 0.5 *
+                     (U(KFVM_D_DECL(i + 1, j, k), SimVar::momy) /
+                          U(KFVM_D_DECL(i + 1, j, k), SimVar::dens) -
+                      U(KFVM_D_DECL(i - 1, j, k), SimVar::momy) /
+                          U(KFVM_D_DECL(i - 1, j, k), SimVar::dens)) /
+                     geom.dx;
+#if (SPACE_DIM == 2)
+    const Real dzu = 0.0, dzv = 0.0, dxw = 0.0, dyw = 0.0;
+#else
+    const Real dzu = 0.5 *
+                     (U(i, j, k + 1, SimVar::momx) / U(i, j, k + 1, SimVar::dens) -
+                      U(i, j, k - 1, SimVar::momx) / U(i, j, k - 1, SimVar::dens)) /
+                     geom.dz;
+
+    const Real dzv = 0.5 *
+                     (U(i, j, k + 1, SimVar::momy) / U(i, j, k + 1, SimVar::dens) -
+                      U(i, j, k - 1, SimVar::momy) / U(i, j, k - 1, SimVar::dens)) /
+                     geom.dz;
+
+    const Real dxw = 0.5 *
+                     (U(i + 1, j, k, SimVar::momz) / U(i + 1, j, k, SimVar::dens) -
+                      U(i - 1, j, k, SimVar::momz) / U(i - 1, j, k, SimVar::dens)) /
+                     geom.dx;
+
+    const Real dyw = 0.5 *
+                     (U(i, j + 1, k, SimVar::momz) / U(i, j + 1, k, SimVar::dens) -
+                      U(i, j - 1, k, SimVar::momz) / U(i, j - 1, k, SimVar::dens)) /
+                     geom.dy;
+#endif
+
+    // compute vorticity and enstrophy
+    const Real omx = dyw - dzv, omy = dzu - dxw, omz = dxv - dyu;
+    const Real et =
+        0.5 * U(KFVM_D_DECL(i, j, k), SimVar::dens) * (omx * omx + omy * omy + omz * omz);
+
+    // Add into array for reduction
+    const Real ifac = geom.dvol / geom.volume;
+    stat.data[StatVar::ekin] += ifac * ek;
+    stat.data[StatVar::enst] += ifac * et;
+  }
+};
+
 template <RSType rst>
 struct RiemannSolverX_K<EquationType::Hydro, rst> {
   FaceDataView U;

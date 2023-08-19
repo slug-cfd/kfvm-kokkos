@@ -45,6 +45,7 @@ enum TSStatus { ACCEPTED = 0, TOLERANCE, UNPHYSICAL };
 // Set number of evolved and auxiliary variables
 constexpr std::size_t NUM_VARS = NUM_EQN_VARS[eqType];
 constexpr std::size_t NUM_AUX = NUM_EQN_AUX[eqType];
+constexpr std::size_t NUM_STATS = NUM_EQN_STATS[eqType];
 
 // Kokkos spaces
 #if (defined KFVM_EXEC_SERIAL)

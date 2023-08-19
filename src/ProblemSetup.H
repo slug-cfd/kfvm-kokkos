@@ -54,7 +54,7 @@ struct ProblemSetup {
 
   // File output information
   std::string pdiConf, dataDir, baseName;
-  int plotFreq, ckptFreq;
+  int plotFreq, ckptFreq, statsFreq;
 
   // Restart from checkpoint info
   bool restart;
@@ -75,7 +75,7 @@ struct ProblemSetup {
         finalTime(1.0), initialDeltaT(1.e-10), atol(1.e-4), rtol(1.e-4),
         rejectionThresh(0.8), rejectionLimit(4), cfl(SPACE_DIM == 3 ? 0.5 : 0.75),
         pdiConf(""), dataDir("data"), baseName("default"), plotFreq(100), ckptFreq(50),
-        restart(false), verbose(0) {
+        statsFreq(-1), restart(false), verbose(0) {
     // Ensure that source terms are always enabled in MHD
     haveSourceTerms = haveSourceTerms || (eqType == EquationType::MHD_GLM);
   }
@@ -129,6 +129,7 @@ struct ProblemSetup {
       fmt::print("  basename: {}\n", baseName);
       fmt::print("  plotfreq: {}\n", plotFreq);
       fmt::print("  ckptfreq: {}\n", ckptFreq);
+      fmt::print("  statsfreq: {}\n", statsFreq);
       if (restart) {
         fmt::print("  restartfile: {}\n", restartFile);
       }
@@ -346,6 +347,9 @@ struct ProblemSetup {
     } else if (category == "ckptfreq") {
       std::getline(lStream, value, ' ');
       ckptFreq = std::stoi(value, &pos);
+    } else if (category == "statsfreq") {
+      std::getline(lStream, value, ' ');
+      statsFreq = std::stoi(value, &pos);
     } else if (category == "basename") {
       std::getline(lStream, baseName);
     } else if (category == "pdiconf") {

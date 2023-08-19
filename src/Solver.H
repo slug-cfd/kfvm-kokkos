@@ -119,6 +119,7 @@ class Solver {
   void setIC();
 
   void evalAuxiliary();
+  void evalFlowStats();
 
   Real evalRHS(ConsDataView, Real);
   void reconRiemStatesHighOrder(ConsDataView);

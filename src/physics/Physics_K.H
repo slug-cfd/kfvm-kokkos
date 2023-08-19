@@ -12,6 +12,8 @@ namespace Physics {
 // Empty primary templates for each needed functor struct
 template <EquationType ET, class UViewType>
 struct AuxVars {};
+template <EquationType ET, class UViewType>
+struct FlowStats {};
 template <EquationType ET>
 class VarConvert {};
 template <EquationType ET, RSType RS>

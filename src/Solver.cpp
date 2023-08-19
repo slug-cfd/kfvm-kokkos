@@ -25,6 +25,7 @@
 #include "numeric/RKTypes.H"
 #include "physics/EquationTypes.H"
 #include "physics/Physics_K.H"
+#include "physics/SimVar.H"
 #include "stencil/Stencil_K.H"
 
 #include <Solver.H>
@@ -82,6 +83,14 @@ void Solver::Solve() {
   for (; nTS < ps.maxTimeSteps && !lastTimeStep; ++nTS) {
     Print::Single(ps, "Step {}: time = {:<.4} ({:<.4}%)\n", nTS, time,
                   100.0 * time / ps.finalTime);
+
+    // Cell BCs have already been set due to FSAL ordering
+    // Gather flow stats before stepping
+    if (nTS % ps.statsFreq == 0 && ps.statsFreq > 0) {
+      evalFlowStats();
+    }
+
+    // Step forward one time step
     TakeStep();
 
     // Write out data files if needed
@@ -91,6 +100,10 @@ void Solver::Solve() {
     }
     if (nTS % ps.ckptFreq == 0 || lastTimeStep || nTS == (ps.maxTimeSteps - 1)) {
       writerPDI.writeCkpt(U_halo, wenoSelector.wenoFlagView, nTS, time, dt);
+    }
+    if (lastTimeStep && ps.statsFreq > 0) {
+      setCellBCs(U_halo, time);
+      evalFlowStats();
     }
   }
 
@@ -115,6 +128,39 @@ void Solver::evalAuxiliary() {
 
   Kokkos::parallel_for("Solver::evalAuxiliary", cellRng,
                        Physics::AuxVars<eqType, decltype(U)>(U, U_aux, ps.eosParams));
+
+  Kokkos::Profiling::popRegion();
+}
+
+void Solver::evalFlowStats() {
+  Kokkos::Profiling::pushRegion("Solver::evalFlowStats");
+
+  auto U = trimCellHalo(U_halo);
+  auto cellRng = interiorCellRange();
+
+  Physics::FlowStatsArray stats;
+
+  // Reduce device down to host
+  Kokkos::parallel_reduce("Solver::evalFlowStats", cellRng,
+                          Physics::FlowStats<eqType, decltype(U)>(U, geom, ps.eosParams),
+                          Kokkos::Sum<Physics::FlowStatsArray>(stats));
+
+  // MPI reduce to root rank
+  if (ps.layoutMPI.size > 1) {
+    for (int nS = 0; nS < NUM_STATS; nS++) {
+      if (ps.layoutMPI.rank == 0) {
+        MPI_Reduce(MPI_IN_PLACE, &stats.data[nS], 1, ps.layoutMPI.realType, MPI_SUM, 0,
+                   ps.layoutMPI.commWorld);
+      } else {
+        MPI_Reduce(&stats.data[nS], &stats.data[nS], 1, ps.layoutMPI.realType, MPI_SUM, 0,
+                   ps.layoutMPI.commWorld);
+      }
+    }
+  }
+
+  if (ps.layoutMPI.rank == 0) {
+    writerPDI.writeFlowStats(stats, time);
+  }
 
   Kokkos::Profiling::popRegion();
 }
