@@ -517,6 +517,9 @@ void Solver::reconRiemStatesTiledWeno(ConsDataView sol_halo) {
 
   auto cellRng = interiorCellRange();
 
+  // Ensure that enough workspace is present
+  wenoSelector.allocateTiled();
+
   // Weno reconstruction tile by tile
   for (int ntX = 0; ntX < wenoSelector.ntX; ntX++) {
     for (int ntY = 0; ntY < wenoSelector.ntY; ntY++) {
@@ -569,11 +572,10 @@ WenoSelector::WenoSelector(const ProblemSetup &ps_)
   idx_t minX = std::max(tX, ps.nX - tX * (ntX - 1));
   idx_t minY = std::max(tY, ps.nY - tY * (ntY - 1));
   idx_t minZ = std::max(tZ, ps.nZ - tZ * (ntZ - 1));
-  minSize = minX * minY * minZ;
-  currSize = minSize;
+  tiledSize = minX * minY * minZ;
 
-  // Allocate workspace and map
-  wenoFlagMap.rehash(currSize);
+  // Initialize to zero size
+  currSize = 0;
   stenWork = Stencil::WorkView("Solver::WenoSelector::stenWork", currSize);
 
   // Clear the flag view
@@ -583,6 +585,14 @@ WenoSelector::WenoSelector(const ProblemSetup &ps_)
   auto pFlag = Kokkos::subview(wenoFlagView,
                                KFVM_D_DECL(Kokkos::ALL, Kokkos::ALL, Kokkos::ALL), 1);
   Kokkos::deep_copy(pFlag, 1.0);
+}
+
+void WenoSelector::allocateTiled() {
+  if (currSize < tiledSize) {
+    currSize = tiledSize;
+    wenoFlagMap.rehash(currSize);
+    stenWork = Stencil::WorkView("Solver::WenoSelector::stenWork", currSize);
+  }
 }
 
 void WenoSelector::update(KFVM_D_DECL(FaceDataView rsX, FaceDataView rsY,
@@ -605,7 +615,7 @@ void WenoSelector::update(KFVM_D_DECL(FaceDataView rsX, FaceDataView rsY,
                (100.0 * nWeno) / (ps.nX * ps.nY * ps.nZ), ps.layoutMPI.rank);
   wenoFlagMap.clear();
   assert(wenoFlagMap.rehash(nWeno));
-  if (wenoFlagMap.capacity() > currSize) {
+  if (wenoFlagMap.capacity() > currSize && nWeno > 0) {
     uint32_t newSize = std::max(wenoFlagMap.capacity(), 2 * currSize);
     // Note that capacity != nWeno generally
     Print::AlertAny(ps, "Realloc workspace from {} to {} on rank {}\n", currSize, newSize,
@@ -614,27 +624,29 @@ void WenoSelector::update(KFVM_D_DECL(FaceDataView rsX, FaceDataView rsY,
     currSize = newSize;
   }
 
-  // Avoid implicit this captures
-  auto flagView = wenoFlagView;
-  auto flagMap = wenoFlagMap;
-  idx_t nX = ps.nX;
+  if (nWeno > 0) {
+    // Avoid implicit this captures
+    auto flagView = wenoFlagView;
+    auto flagMap = wenoFlagMap;
+    idx_t nX = ps.nX;
 #if (SPACE_DIM == 3)
-  idx_t nY = ps.nY;
+    idx_t nY = ps.nY;
 #endif
-  // Insert flagged cells
-  Kokkos::parallel_for(
-      "Solver::WenoSelector::update(insert)", cellRng,
-      KOKKOS_LAMBDA(KFVM_D_DECL(idx_t i, idx_t j, idx_t k)) {
-        if (flagView(KFVM_D_DECL(i, j, k), 0) > 0.0) {
+    // Insert flagged cells
+    Kokkos::parallel_for(
+        "Solver::WenoSelector::update(insert)", cellRng,
+        KOKKOS_LAMBDA(KFVM_D_DECL(idx_t i, idx_t j, idx_t k)) {
+          if (flagView(KFVM_D_DECL(i, j, k), 0) > 0.0) {
 #if (SPACE_DIM == 2)
-          idx_t key = nX * j + i;
+            idx_t key = nX * j + i;
 #else
-          idx_t key = nX * nY * k + nX * j + i;
+            idx_t key = nX * nY * k + nX * j + i;
 #endif
-          auto stat = flagMap.insert(key);
-          assert(stat.success());
-        }
-      });
+            auto stat = flagMap.insert(key);
+            assert(stat.success());
+          }
+        });
+  }
 }
 
 void Solver::setCellBCs(ConsDataView sol_halo, Real t) {
@@ -1201,7 +1213,7 @@ void Solver::commCellBCsTB(ConsDataView sol_halo) {
   // Pack send buffers
   if (ps.layoutMPI.bDst != MPI_PROC_NULL) {
     Kokkos::parallel_for(
-        "Solver::commCellBCsNS(pack bottom)", bdyRange,
+        "Solver::commCellBCsTB(pack bottom)", bdyRange,
         KOKKOS_LAMBDA(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) {
           for (idx_t nV = 0; nV < NUM_VARS; nV++) {
             bSend(KFVM_D_DECL(i, j, k), nV) = bSendSub(KFVM_D_DECL(i, j, k), nV);
@@ -1210,7 +1222,7 @@ void Solver::commCellBCsTB(ConsDataView sol_halo) {
   }
   if (ps.layoutMPI.tDst != MPI_PROC_NULL) {
     Kokkos::parallel_for(
-        "Solver::commCellBCsNS(pack top)", bdyRange,
+        "Solver::commCellBCsTB(pack top)", bdyRange,
         KOKKOS_LAMBDA(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) {
           for (idx_t nV = 0; nV < NUM_VARS; nV++) {
             tSend(KFVM_D_DECL(i, j, k), nV) = tSendSub(KFVM_D_DECL(i, j, k), nV);
@@ -1232,7 +1244,7 @@ void Solver::commCellBCsTB(ConsDataView sol_halo) {
   // Unpack recv buffers
   if (ps.layoutMPI.tSrc != MPI_PROC_NULL) {
     Kokkos::parallel_for(
-        "Solver::commCellBCsNS(unpack top)", bdyRange,
+        "Solver::commCellBCsTB(unpack top)", bdyRange,
         KOKKOS_LAMBDA(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) {
           for (idx_t nV = 0; nV < NUM_VARS; nV++) {
             tRecvSub(KFVM_D_DECL(i, j, k), nV) = tRecv(KFVM_D_DECL(i, j, k), nV);
@@ -1241,7 +1253,7 @@ void Solver::commCellBCsTB(ConsDataView sol_halo) {
   }
   if (ps.layoutMPI.bSrc != MPI_PROC_NULL) {
     Kokkos::parallel_for(
-        "Solver::commCellBCsNS(unpack bottom)", bdyRange,
+        "Solver::commCellBCsTB(unpack bottom)", bdyRange,
         KOKKOS_LAMBDA(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) {
           for (idx_t nV = 0; nV < NUM_VARS; nV++) {
             bRecvSub(KFVM_D_DECL(i, j, k), nV) = bRecv(KFVM_D_DECL(i, j, k), nV);

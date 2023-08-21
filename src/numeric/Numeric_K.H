@@ -390,8 +390,8 @@ struct WenoSelect_K {
 
         // Top face
         for (int nV = 0; nV < NUM_VARS; nV++) {
-          uIn[nV] = rsY(KFVM_D_DECL(i, j, k + 1), 0, nR * NUM_QUAD_PTS + nQ, nV);
-          uOut[nV] = rsY(KFVM_D_DECL(i, j, k + 1), 1, nR * NUM_QUAD_PTS + nQ, nV);
+          uIn[nV] = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nR * NUM_QUAD_PTS + nQ, nV);
+          uOut[nV] = rsZ(KFVM_D_DECL(i, j, k + 1), 1, nR * NUM_QUAD_PTS + nQ, nV);
         }
         // Negative is into on Top face
         vPF = Physics::EOS<eqType>::flowdirz(uIn) < 0.0 ? 1.0 : 0.0;

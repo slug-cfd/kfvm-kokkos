@@ -8,19 +8,16 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
-  using Kokkos::cos;
-  using Kokkos::sin;
-  using Physics::Hydro::SimVar;
+  using Physics::NavierStokes::SimVar;
 
   const Real gamm = eosParams.gamma - 1.0;
   const Real Masq = userParams.mach * userParams.mach;
 
-  const Real u = sin(x) * cos(y) * cos(z);
-  const Real v = -cos(x) * sin(y) * cos(z);
+  const Real rho = 1.0;
+  const Real u = 1.0; // 4.0 * y * (1.0 - y);
+  const Real v = 1.e-4 * y * (1.0 - y) * sin(2.0 * M_PI * x);
   const Real w = 0.0;
-  const Real p0 = 1.0 / (eosParams.gamma * Masq);
-  const Real p = p0 + (cos(2.0 * x) + cos(2.0 * y)) * (cos(2.0 * z) + 2.0) / 16.0;
-  const Real rho = eosParams.gamma * Masq * p;
+  const Real p = 1.0 / (eosParams.gamma * Masq);
 
   state[SimVar::dens] = rho;
   state[SimVar::momx] = rho * u;

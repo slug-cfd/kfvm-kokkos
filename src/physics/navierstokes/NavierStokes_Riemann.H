@@ -30,9 +30,8 @@ void navierstokesFlux(const Real gamma, int ord[3], const NavierStokes::ConsVec 
 
 // Wavespeed estimates
 KOKKOS_INLINE_FUNCTION
-void navierstokesSpeed(const Real gamma, const Real Ma, int lng,
-                       const NavierStokes::ConsVec uL, const NavierStokes::ConsVec uR,
-                       Real &sL, Real &sR) {
+void navierstokesSpeed(const Real gamma, int lng, const NavierStokes::ConsVec uL,
+                       const NavierStokes::ConsVec uR, Real &sL, Real &sR) {
   using Kokkos::fmax;
   using Kokkos::fmin;
   using NavierStokes::SimVar;
@@ -44,10 +43,9 @@ void navierstokesSpeed(const Real gamma, const Real Ma, int lng,
 }
 
 KOKKOS_INLINE_FUNCTION
-Real navierstokesHLL(const Real gamma, const Real Ma, int ord[3],
-                     const NavierStokes::ConsVec uL, const NavierStokes::ConsVec uR,
-                     const NavierStokes::PrimVec vL, const NavierStokes::PrimVec vR,
-                     Real F[NUM_VARS]) {
+Real navierstokesHLL(const Real gamma, int ord[3], const NavierStokes::ConsVec uL,
+                     const NavierStokes::ConsVec uR, const NavierStokes::PrimVec vL,
+                     const NavierStokes::PrimVec vR, Real F[NUM_VARS]) {
   using Kokkos::fabs;
   using Kokkos::fmax;
   using NavierStokes::ConsVec;
@@ -57,7 +55,7 @@ Real navierstokesHLL(const Real gamma, const Real Ma, int ord[3],
   Real sL, sR;
 
   // Wave speed estimates
-  navierstokesSpeed(gamma, Ma, ord[0], uL, uR, sL, sR);
+  navierstokesSpeed(gamma, ord[0], uL, uR, sL, sR);
 
   // Find appropriate region and fill in flux vector
   if (sR > 0) {
@@ -85,30 +83,30 @@ struct NavierStokesRS {};
 template <>
 struct NavierStokesRS<RSType::HLL> {
   KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_X(const Real gamma, const Real Ma, const NavierStokes::ConsVec uL,
+  RiemannSolve_X(const Real gamma, const NavierStokes::ConsVec uL,
                  const NavierStokes::ConsVec uR, const NavierStokes::PrimVec vL,
                  const NavierStokes::PrimVec vR, NavierStokes::ConsVec F) {
     using NavierStokes::SimVar;
     int ord[] = {SimVar::momx, SimVar::momy, SimVar::momz};
-    return navierstokesHLL(gamma, Ma, ord, uL, uR, vL, vR, F);
+    return navierstokesHLL(gamma, ord, uL, uR, vL, vR, F);
   }
 
   KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_Y(const Real gamma, const Real Ma, const NavierStokes::ConsVec uL,
+  RiemannSolve_Y(const Real gamma, const NavierStokes::ConsVec uL,
                  const NavierStokes::ConsVec uR, const NavierStokes::PrimVec vL,
                  const NavierStokes::PrimVec vR, NavierStokes::ConsVec F) {
     using NavierStokes::SimVar;
     int ord[] = {SimVar::momy, SimVar::momz, SimVar::momx};
-    return navierstokesHLL(gamma, Ma, ord, uL, uR, vL, vR, F);
+    return navierstokesHLL(gamma, ord, uL, uR, vL, vR, F);
   }
 
   KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_Z(const Real gamma, const Real Ma, const NavierStokes::ConsVec uL,
+  RiemannSolve_Z(const Real gamma, const NavierStokes::ConsVec uL,
                  const NavierStokes::ConsVec uR, const NavierStokes::PrimVec vL,
                  const NavierStokes::PrimVec vR, NavierStokes::ConsVec F) {
     using NavierStokes::SimVar;
     int ord[] = {SimVar::momz, SimVar::momx, SimVar::momy};
-    return navierstokesHLL(gamma, Ma, ord, uL, uR, vL, vR, F);
+    return navierstokesHLL(gamma, ord, uL, uR, vL, vR, F);
   }
 };
 

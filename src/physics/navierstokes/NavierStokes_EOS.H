@@ -15,7 +15,7 @@ namespace Physics {
 template <>
 struct EOS<EquationType::NavierStokes> {
   KOKKOS_INLINE_FUNCTION
-  static void cons2prim(const Real gamma, const Real Ma, const NavierStokes::ConsVec U,
+  static void cons2prim(const Real gamma, const NavierStokes::ConsVec U,
                         NavierStokes::PrimVec V) {
     using NavierStokes::PrimVar;
     using NavierStokes::SimVar;
@@ -24,8 +24,8 @@ struct EOS<EquationType::NavierStokes> {
     V[PrimVar::velx] = U[SimVar::momx] / U[SimVar::dens];
     V[PrimVar::vely] = U[SimVar::momy] / U[SimVar::dens];
     V[PrimVar::velz] = U[SimVar::momz] / U[SimVar::dens];
-    V[PrimVar::pres] = pres_scaled(gamma, U);
-    V[PrimVar::temp] = temp(gamma, Ma, U);
+    V[PrimVar::pres] = pres(gamma, U);
+    V[PrimVar::temp] = temp(gamma, U);
   }
 
   KOKKOS_INLINE_FUNCTION
@@ -84,7 +84,7 @@ struct EOS<EquationType::NavierStokes> {
     using Kokkos::pow;
     using NavierStokes::SimVar;
 
-    return pres(eosParams.gamma, eosParams.Ma, U) / pow(U[SimVar::dens], eosParams.gamma);
+    return pres(eosParams.gamma, U) / pow(U[SimVar::dens], eosParams.gamma);
   }
 
   KOKKOS_INLINE_FUNCTION
@@ -96,26 +96,21 @@ struct EOS<EquationType::NavierStokes> {
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real pres_scaled(const Real gamma, const NavierStokes::ConsVec U) {
+  static Real pres(const Real gamma, const NavierStokes::ConsVec U) {
     return (gamma - 1.0) * eint(U);
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real pres(const Real gamma, const Real Ma, const NavierStokes::ConsVec U) {
-    return gamma * Ma * Ma * pres_scaled(gamma, U);
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  static Real temp(const Real gamma, const Real Ma, const NavierStokes::ConsVec U) {
+  static Real temp(const Real gamma, const NavierStokes::ConsVec U) {
     using NavierStokes::SimVar;
-    return pres(gamma, Ma, U) / U[SimVar::dens];
+    return pres(gamma, U) / U[SimVar::dens];
   }
 
   KOKKOS_INLINE_FUNCTION
   static Real soundspeed(const Real gamma, const NavierStokes::ConsVec U) {
     using Kokkos::sqrt;
     using NavierStokes::SimVar;
-    return sqrt(gamma * pres_scaled(gamma, U) / U[SimVar::dens]);
+    return sqrt(gamma * pres(gamma, U) / U[SimVar::dens]);
   }
 };
 

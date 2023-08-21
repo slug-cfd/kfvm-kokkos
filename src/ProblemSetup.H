@@ -116,7 +116,6 @@ struct ProblemSetup {
       fmt::print("EOS:\n");
       fmt::print("  gamma: {:f}\n", eosParams.gamma);
       if (eqType == EquationType::NavierStokes) {
-        fmt::print("  mach: {:f}\n", eosParams.Ma);
         fmt::print("  reynolds: {:f}\n", eosParams.Re);
         fmt::print("  prandtl: {:f}\n", eosParams.Pr);
       }

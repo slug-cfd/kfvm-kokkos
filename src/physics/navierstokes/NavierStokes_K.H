@@ -99,7 +99,7 @@ struct AuxVars<EquationType::NavierStokes, UViewType> {
     // Internal energy and pressure
     V(KFVM_D_DECL(i, j, k), AuxVar::eint) = EOS<EquationType::NavierStokes>::eint(ua);
     V(KFVM_D_DECL(i, j, k), AuxVar::pres) =
-        EOS<EquationType::NavierStokes>::pres(eosParams.gamma, eosParams.Ma, ua);
+        EOS<EquationType::NavierStokes>::pres(eosParams.gamma, ua);
   }
 };
 
@@ -199,12 +199,11 @@ struct RiemannSolverX_K<EquationType::NavierStokes, rst> {
         uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
         uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uL, vL);
-      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uR, vR);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, uL, vL);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, uR, vR);
 
       // Calculate flux
-      Real vq = NavierStokesRS<rst>::RiemannSolve_X(eosParams.gamma, eosParams.Ma, uL, uR,
-                                                    vL, vR, F);
+      Real vq = NavierStokesRS<rst>::RiemannSolve_X(eosParams.gamma, uL, uR, vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux
@@ -239,12 +238,11 @@ struct RiemannSolverY_K<EquationType::NavierStokes, rst> {
         uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
         uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uL, vL);
-      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uR, vR);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, uL, vL);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, uR, vR);
 
       // Calculate flux
-      Real vq = NavierStokesRS<rst>::RiemannSolve_Y(eosParams.gamma, eosParams.Ma, uL, uR,
-                                                    vL, vR, F);
+      Real vq = NavierStokesRS<rst>::RiemannSolve_Y(eosParams.gamma, uL, uR, vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux
@@ -278,12 +276,11 @@ struct RiemannSolverZ_K<EquationType::NavierStokes, rst> {
         uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
         uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uL, vL);
-      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, eosParams.Ma, uR, vR);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, uL, vL);
+      EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, uR, vR);
 
       // Calculate flux
-      Real vq = NavierStokesRS<rst>::RiemannSolve_Z(eosParams.gamma, eosParams.Ma, uL, uR,
-                                                    vL, vR, F);
+      Real vq = NavierStokesRS<rst>::RiemannSolve_Z(eosParams.gamma, uL, uR, vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux
@@ -331,8 +328,7 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
     using Physics::NavierStokes::SimVar;
 
     const Real rdx = 1.0 / geom.dx, rdy = 1.0 / geom.dy;
-    const Real gamma = eosParams.gamma, Ma = eosParams.Ma, Re = eosParams.Re,
-               Pr = eosParams.Pr, alpha = Re * Pr * (gamma - 1.0) * Ma * Ma;
+    const Real gamma = eosParams.gamma, Re = eosParams.Re, Pr = eosParams.Pr;
 
     Real u[3][3], v[3][3], w[3][3], T[3][3];
     for (int xo = -1; xo <= 1; xo++) {
@@ -342,7 +338,7 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
         for (int nV = 0; nV < NUM_VARS; nV++) {
           Uo[nV] = U(i + xo, j + yo, nV);
         }
-        Physics::EOS<EquationType::NavierStokes>::cons2prim(gamma, Ma, Uo, Vo);
+        Physics::EOS<EquationType::NavierStokes>::cons2prim(gamma, Uo, Vo);
         u[xo + 1][yo + 1] = Vo[PrimVar::velx];
         v[xo + 1][yo + 1] = Vo[PrimVar::vely];
         w[xo + 1][yo + 1] = Vo[PrimVar::velz];
@@ -350,61 +346,43 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
       }
     }
 
-    // Face average viscosities
-    const Real muPx = 0.5 * (pow(T[1][1], 0.76) + pow(T[2][1], 0.76)),
-               muMx = 0.5 * (pow(T[1][1], 0.76) + pow(T[0][1], 0.76)),
-               muPy = 0.5 * (pow(T[1][1], 0.76) + pow(T[1][2], 0.76)),
-               muMy = 0.5 * (pow(T[1][1], 0.76) + pow(T[1][0], 0.76));
-
     // Fluxes on x-faces
     Real px[4], mx[4];
     px[0] = 4.0 * rdx * (u[2][1] - u[1][1]) / 3.0;
     px[0] -= rdy * (v[1][2] + v[2][2] - v[1][0] - v[2][0]) / 6.0;
-    px[0] *= muPx;
 
     px[1] = rdy * (u[1][2] + u[2][2] - u[1][0] - u[2][0]) / 4.0;
     px[1] += rdx * (v[2][1] - v[1][1]);
-    px[1] *= muPx;
 
     px[2] = rdx * (w[2][1] - w[1][1]);
-    px[2] *= muPx;
 
     mx[0] = 4.0 * rdx * (u[1][1] - u[0][1]) / 3.0;
     mx[0] -= rdy * (v[0][2] + v[1][2] - v[0][0] - v[1][0]) / 6.0;
-    mx[0] *= muMx;
 
     mx[1] = rdy * (u[0][2] + u[1][2] - u[0][0] - u[1][0]) / 4.0;
     mx[1] += rdx * (v[1][1] - v[0][1]);
-    mx[1] *= muMx;
 
     mx[2] = rdx * (w[1][1] - w[0][1]);
-    mx[2] *= muMx;
 
     // Fluxes on y-faces
     Real py[4], my[4];
     py[0] = rdx * (v[2][2] + v[2][1] - v[0][2] - v[0][1]) / 4.0;
     py[0] += rdy * (u[1][2] - u[1][1]);
-    py[0] *= muPy;
 
     py[1] = 4.0 * rdy * (v[1][2] - v[1][1]) / 3.0;
     py[1] -= rdx * (u[2][2] + u[2][1] - u[0][2] - u[0][1]) / 6.0;
-    py[1] *= muPy;
 
     py[2] = rdy * (w[1][2] - w[1][1]);
-    py[2] *= muPy;
 
     my[0] = rdx * (v[2][1] + v[2][0] - v[0][1] - v[0][0]) / 4.0;
     my[0] += rdy * (u[1][1] - u[1][0]);
-    my[0] *= muMy;
 
     my[1] = 4.0 * rdy * (v[1][1] - v[1][0]) / 3.0;
     my[1] -= rdx * (u[2][1] + u[2][0] - u[0][1] - u[0][0]) / 6.0;
-    my[1] *= muMy;
 
     my[2] = rdy * (w[1][1] - w[1][0]);
-    my[2] *= muMy;
 
-    // Temperature fluxes (What is face-centered kappa?)
+    // Temperature fluxes
     px[3] = rdx * (T[2][1] - T[1][1]);
     mx[3] = rdx * (T[1][1] - T[0][1]);
     py[3] = rdy * (T[1][2] - T[1][1]);
@@ -417,7 +395,7 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
     const Real srw = rRe * (rdx * (px[2] - mx[2]) + rdy * (py[2] - my[2]));
 
     // Net temperature term
-    const Real rAl = 1.0 / alpha;
+    const Real rAl = 1.0 / (Pr * Re);
     const Real ste = rAl * (rdx * (px[3] - mx[3]) + rdy * (py[3] - my[3]));
 
     // Add into RHS
@@ -436,8 +414,7 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
     using Physics::NavierStokes::SimVar;
 
     const Real rdx = 1.0 / geom.dx, rdy = 1.0 / geom.dy, rdz = 1.0 / geom.dz;
-    const Real gamma = eosParams.gamma, Ma = eosParams.Ma, Re = eosParams.Re,
-               Pr = eosParams.Pr, alpha = Re * Pr * (gamma - 1.0) * Ma * Ma;
+    const Real gamma = eosParams.gamma, Re = eosParams.Re, Pr = eosParams.Pr;
 
     Real u[3][3][3], v[3][3][3], w[3][3][3], T[3][3][3];
     for (int xo = -1; xo <= 1; xo++) {
@@ -448,7 +425,7 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
           for (int nV = 0; nV < NUM_VARS; nV++) {
             Uo[nV] = U(i + xo, j + yo, k + zo, nV);
           }
-          Physics::EOS<EquationType::NavierStokes>::cons2prim(gamma, Ma, Uo, Vo);
+          Physics::EOS<EquationType::NavierStokes>::cons2prim(gamma, Uo, Vo);
           u[xo + 1][yo + 1][zo + 1] = Vo[PrimVar::velx];
           v[xo + 1][yo + 1][zo + 1] = Vo[PrimVar::vely];
           w[xo + 1][yo + 1][zo + 1] = Vo[PrimVar::velz];
@@ -457,99 +434,73 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
       }
     }
 
-    // Face average viscosities
-    const Real muPx = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[2][1][1], 0.76)),
-               muMx = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[0][1][1], 0.76)),
-               muPy = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[1][2][1], 0.76)),
-               muMy = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[1][0][1], 0.76)),
-               muPz = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[1][1][2], 0.76)),
-               muMz = 0.5 * (pow(T[1][1][1], 0.76) + pow(T[1][1][0], 0.76));
-
     // Fluxes on x-faces
     Real px[4], mx[4];
     px[0] = 4.0 * rdx * (u[2][1][1] - u[1][1][1]) / 3.0;
     px[0] -= rdy * (v[1][2][1] + v[2][2][1] - v[1][0][1] - v[2][0][1]) / 6.0;
     px[0] -= rdz * (w[1][1][2] + w[2][1][2] - w[1][1][0] - w[2][1][0]) / 6.0;
-    px[0] *= muPx;
 
     px[1] = rdy * (u[1][2][1] + u[2][2][1] - u[1][0][1] - u[2][0][1]) / 4.0;
     px[1] += rdx * (v[2][1][1] - v[1][1][1]);
-    px[1] *= muPx;
 
     px[2] = rdz * (u[2][1][2] + u[1][1][2] - u[2][1][0] - u[1][1][0]) / 4.0;
     px[2] += rdx * (w[2][1][1] - w[1][1][1]);
-    px[2] *= muPx;
 
     mx[0] = 4.0 * rdx * (u[1][1][1] - u[0][1][1]) / 3.0;
     mx[0] -= rdy * (v[0][2][1] + v[1][2][1] - v[0][0][1] - v[1][0][1]) / 6.0;
     mx[0] -= rdz * (w[0][1][2] + w[1][1][2] - w[0][1][0] - w[1][1][0]) / 6.0;
-    mx[0] *= muMx;
 
     mx[1] = rdy * (u[0][2][1] + u[1][2][1] - u[0][0][1] - u[1][0][1]) / 4.0;
     mx[1] += rdx * (v[1][1][1] - v[0][1][1]);
-    mx[1] *= muMx;
 
     mx[2] = rdz * (u[1][1][2] + u[0][1][2] - u[1][1][0] - u[0][1][0]) / 4.0;
     mx[2] += rdx * (w[1][1][1] - w[0][1][1]);
-    mx[2] *= muMx;
 
     // Fluxes on y-faces
     Real py[4], my[4];
     py[0] = rdx * (v[2][2][1] + v[2][1][1] - v[0][2][1] - v[0][1][1]) / 4.0;
     py[0] += rdy * (u[1][2][1] - u[1][1][1]);
-    py[0] *= muPy;
 
     py[1] = 4.0 * rdy * (v[1][2][1] - v[1][1][1]) / 3.0;
     py[1] -= rdx * (u[2][2][1] + u[2][1][1] - u[0][2][1] - u[0][1][1]) / 6.0;
     py[1] -= rdz * (w[1][2][2] + w[1][1][2] - w[1][2][0] - w[1][1][0]) / 6.0;
-    py[1] *= muPy;
 
     py[2] = rdz * (v[1][2][2] + v[1][1][2] - v[1][2][0] - v[1][1][0]) / 4.0;
     py[2] += rdy * (w[1][2][1] - w[1][1][1]);
-    py[2] *= muPy;
 
     my[0] = rdx * (v[2][1][1] + v[2][0][1] - v[0][1][1] - v[0][0][1]) / 4.0;
     my[0] += rdy * (u[1][1][1] - u[1][0][1]);
-    my[0] *= muMy;
 
     my[1] = 4.0 * rdy * (v[1][1][1] - v[1][0][1]) / 3.0;
     my[1] -= rdx * (u[2][1][1] + u[2][0][1] - u[0][1][1] - u[0][0][1]) / 6.0;
     my[1] -= rdz * (w[1][1][2] + w[1][0][2] - w[1][1][0] - w[1][0][0]) / 6.0;
-    my[1] *= muMy;
 
     my[2] = rdz * (v[1][1][2] + v[1][0][2] - v[1][1][0] - v[1][0][0]) / 4.0;
     my[2] += rdy * (w[1][1][1] - w[1][0][1]);
-    my[2] *= muMy;
 
     // Fluxes on z-faces
     Real pz[4], mz[4];
     pz[0] = rdx * (w[2][2][1] + w[2][1][1] - w[0][2][1] - w[0][1][1]) / 4.0;
     pz[0] += rdz * (u[1][1][2] - u[1][1][1]);
-    pz[0] *= muPz;
 
     pz[1] = rdy * (w[1][2][2] + w[1][2][1] - w[1][0][2] - w[1][0][1]) / 4.0;
     pz[1] += rdz * (v[1][1][2] - v[1][1][1]);
-    pz[1] *= muPz;
 
     pz[2] = 4.0 * rdz * (w[1][1][2] - w[1][1][1]) / 3.0;
     pz[2] -= rdx * (u[2][2][1] + u[2][1][1] - u[0][2][1] - u[0][1][1]) / 6.0;
     pz[2] -= rdy * (v[1][2][2] + v[1][2][1] - v[1][0][2] - v[1][0][1]) / 6.0;
-    pz[2] *= muPz;
 
     mz[0] = rdx * (w[2][2][0] + w[2][1][0] - w[0][2][0] - w[0][1][0]) / 4.0;
     mz[0] += rdz * (u[1][1][1] - u[1][1][0]);
-    mz[0] *= muMz;
 
     mz[1] = rdy * (w[1][2][1] + w[1][2][0] - w[1][0][1] - w[1][0][0]) / 4.0;
     mz[1] += rdz * (v[1][1][1] - v[1][1][0]);
-    mz[1] *= muMz;
 
     mz[2] = 4.0 * rdz * (w[1][1][1] - w[1][1][0]) / 3.0;
     mz[2] -= rdx * (u[2][2][0] + u[2][1][0] - u[0][2][0] - u[0][1][0]) / 6.0;
     mz[2] -= rdy * (v[1][2][1] + v[1][2][0] - v[1][0][1] - v[1][0][0]) / 6.0;
-    mz[2] *= muMz;
 
-    // Temperature fluxes (What is face-centered kappa?)
+    // Temperature fluxes
     px[3] = rdx * (T[2][1][1] - T[1][1][1]);
     mx[3] = rdx * (T[1][1][1] - T[0][1][1]);
     py[3] = rdy * (T[1][2][1] - T[1][1][1]);
@@ -567,7 +518,7 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
         rRe * (rdx * (px[2] - mx[2]) + rdy * (py[2] - my[2]) + rdz * (pz[2] - mz[2]));
 
     // Net temperature term
-    const Real rAl = 1.0 / alpha;
+    const Real rAl = 1.0 / (Re * Pr);
     const Real ste =
         rAl * (rdx * (px[3] - mx[3]) + rdy * (py[3] - my[3]) + rdz * (pz[3] - mz[3]));
 

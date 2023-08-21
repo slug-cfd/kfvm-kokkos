@@ -1,14 +1,14 @@
 # Set mesh resolution and extent
-mesh:resolution 128 128 128
+mesh:resolution 512 128 64
 mesh:numblocks 1 1 1
-mesh:extent -3.14159265358979323846 3.14159265358979323846 -3.14159265358979323846 3.14159265358979323846 -3.14159265358979323846 3.14159265358979323846
+mesh:extent 0.0 4.0 0.0 1.0 0.0 0.5
 
 # Set time information
 time:initial 0.0
-time:final 20.0
+time:final 50.0
 time:initialdt 1.e-10
 time:cfl 2.0
-time:maxsteps 5000
+time:maxsteps 25000
 time:atol 1.e-8
 time:rtol 1.e-3
 
@@ -17,18 +17,19 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
-eos:reynolds 400.0
+eos:reynolds 100000.0
 eos:prandtl 0.71
 eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename TaylorGreen
-io:plotfreq 20
-io:ckptfreq 20
+io:basename Channel
+io:plotfreq 500
+io:ckptfreq 500
 io:statsfreq 10
 io:verbose 1
+io:restartfile data/R2_NX512_NY128/ckpt/Channel_0004999.h5
 
 # User defined settings
 user:mach 0.1

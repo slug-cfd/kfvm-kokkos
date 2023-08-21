@@ -32,8 +32,9 @@ struct WenoSelector {
   Stencil::WorkView stenWork;
   int ntX, ntY, ntZ; // Tiles in x/y/z for full weno
   idx_t tX, tY, tZ;  // Tile size
-  uint32_t minSize, currSize, nWeno;
+  uint32_t tiledSize, currSize, nWeno;
   WenoSelector(const ProblemSetup &ps);
+  void allocateTiled();
   void update(KFVM_D_DECL(FaceDataView, FaceDataView, FaceDataView), const QuadRuleView &,
               const Real);
   auto tileRange(int i, int j, int k) const {

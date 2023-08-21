@@ -19,20 +19,17 @@ struct ParameterStructs {
 
 struct EosParameters : ParameterStructs {
   Real gamma;      // Ratio of specific heats
-  Real Ma, Re, Pr; // Mach, Reynolds, Prandtl numbers for N-S
+  Real Re, Pr;     // Reynolds, Prandtl numbers for N-S
   Real wenoThresh; // Threshold for weno selector
   Real ch_glm;     // Hyperbolic cleaning speed for GLM
 
-  EosParameters()
-      : gamma(1.4), Ma(1.0), Re(1.0), Pr(0.7), wenoThresh(10.0), ch_glm(0.0) {}
+  EosParameters() : gamma(1.4), Re(1.0), Pr(0.71), wenoThresh(10.0), ch_glm(0.0) {}
 
   bool set(const std::string &fld, const std::string &val) {
     std::size_t pos;
 
     if (fld == "gamma") {
       gamma = std::stof(val, &pos);
-    } else if (fld == "mach") {
-      Ma = std::stof(val, &pos);
     } else if (fld == "reynolds") {
       Re = std::stof(val, &pos);
     } else if (fld == "prandtl") {

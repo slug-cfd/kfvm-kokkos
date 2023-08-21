@@ -28,6 +28,16 @@ struct EOS<EquationType::LinAdv> {
     (void)U;
   }
 
+  // These are not technically correct, but also aren't used
+  KOKKOS_INLINE_FUNCTION
+  static Real flowdirx(const LinAdv::ConsVec U) { return 0.0; }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real flowdiry(const LinAdv::ConsVec U) { return 0.0; }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real flowdirz(const LinAdv::ConsVec U) { return 0.0; }
+
   KOKKOS_INLINE_FUNCTION
   static Real weno(const LinAdv::ConsVec U, const ParameterStructs &eosParams) {
     // Weno is all or nothing for now

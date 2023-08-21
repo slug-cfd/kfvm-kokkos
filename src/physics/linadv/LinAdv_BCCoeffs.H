@@ -12,32 +12,37 @@ namespace KFVM {
 
 namespace Physics {
 
-namespace LinAdv_BCCoeff_LUT {
-static constexpr Real refX[] = {1.0};
-static constexpr Real refY[] = {1.0};
-static constexpr Real refZ[] = {1.0};
-} // namespace LinAdv_BCCoeff_LUT
-
 template <>
 struct BCCoeffs<EquationType::LinAdv> {
-  Kokkos::View<Real[1], MemSpace> x, y, z;
+  Kokkos::View<Real[5], MemSpace> reflectX, reflectY, reflectZ;
+  Kokkos::View<Real[5], MemSpace> noslipX, noslipY, noslipZ;
 
   BCCoeffs<EquationType::LinAdv>()
-      : x("Physics::BCCoeffs::Reflect::x"), y("Physics::BCCoeffs::Reflect::y"),
-        z("Physics::BCCoeffs::Reflect::z") {
-    auto h_x = Kokkos::create_mirror(x);
-    auto h_y = Kokkos::create_mirror(y);
-    auto h_z = Kokkos::create_mirror(z);
+      : reflectX("Physics::BCCoeffs::reflectX"), reflectY("Physics::BCCoeffs::reflectY"),
+        reflectZ("Physics::BCCoeffs::reflectZ"), noslipX("Physics::BCCoeffs::noslipX"),
+        noslipY("Physics::BCCoeffs::noslipY"), noslipZ("Physics::BCCoeffs::noslipZ") {
+    auto h_rx = Kokkos::create_mirror(reflectX);
+    auto h_ry = Kokkos::create_mirror(reflectY);
+    auto h_rz = Kokkos::create_mirror(reflectZ);
 
-    for (int n = 0; n < 1; n++) {
-      h_x(n) = LinAdv_BCCoeff_LUT::refX[n];
-      h_y(n) = LinAdv_BCCoeff_LUT::refY[n];
-      h_z(n) = LinAdv_BCCoeff_LUT::refZ[n];
-    }
+    auto h_nx = Kokkos::create_mirror(noslipX);
+    auto h_ny = Kokkos::create_mirror(noslipY);
+    auto h_nz = Kokkos::create_mirror(noslipZ);
 
-    Kokkos::deep_copy(x, h_x);
-    Kokkos::deep_copy(y, h_y);
-    Kokkos::deep_copy(z, h_z);
+    h_rx(0) = 1.0;
+    h_ry(0) = 1.0;
+    h_rz(0) = 1.0;
+    h_nx(0) = 1.0;
+    h_ny(0) = 1.0;
+    h_nz(0) = 1.0;
+
+    Kokkos::deep_copy(reflectX, h_rx);
+    Kokkos::deep_copy(reflectY, h_ry);
+    Kokkos::deep_copy(reflectZ, h_rz);
+
+    Kokkos::deep_copy(noslipX, h_nx);
+    Kokkos::deep_copy(noslipY, h_ny);
+    Kokkos::deep_copy(noslipZ, h_nz);
   }
 };
 
