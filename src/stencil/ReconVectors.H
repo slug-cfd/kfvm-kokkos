@@ -9,8 +9,8 @@
 #include <Definitions.H>
 
 #include "../Types.H"
+#include "Kernels.H"
 #include "Monomials.H"
-#include "SEKernel.H"
 #include "StencilSymmetry.H"
 
 namespace KFVM {
@@ -19,8 +19,8 @@ namespace Stencil {
 
 class ReconVectors {
   // Internal matrix class
-  // This is not meant to be a super optimal implementation,
-  // rather just good enough to support this process
+  // This is not meant to be a super optimal implementation
+  // It is only used a few times during set up for small matrices
   template <typename T>
   struct Matrix {
     const int M, N;
@@ -119,7 +119,8 @@ class ReconVectors {
     // Evaluate kernel at query points for each center
     for (int i = 0; i < stenSize; i++) {
       double KFVM_D_DECL(dx = qx - xs[i], dy = qy - ys[i], dz = qz - zs[i]);
-      T[i] = SE::K<KFVM_D_DECL(efX, efY, efZ)>(eps, KFVM_D_DECL(dx, dy, dz));
+      T[i] =
+          Kernel<kernelType>::K<KFVM_D_DECL(efX, efY, efZ)>(eps, KFVM_D_DECL(dx, dy, dz));
     }
     // Evaluate mononomials at query points
     for (int i = 0; i < monos.nMono; i++) {

@@ -7,8 +7,8 @@ mesh:extent -10.0 10.0 -10.0 10.0 0.0 0.625
 time:initial 0.0
 time:final 20.0
 time:initialdt 1.e-10
-time:cfl 2.0
-time:maxsteps 2500
+time:cfl 1.0
+time:maxsteps 5000
 time:atol 1.e-10
 time:rtol 1.e-5
 
@@ -17,12 +17,12 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
-eos:wenothresh 20.0
+eos:wenothresh 1.0
 
 # IO settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename IsenVort
-io:plotfreq 100
+io:plotfreq 20
 io:ckptfreq 20
 io:verbose 1

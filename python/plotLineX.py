@@ -35,5 +35,5 @@ if __name__ == '__main__':
         zidx = int(sys.argv[4])
 
     # Plot it.
-    plt.plot(data['x'],data[fld][zidx,yidx,:])
+    plt.plot(data['x'],data[fld][zidx,yidx,:],'-ks')
     plt.show()

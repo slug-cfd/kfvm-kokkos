@@ -29,17 +29,29 @@ void hydroFlux(Real gamma, int ord[3], const Hydro::ConsVec U, const Hydro::Prim
 }
 
 // Wavespeed estimates
+// See Batten et. al. https://doi.org/10.1137/S1064827593260140
 KOKKOS_INLINE_FUNCTION
 void hydroSpeed(Real gamma, int lng, const Hydro::ConsVec uL, const Hydro::ConsVec uR,
-                Real &sL, Real &sR) {
+                const Hydro::PrimVec vL, const Hydro::PrimVec vR, Real &sL, Real &sR) {
+  using Hydro::PrimVar;
   using Hydro::SimVar;
   using Kokkos::fmax;
   using Kokkos::fmin;
+  using Kokkos::sqrt;
 
-  Real a = fmax(EOS<EquationType::Hydro>::soundspeed(gamma, uL),
-                EOS<EquationType::Hydro>::soundspeed(gamma, uR));
-  sL = fmin(uL[lng] / uL[SimVar::dens], uR[lng] / uR[SimVar::dens]) - a;
-  sR = fmax(uL[lng] / uL[SimVar::dens], uR[lng] / uR[SimVar::dens]) + a;
+  // Roe estimates
+  const Real hL = (uL[SimVar::etot] + vL[PrimVar::pres]) / uL[SimVar::dens],
+             hR = (uR[SimVar::etot] + vR[PrimVar::pres]) / uR[SimVar::dens];
+  const Real uTil = roeAvg(uL[SimVar::dens], uR[SimVar::dens], vL[lng], vR[lng]),
+             hTil = roeAvg(uL[SimVar::dens], uR[SimVar::dens], hL, hR),
+             aTil = sqrt((gamma - 1.0) * (hTil - 0.5 * uTil * uTil));
+
+  // Batten estimate
+  const Real aL = EOS<EquationType::Hydro>::soundspeed(gamma, uL),
+             aR = EOS<EquationType::Hydro>::soundspeed(gamma, uR);
+
+  sL = fmin(uL[lng] / uL[SimVar::dens] - aL, uTil - aTil);
+  sR = fmax(uR[lng] / uR[SimVar::dens] + aR, uTil + aTil);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -54,7 +66,7 @@ Real hydroHLL(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Cons
   Real sL, sR;
 
   // Wave speed estimates
-  hydroSpeed(gamma, ord[0], uL, uR, sL, sR);
+  hydroSpeed(gamma, ord[0], uL, uR, vL, vR, sL, sR);
 
   // Find appropriate region and fill in flux vector
   if (sR > 0) {
@@ -87,7 +99,7 @@ Real hydroHLLC(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Con
 
   // Wave speed estimates
   Real sL, sR, sS;
-  hydroSpeed(gamma, ord[0], uL, uR, sL, sR);
+  hydroSpeed(gamma, ord[0], uL, uR, vL, vR, sL, sR);
   sS = hllcSStar(vL[PrimVar::dens], vR[PrimVar::dens], vL[PrimVar::pres],
                  vR[PrimVar::pres], vL[ord[0]], vR[ord[0]], sL, sR);
 

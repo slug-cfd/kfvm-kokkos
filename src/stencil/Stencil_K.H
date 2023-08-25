@@ -161,9 +161,9 @@ struct KernelWenoRecon_K {
         nBias(Stencil::Core::SI.nBias), nIndic(Stencil::Core::SI.nIndic),
         nqFace_d(Stencil::Core::SI.nqFace_d),
 #if (SPACE_DIM == 2)
-        gHi(0.75), gLo(0.75), eps(1.e-40)
+        gHi(0.7), gLo(0.75), eps(1.e-40)
 #else
-        gHi(0.75), gLo(0.75), eps(1.e-40)
+        gHi(0.7), gLo(0.75), eps(1.e-40)
 #endif
   {
   }
@@ -566,22 +566,12 @@ struct KernelWenoRecon_K {
     using Kokkos::fabs;
     using Kokkos::pow;
 
-    const int p = STENCIL_RADIUS + 1;
+    const int p = 2 * STENCIL_RADIUS;
 
     for (int nV = 0; nV < NUM_VARS; nV++) {
-#if (SPACE_DIM == 2)
-      Real tau =
-          fabs(omega[0][nV] -
-               (omega[2][nV] + omega[3][nV] + omega[4][nV] + omega[5][nV]) / Real(4.0));
-#else
-      Real tau = fabs(omega[0][nV] - (omega[2][nV] + omega[3][nV] + omega[4][nV] +
-                                      omega[5][nV] + omega[6][nV] + omega[7][nV]) /
-                                         Real(6.0));
-#endif
-      tau = pow(tau, p);
       Real tot = Real(0.0);
       for (int nS = 0; nS < nSub; nS++) {
-        omega[nS][nV] = gamma[nS] * (Real(1.0) + tau / (pow(omega[nS][nV], p) + eps));
+        omega[nS][nV] = gamma[nS] / (pow(omega[nS][nV], p) + eps);
         tot += omega[nS][nV];
       }
 

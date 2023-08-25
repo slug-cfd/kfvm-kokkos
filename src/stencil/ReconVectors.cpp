@@ -28,8 +28,9 @@ void ReconVectors::fillRecMat() {
   for (int i = 0; i < stenSize; i++) {
     for (int j = 0; j < stenSize; j++) {
       double KFVM_D_DECL(dx = xs[i] - xs[j], dy = ys[i] - ys[j], dz = zs[i] - zs[j]);
-      C(i, j) = SE::K<KFVM_D_DECL(EvalFunctional::Average, EvalFunctional::Average,
-                                  EvalFunctional::Average)>(eps, KFVM_D_DECL(dx, dy, dz));
+      C(i, j) = Kernel<kernelType>::K<KFVM_D_DECL(
+          EvalFunctional::Average, EvalFunctional::Average, EvalFunctional::Average)>(
+          eps, KFVM_D_DECL(dx, dy, dz));
     }
   }
   // Fill polynomial blocks

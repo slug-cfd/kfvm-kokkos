@@ -4,7 +4,7 @@ namespace KFVM {
 
 namespace Numeric {
 
-// Quadrature rules with 1-9 points
+// Quadrature rules with 1-5 points
 // All are defined on the interval (-0.5,0.5)
 template <>
 std::array<Real, 1> QuadRuleLUT<1>::ab = {0.0};

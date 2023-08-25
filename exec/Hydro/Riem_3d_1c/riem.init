@@ -17,12 +17,13 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
-eos:wenothresh 10.0
+eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename Riem
-io:plotfreq 50
-io:ckptfreq 20
+io:plotfreq 20
+io:ckptfreq 50
+io:statsfreq 5
 io:verbose 1

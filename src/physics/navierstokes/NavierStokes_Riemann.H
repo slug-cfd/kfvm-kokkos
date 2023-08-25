@@ -29,17 +29,30 @@ void navierstokesFlux(const Real gamma, int ord[3], const NavierStokes::ConsVec 
 }
 
 // Wavespeed estimates
+// See Batten et. al. https://doi.org/10.1137/S1064827593260140
 KOKKOS_INLINE_FUNCTION
-void navierstokesSpeed(const Real gamma, int lng, const NavierStokes::ConsVec uL,
-                       const NavierStokes::ConsVec uR, Real &sL, Real &sR) {
+void navierstokesSpeed(Real gamma, int lng, const NavierStokes::ConsVec uL,
+                       const NavierStokes::ConsVec uR, const NavierStokes::PrimVec vL,
+                       const NavierStokes::PrimVec vR, Real &sL, Real &sR) {
   using Kokkos::fmax;
   using Kokkos::fmin;
+  using Kokkos::sqrt;
+  using NavierStokes::PrimVar;
   using NavierStokes::SimVar;
 
-  Real a = fmax(EOS<EquationType::NavierStokes>::soundspeed(gamma, uL),
-                EOS<EquationType::NavierStokes>::soundspeed(gamma, uR));
-  sL = fmin(uL[lng] / uL[SimVar::dens], uR[lng] / uR[SimVar::dens]) - a;
-  sR = fmax(uL[lng] / uL[SimVar::dens], uR[lng] / uR[SimVar::dens]) + a;
+  // Roe estimates
+  const Real hL = (uL[SimVar::etot] + vL[PrimVar::pres]) / uL[SimVar::dens],
+             hR = (uR[SimVar::etot] + vR[PrimVar::pres]) / uR[SimVar::dens];
+  const Real uTil = roeAvg(uL[SimVar::dens], uR[SimVar::dens], vL[lng], vR[lng]),
+             hTil = roeAvg(uL[SimVar::dens], uR[SimVar::dens], hL, hR),
+             aTil = sqrt((gamma - 1.0) * (hTil - 0.5 * uTil * uTil));
+
+  // Batten estimate
+  const Real aL = EOS<EquationType::NavierStokes>::soundspeed(gamma, uL),
+             aR = EOS<EquationType::NavierStokes>::soundspeed(gamma, uR);
+
+  sL = fmin(uL[lng] / uL[SimVar::dens] - aL, uTil - aTil);
+  sR = fmax(uR[lng] / uR[SimVar::dens] + aR, uTil + aTil);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -55,7 +68,7 @@ Real navierstokesHLL(const Real gamma, int ord[3], const NavierStokes::ConsVec u
   Real sL, sR;
 
   // Wave speed estimates
-  navierstokesSpeed(gamma, ord[0], uL, uR, sL, sR);
+  navierstokesSpeed(gamma, ord[0], uL, uR, vL, vR, sL, sR);
 
   // Find appropriate region and fill in flux vector
   if (sR > 0) {

@@ -451,9 +451,9 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
         fmin(Real(1.0), fmax(Real(0.0), -(kappa1 * minSdSp + divV) / (kappa1 * minSdSp)));
 
     // Extend density and pressure ranges
-    maxDens *= (Real(1.0) + kappa2 - kappa2 * eta);
-    minDens *= (Real(1.0) - kappa2 + kappa2 * eta);
-    minEint *= (Real(1.0) - kappa2 + kappa2 * eta);
+    maxDens *= (1.0 + kappa2 - kappa2 * eta);
+    minDens *= (1.0 - kappa2 + kappa2 * eta);
+    minEint *= (1.0 - kappa2 + kappa2 * eta);
 
     Real rDensDiffP = maxDens - rDens, rDensDiffM = rDens - minDens;
 

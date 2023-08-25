@@ -144,6 +144,7 @@ void Solver::evalFlowStats() {
   Kokkos::parallel_reduce("Solver::evalFlowStats", cellRng,
                           Physics::FlowStats<eqType, decltype(U)>(U, geom, ps.eosParams),
                           Kokkos::Sum<Physics::FlowStatsArray>(stats));
+  Kokkos::fence("Solver::evalFlowStats");
 
   // MPI reduce to root rank
   if (ps.layoutMPI.size > 1) {
@@ -616,7 +617,7 @@ void WenoSelector::update(KFVM_D_DECL(FaceDataView rsX, FaceDataView rsY,
   wenoFlagMap.clear();
   assert(wenoFlagMap.rehash(nWeno));
   if (wenoFlagMap.capacity() > currSize && nWeno > 0) {
-    uint32_t newSize = std::max(wenoFlagMap.capacity(), 2 * currSize);
+    uint32_t newSize = std::max(wenoFlagMap.capacity(), (12 * currSize) / 10);
     // Note that capacity != nWeno generally
     Print::AlertAny(ps, "Realloc workspace from {} to {} on rank {}\n", currSize, newSize,
                     ps.layoutMPI.rank);
