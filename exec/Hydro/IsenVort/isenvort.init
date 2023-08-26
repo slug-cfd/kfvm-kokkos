@@ -25,4 +25,5 @@ io:datadir data
 io:basename IsenVort
 io:plotfreq 20
 io:ckptfreq 20
+io:statsfreq 2
 io:verbose 1

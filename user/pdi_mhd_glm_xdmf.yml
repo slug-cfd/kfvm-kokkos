@@ -282,7 +282,6 @@ pdi:
     - file: ${filename}
       on_event: write_flow_stats
       collision_policy: write_into
-      communicator: '$comm'
       datasets:
         stats_data:
           type: array

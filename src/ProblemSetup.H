@@ -35,7 +35,7 @@ struct ProblemSetup {
 
   // Stencil settings
   const idx_t rad;
-  Real gp_lFac, gp_bpow;
+  Real gp_lFac;
 
   // Number of blocks and size of each
   idx_t nbX, nbY, nbZ;
@@ -69,13 +69,13 @@ struct ProblemSetup {
 
   // Simple constructor setting many default values
   ProblemSetup()
-      : rad(STENCIL_RADIUS), layoutMPI(), gp_lFac(20.0), gp_bpow(Real(STENCIL_RADIUS)),
-        nX(1), nY(1), nZ(1), nbX(1), nbY(1), nbZ(1), xLo_g(0.0), xUp_g(1.0), yLo_g(0.0),
-        yUp_g(1.0), zLo_g(0.0), zUp_g(1.0), maxTimeSteps(1000), initialTime(0.0),
-        finalTime(1.0), initialDeltaT(1.e-10), atol(1.e-4), rtol(1.e-4),
-        rejectionThresh(0.8), rejectionLimit(4), cfl(SPACE_DIM == 3 ? 0.5 : 0.75),
-        pdiConf(""), dataDir("data"), baseName("default"), plotFreq(100), ckptFreq(50),
-        statsFreq(-1), restart(false), verbose(0) {
+      : rad(STENCIL_RADIUS), layoutMPI(), gp_lFac(20.0), nX(1), nY(1), nZ(1), nbX(1),
+        nbY(1), nbZ(1), xLo_g(0.0), xUp_g(1.0), yLo_g(0.0), yUp_g(1.0), zLo_g(0.0),
+        zUp_g(1.0), maxTimeSteps(1000), initialTime(0.0), finalTime(1.0),
+        initialDeltaT(1.e-10), atol(1.e-4), rtol(1.e-4), rejectionThresh(0.8),
+        rejectionLimit(4), cfl(SPACE_DIM == 3 ? 0.5 : 0.75), pdiConf(""), dataDir("data"),
+        baseName("default"), plotFreq(100), ckptFreq(50), statsFreq(-1), restart(false),
+        verbose(0) {
     // Ensure that source terms are always enabled in MHD
     haveSourceTerms = haveSourceTerms || (eqType == EquationType::MHD_GLM);
   }
@@ -110,7 +110,6 @@ struct ProblemSetup {
       fmt::print("Stencil:\n");
       fmt::print("  Radius: {}\n", rad);
       fmt::print("  lfac: {:f}\n", gp_lFac);
-      fmt::print("  bpow: {:f}\n", gp_bpow);
 
       // Print eos parameters
       fmt::print("EOS:\n");
@@ -260,9 +259,6 @@ struct ProblemSetup {
     if (category == "lfac") {
       std::getline(lStream, value, ' ');
       gp_lFac = std::stof(value, &pos);
-    } else if (category == "bpow") {
-      std::getline(lStream, value, ' ');
-      gp_bpow = std::stof(value, &pos);
     } else {
       return false;
     }

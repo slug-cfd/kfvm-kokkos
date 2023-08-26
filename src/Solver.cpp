@@ -50,8 +50,12 @@ Solver::Solver(ProblemSetup &ps_)
   if (!ps.restart) {
     setIC();
     evalAuxiliary();
-    writerPDI.writePlot(U_halo, U_aux, wenoSelector.wenoFlagView, 0, time);
-    writerPDI.writeCkpt(U_halo, wenoSelector.wenoFlagView, 0, time, dt);
+    if (ps.plotFreq > 0) {
+      writerPDI.writePlot(U_halo, U_aux, wenoSelector.wenoFlagView, 0, time);
+    }
+    if (ps.ckptFreq > 0) {
+      writerPDI.writeCkpt(U_halo, wenoSelector.wenoFlagView, 0, time, dt);
+    }
   } else {
     // Read in checkpoint file and set state
     writerPDI.readCkpt(U_halo, wenoSelector.wenoFlagView, nTS, time, dt);
@@ -78,31 +82,37 @@ Solver::Solver(ProblemSetup &ps_)
 void Solver::Solve() {
   Kokkos::Profiling::pushRegion("Solver::Solve");
 
+  // Cell BCs have already been set due to FSAL ordering
+  // Gather flow stats before stepping
+  if (ps.statsFreq > 0) {
+    evalFlowStats();
+  }
+
   // Evolve in time, recording solutions as needed
   // nTS already set to 1 for non-restart, or to whatever the restart value is
   for (; nTS < ps.maxTimeSteps && !lastTimeStep; ++nTS) {
     Print::Single(ps, "Step {}: time = {:<.4} ({:<.4}%)\n", nTS, time,
                   100.0 * time / ps.finalTime);
 
+    // Step forward one time step
+    TakeStep();
+
     // Cell BCs have already been set due to FSAL ordering
-    // Gather flow stats before stepping
     if (nTS % ps.statsFreq == 0 && ps.statsFreq > 0) {
       evalFlowStats();
     }
 
-    // Step forward one time step
-    TakeStep();
-
     // Write out data files if needed
-    if (nTS % ps.plotFreq == 0 || lastTimeStep || nTS == (ps.maxTimeSteps - 1)) {
+    if (ps.plotFreq > 0 &&
+        (nTS % ps.plotFreq == 0 || lastTimeStep || nTS == (ps.maxTimeSteps - 1))) {
       evalAuxiliary();
       writerPDI.writePlot(U_halo, U_aux, wenoSelector.wenoFlagView, nTS, time);
     }
-    if (nTS % ps.ckptFreq == 0 || lastTimeStep || nTS == (ps.maxTimeSteps - 1)) {
+    if (ps.ckptFreq > 0 &&
+        (nTS % ps.ckptFreq == 0 || lastTimeStep || nTS == (ps.maxTimeSteps - 1))) {
       writerPDI.writeCkpt(U_halo, wenoSelector.wenoFlagView, nTS, time, dt);
     }
     if (lastTimeStep && ps.statsFreq > 0) {
-      setCellBCs(U_halo, time);
       evalFlowStats();
     }
   }
