@@ -87,7 +87,8 @@ class Solver {
   // Time step information
   int nTS;
   Real time, dt, errEst;
-  bool lastTimeStep;
+  int plotNum;
+  bool writePlot, lastTimeStep;
   // Count RHS evals and step rejections
   int nRhsEval, nRejectUnphys, nRejectThresh;
 

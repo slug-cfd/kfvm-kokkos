@@ -6,7 +6,7 @@ mesh:extent 0.0 35.0 0.0 12.0
 # Set time information
 time:initial 0.0
 time:final 80.0
-time:initialdt 1.e-10
+time:mindt 1.e-10
 time:cfl 1.0
 time:maxsteps 10000
 time:atol 1.e-3
@@ -23,6 +23,6 @@ eos:wenothresh -1.0
 io:pdiconf ../../../user/pdi_srhydro_xdmf.yml
 io:datadir data
 io:basename AstroJetSR
-io:plotfreq 100
+io:plotfreq 1.0
 io:ckptfreq 20
 io:verbose 1

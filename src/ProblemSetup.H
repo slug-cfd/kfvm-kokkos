@@ -46,7 +46,7 @@ struct ProblemSetup {
 
   // Time stepping information
   int maxTimeSteps;
-  Real initialTime, finalTime, initialDeltaT;
+  Real finalTime, minDeltaT;
   Real atol, rtol;
   Real rejectionThresh;
   int rejectionLimit;
@@ -54,7 +54,8 @@ struct ProblemSetup {
 
   // File output information
   std::string pdiConf, dataDir, baseName;
-  int plotFreq, ckptFreq, statsFreq;
+  int ckptFreq, statsFreq;
+  Real plotFreq;
 
   // Restart from checkpoint info
   bool restart;
@@ -71,10 +72,10 @@ struct ProblemSetup {
   ProblemSetup()
       : rad(STENCIL_RADIUS), layoutMPI(), gp_lFac(20.0), nX(1), nY(1), nZ(1), nbX(1),
         nbY(1), nbZ(1), xLo_g(0.0), xUp_g(1.0), yLo_g(0.0), yUp_g(1.0), zLo_g(0.0),
-        zUp_g(1.0), maxTimeSteps(1000), initialTime(0.0), finalTime(1.0),
-        initialDeltaT(1.e-10), atol(1.e-4), rtol(1.e-4), rejectionThresh(0.8),
-        rejectionLimit(4), cfl(SPACE_DIM == 3 ? 0.5 : 0.75), pdiConf(""), dataDir("data"),
-        baseName("default"), plotFreq(100), ckptFreq(50), statsFreq(-1), restart(false),
+        zUp_g(1.0), maxTimeSteps(1000), finalTime(1.0), minDeltaT(1.e-10), atol(1.e-4),
+        rtol(1.e-4), rejectionThresh(0.8), rejectionLimit(4),
+        cfl(SPACE_DIM == 3 ? 0.5 : 0.75), pdiConf(""), dataDir("data"),
+        baseName("default"), plotFreq(-1.0), ckptFreq(-1), statsFreq(-1), restart(false),
         verbose(0) {
     // Ensure that source terms are always enabled in MHD
     haveSourceTerms = haveSourceTerms || (eqType == EquationType::MHD_GLM);
@@ -96,9 +97,8 @@ struct ProblemSetup {
 
       // Print time information
       fmt::print("Time:\n");
-      fmt::print("  initial: {:f}\n", initialTime);
       fmt::print("  final: {:f}\n", finalTime);
-      fmt::print("  initial dt: {:e}\n", initialDeltaT);
+      fmt::print("  min dt: {:e}\n", minDeltaT);
       fmt::print("  atol: {:e}\n", atol);
       fmt::print("  rtol: {:e}\n", rtol);
       fmt::print("  rejectionlimit: {}\n", rejectionLimit);
@@ -274,12 +274,9 @@ struct ProblemSetup {
     // category before space
     std::getline(lStream, category, ' ');
 
-    if (category == "initial") {
+    if (category == "mindt") {
       std::getline(lStream, value, ' ');
-      initialTime = std::stof(value, &pos);
-    } else if (category == "initialdt") {
-      std::getline(lStream, value, ' ');
-      initialDeltaT = std::stof(value, &pos);
+      minDeltaT = std::stof(value, &pos);
     } else if (category == "final") {
       std::getline(lStream, value, ' ');
       finalTime = std::stof(value, &pos);
@@ -338,7 +335,7 @@ struct ProblemSetup {
 
     if (category == "plotfreq") {
       std::getline(lStream, value, ' ');
-      plotFreq = std::stoi(value, &pos);
+      plotFreq = std::stof(value, &pos);
     } else if (category == "ckptfreq") {
       std::getline(lStream, value, ' ');
       ckptFreq = std::stoi(value, &pos);

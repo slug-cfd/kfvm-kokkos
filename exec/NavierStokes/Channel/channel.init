@@ -6,8 +6,8 @@ mesh:extent 0.0 4.0 0.0 1.0 0.0 0.5
 # Set time information
 time:initial 0.0
 time:final 50.0
-time:initialdt 1.e-10
-time:cfl 2.0
+time:mindt 1.e-10
+time:cfl 1.5
 time:maxsteps 25000
 time:atol 1.e-8
 time:rtol 1.e-3
@@ -25,11 +25,10 @@ eos:wenothresh 1.0
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename Channel
-io:plotfreq 500
+io:plotfreq 0.5
 io:ckptfreq 500
 io:statsfreq 10
 io:verbose 1
-io:restartfile data/R2_NX512_NY128/ckpt/Channel_0004999.h5
 
 # User defined settings
 user:mach 0.1

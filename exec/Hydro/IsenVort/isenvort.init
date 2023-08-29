@@ -6,7 +6,7 @@ mesh:extent -10.0 10.0 -10.0 10.0 0.0 0.625
 # Set time information
 time:initial 0.0
 time:final 20.0
-time:initialdt 1.e-10
+time:mindt 1.e-10
 time:cfl 1.0
 time:maxsteps 5000
 time:atol 1.e-10
@@ -23,7 +23,7 @@ eos:wenothresh 1.0
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename IsenVort
-io:plotfreq 20
+io:plotfreq 1.0
 io:ckptfreq 20
 io:statsfreq 2
 io:verbose 1

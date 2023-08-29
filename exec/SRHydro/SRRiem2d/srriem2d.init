@@ -6,7 +6,7 @@ mesh:extent -1.0 1.0 -1.0 1.0
 # Set time information
 time:initial 0.0
 time:final 0.8
-time:initialdt 1.e-10
+time:mindt 1.e-10
 time:cfl 1.0
 time:maxsteps 1000
 time:atol 1.e-3
@@ -17,12 +17,12 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.66666666666666
-eos:wenothresh 1000.0
+eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_srhydro_xdmf.yml
 io:datadir data
 io:basename SRRiem
-io:plotfreq 100
+io:plotfreq 0.05
 io:ckptfreq 20
 io:verbose 1

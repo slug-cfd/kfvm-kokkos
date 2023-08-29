@@ -6,7 +6,7 @@ mesh:extent -0.5 0.5 -0.5 0.5 -0.25 0.0
 # Set time information
 time:initial 0.0
 time:final 0.15
-time:initialdt 1.e-10
+time:mindt 1.e-10
 time:cfl 1.5
 time:maxsteps 5000
 time:atol 1.e-4
@@ -17,12 +17,12 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
-eos:wenothresh 100.0
+eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename Rotor
-io:plotfreq 50
+io:plotfreq 0.005
 io:ckptfreq 20
 io:verbose 1

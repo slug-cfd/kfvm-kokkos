@@ -6,7 +6,7 @@ mesh:extent 0.0 1.0 0.0 1.0 0.0 1.0
 # Set time information
 time:initial 0.0
 time:final 0.16666666666666666
-time:initialdt 1.e-10
+time:mindt 1.e-10
 time:cfl 1.5
 time:maxsteps 10000
 time:atol 1.e-3
@@ -23,7 +23,7 @@ eos:wenothresh 1.0
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename CircImplosion
-io:plotfreq 20
+io:plotfreq 0.01
 io:ckptfreq 20
 io:verbose 1
 

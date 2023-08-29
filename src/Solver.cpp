@@ -43,15 +43,16 @@ Solver::Solver(ProblemSetup &ps_)
       Utmp("Utmp", KFVM_D_DECL(ps.nX, ps.nY, ps.nZ)),
       RHS("RHS", KFVM_D_DECL(ps.nX, ps.nY, ps.nZ)),
       U_aux("U_aux", KFVM_D_DECL(ps.nX, ps.nY, ps.nZ)), faceVals(ps), bdyData(ps),
-      wenoSelector(ps), useSparseWeno(ps.eosParams.wenoThresh > 0.0), nTS(1),
-      time(ps.initialTime), dt(ps.initialDeltaT), errEst(1.0), lastTimeStep(false),
+      wenoSelector(ps), useSparseWeno(ps.eosParams.wenoThresh > 0.0), nTS(1), time(0.0),
+      dt(0.0), errEst(1.0), plotNum(0), writePlot(false), lastTimeStep(false),
       nRhsEval(0), nRejectUnphys(0), nRejectThresh(0) {
   // Fill IC from user defined function or restart file
   if (!ps.restart) {
     setIC();
     evalAuxiliary();
-    if (ps.plotFreq > 0) {
-      writerPDI.writePlot(U_halo, U_aux, wenoSelector.wenoFlagView, 0, time);
+    if (ps.plotFreq > 0.0) {
+      writerPDI.writePlot(U_halo, U_aux, wenoSelector.wenoFlagView, plotNum, time);
+      plotNum++;
     }
     if (ps.ckptFreq > 0) {
       writerPDI.writeCkpt(U_halo, wenoSelector.wenoFlagView, 0, time, dt);
@@ -103,10 +104,11 @@ void Solver::Solve() {
     }
 
     // Write out data files if needed
-    if (ps.plotFreq > 0 &&
-        (nTS % ps.plotFreq == 0 || lastTimeStep || nTS == (ps.maxTimeSteps - 1))) {
+    if (ps.plotFreq > 0 && (writePlot || nTS == (ps.maxTimeSteps - 1))) {
+      writePlot = false;
       evalAuxiliary();
-      writerPDI.writePlot(U_halo, U_aux, wenoSelector.wenoFlagView, nTS, time);
+      writerPDI.writePlot(U_halo, U_aux, wenoSelector.wenoFlagView, plotNum, time);
+      plotNum++;
     }
     if (ps.ckptFreq > 0 &&
         (nTS % ps.ckptFreq == 0 || lastTimeStep || nTS == (ps.maxTimeSteps - 1))) {
@@ -185,10 +187,14 @@ void Solver::TakeStep() {
   // Set range policy for summing registers together
   auto cellRng = interiorCellRange();
 
-  // Test if this is the last step, and limit dt as needed
+  // Limit dt to hit plot times or final time
   if (time + dt > ps.finalTime) {
     dt = ps.finalTime - time;
     lastTimeStep = true;
+    writePlot = true;
+  } else if (time + dt > plotNum * ps.plotFreq) {
+    dt = plotNum * ps.plotFreq - time;
+    writePlot = true;
   }
 
   // Try step with dt, and repeat as needed
@@ -311,7 +317,7 @@ void Solver::TakeStep() {
     Print::WarnSingle(ps, "Warning: Time step was rejected too many times\n");
     lastTimeStep = true;
   }
-  if (dt < ps.initialDeltaT) {
+  if (dt < ps.minDeltaT) {
     Print::WarnSingle(ps, "Warning: Time step stagnated\n");
     lastTimeStep = true;
   }

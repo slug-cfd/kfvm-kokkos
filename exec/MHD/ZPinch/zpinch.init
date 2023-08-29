@@ -6,7 +6,7 @@ mesh:extent -1.0 1.0 -1.0 1.0 0.0 0.03125
 # Set time information
 time:initial 0.0
 time:final 1.0
-time:initialdt 1.e-10
+time:mindt 1.e-10
 time:cfl 1.5
 time:maxsteps 2000
 time:atol 1.e-3
@@ -17,12 +17,12 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.6666666666666
-eos:wenothresh 20.0
+eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename ZPinch
-io:plotfreq 50
+io:plotfreq 0.05
 io:ckptfreq 25
 io:verbose 1
