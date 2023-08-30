@@ -27,7 +27,6 @@ io:basename DoubleShear
 io:plotfreq 0.05
 io:ckptfreq 100
 io:verbose 1
-io:restartfile data/R3_NX512_NY512/ckpt/DoubleShear_0004800.h5
 
 # User defined settings
 user:mach 0.1
