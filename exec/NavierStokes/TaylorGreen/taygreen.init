@@ -10,23 +10,23 @@ time:mindt 1.e-10
 time:cfl 0.75
 time:maxsteps 10000
 time:atol 1.e-8
-time:rtol 1.e-3
+time:rtol 1.e-5
 
 # Set stencil options
 stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
-eos:reynolds 800.0
+eos:reynolds 400.0
 eos:prandtl 0.71
 eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename TaylorGreen
+io:basename TaylorGreen400Re
 io:plotfreq 0.5
-io:ckptfreq 20
+io:ckptfreq 500
 io:statsfreq 10
 io:verbose 1
 

@@ -1,11 +1,11 @@
 # Set mesh resolution and extent
-mesh:resolution 512 1024
+mesh:resolution 512 512
 mesh:numblocks 1 1
-mesh:extent 0.0 1.0 0.0 2.0
+mesh:extent 0.0 1.0 0.0 1.0
 
 # Set time information
 time:initial 0.0
-time:final 4.0
+time:final 1.0
 time:mindt 1.e-8
 time:cfl 1.5
 time:maxsteps 10000
@@ -24,7 +24,12 @@ eos:prandtl 0.7
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename KelvHelm
-io:plotfreq 0.25
+io:basename DoubleShear
+io:plotfreq 0.05
 io:ckptfreq 100
 io:verbose 1
+
+# User defined settings
+user:mach 0.1
+user:k 80.0
+user:delta 0.05

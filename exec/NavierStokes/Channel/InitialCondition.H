@@ -17,7 +17,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real u = 1.0; // 4.0 * y * (1.0 - y);
   const Real v = 1.e-4 * y * (1.0 - y) * sin(2.0 * M_PI * x);
   const Real w = 0.0;
-  const Real p = 1.0 / (eosParams.gamma * Masq);
+  const Real p = 1.0 / (gamm * eosParams.gamma * Masq);
 
   state[SimVar::dens] = rho;
   state[SimVar::momx] = rho * u;
