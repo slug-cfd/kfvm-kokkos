@@ -4,13 +4,12 @@ mesh:numblocks 1 1
 mesh:extent 0.0 1.0 0.0 1.0
 
 # Set time information
-time:initial 0.0
 time:final 1.0
 time:mindt 1.e-8
 time:cfl 1.5
 time:maxsteps 10000
-time:atol 1.e-4
-time:rtol 1.e-3
+time:atol 1.e-8
+time:rtol 1.e-5
 
 # Set stencil options
 stencil:lfac 5
@@ -28,6 +27,7 @@ io:basename DoubleShear
 io:plotfreq 0.05
 io:ckptfreq 100
 io:verbose 1
+io:restartfile data/R3_NX512_NY512/ckpt/DoubleShear_0004800.h5
 
 # User defined settings
 user:mach 0.1

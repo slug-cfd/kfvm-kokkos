@@ -60,6 +60,7 @@ Solver::Solver(ProblemSetup &ps_)
   } else {
     // Read in checkpoint file and set state
     writerPDI.readCkpt(U_halo, wenoSelector.wenoFlagView, nTS, time, dt);
+    plotNum = static_cast<int>(std::round(time / ps.plotFreq));
     Kokkos::deep_copy(Uprev_halo, U_halo);
     nTS++;
   }
