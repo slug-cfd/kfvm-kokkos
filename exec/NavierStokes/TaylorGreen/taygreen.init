@@ -6,24 +6,24 @@ mesh:extent -3.14159265358979323846 3.14159265358979323846 -3.141592653589793238
 # Set time information
 time:final 12.0
 time:mindt 1.e-10
-time:cfl 0.25
+time:cfl 0.2
 time:maxsteps 20000
-time:atol 1.e-10
-time:rtol 1.e-10
+time:atol 1.e-8
+time:rtol 1.e-8
 
 # Set stencil options
 stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
-eos:reynolds 1600.0
+eos:reynolds 800.0
 eos:prandtl 0.71
 eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename TaylorGreen1600Re
+io:basename TaylorGreen800Re
 io:plotfreq 0.25
 io:ckptfreq 500
 io:statsfreq 10

@@ -6,7 +6,7 @@ mesh:extent -3.14159265358979323846 3.14159265358979323846 -3.141592653589793238
 # Set time information
 time:final 12.0
 time:mindt 1.e-10
-time:cfl 0.25
+time:cfl 0.1
 time:maxsteps 20000
 time:atol 1.e-8
 time:rtol 1.e-8
