@@ -16,8 +16,8 @@
 #include "../EquationTypes.H"
 #include "../RSTypes.H"
 #include "../SimVar.H"
+#include "../hydro/Hydro_Riemann.H"
 #include "NavierStokes_EOS.H"
-#include "NavierStokes_Riemann.H"
 #include "physics/Physics_K.H"
 
 namespace KFVM {
@@ -203,7 +203,7 @@ struct RiemannSolverX_K<EquationType::NavierStokes, rst> {
       EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, uR, vR);
 
       // Calculate flux
-      Real vq = NavierStokesRS<rst>::RiemannSolve_X(eosParams.gamma, uL, uR, vL, vR, F);
+      Real vq = HydroRS<rst>::RiemannSolve_X(eosParams.gamma, uL, uR, vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux
@@ -242,7 +242,7 @@ struct RiemannSolverY_K<EquationType::NavierStokes, rst> {
       EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, uR, vR);
 
       // Calculate flux
-      Real vq = NavierStokesRS<rst>::RiemannSolve_Y(eosParams.gamma, uL, uR, vL, vR, F);
+      Real vq = HydroRS<rst>::RiemannSolve_Y(eosParams.gamma, uL, uR, vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux
@@ -280,7 +280,7 @@ struct RiemannSolverZ_K<EquationType::NavierStokes, rst> {
       EOS<EquationType::NavierStokes>::cons2prim(eosParams.gamma, uR, vR);
 
       // Calculate flux
-      Real vq = NavierStokesRS<rst>::RiemannSolve_Z(eosParams.gamma, uL, uR, vL, vR, F);
+      Real vq = HydroRS<rst>::RiemannSolve_Z(eosParams.gamma, uL, uR, vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux

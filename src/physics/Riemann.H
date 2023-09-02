@@ -29,11 +29,11 @@ Real hllcSStar(Real rhoL, Real rhoR, Real pL, Real pR, Real uL, Real uR, Real sL
 }
 
 KOKKOS_INLINE_FUNCTION
-Real hllcPre(Real rho, Real u, Real s, Real sStar) { return rho * (s - u) / (s - sStar); }
-
-KOKKOS_INLINE_FUNCTION
-Real hllcEnergy(Real pre, Real rhoK, Real EK, Real pK, Real uK, Real sK, Real sS) {
-  return pre * (EK / rhoK + (sS - uK) * (sS + pK / (rhoK * (sK - uK))));
+Real hllcPStar(Real rhoL, Real rhoR, Real pL, Real pR, Real uL, Real uR, Real sL,
+               Real sR) {
+  const Real psiL = rhoL * (sL - uL), psiR = rhoR * (sR - uR);
+  return 0.5 * (pL + pR) - 0.5 * (psiL + psiR) * (pR - pL) / (psiR - psiL) +
+         psiL * psiR * (uR - uL) / (psiR - psiL);
 }
 
 KOKKOS_INLINE_FUNCTION

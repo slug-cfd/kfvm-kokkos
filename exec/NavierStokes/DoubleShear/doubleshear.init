@@ -6,9 +6,9 @@ mesh:extent 0.0 1.0 0.0 1.0
 # Set time information
 time:final 1.0
 time:mindt 1.e-8
-time:cfl 1.5
+time:cfl 1.2
 time:maxsteps 10000
-time:atol 1.e-8
+time:atol 1.e-5
 time:rtol 1.e-5
 
 # Set stencil options
