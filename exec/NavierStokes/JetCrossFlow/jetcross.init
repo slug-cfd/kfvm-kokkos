@@ -1,0 +1,34 @@
+# Set mesh resolution and extent
+mesh:resolution 256 128 128
+mesh:numblocks 1 1 1
+mesh:extent -10.0 54.0 0.0 32.0 -16.0 16.0
+
+# Set time information
+time:initial 0.0
+time:final 50.0
+time:mindt 1.e-10
+time:cfl 1.0
+time:maxsteps 25000
+time:atol 1.e-4
+time:rtol 1.e-4
+
+# Set stencil options
+stencil:lfac 5
+
+# Set fluid properties
+eos:gamma 1.4
+eos:reynolds 2000.0
+eos:prandtl 0.71
+eos:wenothresh 1.0
+
+# Output settings
+io:pdiconf ../../../user/pdi_euler_xdmf.yml
+io:datadir data
+io:basename JetCross
+io:plotfreq 0.5
+io:ckptfreq 100
+io:verbose 1
+
+# User defined settings
+user:densrat 2.0
+user:presrat 1.0
