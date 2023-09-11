@@ -613,6 +613,18 @@ void WenoSelector::allocateTiled() {
   }
 }
 
+void WenoSelector::rehash(const uint32_t minSize) {
+  wenoFlagMap.clear();
+  wenoFlagMap.rehash(minSize);
+  if (minSize > currSize) {
+    uint32_t oldSize = currSize;
+    currSize = wenoFlagMap.capacity();
+    Print::AlertAny(ps, "Realloc workspace from {} to {} on rank {}\n", oldSize, currSize,
+                    ps.layoutMPI.rank);
+    Kokkos::realloc(stenWork, currSize);
+  }
+}
+
 void WenoSelector::update(KFVM_D_DECL(FaceDataView rsX, FaceDataView rsY,
                                       FaceDataView rsZ),
                           const QuadRuleView &wt, const Real wThresh) {
@@ -628,42 +640,43 @@ void WenoSelector::update(KFVM_D_DECL(FaceDataView rsX, FaceDataView rsY,
                                                     ps.eosParams, wThresh, wenoFlagView),
       nWeno);
 
-  // Clear map and reallocate workspace if needed
   Print::AnyV2(ps, "    {} ({:<.4}%) cells flagged for WENO on rank {}\n", nWeno,
                (100.0 * nWeno) / (ps.nX * ps.nY * ps.nZ), ps.layoutMPI.rank);
-  wenoFlagMap.clear();
-  assert(wenoFlagMap.rehash(nWeno));
-  if (wenoFlagMap.capacity() > currSize && nWeno > 0) {
-    uint32_t newSize = std::max(wenoFlagMap.capacity(), (12 * currSize) / 10);
-    // Note that capacity != nWeno generally
-    Print::AlertAny(ps, "Realloc workspace from {} to {} on rank {}\n", currSize, newSize,
-                    ps.layoutMPI.rank);
-    Kokkos::realloc(stenWork, newSize);
-    currSize = newSize;
-  }
 
   if (nWeno > 0) {
-    // Avoid implicit this captures
-    auto flagView = wenoFlagView;
-    auto flagMap = wenoFlagMap;
-    idx_t nX = ps.nX;
+    // Insertion may fail, loop and grow space until success
+    uint32_t hashSize = nWeno;
+    int numFailed;
+    do {
+      // Clear map and reallocate workspace if needed
+      rehash(hashSize);
+
+      // Insert flagged cells
+      auto flagView = wenoFlagView;
+      auto flagMap = wenoFlagMap;
+      idx_t nX = ps.nX;
 #if (SPACE_DIM == 3)
-    idx_t nY = ps.nY;
+      idx_t nY = ps.nY;
 #endif
-    // Insert flagged cells
-    Kokkos::parallel_for(
-        "Solver::WenoSelector::update(insert)", cellRng,
-        KOKKOS_LAMBDA(KFVM_D_DECL(idx_t i, idx_t j, idx_t k)) {
-          if (flagView(KFVM_D_DECL(i, j, k), 0) > 0.0) {
+      numFailed = 0;
+      Kokkos::parallel_reduce(
+          "Solver::WenoSelector::update(insert)", cellRng,
+          KOKKOS_LAMBDA(KFVM_D_DECL(idx_t i, idx_t j, idx_t k), int &fail) {
+            if (flagView(KFVM_D_DECL(i, j, k), 0) > 0.0) {
 #if (SPACE_DIM == 2)
-            idx_t key = nX * j + i;
+              idx_t key = nX * j + i;
 #else
-            idx_t key = nX * nY * k + nX * j + i;
+              idx_t key = nX * nY * k + nX * j + i;
 #endif
-            auto stat = flagMap.insert(key);
-            assert(stat.success());
-          }
-        });
+              auto stat = flagMap.insert(key);
+              if (stat.failed()) {
+                fail++;
+              }
+            }
+          },
+          numFailed);
+      hashSize = (3 * hashSize) / 2;
+    } while (numFailed > 0);
   }
 }
 

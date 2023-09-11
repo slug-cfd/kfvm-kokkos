@@ -22,7 +22,7 @@
 
 constexpr KFVM::KernelType kernelType = KFVM::KernelType::SE;
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
-constexpr KFVM::RSType rsType = KFVM::RSType::HLL;
+constexpr KFVM::RSType rsType = KFVM::RSType::HLLC;
 constexpr KFVM::RKType rkType = KFVM::RKType::SSP4_3_2;
 
 #endif

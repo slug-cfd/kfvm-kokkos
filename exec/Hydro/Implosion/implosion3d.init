@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 112 112 112
+mesh:resolution 160 160 160
 mesh:numblocks 1 1 1
 mesh:extent 0.0 0.3 0.0 0.3 0.0 0.3
 
@@ -9,8 +9,8 @@ time:final 2.5
 time:mindt 1.e-10
 time:cfl 1.0
 time:maxsteps 10000
-time:atol 1.e-3
-time:rtol 1.e-3
+time:atol 1.e-4
+time:rtol 1.e-4
 
 # Set stencil options
 stencil:lfac 5
@@ -23,6 +23,6 @@ eos:wenothresh 1.0
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename Implosion
-io:plotfreq 0.25
-io:ckptfreq 20
+io:plotfreq 0.05
+io:ckptfreq 100
 io:verbose 1

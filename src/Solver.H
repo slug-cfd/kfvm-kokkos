@@ -35,6 +35,7 @@ struct WenoSelector {
   uint32_t tiledSize, currSize, nWeno;
   WenoSelector(const ProblemSetup &ps);
   void allocateTiled();
+  void rehash(const uint32_t);
   void update(KFVM_D_DECL(FaceDataView, FaceDataView, FaceDataView), const QuadRuleView &,
               const Real);
   auto tileRange(int i, int j, int k) const {
