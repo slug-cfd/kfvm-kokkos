@@ -12,7 +12,7 @@ time:atol 1.e-10
 time:rtol 1.e-10
 
 # Set stencil options
-stencil:lfac 10
+stencil:lfac ELL
 
 # Set fluid properties
 eos:gamma 0.0
@@ -20,10 +20,10 @@ eos:wenothresh -1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_linadv_xdmf.yml
-io:datadir data/Weno/ell10
-io:basename DispRel128
+io:datadir data/Weno/ellELL
+io:basename DispRelFQ
 io:ckptfreq 1
 io:verbose 2
 
 # User settings
-user:freq 128.0
+user:freq FQ.0

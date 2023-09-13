@@ -97,28 +97,28 @@ struct ProblemSetup {
 
       // Print time information
       fmt::print("Time:\n");
-      fmt::print("  final: {:f}\n", finalTime);
-      fmt::print("  min dt: {:e}\n", minDeltaT);
-      fmt::print("  atol: {:e}\n", atol);
-      fmt::print("  rtol: {:e}\n", rtol);
+      fmt::print("  final: {:<.4}\n", finalTime);
+      fmt::print("  min dt: {:<.4}\n", minDeltaT);
+      fmt::print("  atol: {:<.4}\n", atol);
+      fmt::print("  rtol: {:<.4}\n", rtol);
       fmt::print("  rejectionlimit: {}\n", rejectionLimit);
-      fmt::print("  rejectionthresh: {:f}\n", rejectionThresh);
+      fmt::print("  rejectionthresh: {:<.4}\n", rejectionThresh);
       fmt::print("  cfl: {:f}\n", cfl);
       fmt::print("  maxsteps: {}\n", maxTimeSteps);
 
       // Print stencil information
       fmt::print("Stencil:\n");
       fmt::print("  Radius: {}\n", rad);
-      fmt::print("  lfac: {:f}\n", gp_lFac);
+      fmt::print("  lfac: {:<.4}\n", gp_lFac);
 
       // Print eos parameters
       fmt::print("EOS:\n");
-      fmt::print("  gamma: {:f}\n", eosParams.gamma);
+      fmt::print("  gamma: {:<.4}\n", eosParams.gamma);
       if (eqType == EquationType::NavierStokes) {
         fmt::print("  reynolds: {:f}\n", eosParams.Re);
-        fmt::print("  prandtl: {:f}\n", eosParams.Pr);
+        fmt::print("  prandtl: {:<.4}\n", eosParams.Pr);
       }
-      fmt::print("  wenothresh: {:f}\n", eosParams.wenoThresh);
+      fmt::print("  wenothresh: {:<.4}\n", eosParams.wenoThresh);
 
       // Print io information
       fmt::print("IO:\n");

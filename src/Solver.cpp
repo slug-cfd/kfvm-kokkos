@@ -72,7 +72,7 @@ Solver::Solver(ProblemSetup &ps_)
 
   // FSAL methods need one RHS eval to start,
   // still needed for restarted runs to prime the time stepper
-  Real maxVel = evalRHS(U_halo, time);
+  const Real maxVel = evalRHS(U_halo, time);
 
   // Use small CFL to pick initial time step size on fresh runs
   if (!ps.restart) {
@@ -193,7 +193,7 @@ void Solver::TakeStep() {
     dt = ps.finalTime - time;
     lastTimeStep = true;
     writePlot = true;
-  } else if (time + dt > plotNum * ps.plotFreq) {
+  } else if (ps.plotFreq > 0.0 && time + dt > plotNum * ps.plotFreq) {
     dt = plotNum * ps.plotFreq - time;
     writePlot = true;
   }

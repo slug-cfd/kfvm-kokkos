@@ -30,6 +30,7 @@ class WriterPDI {
   int stats_row_num;
 
   void writeAttrHydro(std::ofstream &, bool);
+  void writeAttrLinAdv(std::ofstream &, bool);
   void writeAttrMHD_GLM(std::ofstream &, bool);
   void writeAttrSRHydro(std::ofstream &, bool);
 

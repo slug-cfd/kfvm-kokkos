@@ -161,7 +161,7 @@ struct KernelWenoRecon_K {
         nBias(Stencil::Core::SI.nBias), nIndic(Stencil::Core::SI.nIndic),
         nqFace_d(Stencil::Core::SI.nqFace_d),
 #if (SPACE_DIM == 2)
-        gHi(0.7), gLo(0.75), eps(1.e-40)
+        gHi(0.75), gLo(0.75), eps(1.e-40)
 #else
         gHi(0.7), gLo(0.75), eps(1.e-40)
 #endif
@@ -566,7 +566,7 @@ struct KernelWenoRecon_K {
     using Kokkos::fabs;
     using Kokkos::pow;
 
-    const int p = 2 * STENCIL_RADIUS;
+    const int p = 2;
 
     for (int nV = 0; nV < NUM_VARS; nV++) {
       Real tot = Real(0.0);

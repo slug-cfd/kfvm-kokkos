@@ -10,11 +10,12 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
   using Kokkos::cos;
   using Kokkos::sin;
+  using Kokkos::sqrt;
   using Physics::LinAdv::SimVar;
 
-  (void)x;
-  (void)y;
   (void)z;
 
-  state[SimVar::u] = cos(2.0 * M_PI * x);
+  const Real xpar = x * cos(userParams.ang) + y * sin(userParams.ang);
+
+  state[SimVar::u] = sin(2.0 * M_PI * userParams.freq * xpar);
 }

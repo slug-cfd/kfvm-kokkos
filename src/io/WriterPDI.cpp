@@ -198,6 +198,9 @@ void WriterPDI::writeXML(int step, Real time, bool plotMode) {
 
   // Write all data fields as attributes
   switch (eqType) {
+  case EquationType::LinAdv:
+    writeAttrLinAdv(ofs, plotMode);
+    break;
   case EquationType::MHD_GLM:
     writeAttrMHD_GLM(ofs, plotMode);
     break;
@@ -226,6 +229,10 @@ void WriterPDI::writeAttrHydro(std::ofstream &ofs, bool plotMode) {
     writeAttributeScalar(ofs, "eint");
     writeAttributeScalar(ofs, "pres");
   }
+}
+
+void WriterPDI::writeAttrLinAdv(std::ofstream &ofs, bool plotMode) {
+  writeAttributeScalar(ofs, "dens");
 }
 
 void WriterPDI::writeAttrMHD_GLM(std::ofstream &ofs, bool plotMode) {

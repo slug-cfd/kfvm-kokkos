@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 256 256 4
+mesh:resolution NG NG 4
 mesh:numblocks 1 1 1
 mesh:extent -10.0 10.0 -10.0 10.0 0.0 0.625
 
@@ -12,7 +12,7 @@ time:atol 1.e-6
 time:rtol 1.e-6
 
 # Set stencil options
-stencil:lfac 10
+stencil:lfac ELL
 
 # Set fluid properties
 eos:gamma 1.4
@@ -20,7 +20,7 @@ eos:wenothresh 1.0
 
 # IO settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
-io:datadir data/NoWeno/ell10
+io:datadir data/NoWeno/ellELL
 io:basename IsenVort
 io:plotfreq -1.0
 io:ckptfreq 10000

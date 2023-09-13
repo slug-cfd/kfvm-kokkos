@@ -19,22 +19,23 @@ KOKKOS_INLINE_FUNCTION
 Real linadvExact(Real gamma, int dir, const LinAdv::ConsVec uL, const LinAdv::ConsVec uR,
                  Real F[NUM_VARS]) {
   using Kokkos::cos;
+  using Kokkos::fabs;
   using Kokkos::sin;
-  using LinAdv::ConsVec;
-  using LinAdv::SimVar;
 
   // Velocity on face
   const Real vx = cos(gamma), vy = sin(gamma);
 
   if (dir == 0) {
     F[0] = vx > 0.0 ? vx * uL[0] : vx * uR[0];
+    return fabs(vx);
   } else if (dir == 1) {
     F[0] = vy > 0.0 ? vy * uL[0] : vy * uR[0];
+    return fabs(vy);
   } else {
     F[0] = 0.0;
   }
 
-  return 1.0;
+  return 0.0;
 }
 
 template <RSType rst>
