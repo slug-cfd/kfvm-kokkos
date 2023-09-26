@@ -110,6 +110,8 @@ Real hydroHLLC(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Con
   using Hydro::SimVar;
   using Kokkos::fabs;
   using Kokkos::fmax;
+  using Kokkos::fmin;
+  using Kokkos::pow;
   using Kokkos::sqrt;
 
   // Wave speed estimates
@@ -120,7 +122,7 @@ Real hydroHLLC(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Con
   const Real sS = hllcSStar(vL[PrimVar::dens], vR[PrimVar::dens], vL[PrimVar::pres],
                             vR[PrimVar::pres], vL[ord[0]], vR[ord[0]], sL, sR);
   const Real pS = hllcPStar(vL[PrimVar::dens], vR[PrimVar::dens], vL[PrimVar::pres],
-                            vR[PrimVar::pres], vL[ord[0]], vR[ord[0]], sL, sR);
+                            vR[PrimVar::pres], vL[ord[0]], vR[ord[0]], sL, sR, sS);
 
   // Low mach fix info
   const Real psiL = uL[SimVar::dens] * (sL - vL[ord[0]]),
@@ -131,22 +133,30 @@ Real hydroHLLC(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Con
   const Real sFacL = sS / (sL - sS), pFacL = psiFac + sL * pS / (sL - sS);
   const Real sFacR = sS / (sR - sS), pFacR = psiFac + sR * pS / (sR - sS);
 
+  // Shear fix
+  const Real h =
+      fmin(vL[PrimVar::pres] / vR[PrimVar::pres], vR[PrimVar::pres] / vL[PrimVar::pres]);
+  const Real g = 1.0 - pow(h, M);
+  const Real vJump = vR[ord[1]] - vL[ord[1]], wJump = vR[ord[2]] - vL[ord[2]];
+  const Real shearFac = g * psiL * psiR / (psiR - psiL);
+  const Real shFacL = shearFac * sL / (sL - sS), shFacR = shearFac * sR / (sR - sS);
+
   // Find correct zone
-  if (0 < sL) {
+  if (0 <= sL) {
     hydroFlux(gamma, ord, uL, vL, F);
   } else if (0 <= sS) {
     hydroFlux(gamma, ord, uL, vL, F);
     F[SimVar::dens] = sFacL * (sL * uL[SimVar::dens] - F[SimVar::dens]);
     F[ord[0]] = sFacL * (sL * uL[ord[0]] - F[ord[0]]) + pFacL;
-    F[ord[1]] = sFacL * (sL * uL[ord[1]] - F[ord[1]]);
-    F[ord[2]] = sFacL * (sL * uL[ord[2]] - F[ord[2]]);
+    F[ord[1]] = sFacL * (sL * uL[ord[1]] - F[ord[1]]) + shFacL * vJump;
+    F[ord[2]] = sFacL * (sL * uL[ord[2]] - F[ord[2]]) + shFacL * wJump;
     F[SimVar::etot] = sFacL * (sL * uL[SimVar::etot] - F[SimVar::etot]) + sS * pFacL;
-  } else if (0 <= sR) {
+  } else if (0 < sR) {
     hydroFlux(gamma, ord, uR, vR, F);
     F[SimVar::dens] = sFacR * (sR * uR[SimVar::dens] - F[SimVar::dens]);
     F[ord[0]] = sFacR * (sR * uR[ord[0]] - F[ord[0]]) + pFacR;
-    F[ord[1]] = sFacR * (sR * uR[ord[1]] - F[ord[1]]);
-    F[ord[2]] = sFacR * (sR * uR[ord[2]] - F[ord[2]]);
+    F[ord[1]] = sFacR * (sR * uR[ord[1]] - F[ord[1]]) + shFacR * vJump;
+    F[ord[2]] = sFacR * (sR * uR[ord[2]] - F[ord[2]]) + shFacR * wJump;
     F[SimVar::etot] = sFacR * (sR * uR[SimVar::etot] - F[SimVar::etot]) + sS * pFacR;
   } else {
     hydroFlux(gamma, ord, uR, vR, F);

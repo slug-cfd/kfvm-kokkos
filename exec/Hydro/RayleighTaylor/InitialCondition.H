@@ -1,6 +1,9 @@
 // Set intial condition
 // must take (x,y,z) coordinates regardless of space dimension
 
+// ICs from pluto AMR paper w/o B field
+// see doi:10.1088/0067-0049/198/1/7
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -8,17 +11,16 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
-  using Kokkos::cos;
+  using Kokkos::cosh;
+  using Kokkos::exp;
   using Kokkos::pow;
-  using Kokkos::sqrt;
   using Physics::Hydro::SimVar;
 
   const Real gamm = eosParams.gamma - 1.0;
-  const Real rhoH = 10.0, rhoL = 1.0;
-  const Real rho = y <= 0.0 ? 1.0 : 10.0;
-  const Real p = y <= 0.0 ? 1.0 + 0.1 * rhoH - y * rhoL : 1.0 + rhoH * (0.1 - y);
-  const Real v = 0.01 * cos(4.0 * M_PI * x / 0.1) * cos(6.0 * M_PI * z / 0.1) *
-                 pow(cos(M_PI * y / 0.2), 4);
+  const Real rhoH = userParams.rhoH, rhoL = userParams.rhoL;
+  const Real rho = y <= 0.0 ? rhoL : rhoH;
+  const Real p = 100.0 / eosParams.gamma - rho * y;
+  const Real v = -0.1 * exp(-25.0 * (x * x + z * z)) / pow(cosh(100.0 * y * y), 2.0);
 
   state[SimVar::dens] = rho;
   state[SimVar::momx] = 0.0;

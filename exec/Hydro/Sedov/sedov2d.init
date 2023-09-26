@@ -7,17 +7,17 @@ mesh:extent -0.5 0.5 -0.5 0.5
 time:initial 0.0
 time:final 0.2
 time:mindt 1.e-10
-time:cfl 1.5
+time:cfl 1.25
 time:maxsteps 2500
-time:atol 1.e-3
-time:rtol 1.e-3
+time:atol 1.e-4
+time:rtol 1.e-4
 
 # Set stencil options
 stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
-eos:wenothresh 1.0
+eos:wenothresh -1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml

@@ -7,10 +7,10 @@
 #include "../../../src/stencil/KernelTypes.H"
 
 // Space dimension of problem
-#define SPACE_DIM 3
+#define SPACE_DIM 2
 
 // Stencil radius (2-4)
-#define STENCIL_RADIUS 2
+#define STENCIL_RADIUS 3
 
 // Number of Gauss-Legendre points on faces (1-5)
 #define NUM_QUAD_PTS 3
@@ -23,6 +23,6 @@
 constexpr KFVM::KernelType kernelType = KFVM::KernelType::SE;
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
 constexpr KFVM::RSType rsType = KFVM::RSType::HLLC;
-constexpr KFVM::RKType rkType = KFVM::RKType::SSP4_3_2;
+constexpr KFVM::RKType rkType = KFVM::RKType::ThreeStarP;
 
 #endif

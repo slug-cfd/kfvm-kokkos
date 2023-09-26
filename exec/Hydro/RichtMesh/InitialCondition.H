@@ -13,13 +13,13 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real m = userParams.mach;
   Real rho, u, v, w, p;
 
-  if (x < 0.3) {
-    rho = gp * m / (gm * m + 2.0);
-    u = m * sqrt(g);
+  if (x < -0.2) {
+    rho = 1.0 / (1.0 - 2.0 * (1.0 - 1.0 / (m * m)) / gp);
+    u = m * sqrt(g) * (1.0 - 1.0 / rho);
     v = 0.0;
     w = 0.0;
-    p = (2.0 * g * m - gm) / gp;
-  } else if (x < (y + 0.5)) {
+    p = 1.0 + 2 * g * (m * m - 1.0) / gp;
+  } else if (x < y) {
     rho = 1.0;
     u = 0.0;
     v = 0.0;

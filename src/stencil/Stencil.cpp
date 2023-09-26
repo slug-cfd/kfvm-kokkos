@@ -307,6 +307,7 @@ void normalizePV_1(const WType &wts, idx_t numQuad, idx_t stenSize) {
     }
   }
 }
+
 } // namespace
 
 void Stencil::findWeights(double lfac) {

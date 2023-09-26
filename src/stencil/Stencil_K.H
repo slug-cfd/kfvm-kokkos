@@ -159,14 +159,7 @@ struct KernelWenoRecon_K {
         nCellsFull(Stencil::Core::SI.nCellsFull), nCellsCtr(Stencil::Core::SI.nCellsCtr),
         nCellsBias(Stencil::Core::SI.nCellsBias), nSub(Stencil::Core::SI.nSub),
         nBias(Stencil::Core::SI.nBias), nIndic(Stencil::Core::SI.nIndic),
-        nqFace_d(Stencil::Core::SI.nqFace_d),
-#if (SPACE_DIM == 2)
-        gHi(0.75), gLo(0.75), eps(1.e-40)
-#else
-        gHi(0.7), gLo(0.75), eps(1.e-40)
-#endif
-  {
-  }
+        nqFace_d(Stencil::Core::SI.nqFace_d), gHi(0.8), gLo(0.8), eps(1.e-36) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
@@ -563,30 +556,28 @@ struct KernelWenoRecon_K {
   KOKKOS_INLINE_FUNCTION
   void createOmegas(Real omega[Stencil::Core::SI.nSub][NUM_VARS],
                     const Real gamma[Stencil::Core::SI.nSub]) const {
-    using Kokkos::fabs;
     using Kokkos::pow;
 
-    const int p = 2;
+    const int p = 4;
 
     for (int nV = 0; nV < NUM_VARS; nV++) {
-      Real tot = Real(0.0);
+      // Form WENO-JS style weights
+      Real tot = 0.0;
       for (int nS = 0; nS < nSub; nS++) {
         omega[nS][nV] = gamma[nS] / (pow(omega[nS][nV], p) + eps);
         tot += omega[nS][nV];
       }
 
-      // normalize them
+      // normalize
       for (int nS = 0; nS < nSub; nS++) {
         omega[nS][nV] /= tot;
       }
-    }
 
-    // convert omegas to Weno-AO style weights
-    for (int nV = 0; nV < NUM_VARS; nV++) {
-      for (int nS = 1; nS < nSub; nS++) {
-        omega[nS][nV] -= omega[0][nV] * gamma[nS] / gamma[0];
-      }
+      // convert to Weno-AO style weights
       omega[0][nV] /= gamma[0];
+      for (int nS = 1; nS < nSub; nS++) {
+        omega[nS][nV] -= omega[0][nV] * gamma[nS];
+      }
     }
   }
 

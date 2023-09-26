@@ -266,7 +266,9 @@ void Solver::TakeStep() {
 
     // Set a new time step size
     Real dtfac = std::pow(errNew, RKCoeff::ep1) * std::pow(errEst, RKCoeff::ep2);
-    dtfac = 1.0 + std::atan(dtfac - 1.0);
+    // Softcap on dt using atan
+    // isnan checks for exceedingly rare possibility of exactly zero error
+    dtfac = std::isnan(dtfac) ? 1.2 : 1.0 + std::atan(dtfac - 1.0);
 
     // Figure out status of this step
     int lStat, gStat;
