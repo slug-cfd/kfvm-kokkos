@@ -54,40 +54,6 @@ class ReconVectors {
     Matrix() = delete;
   };
 
-  // Enumeration of used monomials for augmented kernel system
-  struct MonomialEnum {
-    const int tDeg, nMono;
-    std::vector<std::array<int, SPACE_DIM>> deg;
-
-    MonomialEnum(int tDeg_)
-        : tDeg(tDeg_), nMono(SPACE_DIM == 2 ? (tDeg + 1) * (tDeg + 2) / 2
-                                            : (tDeg + 1) * (tDeg + 2) * (tDeg + 3) / 6),
-          deg(nMono) {
-      // Enumerate all monomials up to total degree tDeg
-      int n = 0;
-#if (SPACE_DIM == 2)
-      for (int t = 0; t <= tDeg; t++) {
-        for (int i = 0; i <= t; i++) {
-          deg[n][0] = i;
-          deg[n][1] = t - i;
-          n++;
-        }
-      }
-#else
-      for (int t = 0; t <= tDeg; t++) {
-        for (int i = 0; i <= t; i++) {
-          for (int j = 0; j <= (t - i); j++) {
-            deg[n][0] = i;
-            deg[n][1] = j;
-            deg[n][2] = t - i - j;
-            n++;
-          }
-        }
-      }
-#endif
-    }
-  };
-
   // Wrappers for Lapack calls
   static int c_dgetrf(Matrix<double> &, std::vector<int> &);
   static int c_dgetrs(Matrix<double> &, std::vector<int> &, std::vector<double> &);
@@ -100,7 +66,7 @@ class ReconVectors {
   double eps;
 
   // Set of monomials to append
-  MonomialEnum monos;
+  Monomials::MonomialEnum monos;
 
   // Size of kernel systems with additional polynomials
   int sysSize;
@@ -114,28 +80,30 @@ class ReconVectors {
 
   // Sample vector
   template <KFVM_D_DECL(class efX, class efY, class efZ)>
-  void fillSampleVec(KFVM_D_DECL(const double qx, const double qy, const double qz),
+  void fillSampleVec(const std::array<idx_t, SPACE_DIM> &Nd,
+                     KFVM_D_DECL(const double qx, const double qy, const double qz),
                      std::vector<double> &T) {
     // Evaluate kernel at query points for each center
     for (int i = 0; i < stenSize; i++) {
       double KFVM_D_DECL(dx = qx - xs[i], dy = qy - ys[i], dz = qz - zs[i]);
-      T[i] =
-          Kernel<kernelType>::K<KFVM_D_DECL(efX, efY, efZ)>(eps, KFVM_D_DECL(dx, dy, dz));
+      T[i] = Kernel<kernelType>::K<KFVM_D_DECL(efX, efY, efZ)>(eps, Nd,
+                                                               KFVM_D_DECL(dx, dy, dz));
     }
     // Evaluate mononomials at query points
     for (int i = 0; i < monos.nMono; i++) {
       T[i + stenSize] = Monomials::mono<KFVM_D_DECL(efX, efY, efZ)>(
-          monos.deg[i], KFVM_D_DECL(qx, qy, qz));
+          monos.deg[i], Nd, KFVM_D_DECL(qx, qy, qz));
     }
   }
 
   // Generate reconstruction vector
   template <KFVM_D_DECL(class efX, class efY, class efZ)>
-  void recVec(KFVM_D_DECL(const double qx, const double qy, const double qz),
+  void recVec(const std::array<idx_t, SPACE_DIM> &Nd,
+              KFVM_D_DECL(const double qx, const double qy, const double qz),
               std::vector<double> &rec) {
     // Solve system for single reconstruction vector
     std::vector<double> S(sysSize, 0.0);
-    fillSampleVec<KFVM_D_DECL(efX, efY, efZ)>(KFVM_D_DECL(qx, qy, qz), S);
+    fillSampleVec<KFVM_D_DECL(efX, efY, efZ)>(Nd, KFVM_D_DECL(qx, qy, qz), S);
     c_dgetrs(C, ipiv, S);
 
     // Copy out reconstruction vector
@@ -145,12 +113,13 @@ class ReconVectors {
   }
 
  public:
-  ReconVectors(double, int,
+  ReconVectors(const double, const idx_t,
                KFVM_D_DECL(const std::vector<double> &, const std::vector<double> &,
                            const std::vector<double> &));
 
   template <class RecView, KFVM_D_DECL(class efX, class efY, class efZ)>
-  void recVecs(KFVM_D_DECL(const std::vector<double> &qx, const std::vector<double> &qy,
+  void recVecs(const std::array<idx_t, SPACE_DIM> &Nd,
+               KFVM_D_DECL(const std::vector<double> &qx, const std::vector<double> &qy,
                            const std::vector<double> &qz),
                RecView wts) {
     // Generate symmetries for the set of query points
@@ -162,7 +131,7 @@ class ReconVectors {
     for (int nQ = 0; nQ < qx.size(); nQ++) {
       if (stenSym.symMap[nQ].first < 0) {
         // Create new reconstruction vector if no symmetry relation is available
-        recVec<KFVM_D_DECL(efX, efY, efZ)>(KFVM_D_DECL(qx[nQ], qy[nQ], qz[nQ]), rec);
+        recVec<KFVM_D_DECL(efX, efY, efZ)>(Nd, KFVM_D_DECL(qx[nQ], qy[nQ], qz[nQ]), rec);
         for (int j = 0; j < stenSize; j++) {
           wts(nQ, j) = static_cast<Real>(rec[j]);
         }
@@ -171,6 +140,20 @@ class ReconVectors {
           wts(nQ, j) = wts(stenSym.symMap[nQ].first, stenSym.idxMap[nQ][j]);
         }
       }
+    }
+  }
+
+  template <class RecView, KFVM_D_DECL(class efX, class efY, class efZ)>
+  void recVecs(const std::array<idx_t, SPACE_DIM> &Nd,
+               KFVM_D_DECL(const double &qx, const double &qy, const double &qz),
+               RecView wts) {
+    // Generate reconstruction vector for query point
+    std::vector<double> rec(stenSize, 0.0);
+    recVec<KFVM_D_DECL(efX, efY, efZ)>(Nd, KFVM_D_DECL(qx, qy, qz), rec);
+
+    // Cast and copy into weight view
+    for (int j = 0; j < stenSize; j++) {
+      wts(j) = static_cast<Real>(rec[j]);
     }
   }
 };

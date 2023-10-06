@@ -7,6 +7,7 @@
 
 #include <Kokkos_Core.hpp>
 
+#include "../Geometry.H"
 #include "../ProblemSetup.H"
 #include "../Types.H"
 #include "Definitions.H"
@@ -59,13 +60,17 @@ struct Stencil {
     // StencilInfo provides counts of all relevant quantities
     static constexpr StencilInfo<SPACE_DIM, rad> SI{};
 
+    // Monomial enumeration also gives all derivatives needed for smoothness indicators
+    Monomials::MonomialEnum derivSet;
+
     // Stencil layout and indexing
     // Offsets from (i,j,k) describing full stencil
     std::array<idx_t, SI.nCellsFull> lOff, tOff, ttOff;
+
     // Index maps into biased substencils
     std::array<std::array<idx_t, SI.nCellsBias>, SI.nBias> subIdx;
 
-    Core() { findStencil(); }
+    Core() : derivSet(SI.nDeriv) { findStencil(); }
 
    private:
     idx_t coord2idx(idx_t, idx_t);
@@ -74,7 +79,11 @@ struct Stencil {
     void findSubStencils();
   };
 
+  // Base information about the stencil sizes, number of quad pts etc
   Core core;
+
+  // Geometry object for scaling derivatives correctly
+  const Geometry &geom;
 
   // Layout of cells in stencil, and distribution into substencils
   OffsetView lOff, tOff, ttOff;
@@ -93,10 +102,11 @@ struct Stencil {
   // indices are substencil index/derivative type and location/cell in stencil
   DerivWtView derivWeights;
 
-  Stencil(Real lfac_)
-      : core(), lOff("Stencil::lOff"), tOff("Stencil::tOff"), ttOff("Stencil::ttOff"),
-        subIdx("Stencil::subIdx"), faceWeights("Stencil::faceWeights"),
-        cellWeights("Stencil::cellWeights"), derivWeights("Stencil::derivWeights") {
+  Stencil(const Real lfac_, const Geometry &geom_)
+      : core(), geom(geom_), lOff("Stencil::lOff"), tOff("Stencil::tOff"),
+        ttOff("Stencil::ttOff"), subIdx("Stencil::subIdx"),
+        faceWeights("Stencil::faceWeights"), cellWeights("Stencil::cellWeights"),
+        derivWeights("Stencil::derivWeights") {
     Kokkos::Profiling::pushRegion("Stencil::Stencil");
 
     // Copy cell layout from core into device-side views

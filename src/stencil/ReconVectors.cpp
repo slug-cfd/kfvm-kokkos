@@ -11,7 +11,7 @@ namespace KFVM {
 
 namespace Stencil {
 
-ReconVectors::ReconVectors(double eps_, int monoDeg_,
+ReconVectors::ReconVectors(const double eps_, const idx_t monoDeg_,
                            KFVM_D_DECL(const std::vector<double> &xs_,
                                        const std::vector<double> &ys_,
                                        const std::vector<double> &zs_))
@@ -24,21 +24,22 @@ ReconVectors::ReconVectors(double eps_, int monoDeg_,
 }
 
 void ReconVectors::fillRecMat() {
+  typedef EvalFunctional::Average Average;
   // Fill kernel matrix block
   for (int i = 0; i < stenSize; i++) {
     for (int j = 0; j < stenSize; j++) {
       double KFVM_D_DECL(dx = xs[i] - xs[j], dy = ys[i] - ys[j], dz = zs[i] - zs[j]);
-      C(i, j) = Kernel<kernelType>::K<KFVM_D_DECL(
-          EvalFunctional::Average, EvalFunctional::Average, EvalFunctional::Average)>(
-          eps, KFVM_D_DECL(dx, dy, dz));
+      // Note that monos.deg[0] is passed as dummy argument for unused derivative order
+      C(i, j) = Kernel<kernelType>::K<KFVM_D_DECL(Average, Average, Average)>(
+          eps, monos.deg[0], KFVM_D_DECL(dx, dy, dz));
     }
   }
   // Fill polynomial blocks
   for (int i = 0; i < stenSize; i++) {
     for (int j = 0; j < monos.nMono; j++) {
-      C(i, j + stenSize) = Monomials::mono<KFVM_D_DECL(
-          EvalFunctional::Average, EvalFunctional::Average, EvalFunctional::Average)>(
-          monos.deg[j], KFVM_D_DECL(xs[i], ys[i], zs[i]));
+      // Note that monos.deg[0] is passed as dummy argument for unused derivative order
+      C(i, j + stenSize) = Monomials::mono<KFVM_D_DECL(Average, Average, Average)>(
+          monos.deg[j], monos.deg[0], KFVM_D_DECL(xs[i], ys[i], zs[i]));
       C(j + stenSize, i) = C(i, j + stenSize);
     }
   }

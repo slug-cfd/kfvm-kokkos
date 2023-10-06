@@ -93,6 +93,7 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
                                       int k, int nH, Real x, Real y, Real z, Real t,
                                       EosParameters eosParams, UserParameters userParams,
                                       Real state[NUM_VARS]) {
+  using Kokkos::sqrt;
   // Void casts to ignore unused parameter warnings
   (void)U;
   (void)rad;
@@ -114,25 +115,33 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
 
   const Real rsq = SPACE_DIM == 2 ? x * x : x * x + z * z;
 
-  if (rsq > R * R) { // outflow
-    state[0] = U(KFVM_D_DECL(i, rad + nH, k), 0);
-    state[1] = U(KFVM_D_DECL(i, rad + nH, k), 1);
-    state[2] = U(KFVM_D_DECL(i, rad + nH, k), 2);
-    state[3] = U(KFVM_D_DECL(i, rad + nH, k), 3);
-    state[4] = U(KFVM_D_DECL(i, rad + nH, k), 4);
-  } else { // Jet inflow
-    state[0] = gam;
-    state[1] = Real(0.0);
-    state[2] = gam * vel;
-    state[3] = Real(0.0);
-    state[4] = Real(1.0) / gamm + gam * vel * vel / Real(2.0);
-  }
+  // Inflow/outflow selector
+  const Real tp = rsq <= R * R ? 1.0 : 0.0;
+
+  // BC as mixture of inlet and outflow using taper
+  const Real rhoOut = U(KFVM_D_DECL(i, rad, k), 0), rho = tp * gam + (1.0 - tp) * rhoOut;
+  const Real uOut = U(KFVM_D_DECL(i, rad, k), 1) / rhoOut, u = (1.0 - tp) * uOut;
+  const Real vOut = U(KFVM_D_DECL(i, rad, k), 2) / rhoOut,
+             v = tp * vel + (1.0 - tp) * vOut;
+  const Real wOut = U(KFVM_D_DECL(i, rad, k), 3) / rhoOut, w = (1.0 - tp) * wOut;
+  const Real pOut = gamm * (U(KFVM_D_DECL(i, rad, k), 4) -
+                            0.5 * rhoOut * (uOut * uOut + vOut * vOut + wOut * wOut));
+  const Real p = tp + (1.0 - tp) * pOut;
+
+  // Assign state
+  state[0] = rho;
+  state[1] = rho * u;
+  state[2] = rho * v;
+  state[3] = rho * w;
+  state[4] = p / gamm + 0.5 * rho * (u * u + v * v + w * w);
 }
 
 template <class DataViewType>
 KOKKOS_INLINE_FUNCTION void FaceSouth(const DataViewType &U, int i, int k, int nQ, Real x,
                                       Real y, Real z, Real t, EosParameters eosParams,
                                       UserParameters userParams, Real state[NUM_VARS]) {
+  using Kokkos::sqrt;
+
   // Void casts to ignore unused parameter warnings
   (void)U;
   (void)i;
@@ -152,19 +161,26 @@ KOKKOS_INLINE_FUNCTION void FaceSouth(const DataViewType &U, int i, int k, int n
 
   const Real rsq = SPACE_DIM == 2 ? x * x : x * x + z * z;
 
-  if (rsq > R * R) { // outflow
-    state[0] = U(KFVM_DM_DECL(i, k), 1, nQ, 0);
-    state[1] = U(KFVM_DM_DECL(i, k), 1, nQ, 1);
-    state[2] = U(KFVM_DM_DECL(i, k), 1, nQ, 2);
-    state[3] = U(KFVM_DM_DECL(i, k), 1, nQ, 3);
-    state[4] = U(KFVM_DM_DECL(i, k), 1, nQ, 4);
-  } else { // Jet inflow
-    state[0] = gam;
-    state[1] = Real(0.0);
-    state[2] = gam * vel;
-    state[3] = Real(0.0);
-    state[4] = Real(1.0) / gamm + gam * vel * vel / Real(2.0);
-  }
+  // Inflow/outflow selector
+  const Real tp = rsq <= R * R ? 1.0 : 0.0;
+
+  // BC as mixture of inlet and outflow using taper
+  const Real rhoOut = U(KFVM_DM_DECL(i, k), 1, nQ, 0),
+             rho = tp * gam + (1.0 - tp) * rhoOut;
+  const Real uOut = U(KFVM_DM_DECL(i, k), 1, nQ, 1) / rhoOut, u = (1.0 - tp) * uOut;
+  const Real vOut = U(KFVM_DM_DECL(i, k), 1, nQ, 2) / rhoOut,
+             v = tp * vel + (1.0 - tp) * vOut;
+  const Real wOut = U(KFVM_DM_DECL(i, k), 1, nQ, 3) / rhoOut, w = (1.0 - tp) * wOut;
+  const Real pOut = gamm * (U(KFVM_DM_DECL(i, k), 1, nQ, 4) -
+                            0.5 * rhoOut * (uOut * uOut + vOut * vOut + wOut * wOut));
+  const Real p = tp + (1.0 - tp) * pOut;
+
+  // Assign state
+  state[0] = rho;
+  state[1] = rho * u;
+  state[2] = rho * v;
+  state[3] = rho * w;
+  state[4] = p / gamm + 0.5 * rho * (u * u + v * v + w * w);
 }
 
 // Northern boundary

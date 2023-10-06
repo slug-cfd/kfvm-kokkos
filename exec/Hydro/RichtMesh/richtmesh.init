@@ -1,15 +1,15 @@
 # Set mesh resolution and extent
-mesh:resolution 768 128 4
+mesh:resolution 1536 256 4
 mesh:numblocks 1 1 1
 mesh:extent -0.5 5.5 0.0 1.0 0.0 0.0625
 
 # Set time information
 time:final 3.33
 time:mindt 1.e-10
-time:cfl 0.9
+time:cfl 1.0
 time:maxsteps 20000
-time:atol 1.e-4
-time:rtol 1.e-4
+time:atol 1.e-3
+time:rtol 1.e-3
 
 # Set stencil options
 stencil:lfac 5
@@ -22,8 +22,8 @@ eos:wenothresh 1.0
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
 io:basename RichtMesh
-io:plotfreq 0.03
-io:ckptfreq 100
+io:plotfreq 1.0
+io:ckptfreq 1000
 io:verbose 1
 
 # User defined properties

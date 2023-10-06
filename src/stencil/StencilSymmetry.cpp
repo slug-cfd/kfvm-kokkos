@@ -205,7 +205,6 @@ bool testSym(SymType st, double x1, double y1, double z1, double x2, double y2,
   }
 }
 
-// Symmetry between two stencils
 StencilSymmetry::StencilSymmetry(
     bool isSelf,
     KFVM_D_DECL(const std::vector<double> &lOffD, const std::vector<double> &tOffD,

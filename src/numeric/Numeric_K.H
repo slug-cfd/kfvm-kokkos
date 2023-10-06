@@ -291,19 +291,19 @@ struct RKFSAL_ErrEst_K {
 
 // KXRCF Indicator as defined in https://doi.org/10.1016/j.apnum.2003.11.002 and
 // https://doi.org/10.1016/j.apnum.2020.03.013
-template <class WViewType>
+template <class UViewType, class WViewType>
 struct WenoSelect_K {
+  UViewType U;
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
-  QuadRuleView wts;
   EosParameters eosParams;
   Real wThresh;
   WViewType W;
 
-  WenoSelect_K(KFVM_D_DECL(const FaceDataView &rsX_, const FaceDataView &rsY_,
+  WenoSelect_K(const UViewType &U_,
+               KFVM_D_DECL(const FaceDataView &rsX_, const FaceDataView &rsY_,
                            const FaceDataView &rsZ_),
-               const QuadRuleView &wts_, const EosParameters &eosParams_,
-               const Real wThresh_, const WViewType &W_)
-      : KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), wts(wts_), eosParams(eosParams_),
+               const EosParameters &eosParams_, const Real wThresh_, const WViewType &W_)
+      : U(U_), KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), eosParams(eosParams_),
         wThresh(wThresh_), W(W_) {}
 
   KOKKOS_INLINE_FUNCTION
@@ -312,67 +312,49 @@ struct WenoSelect_K {
     using Kokkos::fabs;
     using Kokkos::fmax;
 
+    // Find largest jump in indicator var across all faces
+    Real maxJump = 0.0;
     const int nQuadZ = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
-    Real numer = 0.0, denom = 0.0, minVal = std::numeric_limits<Real>::max();
-
     for (int nR = 0; nR < nQuadZ; nR++) {
-      const Real wtR = SPACE_DIM == 2 ? 1.0 : wts(nR);
       for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
-        const Real wt = wtR * wts(nQ);
         Real uIn[NUM_VARS], uOut[NUM_VARS]; // Inner and outer states
-        Real vPF, wIn, wOut;                // normal velocity prefactor and indicators
+        Real wIn, wOut;                     // indicator vars
 
         // West face
         for (int nV = 0; nV < NUM_VARS; nV++) {
           uIn[nV] = rsX(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
           uOut[nV] = rsX(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
         }
-        // Positive is into on West face
-        vPF = Physics::EOS<eqType>::flowdirx(uIn) > 0.0 ? 1.0 : 0.0;
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
-        minVal = fmin(minVal, wIn);
-        numer += vPF * wt * fabs(wOut - wIn);
-        denom += vPF * wt;
+        maxJump = fmax(maxJump, fabs(wOut - wIn));
 
         // East face
         for (int nV = 0; nV < NUM_VARS; nV++) {
           uIn[nV] = rsX(KFVM_D_DECL(i + 1, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
           uOut[nV] = rsX(KFVM_D_DECL(i + 1, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
         }
-        // Negative is into on East face
-        vPF = Physics::EOS<eqType>::flowdirx(uIn) < 0.0 ? 1.0 : 0.0;
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
-        minVal = fmin(minVal, wIn);
-        numer += vPF * wt * fabs(wOut - wIn);
-        denom += vPF * wt;
+        maxJump = fmax(maxJump, fabs(wOut - wIn));
 
         // South face
         for (int nV = 0; nV < NUM_VARS; nV++) {
           uIn[nV] = rsY(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
           uOut[nV] = rsY(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
         }
-        // Positive is into on South face
-        vPF = Physics::EOS<eqType>::flowdiry(uIn) > 0.0 ? 1.0 : 0.0;
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
-        minVal = fmin(minVal, wIn);
-        numer += vPF * wt * fabs(wOut - wIn);
-        denom += vPF * wt;
+        maxJump = fmax(maxJump, fabs(wOut - wIn));
 
         // North face
         for (int nV = 0; nV < NUM_VARS; nV++) {
           uIn[nV] = rsY(KFVM_D_DECL(i, j + 1, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
           uOut[nV] = rsY(KFVM_D_DECL(i, j + 1, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
         }
-        // Negative is into on North face
-        vPF = Physics::EOS<eqType>::flowdiry(uIn) < 0.0 ? 1.0 : 0.0;
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
-        minVal = fmin(minVal, wIn);
-        numer += vPF * wt * fabs(wOut - wIn);
-        denom += vPF * wt;
+        maxJump = fmax(maxJump, fabs(wOut - wIn));
 
 #if (SPACE_DIM == 3)
         // Bottom face
@@ -380,33 +362,30 @@ struct WenoSelect_K {
           uIn[nV] = rsZ(KFVM_D_DECL(i, j, k), 1, nR * NUM_QUAD_PTS + nQ, nV);
           uOut[nV] = rsZ(KFVM_D_DECL(i, j, k), 0, nR * NUM_QUAD_PTS + nQ, nV);
         }
-        // Positive is into on Bottom face
-        vPF = Physics::EOS<eqType>::flowdirz(uIn) > 0.0 ? 1.0 : 0.0;
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
-        minVal = fmin(minVal, wIn);
-        numer += vPF * wt * fabs(wOut - wIn);
-        denom += vPF * wt;
+        maxJump = fmax(maxJump, fabs(wOut - wIn));
 
         // Top face
         for (int nV = 0; nV < NUM_VARS; nV++) {
           uIn[nV] = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nR * NUM_QUAD_PTS + nQ, nV);
           uOut[nV] = rsZ(KFVM_D_DECL(i, j, k + 1), 1, nR * NUM_QUAD_PTS + nQ, nV);
         }
-        // Negative is into on Top face
-        vPF = Physics::EOS<eqType>::flowdirz(uIn) < 0.0 ? 1.0 : 0.0;
         wIn = Physics::EOS<eqType>::weno(uIn, eosParams);
         wOut = Physics::EOS<eqType>::weno(uOut, eosParams);
-        minVal = fmin(minVal, wIn);
-        numer += vPF * wt * fabs(wOut - wIn);
-        denom += vPF * wt;
+        maxJump = fmax(maxJump, fabs(wOut - wIn));
 #endif
       }
     }
 
-    // Calculate change in weno indicator
-    denom = minVal * fmax(denom, 1.e-8);
-    const Real w = fabs(numer) / denom;
+    // Get cell-average state and calculate KXRCF indicator
+    Real uAv[NUM_VARS];
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      uAv[nV] = U(KFVM_D_DECL(i, j, k), nV);
+    }
+
+    // Calculate KXRCF indicator
+    Real w = maxJump / Physics::EOS<eqType>::weno(uAv, eosParams);
 
     // set flags based on indicator and last call to PP limiter
     if (w >= wThresh || W(KFVM_D_DECL(i, j, k), 1) < 1.0) {

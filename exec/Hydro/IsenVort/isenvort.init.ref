@@ -12,7 +12,7 @@ time:atol 1.e-6
 time:rtol 1.e-6
 
 # Set stencil options
-stencil:lfac ELL
+stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
@@ -20,7 +20,7 @@ eos:wenothresh -1.0
 
 # IO settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
-io:datadir data/TWeno/ellELL
+io:datadir data/TWeno
 io:basename IsenVort
 io:plotfreq -1.0
 io:ckptfreq 10000

@@ -77,26 +77,51 @@ double K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::Deriv>(
 
 // Second derivatives
 template <>
-double K<EvalFunctional::SecDeriv, EvalFunctional::Point, EvalFunctional::Point>(
+double K<EvalFunctional::SecondDeriv, EvalFunctional::Point, EvalFunctional::Point>(
     const double N, const double dx, const double dy, const double dz) {
   return N * ((N - 1.0) * dx * dx + dy * dy + dz * dz) *
-         K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::Point>(N - 2, dx,
+         K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::Point>(N - 4, dx,
                                                                                 dy, dz);
 }
 
 template <>
-double K<EvalFunctional::Point, EvalFunctional::SecDeriv, EvalFunctional::Point>(
+double K<EvalFunctional::Point, EvalFunctional::SecondDeriv, EvalFunctional::Point>(
     const double N, const double dx, const double dy, const double dz) {
   return N * (dx * dx + (N - 1.0) * dy * dy + dz * dz) *
-         K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::Point>(N - 2, dx,
+         K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::Point>(N - 4, dx,
                                                                                 dy, dz);
 }
 
 template <>
-double K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::SecDeriv>(
+double K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::SecondDeriv>(
     const double N, const double dx, const double dy, const double dz) {
   return N * (dx * dx + dy * dy + (N - 1.0) * dz * dz) *
-         K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::Point>(N - 2, dx,
+         K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::Point>(N - 4, dx,
+                                                                                dy, dz);
+}
+
+// Third derivatives
+template <>
+double K<EvalFunctional::ThirdDeriv, EvalFunctional::Point, EvalFunctional::Point>(
+    const double N, const double dx, const double dy, const double dz) {
+  return N * (N - 2.0) * dx * ((N - 1.0) * dx * dx + 3.0 * dy * dy + 3.0 * dz * dz) *
+         K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::Point>(N - 6, dx,
+                                                                                dy, dz);
+}
+
+template <>
+double K<EvalFunctional::Point, EvalFunctional::ThirdDeriv, EvalFunctional::Point>(
+    const double N, const double dx, const double dy, const double dz) {
+  return N * (N - 2.0) * dy * ((N - 1.0) * dy * dy + 3.0 * dx * dx + 3.0 * dz * dz) *
+         K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::Point>(N - 6, dx,
+                                                                                dy, dz);
+}
+
+template <>
+double K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::ThirdDeriv>(
+    const double N, const double dx, const double dy, const double dz) {
+  return N * (N - 2.0) * dz * ((N - 1.0) * dz * dz + 3.0 * dy * dy + 3.0 * dx * dx) *
+         K<EvalFunctional::Point, EvalFunctional::Point, EvalFunctional::Point>(N - 6, dx,
                                                                                 dy, dz);
 }
 

@@ -10,10 +10,10 @@
 #define SPACE_DIM 2
 
 // Stencil radius (2-4)
-#define STENCIL_RADIUS 2
+#define STENCIL_RADIUS 3
 
 // Number of Gauss-Legendre points on faces (1-5)
-#define NUM_QUAD_PTS 2
+#define NUM_QUAD_PTS 3
 
 // Floating point precision (1 for double, 0 for single)
 #define FLOAT_PRECISION 1
@@ -22,7 +22,7 @@
 
 constexpr KFVM::KernelType kernelType = KFVM::KernelType::SE;
 constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
-constexpr KFVM::RSType rsType = KFVM::RSType::HLLC;
+constexpr KFVM::RSType rsType = KFVM::RSType::HLL;
 constexpr KFVM::RKType rkType = KFVM::RKType::SSP4_3_2;
 
 #endif

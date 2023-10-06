@@ -137,7 +137,7 @@ struct KernelWenoRecon_K {
   EosParameters eosParams;
   const int nCellsFull, nCellsCtr, nCellsBias;
   const int nSub, nBias, nIndic, nqFace_d;
-  const Real gHi, gLo, eps;
+  const Real gHi, gLo, dmin;
 
   KernelWenoRecon_K(const UViewType &U_, KFVM_D_DECL(idx_t nX_, idx_t nY_, idx_t nZ_),
                     KFVM_D_DECL(idx_t tX_, idx_t tY_, idx_t tZ_),
@@ -148,7 +148,7 @@ struct KernelWenoRecon_K {
                     KFVM_D_DECL(const OffsetView &lOff_, const OffsetView &tOff_,
                                 const OffsetView &ttOff_),
                     const SubIdxView &subIdx_, const FaceWtView &face_,
-                    const CellWtView &cell_, const DerivWtView &deriv_,
+                    const CellWtView &cell_, const DerivWtView &deriv_, const Real dmin_,
                     const EosParameters &eosParams_)
       : U(U_), KFVM_D_DECL(nX(nX_), nY(nY_), nZ(nZ_)),
         KFVM_D_DECL(tX(tX_), tY(tY_), tZ(tZ_)),
@@ -159,7 +159,7 @@ struct KernelWenoRecon_K {
         nCellsFull(Stencil::Core::SI.nCellsFull), nCellsCtr(Stencil::Core::SI.nCellsCtr),
         nCellsBias(Stencil::Core::SI.nCellsBias), nSub(Stencil::Core::SI.nSub),
         nBias(Stencil::Core::SI.nBias), nIndic(Stencil::Core::SI.nIndic),
-        nqFace_d(Stencil::Core::SI.nqFace_d), gHi(0.8), gLo(0.8), eps(1.e-36) {}
+        nqFace_d(Stencil::Core::SI.nqFace_d), gHi(0.8), gLo(0.8), dmin(dmin_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
@@ -558,7 +558,8 @@ struct KernelWenoRecon_K {
                     const Real gamma[Stencil::Core::SI.nSub]) const {
     using Kokkos::pow;
 
-    const int p = 4;
+    const int p = 2;
+    const Real eps = 1.0e-40;
 
     for (int nV = 0; nV < NUM_VARS; nV++) {
       // Form WENO-JS style weights

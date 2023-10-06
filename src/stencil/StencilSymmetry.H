@@ -70,6 +70,7 @@ struct StencilSymmetry {
                               const std::vector<double> &));
 
   // Map one set of weights onto another
+  // multiple query points
   template <class DstView, class RefView>
   void mapWeights(DstView &dWts, const RefView &rWts) {
     for (int nP = 0; nP < nPts; nP++) {
@@ -82,6 +83,21 @@ struct StencilSymmetry {
         fmt::print(fmt::fg(fmt::color::golden_rod),
                    "Symmetry missing for {} in StencilSymmetry::mapWeights\n", nP);
       }
+    }
+  }
+
+  // Map one set of weights onto another
+  // single query point
+  template <class DstView, class RefView>
+  void mapWeight(DstView &dWts, const RefView &rWts) {
+    if (symMap[0].first >= 0) {
+      // Fill destination from reference
+      for (int j = 0; j < N; j++) {
+        dWts(j) = rWts(idxMap[0][j]);
+      }
+    } else {
+      fmt::print(fmt::fg(fmt::color::golden_rod),
+                 "Symmetry missing in StencilSymmetry::mapWeight\n");
     }
   }
 };

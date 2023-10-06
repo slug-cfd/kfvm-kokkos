@@ -20,7 +20,7 @@ eos:wenothresh -1.0
 
 # IO settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
-io:datadir data/TWeno/ell5
+io:datadir data/TWeno
 io:basename IsenVort
 io:plotfreq -1.0
 io:ckptfreq 10000

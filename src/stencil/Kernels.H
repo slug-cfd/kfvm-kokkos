@@ -17,6 +17,6 @@ struct Kernel {};
 
 #include "SEKernel.H"
 
-#include "PHSKernel.H"
+// include "PHSKernel.H"
 
 #endif

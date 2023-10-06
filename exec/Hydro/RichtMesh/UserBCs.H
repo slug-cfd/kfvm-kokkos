@@ -13,6 +13,9 @@ KOKKOS_INLINE_FUNCTION void CellWest(const DataViewType &U, int rad, int nX, int
                                      int nH, Real x, Real y, Real z, Real t,
                                      EosParameters eosParams, UserParameters userParams,
                                      Real state[NUM_VARS]) {
+  using Kokkos::sqrt;
+  using Physics::Hydro::SimVar;
+
   // Void casts to ignore unused parameter warnings
   (void)U;
   (void)rad;
@@ -27,12 +30,30 @@ KOKKOS_INLINE_FUNCTION void CellWest(const DataViewType &U, int rad, int nX, int
   (void)eosParams;
   (void)userParams;
   (void)state;
+
+  const Real g = eosParams.gamma, gm = g - 1.0, gp = g + 1.0;
+  const Real m = userParams.mach;
+
+  const Real rho = 1.0 / (1.0 - 2.0 * (1.0 - 1.0 / (m * m)) / gp);
+  const Real u = m * sqrt(g) * (1.0 - 1.0 / rho);
+  const Real v = 0.0;
+  const Real w = 0.0;
+  const Real p = 1.0 + 2 * g * (m * m - 1.0) / gp;
+
+  state[SimVar::dens] = rho;
+  state[SimVar::momx] = rho * u;
+  state[SimVar::momy] = rho * v;
+  state[SimVar::momz] = rho * w;
+  state[SimVar::etot] = p / gm + rho * (u * u + v * v + w * w) / 2.0;
 }
 
 template <class DataViewType>
 KOKKOS_INLINE_FUNCTION void FaceWest(const DataViewType &U, int j, int k, int nQ, Real x,
                                      Real y, Real z, Real t, EosParameters eosParams,
                                      UserParameters userParams, Real state[NUM_VARS]) {
+  using Kokkos::sqrt;
+  using Physics::Hydro::SimVar;
+
   // Void casts to ignore unused parameter warnings
   (void)U;
   (void)j;
@@ -45,6 +66,21 @@ KOKKOS_INLINE_FUNCTION void FaceWest(const DataViewType &U, int j, int k, int nQ
   (void)eosParams;
   (void)userParams;
   (void)state;
+
+  const Real g = eosParams.gamma, gm = g - 1.0, gp = g + 1.0;
+  const Real m = userParams.mach;
+
+  const Real rho = 1.0 / (1.0 - 2.0 * (1.0 - 1.0 / (m * m)) / gp);
+  const Real u = m * sqrt(g) * (1.0 - 1.0 / rho);
+  const Real v = 0.0;
+  const Real w = 0.0;
+  const Real p = 1.0 + 2 * g * (m * m - 1.0) / gp;
+
+  state[SimVar::dens] = rho;
+  state[SimVar::momx] = rho * u;
+  state[SimVar::momy] = rho * v;
+  state[SimVar::momz] = rho * w;
+  state[SimVar::etot] = p / gm + rho * (u * u + v * v + w * w) / 2.0;
 }
 
 // Eastern boundary

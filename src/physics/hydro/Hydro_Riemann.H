@@ -61,7 +61,7 @@ void hydroSpeed(Real gamma, int lng, const Hydro::ConsVec uL, const Hydro::ConsV
 
   sL = fmin(uL[lng] / uL[SimVar::dens] - aL, uTil - aTil);
   sR = fmax(uR[lng] / uR[SimVar::dens] + aR, uTil + aTil);
-  M = fmin(1.0, fmax(vnL / aL, vnR / aR));
+  M = fmax(vnL / aL, vnR / aR);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -124,22 +124,30 @@ Real hydroHLLC(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Con
   const Real pS = hllcPStar(vL[PrimVar::dens], vR[PrimVar::dens], vL[PrimVar::pres],
                             vR[PrimVar::pres], vL[ord[0]], vR[ord[0]], sL, sR, sS);
 
-  // Low mach fix info
+  // Wavespeed prefactors
+  const Real sFacL = sS / (sL - sS), sFacR = sS / (sR - sS);
+
+  // Velocity jumps
+  const Real uJump = vR[ord[0]] - vL[ord[0]], vJump = vR[ord[1]] - vL[ord[1]],
+             wJump = vR[ord[2]] - vL[ord[2]];
+
+  // Psi terms (weighted speed differences)
   const Real psiL = uL[SimVar::dens] * (sL - vL[ord[0]]),
-             psiR = uR[SimVar::dens] * (sR - vR[ord[0]]);
-  const Real uJump = vR[ord[0]] - vL[ord[0]];
-  const Real fM = M * sqrt(4.0 + pow(1.0 - M * M, 2)) / (1.0 + M * M);
-  const Real psiFac = (fM - 1.0) * uJump * psiL * psiR / (psiR - psiL);
-  const Real sFacL = sS / (sL - sS), pFacL = psiFac + sL * pS / (sL - sS);
-  const Real sFacR = sS / (sR - sS), pFacR = psiFac + sR * pS / (sR - sS);
+             psiR = uR[SimVar::dens] * (sR - vR[ord[0]]),
+             psiFac = psiR * psiL / (psiR - psiL);
 
   // Shear fix
-  const Real h =
+  const Real presRat =
       fmin(vL[PrimVar::pres] / vR[PrimVar::pres], vR[PrimVar::pres] / vL[PrimVar::pres]);
-  const Real g = 1.0 - pow(h, M);
-  const Real vJump = vR[ord[1]] - vL[ord[1]], wJump = vR[ord[2]] - vL[ord[2]];
-  const Real shearFac = g * psiL * psiR / (psiR - psiL);
-  const Real shFacL = shearFac * sL / (sL - sS), shFacR = shearFac * sR / (sR - sS);
+  const Real gFac = 1.0 - pow(presRat, M);
+  const Real shFacL = psiFac * gFac * sL / (sL - sS),
+             shFacR = psiFac * gFac * sR / (sR - sS);
+
+  // Low mach fix
+  M = fmin(M, 1.0); // Everything beyond mach 1 is the same
+  const Real fM = M * sqrt(4.0 + pow(1.0 - M * M, 2)) / (1.0 + M * M);
+  const Real pFacL = psiFac * (fM - 1.0) * uJump + sL * pS / (sL - sS);
+  const Real pFacR = psiFac * (fM - 1.0) * uJump + sR * pS / (sR - sS);
 
   // Find correct zone
   if (0 <= sL) {

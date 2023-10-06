@@ -34,7 +34,7 @@
 namespace KFVM {
 
 Solver::Solver(ProblemSetup &ps_)
-    : ps(ps_), geom(ps), writerPDI(ps, geom), stencil(ps.gp_lFac),
+    : ps(ps_), geom(ps), writerPDI(ps, geom), stencil(ps.gp_lFac, geom),
       U_halo("U",
              KFVM_D_DECL(ps.nX + 2 * ps.rad, ps.nY + 2 * ps.rad, ps.nZ + 2 * ps.rad)),
       Uhat("Uhat", KFVM_D_DECL(ps.nX, ps.nY, ps.nZ)),
@@ -353,6 +353,10 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
 
   nRhsEval++;
 
+  auto cellRng = interiorCellRange();
+  auto U = trimCellHalo(sol_halo);
+  bool haveSources = ps.haveSourceTerms;
+
   // Set BCs on cell averages
   setCellBCs(sol_halo, t);
 
@@ -366,7 +370,7 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
 
     // Fill in BCs then flag cells needing WENO
     setFaceBCs(t);
-    wenoSelector.update(KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), qr.wt,
+    wenoSelector.update(U, KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir),
                         wThresh);
 
     // Apply WENO sparsely
@@ -378,10 +382,6 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
     // swap back to sparse weno if allowed
     useSparseWeno = ps.eosParams.wenoThresh > 0.0;
   }
-
-  auto cellRng = interiorCellRange();
-  auto U = trimCellHalo(sol_halo);
-  bool haveSources = ps.haveSourceTerms;
 
   // Enforce positivity of states
   Kokkos::parallel_for("PosPres", cellRng,
@@ -517,15 +517,16 @@ void Solver::reconRiemStatesSparseWeno(ConsDataView sol_halo) {
   auto U = trimCellHalo(sol_halo);
   auto flagRng = Kokkos::RangePolicy<ExecSpace>(0, wenoSelector.wenoFlagMap.capacity());
 
-  Kokkos::parallel_for(
-      "Solver::reconstructRiemannStates(sparse weno)", flagRng,
-      Stencil::KernelWenoRecon_K<decltype(U)>(
-          U, KFVM_D_DECL(ps.nX, ps.nY, ps.nZ),
-          KFVM_D_DECL(wenoSelector.tX, wenoSelector.tY, wenoSelector.tZ),
-          KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), sourceTerms,
-          haveSources, wenoSelector.stenWork, wenoSelector.wenoFlagMap,
-          KFVM_D_DECL(stencil.lOff, stencil.tOff, stencil.ttOff), stencil.subIdx,
-          stencil.faceWeights, stencil.cellWeights, stencil.derivWeights, ps.eosParams));
+  Kokkos::parallel_for("Solver::reconstructRiemannStates(sparse weno)", flagRng,
+                       Stencil::KernelWenoRecon_K<decltype(U)>(
+                           U, KFVM_D_DECL(ps.nX, ps.nY, ps.nZ),
+                           KFVM_D_DECL(wenoSelector.tX, wenoSelector.tY, wenoSelector.tZ),
+                           KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir),
+                           sourceTerms, haveSources, wenoSelector.stenWork,
+                           wenoSelector.wenoFlagMap,
+                           KFVM_D_DECL(stencil.lOff, stencil.tOff, stencil.ttOff),
+                           stencil.subIdx, stencil.faceWeights, stencil.cellWeights,
+                           stencil.derivWeights, geom.dmin, ps.eosParams));
 }
 
 void Solver::reconRiemStatesTiledWeno(ConsDataView sol_halo) {
@@ -534,7 +535,6 @@ void Solver::reconRiemStatesTiledWeno(ConsDataView sol_halo) {
 
   // Subviews of cell data and Riemann states to simplify indexing
   auto U = trimCellHalo(sol_halo);
-
   auto cellRng = interiorCellRange();
 
   // Ensure that enough workspace is present
@@ -553,7 +553,7 @@ void Solver::reconRiemStatesTiledWeno(ConsDataView sol_halo) {
                 KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), sourceTerms,
                 haveSources, wenoSelector.stenWork, wenoSelector.wenoFlagMap,
                 KFVM_D_DECL(stencil.lOff, stencil.tOff, stencil.ttOff), stencil.subIdx,
-                stencil.faceWeights, stencil.cellWeights, stencil.derivWeights,
+                stencil.faceWeights, stencil.cellWeights, stencil.derivWeights, geom.dmin,
                 ps.eosParams));
       }
     }
@@ -618,18 +618,20 @@ void WenoSelector::allocateTiled() {
 void WenoSelector::rehash(const uint32_t minSize) {
   wenoFlagMap.clear();
   wenoFlagMap.rehash(minSize);
-  if (minSize > currSize) {
+  if (wenoFlagMap.capacity() > currSize) {
     uint32_t oldSize = currSize;
-    currSize = wenoFlagMap.capacity();
+    currSize = (3 * wenoFlagMap.capacity()) / 2;
     Print::AlertAny(ps, "Realloc workspace from {} to {} on rank {}\n", oldSize, currSize,
                     ps.layoutMPI.rank);
     Kokkos::realloc(stenWork, currSize);
   }
 }
 
-void WenoSelector::update(KFVM_D_DECL(FaceDataView rsX, FaceDataView rsY,
+template <class UViewType>
+void WenoSelector::update(UViewType U,
+                          KFVM_D_DECL(FaceDataView rsX, FaceDataView rsY,
                                       FaceDataView rsZ),
-                          const QuadRuleView &wt, const Real wThresh) {
+                          const Real wThresh) {
   auto cellRng =
       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<SPACE_DIM>, Kokkos::IndexType<idx_t>>(
           {KFVM_D_DECL(0, 0, 0)}, {KFVM_D_DECL(ps.nX, ps.nY, ps.nZ)});
@@ -638,8 +640,8 @@ void WenoSelector::update(KFVM_D_DECL(FaceDataView rsX, FaceDataView rsY,
   nWeno = 0;
   Kokkos::parallel_reduce(
       "Solver::WenoSelector::update(flag)", cellRng,
-      Numeric::WenoSelect_K<decltype(wenoFlagView)>(KFVM_D_DECL(rsX, rsY, rsZ), wt,
-                                                    ps.eosParams, wThresh, wenoFlagView),
+      Numeric::WenoSelect_K<UViewType, decltype(wenoFlagView)>(
+          U, KFVM_D_DECL(rsX, rsY, rsZ), ps.eosParams, wThresh, wenoFlagView),
       nWeno);
 
   Print::AnyV2(ps, "    {} ({:<.4}%) cells flagged for WENO on rank {}\n", nWeno,
