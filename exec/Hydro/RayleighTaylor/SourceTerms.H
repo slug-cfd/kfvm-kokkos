@@ -12,6 +12,8 @@ void SourceTerm(Real t, Real x, Real y, Real z, const Real state[NUM_VARS],
   (void)state;
   (void)force;
 
-  force[SimVar::momy] = -state[SimVar::dens];
-  force[SimVar::etot] = -state[SimVar::momy];
+  const Real g = SPACE_DIM == 2 ? 1.0 : -1.0;
+
+  force[SimVar::momy] = g * state[SimVar::dens];
+  force[SimVar::etot] = g * state[SimVar::momy];
 }

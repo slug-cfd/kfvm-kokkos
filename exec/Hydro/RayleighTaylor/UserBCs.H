@@ -95,6 +95,8 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
                                       int k, int nH, Real x, Real y, Real z, Real t,
                                       EosParameters eosParams, UserParameters userParams,
                                       Real state[NUM_VARS]) {
+  using KFVM::Physics::Hydro::SimVar;
+
   // Void casts to ignore unused parameter warnings
   (void)U;
   (void)rad;
@@ -109,12 +111,20 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
   (void)eosParams;
   (void)userParams;
   (void)state;
+
+  state[SimVar::dens] = userParams.rhoH;
+  state[SimVar::momx] = 0.0;
+  state[SimVar::momy] = 0.0;
+  state[SimVar::momz] = 0.0;
+  state[SimVar::etot] = 1.0 / (eosParams.gamma - 1.0);
 }
 
 template <class DataViewType>
 KOKKOS_INLINE_FUNCTION void FaceSouth(const DataViewType &U, int i, int k, int nQ, Real x,
                                       Real y, Real z, Real t, EosParameters eosParams,
                                       UserParameters userParams, Real state[NUM_VARS]) {
+  using KFVM::Physics::Hydro::SimVar;
+
   // Void casts to ignore unused parameter warnings
   (void)U;
   (void)i;
@@ -127,6 +137,12 @@ KOKKOS_INLINE_FUNCTION void FaceSouth(const DataViewType &U, int i, int k, int n
   (void)eosParams;
   (void)userParams;
   (void)state;
+
+  state[SimVar::dens] = userParams.rhoH;
+  state[SimVar::momx] = 0.0;
+  state[SimVar::momy] = 0.0;
+  state[SimVar::momz] = 0.0;
+  state[SimVar::etot] = 1.0 / (eosParams.gamma - 1.0);
 }
 
 // Northern boundary
@@ -135,6 +151,8 @@ KOKKOS_INLINE_FUNCTION void CellNorth(const DataViewType &U, int rad, int nY, in
                                       int k, int nH, Real x, Real y, Real z, Real t,
                                       EosParameters eosParams, UserParameters userParams,
                                       Real state[NUM_VARS]) {
+  using KFVM::Physics::Hydro::SimVar;
+
   // Void casts to ignore unused parameter warnings
   (void)U;
   (void)rad;
@@ -149,12 +167,22 @@ KOKKOS_INLINE_FUNCTION void CellNorth(const DataViewType &U, int rad, int nY, in
   (void)eosParams;
   (void)userParams;
   (void)state;
+
+  const Real p = 1.0 + 0.5 * (userParams.rhoL + userParams.rhoH);
+
+  state[SimVar::dens] = userParams.rhoL;
+  state[SimVar::momx] = 0.0;
+  state[SimVar::momy] = 0.0;
+  state[SimVar::momz] = 0.0;
+  state[SimVar::etot] = p / (eosParams.gamma - 1.0);
 }
 
 template <class DataViewType>
 KOKKOS_INLINE_FUNCTION void FaceNorth(const DataViewType &U, int i, int k, int nQ, Real x,
                                       Real y, Real z, Real t, EosParameters eosParams,
                                       UserParameters userParams, Real state[NUM_VARS]) {
+  using KFVM::Physics::Hydro::SimVar;
+
   // Void casts to ignore unused parameter warnings
   (void)U;
   (void)i;
@@ -167,6 +195,14 @@ KOKKOS_INLINE_FUNCTION void FaceNorth(const DataViewType &U, int i, int k, int n
   (void)eosParams;
   (void)userParams;
   (void)state;
+
+  const Real p = 1.0 + 0.5 * (userParams.rhoL + userParams.rhoH);
+
+  state[SimVar::dens] = userParams.rhoL;
+  state[SimVar::momx] = 0.0;
+  state[SimVar::momy] = 0.0;
+  state[SimVar::momz] = 0.0;
+  state[SimVar::etot] = p / (eosParams.gamma - 1.0);
 }
 
 // Bottom boundary
