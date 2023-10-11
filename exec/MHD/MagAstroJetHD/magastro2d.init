@@ -1,12 +1,12 @@
 # Set mesh resolution and extent
-mesh:resolution 512 1536
+mesh:resolution 256 768
 mesh:numblocks 1 1
 mesh:extent 0.0 0.5 0.0 1.5
 
 # Set time information
 time:final 0.002
 time:mindt 1.e-11
-time:cfl 1.5
+time:cfl 1.0
 time:maxsteps 20000
 time:atol 1.e-3
 time:rtol 1.e-3
@@ -16,7 +16,7 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
-eos:wenothresh 1.0
+eos:wenothresh -1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
@@ -30,4 +30,4 @@ io:verbose 1
 user:inletradius 0.05
 user:densityratio 10.0
 user:mach 800.0
-user:beta 1.e-4
+user:beta 1.e-2

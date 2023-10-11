@@ -112,7 +112,7 @@ struct EOS<EquationType::MHD_GLM> {
         return -1.0;
       }
     }
-    return 1.0; // fmin(U[SimVar::dens],eint(U));
+    return fmin(U[SimVar::dens], eint(U));
   }
 
   KOKKOS_INLINE_FUNCTION

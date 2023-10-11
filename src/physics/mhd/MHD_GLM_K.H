@@ -682,7 +682,7 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
     Real maxDens = -std::numeric_limits<Real>::max();
     Real minDens = std::numeric_limits<Real>::max();
     Real minEint = std::numeric_limits<Real>::max();
-    Real minFms = std::numeric_limits<Real>::max();
+    Real minSdSp = std::numeric_limits<Real>::max();
     for (idx_t xo = -1; xo <= 1; xo++) {
       for (idx_t yo = -1; yo <= 1; yo++) {
 #if (SPACE_DIM == 3)
@@ -695,9 +695,9 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
           maxDens = fmax(maxDens, state[SimVar::dens]);
           minDens = fmin(minDens, state[SimVar::dens]);
           Real eint = EOS<EquationType::MHD_GLM>::eint(state);
-          Real fms = EOS<EquationType::MHD_GLM>::soundspeed(eosParams.gamma, state);
+          Real sdsp = EOS<EquationType::MHD_GLM>::soundspeed(eosParams.gamma, state);
           minEint = fmin(minEint, eint);
-          minFms = fmin(minFms, fms);
+          minSdSp = fmin(minSdSp, sdsp);
 #if (SPACE_DIM == 3)
         }
 #endif
@@ -722,46 +722,51 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
     Real dzW = Real(0.0);
 #endif
     Real divV = (dxU + dyV + dzW) / Real(2.0); // Undivided difference
-    Real kappa1 = Real(0.2), kappa2 = Real(0.2);
-    Real eta =
-        fmin(Real(1.0), fmax(Real(0.0), -(kappa1 * minFms + divV) / (kappa1 * minFms)));
+    const Real kappa1 = 0.3,
+               eta =
+                   fmin(1.0, fmax(0.0, -(kappa1 * minSdSp + divV) / (kappa1 * minSdSp)));
+    const Real kappa2 = kappa1 * (1.0 - eta);
 
     // Extend density and pressure ranges
-    maxDens *= (Real(1.0) + kappa2 - kappa2 * eta);
-    minDens *= (Real(1.0) - kappa2 + kappa2 * eta);
-    minEint *= (Real(1.0) - kappa2 + kappa2 * eta);
+    maxDens *= (1.0 + kappa2);
+    minDens *= (1.0 - kappa2);
+    minEint *= (1.0 - kappa2);
 
     Real rDensDiffP = maxDens - rDens, rDensDiffM = rDens - minDens;
 
     // Enforce positive density
     // Find mixing amount given by face values
-    Real theta = minDens > 1.e-13 ? Real(1.0) : 0.0;
+    Real theta = 1.0;
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       // West face
       Real rho = rsX(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
-      theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
-      theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
-      // East face
+      theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
+      theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+
+      //  East face
       rho = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, SimVar::dens);
-      theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
-      theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
-      // South face
+      theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
+      theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+
+      //  South face
       rho = rsY(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
-      theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
-      theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
-      // North face
+      theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
+      theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+
+      //  North face
       rho = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, SimVar::dens);
-      theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
-      theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
+      theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
+      theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
 #if (SPACE_DIM == 3)
       // Bottom face
       rho = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
-      theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
-      theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
+      theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
+      theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+
       // Top face
       rho = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, SimVar::dens);
-      theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
-      theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
+      theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
+      theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
 #endif
     }
 
@@ -773,15 +778,14 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
           for (int nS = 0; nS < nzQuad; nS++) {
             Real rho =
                 source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::dens);
-            theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
-            theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
+            theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
+            theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
           }
         }
       }
     }
 
     // Apply mixing
-    wenoFlag(KFVM_D_DECL(i, j, k), 1) = theta;
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV) =
@@ -819,55 +823,57 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
       }
     }
 
-    // Enforce positive pressure
+    // Stash theta before overwriting it
+    wenoFlag(KFVM_D_DECL(i, j, k), 1) = theta;
+
+    // Enforce positive internal energy
     // Find mixing amount
-    theta = minEint > 1.e-13 ? Real(1.0) : 0.0;
+    theta = 1.0;
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      Real ei;
       ConsVec state;
+      Real ei;
 
       // West face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
       ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
+      theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 
       // East face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, nV);
       }
       ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
+      theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 
       // South face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsY(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
       ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
+      theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 
       // North face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, nV);
       }
       ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
-
+      theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 #if (SPACE_DIM == 3)
       // Bottom face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
       ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
+      theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 
       // Top face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, nV);
       }
       ei = EOS<EquationType::MHD_GLM>::eint(state);
-      theta = ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
+      theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 #endif
     }
 
@@ -883,14 +889,16 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
             }
             Real ei = EOS<EquationType::MHD_GLM>::eint(state);
             theta =
-                ei >= minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
+                ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
           }
         }
       }
     }
 
-    // Apply mixing
+    // Update flag to most restrictive case
     wenoFlag(KFVM_D_DECL(i, j, k), 1) = fmin(theta, wenoFlag(KFVM_D_DECL(i, j, k), 1));
+
+    // Apply mixing
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV) =
@@ -937,44 +945,27 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
     using MHD_GLM::ConsVec;
     using MHD_GLM::SimVar;
 
-    Real a = 0.0, b = 0.1, c, dea, dec;
+    Real a = 0.0, b = 1.0, c;
+    Real dec = EOS<EquationType::MHD_GLM>::eint(state) - emin;
     ConsVec stTheta;
-    dea = EOS<EquationType::MHD_GLM>::eint(refState) - emin;
 
-    // Scan b forward until sign changes
-    for (int nIter = 0; nIter < 9; nIter++) {
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        stTheta[nV] = refState[nV] + b * (state[nV] - refState[nV]);
-      }
+    // Bisect on theta for 20 iterations regardless
+    for (int nIter = 0; nIter < 20; nIter++) {
+      const Real deb = dec; // dec is fval at b on entry
 
-      dec = EOS<EquationType::MHD_GLM>::eint(stTheta) - emin;
-
-      if (dea * dec < 0.0) {
-        break;
-      } else {
-        // slide interval forward
-        a += 0.1;
-        b += 0.1;
-        dea = dec;
-      }
-    }
-
-    // Now do bisection since root is bracketed
-    for (int nIter = 0; nIter < 10; nIter++) {
-      // Midpoint and states
-      c = Real(0.5) * (a + b);
+      // Midpoint and midpoint fval
+      c = 0.5 * (a + b);
       for (int nV = 0; nV < NUM_VARS; nV++) {
         stTheta[nV] = refState[nV] + c * (state[nV] - refState[nV]);
       }
-
-      // Pressure differences at states a and c
       dec = EOS<EquationType::MHD_GLM>::eint(stTheta) - emin;
 
-      if (dec * dea < 0.0) {
-        b = c;
-      } else {
+      if (dec * deb < 0.0) {
+        // Sign change in upper half, walk a forward
         a = c;
-        dea = dec;
+      } else {
+        // default to lower half
+        b = c;
       }
     }
 

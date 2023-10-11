@@ -117,10 +117,10 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
   const Real rsq = SPACE_DIM == 2 ? x * x : x * x + z * z;
 
   // Always extrapolate B and psi fields
-  const Real bx = U(KFVM_D_DECL(i, rad + nH, k), SimVar::magx);
-  const Real by = U(KFVM_D_DECL(i, rad + nH, k), SimVar::magy);
-  const Real bz = U(KFVM_D_DECL(i, rad + nH, k), SimVar::magz);
-  const Real psi = U(KFVM_D_DECL(i, rad + nH, k), SimVar::psi);
+  const Real bx = U(KFVM_D_DECL(i, rad, k), SimVar::magx);
+  const Real by = U(KFVM_D_DECL(i, rad, k), SimVar::magy);
+  const Real bz = U(KFVM_D_DECL(i, rad, k), SimVar::magz);
+  const Real psi = U(KFVM_D_DECL(i, rad, k), SimVar::psi);
   const Real bpsq = bx * bx + by * by + bz * bz + psi * psi;
 
   // Inflow conditions + B and psi fields
@@ -130,7 +130,7 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
 
   if (rsq > R * R) { // outflow
     for (int nV = 0; nV < NUM_VARS; nV++) {
-      state[nV] = U(KFVM_D_DECL(i, rad + nH, k), nV);
+      state[nV] = U(KFVM_D_DECL(i, rad, k), nV);
     }
   } else { // Pure inflow
     for (int nV = 0; nV < NUM_VARS; nV++) {

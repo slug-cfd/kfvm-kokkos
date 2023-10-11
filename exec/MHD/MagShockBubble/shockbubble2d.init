@@ -1,13 +1,13 @@
 # Set mesh resolution and extent
-mesh:resolution 256 256 64
+mesh:resolution 512 512
 mesh:numblocks 1 1 1
-mesh:extent -0.5 0.5 -0.5 0.5 -0.25 0.0
+mesh:extent 0.0 1.0 0.0 1.0
 
 # Set time information
-time:final 0.01
+time:final 0.06
 time:mindt 1.e-10
 time:cfl 1.25
-time:maxsteps 5000
+time:maxsteps 10000
 time:atol 1.e-3
 time:rtol 1.e-3
 
@@ -15,19 +15,13 @@ time:rtol 1.e-3
 stencil:lfac 5
 
 # Set fluid properties
-eos:gamma 1.4
+eos:gamma 1.666666666666666
 eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
-io:basename MagBlast
-io:plotfreq 0.001
+io:basename MagShockBubble
+io:plotfreq 0.005
 io:ckptfreq 200
 io:verbose 1
-
-# User defined settings
-user:r 0.1
-user:pin 1000.0
-user:pout 0.1
-user:bx 100.0

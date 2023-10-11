@@ -465,24 +465,28 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
       // West face
       Real rho = rsX(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
       theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
-      // theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+      theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+
       //  East face
       rho = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, SimVar::dens);
       theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
-      // theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+      theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+
       //  South face
       rho = rsY(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
       theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
-      // theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+      theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+
       //  North face
       rho = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, SimVar::dens);
       theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
-      // theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+      theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
 #if (SPACE_DIM == 3)
       // Bottom face
       rho = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
       theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
       theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
+
       // Top face
       rho = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, SimVar::dens);
       theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
@@ -552,24 +556,28 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       ConsVec state;
       Real ei;
+
       // West face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
       ei = EOS<EquationType::Hydro>::eint(state);
       theta = ei > minEint ? theta : fmin(theta, eulerEintPos(minEint, refState, state));
+
       // East face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, nV);
       }
       ei = EOS<EquationType::Hydro>::eint(state);
       theta = ei > minEint ? theta : fmin(theta, eulerEintPos(minEint, refState, state));
+
       // South face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsY(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
       ei = EOS<EquationType::Hydro>::eint(state);
       theta = ei > minEint ? theta : fmin(theta, eulerEintPos(minEint, refState, state));
+
       // North face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, nV);
@@ -583,6 +591,7 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
       }
       ei = EOS<EquationType::Hydro>::eint(state);
       theta = ei > minEint ? theta : fmin(theta, eulerEintPos(minEint, refState, state));
+
       // Top face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, nV);

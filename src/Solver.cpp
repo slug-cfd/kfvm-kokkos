@@ -291,6 +291,10 @@ void Solver::TakeStep() {
       // Force full weno usage on failure
       useSparseWeno = false;
       nRejectUnphys++;
+      if (lastTimeStep) {
+        lastTimeStep = false;
+        writePlot = false;
+      }
     } else if (gStat == TSStatus::ACCEPTED) {
       // Step is accepted
       Print::SingleV1(ps, "  cfl = {:<.4}\n", cfl);
@@ -308,6 +312,10 @@ void Solver::TakeStep() {
       Print::AlertSingle(ps, "  cfl = {:<.4}\n    Rejected: Tolerance\n", cfl);
       dt = dt * dtfac;
       nRejectThresh++;
+      if (lastTimeStep) {
+        lastTimeStep = false;
+        writePlot = false;
+      }
     } else {
       Print::WarnSingle(ps, "Warning: Unknown time step status\n");
       lastTimeStep = true;
