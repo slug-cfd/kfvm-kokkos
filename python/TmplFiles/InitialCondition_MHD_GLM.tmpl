@@ -9,7 +9,11 @@ void InitialCondition(Real x,Real y,Real z,
 {
   using Physics::MHD_GLM::SimVar;
   
-  (void) x; (void) y; (void) z;
+  (void) x;
+  (void) y;
+  (void) z;
+  (void) eosParams;
+  (void) userParams;
 
   state[SimVar::dens] = ;
   state[SimVar::momx] = ;

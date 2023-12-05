@@ -36,7 +36,8 @@ if __name__ == '__main__':
     dataDirs = [baseDir + '/R' + rad + '_NX32_NY32/ckpt/',
                 baseDir + '/R' + rad + '_NX64_NY64/ckpt/',
                 baseDir + '/R' + rad + '_NX128_NY128/ckpt/',
-                baseDir + '/R' + rad + '_NX256_NY256/ckpt/']
+                baseDir + '/R' + rad + '_NX256_NY256/ckpt/',
+                baseDir + '/R' + rad + '_NX512_NY512/ckpt/']
 
     for ddir in dataDirs:
         sols = glob.glob(ddir + '*.h5')

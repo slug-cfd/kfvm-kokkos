@@ -109,7 +109,6 @@ Real mhdGlmLLF(const Real gamma, const Real ch, int vord[3], int bord[3],
   mhdGlmFlux(gamma, ch, vord, bord, uR, vR, FR);
 
   // Add in local Lax-Friedrichs dissipation
-  // Total energy treated through entropy variables
   for (int nV = 0; nV < NUM_VARS; nV++) {
     F[nV] = 0.5 * ((F[nV] + FR[nV]) - sMax * (uR[nV] - uL[nV]));
   }

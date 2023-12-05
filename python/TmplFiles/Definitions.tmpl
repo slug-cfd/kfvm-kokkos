@@ -1,14 +1,15 @@
 #ifndef DEFINITIONS_H_
 #define DEFINITIONS_H_
 
-#include "../../src/physics/EquationTypes.H"
-#include "../../src/physics/RSTypes.H"
-#include "../../src/numeric/RKTypes.H"
+#include "../../../src/physics/EquationTypes.H"
+#include "../../../src/physics/RSTypes.H"
+#include "../../../src/numeric/RKTypes.H"
+#include "../../../src/stencil/KernelTypes.H"
 
 // Space dimension of problem
 #define SPACE_DIM %{SPACE_DIM}
 
-// Stencil radius (2-4)
+// Stencil radius (2-3)
 #define STENCIL_RADIUS %{STEN_RAD}
 
 // Number of Gauss-Legendre points on faces (1-5)
@@ -19,6 +20,7 @@
 
 #define %{EXEC_SPACE}
 
+constexpr KFVM::KernelType kernelType = %{KERN_TYPE};
 constexpr KFVM::EquationType eqType = %{EQ_TYPE};
 constexpr KFVM::RSType rsType = %{RS_TYPE};
 constexpr KFVM::RKType rkType = %{RK_TYPE};

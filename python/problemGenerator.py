@@ -11,6 +11,7 @@ class ProblemSettings:
                         "Ideal MHD-GLM":["KEPES","LLF"],
                         "SR Hydro":["HLL","LLF"],
                         "Linear Advection":["Exact"]}
+        self.keTypes = ["Squared Exponential"]
         self.floatPrecs = ["double","single"]
         self.execSpaces = ["Device","Host Parallel","Host Serial"]
         self.bcTypes = ["periodic","outflow","reflecting","user"]
@@ -33,6 +34,7 @@ class ProblemSettings:
                           "KEPES":"KFVM::RSType::MHD_GLM_KEPES",
                           "LLF":"KFVM::RSType::LLF",
                           "Exact":"KFVM::RSType::EXACT",
+                          "Squared Exponential":"KFVM::KernelType::SE",
                           "double":"1",
                           "single":"0",
                           "Device":"KFVM_EXEC_DEVICE",
@@ -51,6 +53,7 @@ class ProblemSettings:
                                         only_directories=True,default=os.getcwd()).ask()
         self.probPath = self.probDir + "/" + self.probName + "/"
 
+        self.keType = questionary.select("Kernel function:",choices=self.keTypes).ask()
         self.eqType = questionary.select("Equation type:",choices=self.eqTypes).ask()
         self.rsType = questionary.select("Riemann solver:",choices=self.rsTypes[self.eqType]).ask()
 
@@ -93,6 +96,7 @@ class ProblemSettings:
         print()
         print("======== Configuration ========")
         print("Problem directory: ",self.probPath)
+        print("Kernel function: ",self.keType)
         print("Equation type: ",self.eqType)
         print("Riemann Solver: ",self.rsType)
         print("Time integrator: ",self.rkType)
@@ -124,6 +128,7 @@ class ProblemSettings:
         shutil.copy(self.kfvmDir + "/python/TmplFiles/SourceTerms_" + eqSuff + ".tmpl",
                     self.probPath + "SourceTerms.H")
         shutil.copy(self.kfvmDir + "/python/TmplFiles/UserBCs.tmpl",self.probPath + "UserBCs.H")
+        shutil.copy(self.kfvmDir + "/python/TmplFiles/UserParameters.tmpl",self.probPath + "UserParameters.H")
         initFile = self.probName.lower() + ".init"
         shutil.copy(self.kfvmDir + "/python/TmplFiles/init.tmpl",self.probPath + initFile)
 
@@ -135,6 +140,7 @@ class ProblemSettings:
                     .replace("%{NUM_QUAD}",self.numQuad)
                     .replace("%{FLOAT_PREC}",self.codeNames[self.floatPrec])
                     .replace("%{EXEC_SPACE}",self.codeNames[self.execSpace])
+                    .replace("%{KERN_TYPE}",self.codeNames[self.keType])
                     .replace("%{EQ_TYPE}",self.codeNames[self.eqType])
                     .replace("%{RS_TYPE}",self.codeNames[self.rsType])
                     .replace("%{RK_TYPE}",self.codeNames[self.rkType]))

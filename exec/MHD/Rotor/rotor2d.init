@@ -21,7 +21,7 @@ eos:wenothresh 1.0
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
-io:basename Rotor
+io:basename Rotor8W
 io:plotfreq 0.01
 io:ckptfreq 200
 io:verbose 1

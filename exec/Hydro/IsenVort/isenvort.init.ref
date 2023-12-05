@@ -16,11 +16,11 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
-eos:wenothresh -1.0
+eos:wenothresh 1.0
 
 # IO settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
-io:datadir data/TWeno
+io:datadir data/NoWeno
 io:basename IsenVort
 io:plotfreq -1.0
 io:ckptfreq 10000

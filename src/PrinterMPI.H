@@ -34,6 +34,13 @@ void SingleV2(const ProblemSetup &ps, fmt::format_string<T...> fstr, T &&...args
 }
 
 template <typename... T>
+void SingleV3(const ProblemSetup &ps, fmt::format_string<T...> fstr, T &&...args) {
+  if (ps.layoutMPI.rank == 0 && ps.verbose >= 3) {
+    fmt::print(fstr, args...);
+  }
+}
+
+template <typename... T>
 void Any(const ProblemSetup &ps, fmt::format_string<T...> fstr, T &&...args) {
   fmt::print(fstr, args...);
 }
@@ -48,6 +55,13 @@ void AnyV1(const ProblemSetup &ps, fmt::format_string<T...> fstr, T &&...args) {
 template <typename... T>
 void AnyV2(const ProblemSetup &ps, fmt::format_string<T...> fstr, T &&...args) {
   if (ps.verbose >= 2) {
+    fmt::print(fstr, args...);
+  }
+}
+
+template <typename... T>
+void AnyV3(const ProblemSetup &ps, fmt::format_string<T...> fstr, T &&...args) {
+  if (ps.verbose >= 3) {
     fmt::print(fstr, args...);
   }
 }

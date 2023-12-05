@@ -13,7 +13,7 @@
 #define STENCIL_RADIUS 3
 
 // Number of Gauss-Legendre points on faces (1-5)
-#define NUM_QUAD_PTS 4
+#define NUM_QUAD_PTS 3
 
 // Floating point precision (1 for double, 0 for single)
 #define FLOAT_PRECISION 1

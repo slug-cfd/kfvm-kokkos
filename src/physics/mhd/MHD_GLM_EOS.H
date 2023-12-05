@@ -74,7 +74,7 @@ struct EOS<EquationType::MHD_GLM> {
   KOKKOS_INLINE_FUNCTION
   static Real ekin(const MHD_GLM::ConsVec U) {
     using MHD_GLM::SimVar;
-    return Real(0.5) *
+    return 0.5 *
            (U[SimVar::momx] * U[SimVar::momx] + U[SimVar::momy] * U[SimVar::momy] +
             U[SimVar::momz] * U[SimVar::momz]) /
            U[SimVar::dens];
@@ -83,16 +83,19 @@ struct EOS<EquationType::MHD_GLM> {
   KOKKOS_INLINE_FUNCTION
   static Real prsb(const MHD_GLM::ConsVec U) {
     using MHD_GLM::SimVar;
-    return Real(0.5) *
-           (U[SimVar::magx] * U[SimVar::magx] + U[SimVar::magy] * U[SimVar::magy] +
-            U[SimVar::magz] * U[SimVar::magz]);
+    return 0.5 * (U[SimVar::magx] * U[SimVar::magx] + U[SimVar::magy] * U[SimVar::magy] +
+                  U[SimVar::magz] * U[SimVar::magz]);
   }
 
   KOKKOS_INLINE_FUNCTION
   static Real eint(const MHD_GLM::ConsVec U) {
     using MHD_GLM::SimVar;
-    return (U[SimVar::etot] - prsb(U) - ekin(U) -
-            Real(0.5) * U[SimVar::psi] * U[SimVar::psi]);
+    return (U[SimVar::etot] - prsb(U) - ekin(U) - 0.5 * U[SimVar::psi] * U[SimVar::psi]);
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real prsg(const Real gamma, const MHD_GLM::ConsVec U) {
+    return (gamma - 1.0) * eint(U);
   }
 
   KOKKOS_INLINE_FUNCTION
@@ -116,11 +119,6 @@ struct EOS<EquationType::MHD_GLM> {
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real prsg(const Real gamma, const MHD_GLM::ConsVec U) {
-    return (gamma - Real(1.0)) * eint(U);
-  }
-
-  KOKKOS_INLINE_FUNCTION
   static Real soundspeed(const Real gamma, const MHD_GLM::ConsVec U) {
     using MHD_GLM::SimVar;
     return Kokkos::sqrt(gamma * prsg(gamma, U) / U[SimVar::dens]);
@@ -133,11 +131,10 @@ struct EOS<EquationType::MHD_GLM> {
 
     const Real asq = gamma * prsg(gamma, U) / U[SimVar::dens];
     const Real bsq = Real(2.0) * prsb(U) / U[SimVar::dens];
+    const Real blsq = bl * bl / U[SimVar::dens];
     const Real absq = asq + bsq;
-    Real cfsq = Real(0.5) *
-                (absq + sqrt(absq * absq - Real(4.0) * asq * bl * bl / U[SimVar::dens]));
 
-    return sqrt(cfsq);
+    return sqrt(0.5 * (absq + sqrt(absq * absq - 4.0 * asq * blsq)));
   }
 
   KOKKOS_INLINE_FUNCTION

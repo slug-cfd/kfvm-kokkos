@@ -402,8 +402,7 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
     RHS(i, j, SimVar::momx) += sru;
     RHS(i, j, SimVar::momy) += srv;
     RHS(i, j, SimVar::momz) += srw;
-    RHS(i, j, SimVar::etot) +=
-        ste + U(i, j, SimVar::dens) * (u[1][1] * sru + v[1][1] * srv + w[1][1] * srw);
+    RHS(i, j, SimVar::etot) += ste + u[1][1] * sru + v[1][1] * srv + w[1][1] * srw;
   }
 #else
   KOKKOS_INLINE_FUNCTION
@@ -527,8 +526,7 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
     RHS(i, j, k, SimVar::momy) += srv;
     RHS(i, j, k, SimVar::momz) += srw;
     RHS(i, j, k, SimVar::etot) +=
-        ste + U(i, j, k, SimVar::dens) *
-                  (u[1][1][1] * sru + v[1][1][1] * srv + w[1][1][1] * srw);
+        ste + u[1][1][1] * sru + v[1][1][1] * srv + w[1][1][1] * srw;
   }
 #endif
 };

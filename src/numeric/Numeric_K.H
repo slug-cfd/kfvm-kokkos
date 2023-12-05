@@ -279,12 +279,12 @@ struct RKFSAL_ErrEst_K {
     bool hasNan = false;
     Real state[NUM_VARS];
     for (int nV = 0; nV < NUM_VARS; nV++) {
-      Real u = U(KFVM_D_DECL(i, j, k), nV), uhat = Uhat(KFVM_D_DECL(i, j, k), nV);
+      const Real u = U(KFVM_D_DECL(i, j, k), nV), uhat = Uhat(KFVM_D_DECL(i, j, k), nV);
       state[nV] = u;
       hasNan = hasNan || isnan(u);
       err += pow((u - uhat) / (atol + rtol * fmax(fabs(u), fabs(uhat))), 2);
     }
-    Real pos = hasNan ? -Real(1.0) : Physics::EOS<eqType>::positivity(state);
+    const Real pos = hasNan ? -Real(1.0) : Physics::EOS<eqType>::positivity(state);
     posFlag = posFlag > pos ? pos : posFlag;
   }
 };

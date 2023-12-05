@@ -105,7 +105,7 @@ void Solver::Solve() {
     }
 
     // Write out data files if needed
-    if (ps.plotFreq > 0 && (writePlot || nTS == (ps.maxTimeSteps - 1))) {
+    if (ps.plotFreq > 0 && (writePlot || lastTimeStep || nTS == (ps.maxTimeSteps - 1))) {
       writePlot = false;
       evalAuxiliary();
       writerPDI.writePlot(U_halo, U_aux, wenoSelector.wenoFlagView, plotNum, time);
@@ -652,7 +652,7 @@ void WenoSelector::update(UViewType U,
           U, KFVM_D_DECL(rsX, rsY, rsZ), ps.eosParams, wThresh, wenoFlagView),
       nWeno);
 
-  Print::AnyV2(ps, "    {} ({:<.4}%) cells flagged for WENO on rank {}\n", nWeno,
+  Print::AnyV3(ps, "    {} ({:<.4}%) cells flagged for WENO on rank {}\n", nWeno,
                (100.0 * nWeno) / (ps.nX * ps.nY * ps.nZ), ps.layoutMPI.rank);
 
   if (nWeno > 0) {

@@ -507,14 +507,14 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
 
           // Derivatives of B and psi, fall back on centered fd if PP corrected too far
           Real dbx, dby, dbz, dpx, dpy, dpz;
-          if (wenoFlag(KFVM_D_DECL(i, j, k), 1) < 1.0) {
+          if (wenoFlag(KFVM_D_DECL(i, j, k), 1) < 0.75) {
             const Real tdx = 1.0 / (2.0 * geom.dx), tdy = 1.0 / (2.0 * geom.dy);
             dbx = tdx * (U(KFVM_D_DECL(i + 1, j, k), SimVar::magx) -
                          U(KFVM_D_DECL(i - 1, j, k), SimVar::magx));
-            dby = tdy * (U(KFVM_D_DECL(i, j + 1, k), SimVar::magy) -
-                         U(KFVM_D_DECL(i, j - 1, k), SimVar::magy));
             dpx = tdx * (U(KFVM_D_DECL(i + 1, j, k), SimVar::psi) -
                          U(KFVM_D_DECL(i - 1, j, k), SimVar::psi));
+            dby = tdy * (U(KFVM_D_DECL(i, j + 1, k), SimVar::magy) -
+                         U(KFVM_D_DECL(i, j - 1, k), SimVar::magy));
             dpy = tdy * (U(KFVM_D_DECL(i, j + 1, k), SimVar::psi) -
                          U(KFVM_D_DECL(i, j - 1, k), SimVar::psi));
 #if (SPACE_DIM == 2)
@@ -581,9 +581,9 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
           source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::momz) =
               force[SimVar::momz] - divB[nQ][nR][nS] * state[SimVar::magz];
 
+          Real eForce = divB[nQ][nR][nS] * uDb + gpsiDu[nQ][nR][nS] * state[SimVar::psi];
           source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::etot) =
-              force[SimVar::etot] - divB[nQ][nR][nS] * uDb -
-              gpsiDu[nQ][nR][nS] * state[SimVar::psi];
+              force[SimVar::etot] - eForce;
 
           source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::magx) =
               force[SimVar::magx] - divB[nQ][nR][nS] * vx;
@@ -593,7 +593,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
               force[SimVar::magz] - divB[nQ][nR][nS] * vz;
 
           source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::psi) =
-              force[SimVar::psi] - gpsiDu[nQ][nR][nS];
+              -gpsiDu[nQ][nR][nS];
         }
       }
     }
@@ -676,7 +676,8 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
     for (int nV = 0; nV < NUM_VARS; nV++) {
       refState[nV] = U(KFVM_D_DECL(i, j, k), nV);
     }
-    Real rDens = refState[SimVar::dens];
+    const Real rDens = refState[SimVar::dens];
+    const Real rEint = EOS<EquationType::MHD_GLM>::eint(refState);
 
     // Find ranges of density, pressure, and soundspeed
     Real maxDens = -std::numeric_limits<Real>::max();
@@ -696,12 +697,28 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
           minDens = fmin(minDens, state[SimVar::dens]);
           Real eint = EOS<EquationType::MHD_GLM>::eint(state);
           Real sdsp = EOS<EquationType::MHD_GLM>::soundspeed(eosParams.gamma, state);
-          minEint = fmin(minEint, eint);
+          minEint = eint > 0.0 ? fmin(minEint, eint) : minEint;
           minSdSp = fmin(minSdSp, sdsp);
 #if (SPACE_DIM == 3)
         }
 #endif
       }
+    }
+
+    // Dirty hack on eInt floor
+    minEint = minEint == std::numeric_limits<Real>::max() ? 1.e-10 : minEint;
+    if (rEint < minEint) {
+      const Real ekin = 0.5 *
+                        (refState[SimVar::momx] * refState[SimVar::momx] +
+                         refState[SimVar::momy] * refState[SimVar::momy] +
+                         refState[SimVar::momz] * refState[SimVar::momz]) /
+                        refState[SimVar::dens];
+      const Real emag = 0.5 * (refState[SimVar::magx] * refState[SimVar::magx] +
+                               refState[SimVar::magy] * refState[SimVar::magy] +
+                               refState[SimVar::magz] * refState[SimVar::magz] +
+                               refState[SimVar::psi] * refState[SimVar::psi]);
+      refState[SimVar::etot] = minEint + ekin + emag;
+      U(KFVM_D_DECL(i, j, k), SimVar::etot) = refState[SimVar::etot];
     }
 
     // Find size of flattener
@@ -920,6 +937,7 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
 #endif
       }
     }
+
     if (haveSources) {
       int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
       for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {

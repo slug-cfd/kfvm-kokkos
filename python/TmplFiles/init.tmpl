@@ -4,9 +4,8 @@ mesh:numblocks
 mesh:extent 
 
 # Set time information
-time:initial 
 time:final 
-time:initialdt 
+time:mindt 
 time:cfl 
 time:maxsteps 
 time:atol 
@@ -16,12 +15,16 @@ time:rtol
 stencil:lfac 
 
 # Set fluid properties
-properties:gamma 
-properties:wenothresh 
+eos:gamma 
+eos:wenothresh 
 
 # Output settings
 io:pdiconf 
 io:datadir 
 io:basename 
 io:plotfreq 
-io:ckptfreq 
+io:ckptfreq
+io:statsfreq
+io:verbose 
+
+# User defined parameters
