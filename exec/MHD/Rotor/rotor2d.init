@@ -19,7 +19,7 @@ eos:gamma 1.4
 eos:wenothresh 1.0
 
 # Output settings
-io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
+io:pdiconf ../../../user/pdi_mhd_8w_xdmf.yml
 io:datadir data
 io:basename Rotor8W
 io:plotfreq 0.01

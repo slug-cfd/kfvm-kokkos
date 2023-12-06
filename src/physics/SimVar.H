@@ -70,6 +70,27 @@ typedef Real StatVec[3];
 
 } // end namespace MHD_GLM
 
+namespace MHD_8W {
+
+struct SimVar {
+  enum var { dens = 0, momx, momy, momz, etot, magx, magy, magz };
+};
+struct PrimVar {
+  enum var { dens = 0, velx, vely, velz, prsg, magx, magy, magz };
+};
+struct AuxVar {
+  enum var { velx = 0, vely, velz, eint, prsg, prsb };
+};
+struct StatVar {
+  enum var { ekin = 0, enst, heli };
+};
+
+typedef Real ConsVec[8];
+typedef Real PrimVec[8];
+typedef Real StatVec[3];
+
+} // end namespace MHD_8W
+
 namespace SRHydro {
 
 struct SimVar {

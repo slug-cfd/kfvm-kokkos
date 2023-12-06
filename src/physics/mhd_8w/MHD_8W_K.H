@@ -1,5 +1,5 @@
-#ifndef MHD_GLM_K_H_
-#define MHD_GLM_K_H_
+#ifndef MHD_8W_K_H_
+#define MHD_8W_K_H_
 
 #include <cstdint>
 
@@ -14,8 +14,8 @@
 #include "../RSTypes.H"
 #include "../SimVar.H"
 #include "Definitions.H"
-#include "MHD_GLM_EOS.H"
-#include "MHD_GLM_Riemann.H"
+#include "MHD_8W_EOS.H"
+#include "MHD_8W_Riemann.H"
 #include "Numeric.H"
 
 namespace KFVM {
@@ -23,29 +23,28 @@ namespace KFVM {
 namespace Physics {
 
 template <>
-class VarConvert<EquationType::MHD_GLM> {
+class VarConvert<EquationType::MHD_8W> {
   const Real gamm;
-  const Real rho, u, v, w, bx, by, bz, rPsi, vsq;
+  const Real rho, u, v, w, bx, by, bz, vsq;
 
  public:
   KOKKOS_INLINE_FUNCTION
-  VarConvert(const MHD_GLM::ConsVec ref_, Real gam_)
-      : gamm(gam_ - Real(1.0)), rho(ref_[MHD_GLM::SimVar::dens]),
-        u(ref_[MHD_GLM::SimVar::momx] / rho), v(ref_[MHD_GLM::SimVar::momy] / rho),
-        w(ref_[MHD_GLM::SimVar::momz] / rho), bx(ref_[MHD_GLM::SimVar::magx]),
-        by(ref_[MHD_GLM::SimVar::magy]), bz(ref_[MHD_GLM::SimVar::magz]),
-        rPsi(ref_[MHD_GLM::SimVar::psi]), vsq((u * u + v * v + w * w) / Real(2.0)) {}
+  VarConvert(const MHD_8W::ConsVec ref_, Real gam_)
+      : gamm(gam_ - Real(1.0)), rho(ref_[MHD_8W::SimVar::dens]),
+        u(ref_[MHD_8W::SimVar::momx] / rho), v(ref_[MHD_8W::SimVar::momy] / rho),
+        w(ref_[MHD_8W::SimVar::momz] / rho), bx(ref_[MHD_8W::SimVar::magx]),
+        by(ref_[MHD_8W::SimVar::magy]), bz(ref_[MHD_8W::SimVar::magz]),
+        vsq(0.5 * (u * u + v * v + w * w)) {}
 
   template <class T>
   KOKKOS_INLINE_FUNCTION void cons2LinPrim(T &state) {
-    using MHD_GLM::SimVar;
+    using MHD_8W::SimVar;
 
     // Doing etot first allows state to be overwritten safely
-    state(SimVar::etot) =
-        gamm *
-        (vsq * state(SimVar::dens) + state(SimVar::etot) - u * state(SimVar::momx) -
-         v * state(SimVar::momy) - w * state(SimVar::momz) - bx * state(SimVar::magx) -
-         by * state(SimVar::magy) - bz * state(SimVar::magz) - rPsi * state(SimVar::psi));
+    state(SimVar::etot) = gamm * (vsq * state(SimVar::dens) + state(SimVar::etot) -
+                                  u * state(SimVar::momx) - v * state(SimVar::momy) -
+                                  w * state(SimVar::momz) - bx * state(SimVar::magx) -
+                                  by * state(SimVar::magy) - bz * state(SimVar::magz));
 
     state(SimVar::momx) = (state(SimVar::momx) - u * state(SimVar::dens)) / rho;
     state(SimVar::momy) = (state(SimVar::momy) - v * state(SimVar::dens)) / rho;
@@ -54,14 +53,13 @@ class VarConvert<EquationType::MHD_GLM> {
 
   template <class T>
   KOKKOS_INLINE_FUNCTION void linPrim2Cons(T &state) {
-    using MHD_GLM::SimVar;
+    using MHD_8W::SimVar;
 
     // Doing etot first allows state to be overwritten safely
-    state(SimVar::etot) =
-        (vsq * state(SimVar::dens) + rho * u * state(SimVar::momx) +
-         rho * v * state(SimVar::momy) + rho * w * state(SimVar::momz) +
-         bx * state(SimVar::magx) + by * state(SimVar::magy) + bz * state(SimVar::magz) +
-         state(SimVar::etot) / gamm + rPsi * state(SimVar::psi));
+    state(SimVar::etot) = (vsq * state(SimVar::dens) + rho * u * state(SimVar::momx) +
+                           rho * v * state(SimVar::momy) + rho * w * state(SimVar::momz) +
+                           bx * state(SimVar::magx) + by * state(SimVar::magy) +
+                           bz * state(SimVar::magz) + state(SimVar::etot) / gamm);
 
     state(SimVar::momx) = (rho * state(SimVar::momx) + u * state(SimVar::dens));
     state(SimVar::momy) = (rho * state(SimVar::momy) + v * state(SimVar::dens));
@@ -70,7 +68,7 @@ class VarConvert<EquationType::MHD_GLM> {
 };
 
 template <class UViewType>
-struct AuxVars<EquationType::MHD_GLM, UViewType> {
+struct AuxVars<EquationType::MHD_8W, UViewType> {
   UViewType U;
   AuxDataView V;
   EosParameters eosParams;
@@ -80,9 +78,9 @@ struct AuxVars<EquationType::MHD_GLM, UViewType> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
-    using MHD_GLM::AuxVar;
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::SimVar;
+    using MHD_8W::AuxVar;
+    using MHD_8W::ConsVec;
+    using MHD_8W::SimVar;
 
     // Try not to assume the order of SimVars
     ConsVec u;
@@ -99,15 +97,15 @@ struct AuxVars<EquationType::MHD_GLM, UViewType> {
         U(KFVM_D_DECL(i, j, k), SimVar::momz) / U(KFVM_D_DECL(i, j, k), SimVar::dens);
 
     // Internal energy and pressures
-    V(KFVM_D_DECL(i, j, k), AuxVar::eint) = EOS<EquationType::MHD_GLM>::eint(u);
+    V(KFVM_D_DECL(i, j, k), AuxVar::eint) = EOS<EquationType::MHD_8W>::eint(u);
     V(KFVM_D_DECL(i, j, k), AuxVar::prsg) =
-        EOS<EquationType::MHD_GLM>::prsg(eosParams.gamma, u);
-    V(KFVM_D_DECL(i, j, k), AuxVar::prsb) = EOS<EquationType::MHD_GLM>::prsb(u);
+        EOS<EquationType::MHD_8W>::prsg(eosParams.gamma, u);
+    V(KFVM_D_DECL(i, j, k), AuxVar::prsb) = EOS<EquationType::MHD_8W>::prsb(u);
   }
 };
 
 template <class UViewType>
-struct FlowStats<EquationType::MHD_GLM, UViewType> {
+struct FlowStats<EquationType::MHD_8W, UViewType> {
   UViewType U;
   Geometry geom;
   EosParameters eosParams;
@@ -118,8 +116,8 @@ struct FlowStats<EquationType::MHD_GLM, UViewType> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   FlowStatsArray &stat) const {
-    using MHD_GLM::SimVar;
-    using MHD_GLM::StatVar;
+    using MHD_8W::SimVar;
+    using MHD_8W::StatVar;
 
     // Compute kinetic energy
     const Real ek =
@@ -211,7 +209,7 @@ struct FlowStats<EquationType::MHD_GLM, UViewType> {
 };
 
 template <RSType rst>
-struct RiemannSolverX_K<EquationType::MHD_GLM, rst> {
+struct RiemannSolverX_K<EquationType::MHD_8W, rst> {
   FaceDataView U;
   EosParameters eosParams;
 
@@ -221,8 +219,8 @@ struct RiemannSolverX_K<EquationType::MHD_GLM, rst> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   Real &maxVel) const {
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::PrimVec;
+    using MHD_8W::ConsVec;
+    using MHD_8W::PrimVec;
 
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
@@ -233,12 +231,11 @@ struct RiemannSolverX_K<EquationType::MHD_GLM, rst> {
         uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
         uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uR, vR);
+      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uL, vL);
+      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uR, vR);
 
       // Calculate flux
-      Real vq = MHD_GLM_RS<rst>::RiemannSolve_X(eosParams.gamma, eosParams.ch_glm, uL, uR,
-                                                vL, vR, F);
+      Real vq = MHD_8W_RS<rst>::RiemannSolve_X(eosParams.gamma, uL, uR, vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux
@@ -251,7 +248,7 @@ struct RiemannSolverX_K<EquationType::MHD_GLM, rst> {
 };
 
 template <RSType rst>
-struct RiemannSolverY_K<EquationType::MHD_GLM, rst> {
+struct RiemannSolverY_K<EquationType::MHD_8W, rst> {
   FaceDataView U;
   EosParameters eosParams;
 
@@ -261,8 +258,8 @@ struct RiemannSolverY_K<EquationType::MHD_GLM, rst> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   Real &maxVel) const {
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::PrimVec;
+    using MHD_8W::ConsVec;
+    using MHD_8W::PrimVec;
 
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
@@ -273,12 +270,11 @@ struct RiemannSolverY_K<EquationType::MHD_GLM, rst> {
         uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
         uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uR, vR);
+      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uL, vL);
+      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uR, vR);
 
       // Calculate flux
-      Real vq = MHD_GLM_RS<rst>::RiemannSolve_Y(eosParams.gamma, eosParams.ch_glm, uL, uR,
-                                                vL, vR, F);
+      Real vq = MHD_8W_RS<rst>::RiemannSolve_Y(eosParams.gamma, uL, uR, vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux
@@ -291,7 +287,7 @@ struct RiemannSolverY_K<EquationType::MHD_GLM, rst> {
 };
 
 template <RSType rst>
-struct RiemannSolverZ_K<EquationType::MHD_GLM, rst> {
+struct RiemannSolverZ_K<EquationType::MHD_8W, rst> {
   FaceDataView U;
   EosParameters eosParams;
 
@@ -301,8 +297,8 @@ struct RiemannSolverZ_K<EquationType::MHD_GLM, rst> {
 #if (SPACE_DIM == 3)
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j, const idx_t k, Real &maxVel) const {
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::PrimVec;
+    using MHD_8W::ConsVec;
+    using MHD_8W::PrimVec;
 
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
       // Pull out states and convert to primitive
@@ -312,12 +308,11 @@ struct RiemannSolverZ_K<EquationType::MHD_GLM, rst> {
         uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
         uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, uR, vR);
+      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uL, vL);
+      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uR, vR);
 
       // Calculate flux
-      Real vq = MHD_GLM_RS<rst>::RiemannSolve_Z(eosParams.gamma, eosParams.ch_glm, uL, uR,
-                                                vL, vR, F);
+      Real vq = MHD_8W_RS<rst>::RiemannSolve_Z(eosParams.gamma, uL, uR, vL, vR, F);
       maxVel = vq > maxVel ? vq : maxVel;
 
       // Overwrite states with flux
@@ -331,7 +326,7 @@ struct RiemannSolverZ_K<EquationType::MHD_GLM, rst> {
 };
 
 template <>
-struct SpeedEstimate_K<EquationType::MHD_GLM> {
+struct SpeedEstimate_K<EquationType::MHD_8W> {
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   EosParameters eosParams;
 
@@ -345,8 +340,8 @@ struct SpeedEstimate_K<EquationType::MHD_GLM> {
                   Real &maxCh) const {
     using Kokkos::fabs;
     using Kokkos::fmax;
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::SimVar;
+    using MHD_8W::ConsVec;
+    using MHD_8W::SimVar;
 
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
 
@@ -365,13 +360,13 @@ struct SpeedEstimate_K<EquationType::MHD_GLM> {
 
       // Minus face
       v = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uM);
+      cf = EOS<EquationType::MHD_8W>::fastMagSonicX(eosParams.gamma, uM);
       cfDiffLoc = v < cf ? cf - v : cf;
       cfDiff = fmax(cfDiff, cfDiffLoc);
 
       // Plus face
       v = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uP);
+      cf = EOS<EquationType::MHD_8W>::fastMagSonicX(eosParams.gamma, uP);
       cfDiffLoc = v < cf ? cf - v : cf;
       cfDiff = fmax(cfDiff, cfDiffLoc);
     }
@@ -388,13 +383,13 @@ struct SpeedEstimate_K<EquationType::MHD_GLM> {
 
       // Minus face
       v = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uM);
+      cf = EOS<EquationType::MHD_8W>::fastMagSonicX(eosParams.gamma, uM);
       cfDiffLoc = v < cf ? cf - v : cf;
       cfDiff = fmax(cfDiff, cfDiffLoc);
 
       // Plus face
       v = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uP);
+      cf = EOS<EquationType::MHD_8W>::fastMagSonicX(eosParams.gamma, uP);
       cfDiffLoc = v < cf ? cf - v : cf;
       cfDiff = fmax(cfDiff, cfDiffLoc);
     }
@@ -412,13 +407,13 @@ struct SpeedEstimate_K<EquationType::MHD_GLM> {
 
       // Minus face
       v = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uM);
+      cf = EOS<EquationType::MHD_8W>::fastMagSonicX(eosParams.gamma, uM);
       cfDiffLoc = v < cf ? cf - v : cf;
       cfDiff = fmax(cfDiff, cfDiffLoc);
 
       // Plus face
       v = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
-      cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uP);
+      cf = EOS<EquationType::MHD_8W>::fastMagSonicX(eosParams.gamma, uP);
       cfDiffLoc = v < cf ? cf - v : cf;
       cfDiff = fmax(cfDiff, cfDiffLoc);
     }
@@ -427,12 +422,12 @@ struct SpeedEstimate_K<EquationType::MHD_GLM> {
   }
 };
 
-namespace MHD_GLM {
+namespace MHD_8W {
 #include "SourceTerms.H"
 }
 
 template <class UViewType>
-struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
+struct SourceTerms_K<EquationType::MHD_8W, UViewType> {
   SourceDataView source;
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   UViewType U;
@@ -456,7 +451,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
     using Kokkos::exp;
-    using MHD_GLM::SimVar;
+    using MHD_8W::SimVar;
 
     const int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
 
@@ -488,15 +483,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
         Kokkos::subview(rsZ, KFVM_D_DECL(i, j, k + 1), 0, Kokkos::ALL, Kokkos::ALL);
 #endif
 
-    // Divergence and psi gradient
     Real divB = 0.0;
-#if (SPACE_DIM == 2)
-    Real gpsiDu[NUM_QUAD_PTS][NUM_QUAD_PTS][1];
-#else
-    Real gpsiDu[NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_QUAD_PTS];
-#endif
-
-    // B field divergence
     for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       for (int nS = 0; nS < nzQuad; nS++) {
         // Flattened index and total quadrature weight
@@ -526,40 +513,6 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
       }
     }
 
-    // Find psi gradient terms
-    for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
-      for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
-        for (int nS = 0; nS < nzQuad; nS++) {
-          // Point values of velocity for gpsiDu
-          const Real rho = cellVals(KFVM_D_DECL(nQ, nR, nS), SimVar::dens);
-          const Real vx = cellVals(KFVM_D_DECL(nQ, nR, nS), SimVar::momx) / rho;
-          const Real vy = cellVals(KFVM_D_DECL(nQ, nR, nS), SimVar::momy) / rho;
-          const Real vz = cellVals(KFVM_D_DECL(nQ, nR, nS), SimVar::momz) / rho;
-
-          // Derivatives of B and psi, fall back on centered fd if PP corrected too far
-          Real dpx, dpy, dpz = 0.0;
-          if (wenoFlag(KFVM_D_DECL(i, j, k), 1) < 0.75) {
-            const Real tdx = 1.0 / (2.0 * geom.dx), tdy = 1.0 / (2.0 * geom.dy);
-            dpx = tdx * (U(KFVM_D_DECL(i + 1, j, k), SimVar::psi) -
-                         U(KFVM_D_DECL(i - 1, j, k), SimVar::psi));
-            dpy = tdy * (U(KFVM_D_DECL(i, j + 1, k), SimVar::psi) -
-                         U(KFVM_D_DECL(i, j - 1, k), SimVar::psi));
-#if (SPACE_DIM == 3)
-            const Real tdz = 1.0 / (2.0 * geom.dz);
-            dpz = tdz * (U(i, j, k + 1, SimVar::psi) - U(i, j, k - 1, SimVar::psi));
-#endif
-          } else {
-            dpx = diffX(cellVals, wFaceVals, eFaceVals, nQ, nR, nS, SimVar::psi);
-            dpy = diffY(cellVals, sFaceVals, nFaceVals, nQ, nR, nS, SimVar::psi);
-#if (SPACE_DIM == 3)
-            dpz = diffZ(cellVals, bFaceVals, tFaceVals, nQ, nR, nS, SimVar::psi);
-#endif
-          }
-          gpsiDu[nQ][nR][nS] = vx * dpx + vy * dpy + vz * dpz;
-        }
-      }
-    }
-
     // Find and fill forcing
     for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
       Real x = Numeric::sclAb(xc, geom.dx, ab(nQ));
@@ -567,7 +520,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
         Real y = Numeric::sclAb(yc, geom.dy, ab(nR));
         for (int nS = 0; nS < nzQuad; nS++) {
           Real z = SPACE_DIM == 2 ? zc : Numeric::sclAb(zc, geom.dz, ab(nS));
-          MHD_GLM::ConsVec state, force;
+          MHD_8W::ConsVec state, force;
           // Extract state and clear force vector
           for (int nV = 0; nV < NUM_VARS; nV++) {
             state[nV] = source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV);
@@ -575,17 +528,16 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
           }
 
           // Fill force with user defined terms
-          MHD_GLM::SourceTerm(t, x, y, z, state, force);
+          MHD_8W::SourceTerm(t, x, y, z, state, force);
 
-          // Define GLM source terms
+          // Pull out velocities and u.B term
           const Real vx = state[SimVar::momx] / state[SimVar::dens];
           const Real vy = state[SimVar::momy] / state[SimVar::dens];
           const Real vz = state[SimVar::momz] / state[SimVar::dens];
-
           const Real uDb = vx * state[SimVar::magx] + vy * state[SimVar::magy] +
                            vz * state[SimVar::magz];
 
-          // Fill source view with GLM and user forcing
+          // Fill source view user forcing and 8 wave terms
           source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::dens) =
               force[SimVar::dens];
 
@@ -596,9 +548,8 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
           source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::momz) =
               force[SimVar::momz] - divB * state[SimVar::magz];
 
-          Real eForce = divB * uDb + gpsiDu[nQ][nR][nS] * state[SimVar::psi];
           source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::etot) =
-              force[SimVar::etot] - eForce;
+              force[SimVar::etot] - divB * uDb;
 
           source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::magx) =
               force[SimVar::magx] - divB * vx;
@@ -606,9 +557,6 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
               force[SimVar::magy] - divB * vy;
           source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::magz) =
               force[SimVar::magz] - divB * vz;
-
-          source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::psi) =
-              -gpsiDu[nQ][nR][nS];
         }
       }
     }
@@ -661,7 +609,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
 };
 
 template <class UDataView>
-struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
+struct PositivityPreserve_K<EquationType::MHD_8W, UDataView> {
   UDataView U;
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   bool haveSources;
@@ -681,8 +629,8 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
     using Kokkos::fmax;
     using Kokkos::fmin;
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::SimVar;
+    using MHD_8W::ConsVec;
+    using MHD_8W::SimVar;
 
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
 
@@ -692,7 +640,7 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
       refState[nV] = U(KFVM_D_DECL(i, j, k), nV);
     }
     const Real rDens = refState[SimVar::dens];
-    const Real rEint = EOS<EquationType::MHD_GLM>::eint(refState);
+    const Real rEint = EOS<EquationType::MHD_8W>::eint(refState);
 
     // Find ranges of density, pressure, and soundspeed
     Real maxDens = -std::numeric_limits<Real>::max();
@@ -710,8 +658,8 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
           }
           maxDens = fmax(maxDens, state[SimVar::dens]);
           minDens = fmin(minDens, state[SimVar::dens]);
-          Real eint = EOS<EquationType::MHD_GLM>::eint(state);
-          Real sdsp = EOS<EquationType::MHD_GLM>::soundspeed(eosParams.gamma, state);
+          Real eint = EOS<EquationType::MHD_8W>::eint(state);
+          Real sdsp = EOS<EquationType::MHD_8W>::soundspeed(eosParams.gamma, state);
           minEint = fmin(minEint, eint);
           minSdSp = fmin(minSdSp, sdsp);
 #if (SPACE_DIM == 3)
@@ -853,42 +801,42 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
+      ei = EOS<EquationType::MHD_8W>::eint(state);
       theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 
       // East face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
+      ei = EOS<EquationType::MHD_8W>::eint(state);
       theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 
       // South face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsY(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
+      ei = EOS<EquationType::MHD_8W>::eint(state);
       theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 
       // North face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
+      ei = EOS<EquationType::MHD_8W>::eint(state);
       theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 #if (SPACE_DIM == 3)
       // Bottom face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
+      ei = EOS<EquationType::MHD_8W>::eint(state);
       theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 
       // Top face
       for (int nV = 0; nV < NUM_VARS; nV++) {
         state[nV] = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, nV);
       }
-      ei = EOS<EquationType::MHD_GLM>::eint(state);
+      ei = EOS<EquationType::MHD_8W>::eint(state);
       theta = ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
 #endif
     }
@@ -903,7 +851,7 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
             for (int nV = 0; nV < NUM_VARS; nV++) {
               state[nV] = source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV);
             }
-            Real ei = EOS<EquationType::MHD_GLM>::eint(state);
+            Real ei = EOS<EquationType::MHD_8W>::eint(state);
             theta =
                 ei > minEint ? theta : fmin(theta, mhdEintPos(minEint, refState, state));
           }
@@ -955,15 +903,15 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
   }
 
   KOKKOS_INLINE_FUNCTION
-  Real mhdEintPos(const Real emin, const MHD_GLM::ConsVec refState,
-                  const MHD_GLM::ConsVec state) const {
+  Real mhdEintPos(const Real emin, const MHD_8W::ConsVec refState,
+                  const MHD_8W::ConsVec state) const {
     using Kokkos::fabs;
     using Kokkos::fmin;
-    using MHD_GLM::ConsVec;
-    using MHD_GLM::SimVar;
+    using MHD_8W::ConsVec;
+    using MHD_8W::SimVar;
 
     Real a = 0.0, b = 1.0, c;
-    Real dec = EOS<EquationType::MHD_GLM>::eint(state) - emin;
+    Real dec = EOS<EquationType::MHD_8W>::eint(state) - emin;
     ConsVec stTheta;
 
     // Bisect on theta for 20 iterations regardless
@@ -975,7 +923,7 @@ struct PositivityPreserve_K<EquationType::MHD_GLM, UDataView> {
       for (int nV = 0; nV < NUM_VARS; nV++) {
         stTheta[nV] = refState[nV] + c * (state[nV] - refState[nV]);
       }
-      dec = EOS<EquationType::MHD_GLM>::eint(stTheta) - emin;
+      dec = EOS<EquationType::MHD_8W>::eint(stTheta) - emin;
 
       if (dec * deb < 0.0) {
         // Sign change in upper half, walk a forward

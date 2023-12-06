@@ -50,7 +50,7 @@ struct IntegrateIC_K {
 
     // Zero out state
     for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-      v(i, j, nV) = Real(0.0);
+      v(i, j, nV) = 0.0;
     }
 
     // Loop over quadrature points and accumulate integral
@@ -61,7 +61,7 @@ struct IntegrateIC_K {
         Real abY = sclAb(yCtr, geom.dy, ab(nY));
 
         // IC at quadrature point
-        Real state[NUM_VARS];
+        Real state[NUM_VARS] = {};
         InitialCondition(abX, abY, geom.zLo, eosParams, userParams, state);
 
         // Add each component into IC
@@ -80,7 +80,7 @@ struct IntegrateIC_K {
 
     // Zero out state
     for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-      v(i, j, k, nV) = Real(0.0);
+      v(i, j, k, nV) = 0.0;
     }
 
     // Loop over quadrature points and accumulate integral
@@ -93,7 +93,7 @@ struct IntegrateIC_K {
           Real abZ = sclAb(zCtr, geom.dz, ab(nZ));
 
           // IC at quadrature point
-          Real state[NUM_VARS];
+          Real state[NUM_VARS] = {};
           InitialCondition(abX, abY, abZ, eosParams, userParams, state);
 
           // Add each component into IC

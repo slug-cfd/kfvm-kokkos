@@ -253,7 +253,7 @@ struct SourceTerms_K<EquationType::SRHydro, UViewType> {
   UViewType U;
   WenoFlagView wenoFlag;
   DiffMatView D;
-  QuadRuleView ab;
+  QuadRuleView ab, wt;
   EosParameters eosParams;
   Geometry geom;
   Real t;
@@ -262,10 +262,11 @@ struct SourceTerms_K<EquationType::SRHydro, UViewType> {
                 KFVM_D_DECL(const FaceDataView &rsX_, const FaceDataView &rsY_,
                             const FaceDataView &rsZ_),
                 const UViewType &U_, const WenoFlagView &wenoFlag_, const DiffMatView &D_,
-                const QuadRuleView &ab_, const EosParameters &eosParams_,
-                const Geometry &geom_, const Real t_)
+                const QuadRuleView &ab_, const QuadRuleView &wt_,
+                const EosParameters &eosParams_, const Geometry &geom_, const Real t_)
       : source(source_), KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), U(U_),
-        wenoFlag(wenoFlag_), D(D_), ab(ab_), eosParams(eosParams_), geom(geom_), t(t_) {}
+        wenoFlag(wenoFlag_), D(D_), ab(ab_), wt(wt_), eosParams(eosParams_), geom(geom_),
+        t(t_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {

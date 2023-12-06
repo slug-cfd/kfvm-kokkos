@@ -204,6 +204,9 @@ void WriterPDI::writeXML(int step, Real time, bool plotMode) {
   case EquationType::MHD_GLM:
     writeAttrMHD_GLM(ofs, plotMode);
     break;
+  case EquationType::MHD_8W:
+    writeAttrMHD_8W(ofs, plotMode);
+    break;
   case EquationType::SRHydro:
     writeAttrSRHydro(ofs, plotMode);
     break;
@@ -241,6 +244,19 @@ void WriterPDI::writeAttrMHD_GLM(std::ofstream &ofs, bool plotMode) {
   writeAttributeVector(ofs, "B", "magx", "magy", "magz");
   writeAttributeScalar(ofs, "etot");
   writeAttributeScalar(ofs, "psi");
+  if (plotMode) {
+    writeAttributeVector(ofs, "vel", "velx", "vely", "velz");
+    writeAttributeScalar(ofs, "eint");
+    writeAttributeScalar(ofs, "prsg");
+    writeAttributeScalar(ofs, "prsb");
+  }
+}
+
+void WriterPDI::writeAttrMHD_8W(std::ofstream &ofs, bool plotMode) {
+  writeAttributeScalar(ofs, "dens");
+  writeAttributeVector(ofs, "mom", "momx", "momy", "momz");
+  writeAttributeVector(ofs, "B", "magx", "magy", "magz");
+  writeAttributeScalar(ofs, "etot");
   if (plotMode) {
     writeAttributeVector(ofs, "vel", "velx", "vely", "velz");
     writeAttributeScalar(ofs, "eint");

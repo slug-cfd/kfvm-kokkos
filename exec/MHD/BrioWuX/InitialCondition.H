@@ -22,7 +22,6 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   state[SimVar::momz] = 0.0;
   state[SimVar::magx] = bx;
   state[SimVar::magz] = 0.0;
-  state[SimVar::psi] = 0.0;
 
   // Hi/Lo states
   if (fabs(x) <= 0.5) {

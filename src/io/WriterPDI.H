@@ -32,6 +32,7 @@ class WriterPDI {
   void writeAttrHydro(std::ofstream &, bool);
   void writeAttrLinAdv(std::ofstream &, bool);
   void writeAttrMHD_GLM(std::ofstream &, bool);
+  void writeAttrMHD_8W(std::ofstream &, bool);
   void writeAttrSRHydro(std::ofstream &, bool);
 
   void writeAttributeScalar(std::ofstream &, const char *);

@@ -398,6 +398,9 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
                            haveSources, sourceTerms, wenoSelector.wenoFlagView,
                            ps.eosParams));
 
+  // Set BCs on faces
+  setFaceBCs(t);
+
   // Calculate cleaning speed for GLM method
   if (eqType == EquationType::MHD_GLM) {
     Real ch_glm = 0.0;
@@ -414,15 +417,13 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
   // These may use face values for better internal derivatives
   //   -> Must call before fluxes overwrite Riemann states
   if (haveSources) {
-    Kokkos::parallel_for(
-        "SourceTerms", cellRng,
-        Physics::SourceTerms_K<eqType, decltype(U)>(
-            sourceTerms, KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), U,
-            wenoSelector.wenoFlagView, diffMat.diffMat, qr.ab, ps.eosParams, geom, t));
+    Kokkos::parallel_for("SourceTerms", cellRng,
+                         Physics::SourceTerms_K<eqType, decltype(U)>(
+                             sourceTerms,
+                             KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), U,
+                             wenoSelector.wenoFlagView, diffMat.diffMat, qr.ab, qr.wt,
+                             ps.eosParams, geom, t));
   }
-
-  // Set BCs on faces
-  setFaceBCs(t);
 
   // Call Riemann solver
   Real vEW = 0.0, vNS = 0.0, vTB = 0.0;

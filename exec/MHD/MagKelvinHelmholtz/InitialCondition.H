@@ -35,6 +35,4 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   state[SimVar::magz] = 0.0;
 
   state[SimVar::etot] = 10.0 / gamm + b * b / 2.0 + rho * (u * u + v * v) / 2.0;
-
-  state[SimVar::psi] = 0.0;
 }

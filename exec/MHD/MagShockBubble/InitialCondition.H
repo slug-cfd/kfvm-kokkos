@@ -56,5 +56,4 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
 
     state[SimVar::etot] = 1.0 / gamm + 0.5 * 11.2536 * 11.2536 + 0.56418958 * 0.56418958;
   }
-  state[SimVar::psi] = 0.0;
 }

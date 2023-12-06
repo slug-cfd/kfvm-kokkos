@@ -24,5 +24,4 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   state[SimVar::magx] = 0.0;
   state[SimVar::magy] = 0.0;
   state[SimVar::magz] = B;
-  state[SimVar::psi] = 0.0;
 }

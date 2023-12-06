@@ -94,6 +94,7 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
                                       EosParameters eosParams, UserParameters userParams,
                                       Real state[NUM_VARS]) {
   using KFVM::Physics::MHD_GLM::SimVar;
+  using Kokkos::sqrt;
 
   // Void casts to ignore unused parameter warnings
   (void)U;
@@ -116,17 +117,16 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
 
   const Real rsq = SPACE_DIM == 2 ? x * x : x * x + z * z;
 
-  // Always extrapolate B and psi fields
-  const Real bx = U(KFVM_D_DECL(i, rad, k), SimVar::magx);
-  const Real by = U(KFVM_D_DECL(i, rad, k), SimVar::magy);
-  const Real bz = U(KFVM_D_DECL(i, rad, k), SimVar::magz);
-  const Real psi = U(KFVM_D_DECL(i, rad, k), SimVar::psi);
-  const Real bpsq = bx * bx + by * by + bz * bz + psi * psi;
+  // Always extrapolate B fields
+  const Real bx = 0.0;                         // U(KFVM_D_DECL(i, rad, k), SimVar::magx);
+  const Real by = sqrt(2.0 / userParams.beta); // U(KFVM_D_DECL(i, rad, k), SimVar::magy);
+  const Real bz = 0.0;                         // U(KFVM_D_DECL(i, rad, k), SimVar::magz);
+  const Real bpsq = bx * bx + by * by + bz * bz;
 
-  // Inflow conditions + B and psi fields
+  // Inflow conditions + B fields
   const Real inState[] = {
       gam, 0.0, gam * vy, 0.0, 1.0 / gamm + 0.5 * gam * vy * vy + 0.5 * bpsq,
-      bx,  by,  bz,       psi};
+      bx,  by,  bz,       0.0};
 
   if (rsq > R * R) { // outflow
     for (int nV = 0; nV < NUM_VARS; nV++) {
@@ -144,6 +144,7 @@ KOKKOS_INLINE_FUNCTION void FaceSouth(const DataViewType &U, int i, int k, int n
                                       Real y, Real z, Real t, EosParameters eosParams,
                                       UserParameters userParams, Real state[NUM_VARS]) {
   using KFVM::Physics::MHD_GLM::SimVar;
+  using Kokkos::sqrt;
 
   // Void casts to ignore unused parameter warnings
   (void)U;
@@ -164,17 +165,16 @@ KOKKOS_INLINE_FUNCTION void FaceSouth(const DataViewType &U, int i, int k, int n
 
   const Real rsq = SPACE_DIM == 2 ? x * x : x * x + z * z;
 
-  // Always extrapolate B and psi fields
-  const Real bx = U(KFVM_DM_DECL(i, k), 1, nQ, SimVar::magx);
-  const Real by = U(KFVM_DM_DECL(i, k), 1, nQ, SimVar::magy);
-  const Real bz = U(KFVM_DM_DECL(i, k), 1, nQ, SimVar::magz);
-  const Real psi = U(KFVM_DM_DECL(i, k), 1, nQ, SimVar::psi);
-  const Real bpsq = bx * bx + by * by + bz * bz + psi * psi;
+  // Always extrapolate B fields
+  const Real bx = 0.0;                         // U(KFVM_D_DECL(i, rad, k), SimVar::magx);
+  const Real by = sqrt(2.0 / userParams.beta); // U(KFVM_D_DECL(i, rad, k), SimVar::magy);
+  const Real bz = 0.0;                         // U(KFVM_D_DECL(i, rad, k), SimVar::magz);
+  const Real bpsq = bx * bx + by * by + bz * bz;
 
-  // Inflow conditions + B and psi fields
+  // Inflow conditions + B fields
   const Real inState[] = {
       gam, 0.0, gam * vy, 0.0, 1.0 / gamm + 0.5 * gam * vy * vy + 0.5 * bpsq,
-      bx,  by,  bz,       psi};
+      bx,  by,  bz,       0.0};
 
   if (rsq > R * R) { // outflow
     for (int nV = 0; nV < NUM_VARS; nV++) {

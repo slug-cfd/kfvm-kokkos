@@ -56,6 +56,11 @@ struct BCCoeffs {};
 #include "mhd/MHD_GLM_EOS.H"
 #include "mhd/MHD_GLM_K.H"
 
+// Ideal MHD with 8-wave
+#include "mhd_8w/MHD_8W_BCCoeffs.H"
+#include "mhd_8w/MHD_8W_EOS.H"
+#include "mhd_8w/MHD_8W_K.H"
+
 // Special relativistic hydrodynamics (Adiabatic Euler)
 #include "srhydro/SRHydro_BCCoeffs.H"
 #include "srhydro/SRHydro_EOS.H"
