@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 96 96 96
+mesh:resolution 128 128 128
 mesh:numblocks 1 1 1
 mesh:extent 0.0 1.0 0.0 1.0 0.0 1.0
 
@@ -22,6 +22,6 @@ eos:wenothresh 1.0
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename OrszagTang
-io:plotfreq 0.1
+io:plotfreq 0.25
 io:ckptfreq 200
 io:verbose 1

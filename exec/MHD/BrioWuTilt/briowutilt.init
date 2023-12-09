@@ -1,13 +1,13 @@
 # Set mesh resolution and extent
-mesh:resolution 1024 1024
+mesh:resolution 512 1024
 mesh:numblocks 1 1
-mesh:extent -0.5 0.5 -0.5 0.5
+mesh:extent 0.0 2.236067977499 0.0 4.472135954999
 
 # Set time information
-time:final 0.15
+time:final 0.1
 time:mindt 1.e-10
-time:cfl 1.25
-time:maxsteps 5000
+time:cfl 1.0
+time:maxsteps 10000
 time:atol 1.e-3
 time:rtol 1.e-3
 
@@ -15,13 +15,14 @@ time:rtol 1.e-3
 stencil:lfac 5
 
 # Set fluid properties
-eos:gamma 1.4
-eos:wenothresh 1.0
+eos:gamma 2.0
+eos:wenothresh -1.0
 
 # Output settings
-io:pdiconf ../../../user/pdi_mhd_8w_xdmf.yml
+io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
-io:basename Rotor8W
+io:basename BrioWuTilt
 io:plotfreq 0.01
 io:ckptfreq 200
+io:statsfreq -1
 io:verbose 1

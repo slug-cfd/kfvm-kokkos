@@ -52,9 +52,9 @@ struct BCCoeffs {};
 #include "navierstokes/NavierStokes_K.H"
 
 // Ideal MHD with GLM
-#include "mhd/MHD_GLM_BCCoeffs.H"
-#include "mhd/MHD_GLM_EOS.H"
-#include "mhd/MHD_GLM_K.H"
+#include "mhd_glm/MHD_GLM_BCCoeffs.H"
+#include "mhd_glm/MHD_GLM_EOS.H"
+#include "mhd_glm/MHD_GLM_K.H"
 
 // Ideal MHD with 8-wave
 #include "mhd_8w/MHD_8W_BCCoeffs.H"
