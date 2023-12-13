@@ -5,10 +5,11 @@ import questionary
 class ProblemSettings:
     def __init__(self):
         # Human readable choices for all questionary questions
-        self.eqTypes = ["Euler","Ideal MHD-GLM","SR Hydro","Linear Advection"]
+        self.eqTypes = ["Euler","Ideal MHD-GLM","Ideal MHD-8W","SR Hydro","Linear Advection"]
         self.rkTypes = ["SSP(4,3)","SSP(10,4)","ThreeStarP","FourStarP"]
         self.rsTypes = {"Euler":["HLL","HLLC","Roe"],
                         "Ideal MHD-GLM":["KEPES","LLF"],
+                        "Ideal MHD-8W":["LLF"],
                         "SR Hydro":["HLL","LLF"],
                         "Linear Advection":["Exact"]}
         self.keTypes = ["Squared Exponential"]
@@ -22,6 +23,7 @@ class ProblemSettings:
         # Dictionary to convert from human readable choices to code representation
         self.codeNames = {"Euler":"KFVM::EquationType::Hydro",
                           "Ideal MHD-GLM":"KFVM::EquationType::MHD_GLM",
+                          "Ideal MHD-8W":"KFVM::EquationType::MHD_8W",
                           "SR Hydro":"KFVM::EquationType::SRHydro",
                           "Linear Advection":"KFVM::EquationType::LinAdv",
                           "SSP(4,3)":"KFVM::RKType::SSP4_3_2",
@@ -121,7 +123,11 @@ class ProblemSettings:
             os.mkdir(self.probPath)
 
         # Copy template files to new directory
-        eqSuffs = {"Euler":"Euler","Ideal MHD-GLM":"MHD_GLM","SR Hydro":"SRHydro","Linear Advection":"LinAdv"}
+        eqSuffs = {"Euler":"Euler",
+                   "Ideal MHD-GLM":"MHD_GLM",
+                   "Ideal MHD-8W":"MHD_8W",
+                   "SR Hydro":"SRHydro",
+                   "Linear Advection":"LinAdv"}
         eqSuff = eqSuffs[self.eqType]
         shutil.copy(self.kfvmDir + "/python/TmplFiles/InitialCondition_" + eqSuff + ".tmpl",
                     self.probPath + "InitialCondition.H")
