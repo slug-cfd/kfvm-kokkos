@@ -46,7 +46,7 @@ struct BCCoeffs {};
 #include "hydro/Hydro_EOS.H"
 #include "hydro/Hydro_K.H"
 
-// Navier-Stokes (hydro + Sutherland viscosity)
+// Navier-Stokes (hydro + viscosity)
 #include "navierstokes/NavierStokes_BCCoeffs.H"
 #include "navierstokes/NavierStokes_EOS.H"
 #include "navierstokes/NavierStokes_K.H"
