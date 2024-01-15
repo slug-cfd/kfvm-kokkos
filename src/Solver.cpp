@@ -422,7 +422,7 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
                              sourceTerms,
                              KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), U,
                              wenoSelector.wenoFlagView, diffMat.diffMat, qr.ab, qr.wt,
-                             ps.eosParams, geom, t));
+                             ps.eosParams, ps.userParams, geom, t));
   }
 
   // Call Riemann solver

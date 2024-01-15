@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 1024 4096
+mesh:resolution 256 1024
 mesh:numblocks 1 1
 mesh:extent 0.0 0.25 0.0 1.0
 
@@ -17,13 +17,13 @@ stencil:lfac 5
 # Set fluid properties
 eos:gamma 1.6666666666666
 eos:prandtl 0.71
-eos:reynolds 100000.0
+eos:reynolds 20000.0
 eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
-io:datadir data
-io:basename RayleighTaylorRe1e5
+io:datadir data/Re2e4
+io:basename RayleighTaylorFr0p5
 io:plotfreq 0.1
 io:ckptfreq 2000
 io:verbose 1
@@ -31,3 +31,4 @@ io:verbose 1
 # User parameters
 user:rhoh 2.0
 user:rhol 1.0
+user:froude 0.5

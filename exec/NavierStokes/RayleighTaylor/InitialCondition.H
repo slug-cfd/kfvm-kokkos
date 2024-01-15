@@ -20,9 +20,11 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
 
   const Real gamm = eosParams.gamma - 1.0;
   const Real rhoH = userParams.rhoH, rhoL = userParams.rhoL;
+  const Real fs = userParams.Froude * userParams.Froude;
 #if (SPACE_DIM == 2)
   const Real rho = y < 0.5 ? rhoH : rhoL;
-  const Real p = y < 0.5 ? rho * y + 1.0 : rho * y + 1.0 + 0.5 * (rhoH - rhoL);
+  const Real p =
+      y < 0.5 ? rho * y / fs + 1.0 : (rho * y + 0.5 * (rhoH - rhoL)) / fs + 1.0;
   const Real c = sqrt(eosParams.gamma * p / rho);
   const Real v = x < 0.125 ? -0.025 * c * cos(8.0 * M_PI * x)
                            : -0.025 * c * cos(8.0 * M_PI * (0.25 - x));

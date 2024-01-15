@@ -544,6 +544,7 @@ struct SourceTerms_K<EquationType::NavierStokes, UViewType> {
   DiffMatView D;
   QuadRuleView ab, wt;
   EosParameters eosParams;
+  UserParameters userParams;
   Geometry geom;
   Real t;
 
@@ -552,9 +553,11 @@ struct SourceTerms_K<EquationType::NavierStokes, UViewType> {
                             const FaceDataView &rsZ_),
                 const UViewType &U_, const WenoFlagView &wenoFlag_, const DiffMatView &D_,
                 const QuadRuleView &ab_, const QuadRuleView &wt_,
-                const EosParameters &eosParams_, const Geometry &geom_, const Real t_)
+                const EosParameters &eosParams_, const UserParameters &userParams_,
+                const Geometry &geom_, const Real t_)
       : source(source_), KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), U(U_),
-        wenoFlag(wenoFlag_), D(D_), ab(ab_), eosParams(eosParams_), geom(geom_), t(t_) {}
+        wenoFlag(wenoFlag_), D(D_), ab(ab_), eosParams(eosParams_),
+        userParams(userParams_), geom(geom_), t(t_) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
@@ -583,7 +586,7 @@ struct SourceTerms_K<EquationType::NavierStokes, UViewType> {
           }
 
           // Fill force with user defined terms
-          NavierStokes::SourceTerm(t, x, y, z, state, force);
+          NavierStokes::SourceTerm(t, x, y, z, userParams, state, force);
 
           // overwrite source with forcing
           for (int nV = 0; nV < NUM_VARS; nV++) {

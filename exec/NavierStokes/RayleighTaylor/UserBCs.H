@@ -168,7 +168,8 @@ KOKKOS_INLINE_FUNCTION void CellNorth(const DataViewType &U, int rad, int nY, in
   (void)userParams;
   (void)state;
 
-  const Real p = 1.0 + 0.5 * (userParams.rhoL + userParams.rhoH);
+  const Real fs = userParams.Froude * userParams.Froude;
+  const Real p = 1.0 + 0.5 * (userParams.rhoL + userParams.rhoH) / fs;
 
   state[SimVar::dens] = userParams.rhoL;
   state[SimVar::momx] = 0.0;
@@ -196,7 +197,8 @@ KOKKOS_INLINE_FUNCTION void FaceNorth(const DataViewType &U, int i, int k, int n
   (void)userParams;
   (void)state;
 
-  const Real p = 1.0 + 0.5 * (userParams.rhoL + userParams.rhoH);
+  const Real fs = userParams.Froude * userParams.Froude;
+  const Real p = 1.0 + 0.5 * (userParams.rhoL + userParams.rhoH) / fs;
 
   state[SimVar::dens] = userParams.rhoL;
   state[SimVar::momx] = 0.0;

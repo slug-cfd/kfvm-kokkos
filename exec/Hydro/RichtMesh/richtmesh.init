@@ -21,9 +21,9 @@ eos:wenothresh 1.0
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename RichtMesh
-io:plotfreq 1.0
-io:ckptfreq 1000
+io:basename RichtMeshK
+io:plotfreq 3.33
+io:ckptfreq 100000
 io:verbose 1
 
 # User defined properties

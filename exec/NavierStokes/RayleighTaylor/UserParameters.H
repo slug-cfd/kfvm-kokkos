@@ -1,7 +1,7 @@
 struct UserParameters : ParameterStructs {
-  Real rhoH, rhoL;
+  Real rhoH, rhoL, Froude;
 
-  UserParameters() : rhoH(4.0), rhoL(1.0) {}
+  UserParameters() : rhoH(4.0), rhoL(1.0), Froude(1.0) {}
 
   bool set(const std::string &fld, const std::string &val) {
     std::size_t pos;
@@ -10,6 +10,8 @@ struct UserParameters : ParameterStructs {
       rhoH = std::stof(val, &pos);
     } else if (fld == "rhol") {
       rhoL = std::stof(val, &pos);
+    } else if (fld == "froude") {
+      Froude = std::stof(val, &pos);
     } else {
       return false;
     }
