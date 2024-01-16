@@ -2,8 +2,8 @@
 // must take (x,y,z) coordinates regardless of space dimension
 
 KOKKOS_INLINE_FUNCTION
-void SourceTerm(Real t, Real x, Real y, Real z, const Real state[NUM_VARS],
-                Real force[NUM_VARS]) {
+void SourceTerm(Real t, Real x, Real y, Real z, UserParameters userParams,
+                const Real state[NUM_VARS], Real force[NUM_VARS]) {
   using MHD_GLM::SimVar;
 
   (void)t;

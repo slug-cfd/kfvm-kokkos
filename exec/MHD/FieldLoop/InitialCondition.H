@@ -10,6 +10,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
   using Kokkos::sqrt;
   using Physics::MHD_GLM::SimVar;
+  (void)z;
 
   const Real gamm = eosParams.gamma - 1.0;
   const Real rho = 1.0, p = 1.0, A0 = 0.001;
@@ -17,7 +18,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
 
   const Real u = 2.0;
   const Real v = 1.0;
-  const Real w = 0.0;
+  const Real w = SPACE_DIM == 2 ? 0.0 : 0.1;
 
   const Real bx = (r < R ? -y * A0 / r : 0.0), by = (r < R ? x * A0 / r : 0.0), bz = 0.0;
 
