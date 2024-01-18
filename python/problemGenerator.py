@@ -1,3 +1,5 @@
+#!/bin/python
+
 import os
 import shutil
 import questionary
@@ -5,15 +7,15 @@ import questionary
 class ProblemSettings:
     def __init__(self):
         # Human readable choices for all questionary questions
-        self.eqTypes = ["Euler","Ideal MHD-GLM","Ideal MHD-8W","SR Hydro","Linear Advection"]
+        self.eqTypes = ["Euler","Navier Stokes","Ideal MHD-GLM","Ideal MHD-8W","SR Hydro","Linear Advection"]
         self.rkTypes = ["SSP(4,3)","SSP(10,4)","ThreeStarP","FourStarP"]
         self.rsTypes = {"Euler":["HLL","HLLC","Roe"],
+                        "Navier Stokes":["HLL","HLLC","Roe"],
                         "Ideal MHD-GLM":["KEPES","LLF"],
                         "Ideal MHD-8W":["LLF"],
                         "SR Hydro":["HLL","LLF"],
                         "Linear Advection":["Exact"]}
         self.keTypes = ["Squared Exponential"]
-        self.floatPrecs = ["double","single"]
         self.execSpaces = ["Device","Host Parallel","Host Serial"]
         self.bcTypes = ["periodic","outflow","reflecting","user"]
         self.spaceDims = ["2","3"]
@@ -22,6 +24,7 @@ class ProblemSettings:
 
         # Dictionary to convert from human readable choices to code representation
         self.codeNames = {"Euler":"KFVM::EquationType::Hydro",
+                          "Navier Stokes":"KFVM::EquationType::NavierStokes",
                           "Ideal MHD-GLM":"KFVM::EquationType::MHD_GLM",
                           "Ideal MHD-8W":"KFVM::EquationType::MHD_8W",
                           "SR Hydro":"KFVM::EquationType::SRHydro",
@@ -37,8 +40,6 @@ class ProblemSettings:
                           "LLF":"KFVM::RSType::LLF",
                           "Exact":"KFVM::RSType::EXACT",
                           "Squared Exponential":"KFVM::KernelType::SE",
-                          "double":"1",
-                          "single":"0",
                           "Device":"KFVM_EXEC_DEVICE",
                           "Host Parallel":"KFVM_EXEC_HOST",
                           "Host Serial":"KFVM_EXEC_SERIAL",
@@ -91,8 +92,6 @@ class ProblemSettings:
         self.haveSrcTerm = questionary.confirm("Are there source terms?",default=False).ask()
         
         self.execSpace = questionary.select("Execution space:",choices=self.execSpaces).ask()
-        
-        self.floatPrec = questionary.select("Float precision:",choices=self.floatPrecs).ask()
 
     def verify(self):
         print()
@@ -113,7 +112,6 @@ class ProblemSettings:
         print("BC(Top): ",self.bcTop)
         print("Source terms present: ",self.haveSrcTerm)
         print("Execution space: ",self.execSpace)
-        print("Float Precision: ",self.floatPrec)
         print()
         return questionary.confirm("Is this the right configuration?").ask()
 
@@ -124,6 +122,7 @@ class ProblemSettings:
 
         # Copy template files to new directory
         eqSuffs = {"Euler":"Euler",
+                   "Navier Stokes":"NavierStokes",
                    "Ideal MHD-GLM":"MHD_GLM",
                    "Ideal MHD-8W":"MHD_8W",
                    "SR Hydro":"SRHydro",
@@ -144,7 +143,6 @@ class ProblemSettings:
                     .replace("%{SPACE_DIM}",self.spaceDim)
                     .replace("%{STEN_RAD}",self.stenRad)
                     .replace("%{NUM_QUAD}",self.numQuad)
-                    .replace("%{FLOAT_PREC}",self.codeNames[self.floatPrec])
                     .replace("%{EXEC_SPACE}",self.codeNames[self.execSpace])
                     .replace("%{KERN_TYPE}",self.codeNames[self.keType])
                     .replace("%{EQ_TYPE}",self.codeNames[self.eqType])

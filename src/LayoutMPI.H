@@ -36,7 +36,7 @@ struct LayoutMPI {
   // Will this rank communicate in each direction
   bool hasEWComm, hasNSComm, hasTBComm;
 
-  LayoutMPI() : realType(FLOAT_PRECISION == 0 ? MPI_FLOAT : MPI_DOUBLE) {
+  LayoutMPI() : realType(MPI_DOUBLE) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   }

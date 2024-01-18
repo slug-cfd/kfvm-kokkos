@@ -7,7 +7,7 @@ void InitialCondition(Real x,Real y,Real z,
 		      UserParameters userParams,
 		      Real state[NUM_VARS])
 {
-  using Physics::MHD_8W::SimVar;
+  using Physics::NavierStokes::SimVar;
   
   (void)x;
   (void)y;
@@ -20,7 +20,4 @@ void InitialCondition(Real x,Real y,Real z,
   state[SimVar::momy] = ;
   state[SimVar::momz] = ;
   state[SimVar::etot] = ;
-  state[SimVar::magx] = ;
-  state[SimVar::magy] = ;
-  state[SimVar::magz] = ;
 }

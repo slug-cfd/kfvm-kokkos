@@ -1,9 +1,9 @@
 #ifndef DEFINITIONS_H_
 #define DEFINITIONS_H_
 
+#include "../../../src/numeric/RKTypes.H"
 #include "../../../src/physics/EquationTypes.H"
 #include "../../../src/physics/RSTypes.H"
-#include "../../../src/numeric/RKTypes.H"
 #include "../../../src/stencil/KernelTypes.H"
 
 // Space dimension of problem
@@ -14,9 +14,6 @@
 
 // Number of Gauss-Legendre points on faces (1-5)
 #define NUM_QUAD_PTS 2
-
-// Floating point precision (1 for double, 0 for single)
-#define FLOAT_PRECISION 1
 
 #define KFVM_EXEC_DEVICE
 

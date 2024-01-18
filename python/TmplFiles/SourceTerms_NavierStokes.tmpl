@@ -5,7 +5,7 @@ KOKKOS_INLINE_FUNCTION
 void SourceTerm(Real t, Real x, Real y, Real z, UserParameters userParams,                              
                 const Real state[NUM_VARS], Real force[NUM_VARS])
 {
-  using LinAdv::SimVar;
+  using NavierStokes::SimVar;
   
   (void)t;
   (void)x;
