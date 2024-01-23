@@ -1,0 +1,32 @@
+# Set mesh resolution and extent
+mesh:resolution 64 64 128
+mesh:numblocks 1 1 1
+mesh:extent -0.5 0.5 -0.5 0.5 -1.0 1.0
+
+# Set time information
+time:final 1.0
+time:mindt 1.e-8
+time:cfl 1.0
+time:maxsteps 2000
+time:atol 1.e-4
+time:rtol 1.e-4
+
+# Set stencil options
+stencil:lfac 5
+
+# Set fluid properties
+eos:gamma 1.66666666666
+eos:wenothresh 1.0
+
+# Output settings
+io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
+io:datadir data
+io:basename FieldLoopTilt
+io:plotfreq 0.1
+io:ckptfreq 100
+io:statsfreq -1
+io:verbose 1
+
+# User defined parameters
+user:a0 1.e-3
+user:radius 0.3
