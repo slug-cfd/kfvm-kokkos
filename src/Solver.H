@@ -110,7 +110,7 @@ class Solver {
   }
 
   Real rhsSpeedComm(Real);
-  Real glmSpeedComm(Real);
+  Real glmSpeedComm(Real, Real);
   int timeStepStatusComm(int);
   Real timeStepErrEstComm(Real);
 

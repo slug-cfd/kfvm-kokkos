@@ -341,22 +341,18 @@ struct SpeedEstimate_K<EquationType::MHD_GLM> {
       : KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), eosParams(eosParams_) {}
 
   KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
-                  Real &maxCh) const {
+  void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k), Real &maxLam,
+                  Real &maxVel) const {
     using Kokkos::fabs;
-    using Kokkos::fmax;
     using MHD_GLM::ConsVec;
     using MHD_GLM::SimVar;
 
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
 
-    const Real pf = 1.0;
-    Real cfDiff = 0.0;
-
     // Check x-faces
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       // pull out states
-      Real cf, cfDiffLoc, v;
+      Real cf, lam, vel;
       ConsVec uM, uP;
       for (int nV = 0; nV < NUM_VARS; nV++) {
         uM[nV] = rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV);
@@ -364,22 +360,24 @@ struct SpeedEstimate_K<EquationType::MHD_GLM> {
       }
 
       // Minus face
-      v = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
+      vel = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
       cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uM);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
+      lam = cf + vel;
+      maxVel = vel > maxVel ? vel : maxVel;
+      maxLam = lam > maxLam ? lam : maxLam;
 
       // Plus face
-      v = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
+      vel = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
       cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uP);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
+      lam = cf + vel;
+      maxVel = vel > maxVel ? vel : maxVel;
+      maxLam = lam > maxLam ? lam : maxLam;
     }
 
     // Check y-faces
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       // pull out states
-      Real cf, cfDiffLoc, v;
+      Real cf, lam, vel;
       ConsVec uM, uP;
       for (int nV = 0; nV < NUM_VARS; nV++) {
         uM[nV] = rsY(KFVM_D_DECL(i, j, k), 1, nQ, nV);
@@ -387,23 +385,25 @@ struct SpeedEstimate_K<EquationType::MHD_GLM> {
       }
 
       // Minus face
-      v = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
+      vel = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
       cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uM);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
+      lam = cf + vel;
+      maxVel = vel > maxVel ? vel : maxVel;
+      maxLam = lam > maxLam ? lam : maxLam;
 
       // Plus face
-      v = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
+      vel = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
       cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uP);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
+      lam = cf + vel;
+      maxVel = vel > maxVel ? vel : maxVel;
+      maxLam = lam > maxLam ? lam : maxLam;
     }
 
 #if (SPACE_DIM == 3)
     // Check z-faces
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       // pull out states
-      Real cf, cfDiffLoc, v;
+      Real cf, lam, vel;
       ConsVec uM, uP;
       for (int nV = 0; nV < NUM_VARS; nV++) {
         uM[nV] = rsZ(i, j, k, 1, nQ, nV);
@@ -411,19 +411,20 @@ struct SpeedEstimate_K<EquationType::MHD_GLM> {
       }
 
       // Minus face
-      v = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
+      vel = fabs(uM[SimVar::momx] / uM[SimVar::dens]);
       cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uM);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
+      lam = cf + vel;
+      maxVel = vel > maxVel ? vel : maxVel;
+      maxLam = lam > maxLam ? lam : maxLam;
 
       // Plus face
-      v = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
+      vel = fabs(uP[SimVar::momx] / uP[SimVar::dens]);
       cf = EOS<EquationType::MHD_GLM>::fastMagSonicX(eosParams.gamma, uP);
-      cfDiffLoc = v < cf ? cf - v : cf;
-      cfDiff = fmax(cfDiff, cfDiffLoc);
+      lam = cf + vel;
+      maxVel = vel > maxVel ? vel : maxVel;
+      maxLam = lam > maxLam ? lam : maxLam;
     }
 #endif
-    maxCh = pf * cfDiff;
   }
 };
 

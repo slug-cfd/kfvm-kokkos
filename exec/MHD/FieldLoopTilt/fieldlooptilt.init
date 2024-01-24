@@ -16,7 +16,7 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.66666666666
-eos:wenothresh 1.0
+eos:wenothresh -1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml

@@ -95,7 +95,7 @@ struct StencilInfo<3, 3> {
   static constexpr idx_t nWorkspace = nCellsFull + nCellsBias + nIndic;
   static constexpr idx_t nSub = 8;
   static constexpr idx_t nBias = 6;
-  static constexpr std::array<idx_t, 3> monoDeg{5, 3, 2};
+  static constexpr std::array<idx_t, 3> monoDeg{4, 3, 2};
 };
 
 } // end namespace Stencil

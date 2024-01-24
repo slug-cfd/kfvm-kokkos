@@ -403,14 +403,14 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
 
   // Calculate cleaning speed for GLM method
   if (eqType == EquationType::MHD_GLM) {
-    Real ch_glm = 0.0;
+    Real maxLam = 0.0, maxVel = 0.0;
     Kokkos::parallel_reduce(
         "CalculateCH_GLM", cellRng,
         Physics::SpeedEstimate_K<eqType>(
             KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), ps.eosParams),
-        Kokkos::Max<Real>(ch_glm));
+        Kokkos::Max<Real>(maxLam), Kokkos::Max<Real>(maxVel));
     Kokkos::fence("Solver::evalRHS(GLM reduction)");
-    ps.eosParams.ch_glm = glmSpeedComm(ch_glm);
+    ps.eosParams.ch_glm = glmSpeedComm(maxLam, maxVel);
   }
 
   // Fill in source terms
@@ -481,14 +481,15 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
   return rhsSpeedComm(maxVel);
 }
 
-Real Solver::glmSpeedComm(Real lch) {
+Real Solver::glmSpeedComm(Real lam, Real vel) {
   if (ps.layoutMPI.size == 1) {
-    return lch;
+    return lam - vel;
   }
 
-  Real gch;
-  MPI_Allreduce(&lch, &gch, 1, ps.layoutMPI.realType, MPI_MAX, ps.layoutMPI.commWorld);
-  return gch;
+  Real lPack[] = {lam, vel};
+  Real gPack[2];
+  MPI_Allreduce(lPack, gPack, 2, ps.layoutMPI.realType, MPI_MAX, ps.layoutMPI.commWorld);
+  return gPack[0] - gPack[1];
 }
 
 Real Solver::rhsSpeedComm(Real lVMax) {

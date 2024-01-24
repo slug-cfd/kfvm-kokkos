@@ -6,13 +6,13 @@ mesh:extent -5.0 5.0 -5.0 5.0 -5.0 5.0
 # Set time information
 time:final 10.0
 time:mindt 1.e-10
-time:cfl 1.5
+time:cfl 1.25
 time:maxsteps 4000
-time:atol 1.e-10
-time:rtol 1.e-8
+time:atol 1.e-6
+time:rtol 1.e-6
 
 # Set stencil options
-stencil:lfac 5
+stencil:lfac 3
 
 # Set fluid properties
 eos:gamma 1.666666666666
@@ -23,5 +23,5 @@ io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
 io:basename MagVort
 io:plotfreq 0.5
-io:ckptfreq 20
+io:ckptfreq 10000
 io:verbose 1
