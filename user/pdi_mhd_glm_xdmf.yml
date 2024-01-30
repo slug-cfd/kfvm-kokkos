@@ -286,7 +286,7 @@ pdi:
         stats_data:
           type: array
           subtype: double
-          size: [$stats_max_rows, 3]
+          size: [$stats_max_rows, 4]
       write:
         stats_row:
           - dataset: stats_data

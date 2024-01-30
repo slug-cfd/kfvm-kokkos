@@ -21,7 +21,7 @@ eos:wenothresh 1.0
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_8w_xdmf.yml
 io:datadir data
-io:basename MagJetGen8W
+io:basename MagJetGen
 io:plotfreq 0.25
 io:ckptfreq 200
 io:verbose 1

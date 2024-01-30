@@ -1,12 +1,12 @@
 # Set mesh resolution and extent
-mesh:resolution 3072 512 4
+mesh:resolution 256 768
 mesh:numblocks 1 1 1
-mesh:extent -0.5 5.5 0.0 1.0 0.0 0.0625
+mesh:extent 0.0 0.5 0.0 1.5
 
 # Set time information
-time:final 3.33
+time:final 0.02
 time:mindt 1.e-10
-time:cfl 1.0
+time:cfl 0.75
 time:maxsteps 20000
 time:atol 1.e-3
 time:rtol 1.e-3
@@ -15,17 +15,18 @@ time:rtol 1.e-3
 stencil:lfac 5
 
 # Set fluid properties
-eos:gamma 1.4
+eos:gamma 1.6666666666666
 eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename RichtMesh
-io:plotfreq 3.33
-io:ckptfreq 100000
+io:basename AstroJetHD
+io:plotfreq 0.001
+io:ckptfreq 200
 io:verbose 1
 
-# User defined properties
-user:mach 2.0
-user:densrat 3.0
+# User specific options
+user:inletradius 0.05
+user:mach 80.0
+user:densityratio 10.0

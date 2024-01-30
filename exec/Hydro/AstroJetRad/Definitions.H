@@ -7,7 +7,7 @@
 #include "../../../src/stencil/KernelTypes.H"
 
 // Space dimension of problem
-#define SPACE_DIM 3
+#define SPACE_DIM 2
 
 // Stencil radius (2-4)
 #define STENCIL_RADIUS 2
@@ -18,8 +18,8 @@
 // #define KFVM_EXEC_HOST
 
 constexpr KFVM::KernelType kernelType = KFVM::KernelType::SE;
-constexpr KFVM::EquationType eqType = KFVM::EquationType::MHD_GLM;
-constexpr KFVM::RSType rsType = KFVM::RSType::LLF;
+constexpr KFVM::EquationType eqType = KFVM::EquationType::Hydro;
+constexpr KFVM::RSType rsType = KFVM::RSType::HLL;
 constexpr KFVM::RKType rkType = KFVM::RKType::SSP4_3_2;
 
 #endif

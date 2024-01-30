@@ -1,18 +1,18 @@
 # Set mesh resolution and extent
-mesh:resolution 32 32 32
+mesh:resolution NG NG NG
 mesh:numblocks 1 1 1
 mesh:extent -5.0 5.0 -5.0 5.0 -5.0 5.0
 
 # Set time information
 time:final 10.0
 time:mindt 1.e-10
-time:cfl 1.25
-time:maxsteps 4000
+time:cfl 0.5
+time:maxsteps 20000
 time:atol 1.e-6
 time:rtol 1.e-6
 
 # Set stencil options
-stencil:lfac 3
+stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.666666666666
@@ -21,7 +21,7 @@ eos:wenothresh 1.0
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
-io:basename MagVort
-io:plotfreq 0.5
+io:basename MagVortUpsi
+io:plotfreq -1.0
 io:ckptfreq 10000
 io:verbose 1

@@ -301,7 +301,7 @@ struct SpeedEstimate_K<EquationType::Hydro> {
       : KFVM_D_DECL(rsX(rsX_), rsY(rsY_), rsZ(rsZ_)), eosParams(eosParams_) {}
 
   KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+  void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k), Real &maxLam,
                   Real &maxVel) const {}
 };
 

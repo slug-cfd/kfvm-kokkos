@@ -20,6 +20,6 @@
 constexpr KFVM::KernelType kernelType = KFVM::KernelType::SE;
 constexpr KFVM::EquationType eqType = KFVM::EquationType::MHD_GLM;
 constexpr KFVM::RSType rsType = KFVM::RSType::LLF;
-constexpr KFVM::RKType rkType = KFVM::RKType::ThreeStarP;
+constexpr KFVM::RKType rkType = KFVM::RKType::FourStarP;
 
 #endif
