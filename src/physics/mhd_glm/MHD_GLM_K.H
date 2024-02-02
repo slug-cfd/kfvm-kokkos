@@ -578,7 +578,7 @@ struct SourceTerms_K<EquationType::MHD_GLM, UViewType> {
           }
 
           // Fill force with user defined terms
-          MHD_GLM::SourceTerm(t, x, y, z, userParams, state, force);
+          MHD_GLM::SourceTerm(t, x, y, z, eosParams, userParams, state, force);
 
           // Define GLM source terms
           const Real vx = state[SimVar::momx] / state[SimVar::dens];

@@ -296,7 +296,7 @@ struct SourceTerms_K<EquationType::SRHydro, UViewType> {
           }
 
           // Fill force with user defined terms
-          SRHydro::SourceTerm(t, x, y, z, userParams, state, force);
+          SRHydro::SourceTerm(t, x, y, z, eosParams, userParams, state, force);
 
           // overwrite source with forcing
           for (int nV = 0; nV < NUM_VARS; nV++) {

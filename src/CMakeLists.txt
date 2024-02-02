@@ -7,7 +7,7 @@ add_subdirectory(physics)
 add_subdirectory(stencil)
 add_subdirectory(io)
 
-add_executable(kfvm.ex main.cpp ${USER_DIR}/ProblemSetup.cpp Solver.cpp BoundaryData.cpp)
+add_executable(kfvm.ex main.cpp ${USER_DIR}/ProblemSetup.cpp Solver.cpp BoundaryData.cpp ParameterStructs.cpp)
 
 target_include_directories(kfvm.ex PUBLIC ${USER_DIR})
 

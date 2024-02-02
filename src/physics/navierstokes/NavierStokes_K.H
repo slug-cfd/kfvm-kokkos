@@ -586,7 +586,7 @@ struct SourceTerms_K<EquationType::NavierStokes, UViewType> {
           }
 
           // Fill force with user defined terms
-          NavierStokes::SourceTerm(t, x, y, z, userParams, state, force);
+          NavierStokes::SourceTerm(t, x, y, z, eosParams, userParams, state, force);
 
           // overwrite source with forcing
           for (int nV = 0; nV < NUM_VARS; nV++) {

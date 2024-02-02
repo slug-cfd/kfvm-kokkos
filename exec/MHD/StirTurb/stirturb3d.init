@@ -1,0 +1,35 @@
+# Set mesh resolution and extent
+mesh:resolution 64 64 64
+mesh:numblocks 1 1 1
+mesh:extent 0.0 1.0 0.0 1.0 0.0 1.0
+
+# Set time information
+time:final 0.65
+time:mindt 1.e-10
+time:cfl 1.0
+time:maxsteps 10000
+time:atol 1.e-2
+time:rtol 1.e-2
+
+# Set stencil options
+stencil:lfac 5
+
+# Set fluid properties
+eos:gamma 1.0001
+eos:wenothresh 1.0
+eos:forcestr 0.5
+eos:forcetdyn 0.05
+eos:forcetoff 0.15
+eos:forceratio 1.0
+
+# Output settings
+io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
+io:datadir data
+io:basename StirTurbICM
+io:plotfreq 0.025
+io:ckptfreq 200
+io:statsfreq 10
+io:verbose 1
+
+# User defined parameters
+user:beta 1.e6

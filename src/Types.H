@@ -74,6 +74,7 @@ typedef Kokkos::View<Real **[2][NUM_QUAD_PTS][NUM_VARS], MemSpace> FaceDataView;
 typedef Kokkos::View<Real *[NUM_QUAD_PTS][NUM_VARS], MemSpacePinned> FaceDataPinnedView;
 typedef Kokkos::View<Real **[NUM_QUAD_PTS][NUM_QUAD_PTS][NUM_VARS], MemSpace>
     SourceDataView;
+
 #else
 typedef Kokkos::View<flag_t ***, Kokkos::LayoutLeft, Kokkos::HostSpace> HostFlagDataView;
 typedef Kokkos::View<Real ***[2], MemSpace> WenoFlagView;
@@ -98,6 +99,17 @@ typedef Kokkos::View<Real[NUM_QUAD_PTS][NUM_QUAD_PTS + 2], MemSpace> DiffMatView
 
 // Unordered map for storing weno flags
 typedef Kokkos::UnorderedMap<idx_t, void, MemSpace> FlagMap;
+
+// Set up for random forcing as needed
+#ifdef ENABLE_RANDOM_FORCING
+#define MAX_FORCING_MODE 4 // highest wavenumber to force
+#if (SPACE_DIM == 2)
+#define NUM_FORCING_MODES 24 // Gives modes up to k = 2(L/2pi)
+#else
+#define NUM_FORCING_MODES 120 // Gives modes up to k = 2(L/2pi)
+#endif
+typedef Kokkos::View<Real[NUM_FORCING_MODES][SPACE_DIM][3], MemSpace> ForcingModeView;
+#endif
 } // namespace KFVM
 
 #endif

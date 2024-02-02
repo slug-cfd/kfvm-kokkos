@@ -238,7 +238,7 @@ struct SourceTerms_K<EquationType::LinAdv, UViewType> {
           }
 
           // Fill force with user defined terms
-          LinAdv::SourceTerm(t, x, y, z, userParams, state, force);
+          LinAdv::SourceTerm(t, x, y, z, eosParams, userParams, state, force);
 
           // overwrite source with forcing
           for (int nV = 0; nV < NUM_VARS; nV++) {

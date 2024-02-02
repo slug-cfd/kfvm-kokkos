@@ -48,6 +48,9 @@ Solver::Solver(ProblemSetup &ps_)
       nRhsEval(0), nRejectUnphys(0), nRejectThresh(0) {
   // Fill IC from user defined function or restart file
   if (!ps.restart) {
+    // Set forcing once for the IC call to have access to it
+    ps.eosParams.updateForcing(dt, ps.layoutMPI.rank, ps.layoutMPI.size,
+                               ps.layoutMPI.realType, ps.layoutMPI.commWorld);
     setIC();
     evalAuxiliary();
     if (ps.plotFreq > 0.0) {
@@ -95,6 +98,11 @@ void Solver::Solve() {
   for (; nTS < ps.maxTimeSteps && !lastTimeStep; ++nTS) {
     Print::Single(ps, "Step {}: time = {:<.4} ({:<.4}%)\n", nTS, time,
                   100.0 * time / ps.finalTime);
+
+    // Update the random forcing information if needed
+    // This is a no-op when not needed
+    ps.eosParams.updateForcing(dt, ps.layoutMPI.rank, ps.layoutMPI.size,
+                               ps.layoutMPI.realType, ps.layoutMPI.commWorld);
 
     // Step forward one time step
     TakeStep();
