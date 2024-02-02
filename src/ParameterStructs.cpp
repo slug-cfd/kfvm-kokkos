@@ -50,16 +50,9 @@ void EosParameters::updateForcing(const Real dt, int rank, int size,
     std::random_device rd{};
     std::mt19937 gen{rd()};
 
-    // Distribution type
-    std::normal_distribution<Real> sn{0.0, 1.0};
-
-    // Forcing type
-    const Real fr = forceRatio, mfr = (1.0 - 2.0 * forceRatio);
-
-    // Scalings from OU process
-    // use full variance for first draw (dt == 0) then OU after
-    const Real mFac = std::exp(-dt / forceTDyn);
-    const Real sFac = dt > 0.0 ? std::sqrt(1.0 - std::exp(-2.0 * dt / forceTDyn)) : 1.0;
+    // Normal distribution with variance dt for dt > 0, SN otherwise
+    const Real rdt = dt > 0.0 ? std::sqrt(dt) : 1.0;
+    std::normal_distribution<Real> sn{0.0, rdt};
 
     // copy down to modify host-side
     Kokkos::deep_copy(hf, fAmp);
@@ -68,44 +61,21 @@ void EosParameters::updateForcing(const Real dt, int rank, int size,
       // extract wavevector and pad out 3rd component in 2d
       const Real k1 = hf(n, 0, 0), k2 = hf(n, 1, 0);
 #if (SPACE_DIM == 2)
-      const Real k3 = 0.0, awr = 0.0, awi = 0.0;
+      const Real k3 = 0.0;
 #else
       const Real k3 = hf(n, 2, 0);
 #endif
-      const Real ksq = k1 * k1 + k2 * k2 + k3 * k3, kMag = std::sqrt(ksq);
-      const Real sig =
-          sFac * std::sqrt(std::pow(4.0 * M_PI * M_PI * ksq, 3) * std::exp(-4.0 * kMag));
 
-      // Propagate forward by OU
-      const Real aur = mFac * hf(n, 0, 1) + sig * sn(gen);
-      const Real aui = mFac * hf(n, 0, 2) + sig * sn(gen);
-      const Real avr = mFac * hf(n, 1, 1) + sig * sn(gen);
-      const Real avi = mFac * hf(n, 1, 2) + sig * sn(gen);
-#if (SPACE_DIM == 3)
-      const Real awr = mFac * hf(n, 2, 1) + sig * sn(gen);
-      const Real awi = mFac * hf(n, 2, 2) + sig * sn(gen);
-#endif
+      // Get std dev for this k-vector
+      const Real kMag = std::sqrt(k1 * k1 + k2 * k2 + k3 * k3);
+      const Real sig = std::sqrt(std::pow(2.0 * M_PI * kMag, 6) * std::exp(-4.0 * kMag));
 
-      // Project onto solenoidal vs compressive
-      const Real iksq = 1.0 / ksq;
-      hf(n, 0, 1) = (fr + iksq * mfr * k1 * k1) * aur +
-                    iksq * mfr * (k1 * k2 * avr + k1 * k3 * awr);
-
-      hf(n, 0, 2) = (fr + iksq * mfr * k1 * k1) * aui +
-                    iksq * mfr * (k1 * k2 * avi + k1 * k3 * awi);
-
-      hf(n, 1, 1) = (fr + iksq * mfr * k2 * k2) * avr +
-                    iksq * mfr * (k1 * k2 * aur + k2 * k3 * awr);
-
-      hf(n, 1, 2) = (fr + iksq * mfr * k2 * k2) * avi +
-                    iksq * mfr * (k1 * k2 * aui + k2 * k3 * awi);
-#if (SPACE_DIM == 3)
-      hf(n, 2, 1) = (fr + iksq * mfr * k3 * k3) * awr +
-                    iksq * mfr * (k1 * k3 * aur + k2 * k3 * avr);
-
-      hf(n, 2, 2) = (fr + iksq * mfr * k3 * k3) * awi +
-                    iksq * mfr * (k1 * k3 * aui + k2 * k3 * avi);
-#endif
+      // OU propagate
+      for (int d = 0; d < SPACE_DIM; d++) {
+        // Initialized to zero, so this is a fresh draw the first time
+        hf(n, d, 1) = (1.0 - dt * forceTDyn) * hf(n, d, 1) + sig * sn(gen); // real
+        hf(n, d, 2) = (1.0 - dt * forceTDyn) * hf(n, d, 2) + sig * sn(gen); // imag
+      }
     }
   }
   Kokkos::fence();

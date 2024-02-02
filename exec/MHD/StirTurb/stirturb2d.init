@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 512 512
+mesh:resolution 128 128
 mesh:numblocks 1 1
 mesh:extent 0.0 1.0 0.0 1.0
 
@@ -8,8 +8,8 @@ time:final 0.65
 time:mindt 1.e-10
 time:cfl 1.0
 time:maxsteps 10000
-time:atol 1.e-2
-time:rtol 1.e-2
+time:atol 1.e-3
+time:rtol 1.e-3
 
 # Set stencil options
 stencil:lfac 5
@@ -25,11 +25,11 @@ eos:forceratio 1.0
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
-io:basename StirTurbICM
+io:basename StirTurbISM
 io:plotfreq 0.025
 io:ckptfreq 100
 io:statsfreq 10
 io:verbose 1
 
 # User defined parameters
-user:beta 1.e6
+user:beta 1.e-1
