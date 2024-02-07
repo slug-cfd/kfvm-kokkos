@@ -48,9 +48,6 @@ Solver::Solver(ProblemSetup &ps_)
       nRhsEval(0), nRejectUnphys(0), nRejectThresh(0) {
   // Fill IC from user defined function or restart file
   if (!ps.restart) {
-    // Set forcing once for the IC call to have access to it
-    ps.eosParams.updateForcing(dt, ps.layoutMPI.rank, ps.layoutMPI.size,
-                               ps.layoutMPI.realType, ps.layoutMPI.commWorld);
     setIC();
     evalAuxiliary();
     if (ps.plotFreq > 0.0) {
@@ -101,8 +98,9 @@ void Solver::Solve() {
 
     // Update the random forcing information if needed
     // This is a no-op when not needed
-    ps.eosParams.updateForcing(dt, ps.layoutMPI.rank, ps.layoutMPI.size,
-                               ps.layoutMPI.realType, ps.layoutMPI.commWorld);
+    if (time < ps.eosParams.forceTOff) {
+      applyForcing();
+    }
 
     // Step forward one time step
     TakeStep();
@@ -362,6 +360,51 @@ Real Solver::timeStepErrEstComm(Real lEst) {
   Real gEst;
   MPI_Allreduce(&lEst, &gEst, 1, ps.layoutMPI.realType, MPI_SUM, ps.layoutMPI.commWorld);
   return gEst;
+}
+
+void Solver::applyForcing() {
+#ifdef ENABLE_RANDOM_FORCING
+  Kokkos::Profiling::pushRegion("Solver::applyForcing");
+
+  // Update random forcing coefficients
+  ps.eosParams.updateForcing(dt, ps.layoutMPI.rank, ps.layoutMPI.size,
+                             ps.layoutMPI.realType, ps.layoutMPI.commWorld);
+
+  auto cellRng = interiorCellRange();
+  auto U = trimCellHalo(U_halo);
+
+  // Integrate to find amplitude to match energy injection rate
+  Real intA = 0.0, intB = 0.0;
+  Kokkos::parallel_reduce(
+      "Forcing integrals", cellRng,
+      Physics::RandForcingIntegrate_K<eqType, decltype(U)>(U, ps.eosParams, geom),
+      Kokkos::Sum<Real>(intA), Kokkos::Sum<Real>(intB));
+  Kokkos::fence("Solver::applyForcing(Forcing integrals)");
+  ps.eosParams.forceStr = forceStrComm(intA, intB, dt);
+
+  // Perturb state with forcing
+  Kokkos::parallel_for(
+      "Apply random forcing", cellRng,
+      Physics::RandForcingApply_K<eqType, decltype(U)>(U, ps.eosParams, geom));
+  Kokkos::deep_copy(Uprev_halo, U_halo);
+
+  Kokkos::Profiling::popRegion();
+#endif
+}
+
+Real Solver::forceStrComm(Real intA, Real intB, Real tInj) {
+#ifdef ENABLE_RANDOM_FORCING
+  // Reduce to all processes
+  Real lInts[] = {intA, intB}, gInts[] = {0.0, 0.0};
+  MPI_Allreduce(&lInts, &gInts, 2, ps.layoutMPI.realType, MPI_SUM,
+                ps.layoutMPI.commWorld);
+
+  // solve for Edot and return
+  const Real A = gInts[0], B = gInts[1], C = -ps.eosParams.forceEDot * tInj / geom.dvol;
+  return (-B + std::sqrt(std::fmax(0.0, B * B - 4.0 * A * C))) / (2.0 * A);
+#else
+  return 0.0;
+#endif
 }
 
 Real Solver::evalRHS(ConsDataView sol_halo, Real t) {

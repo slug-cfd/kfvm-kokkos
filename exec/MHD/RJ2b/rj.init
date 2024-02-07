@@ -1,0 +1,27 @@
+# Set mesh resolution and extent
+mesh:resolution 512 8
+mesh:numblocks 1 1
+mesh:extent 0.0 1.0 0.0 0.015625
+
+# Set time information
+time:final 0.035
+time:mindt 1.e-10
+time:cfl 1.25
+time:maxsteps 10000
+time:atol 1.e-4
+time:rtol 1.e-4
+
+# Set stencil options
+stencil:lfac 5
+
+# Set fluid properties
+eos:gamma 1.666666666666
+eos:wenothresh -1.0
+
+# Output settings
+io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
+io:datadir data
+io:basename RJ2b
+io:plotfreq 0.0035
+io:ckptfreq 200
+io:verbose 1

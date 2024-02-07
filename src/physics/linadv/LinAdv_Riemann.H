@@ -15,8 +15,11 @@ namespace KFVM {
 
 namespace Physics {
 
+namespace LinAdv {
+using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+
 KOKKOS_INLINE_FUNCTION
-Real linadvExact(Real gamma, int dir, const LinAdv::ConsVec uL, const LinAdv::ConsVec uR,
+Real linadvExact(Real gamma, int dir, const ConsVec uL, const ConsVec uR,
                  Real F[NUM_VARS]) {
   using Kokkos::cos;
   using Kokkos::fabs;
@@ -38,30 +41,28 @@ Real linadvExact(Real gamma, int dir, const LinAdv::ConsVec uL, const LinAdv::Co
   return 0.0;
 }
 
+} // namespace LinAdv
+
 template <RSType rst>
 struct LinAdvRS {};
 
 template <>
 struct LinAdvRS<RSType::EXACT> {
-  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_X(const Real gamma,
-                                                    const LinAdv::ConsVec uL,
-                                                    const LinAdv::ConsVec uR,
-                                                    LinAdv::ConsVec F) {
-    return linadvExact(gamma, 0, uL, uR, F);
+  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_X(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, ConsVec F) {
+    return LinAdv::linadvExact(gamma, 0, uL, uR, F);
   }
 
-  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Y(const Real gamma,
-                                                    const LinAdv::ConsVec uL,
-                                                    const LinAdv::ConsVec uR,
-                                                    LinAdv::ConsVec F) {
-    return linadvExact(gamma, 1, uL, uR, F);
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Y(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, ConsVec F) {
+    return LinAdv::linadvExact(gamma, 1, uL, uR, F);
   }
 
-  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Z(const Real gamma,
-                                                    const LinAdv::ConsVec uL,
-                                                    const LinAdv::ConsVec uR,
-                                                    LinAdv::ConsVec F) {
-    return linadvExact(gamma, 2, uL, uR, F);
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Z(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, ConsVec F) {
+    return LinAdv::linadvExact(gamma, 2, uL, uR, F);
   }
 };
 

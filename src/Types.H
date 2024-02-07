@@ -102,11 +102,11 @@ typedef Kokkos::UnorderedMap<idx_t, void, MemSpace> FlagMap;
 
 // Set up for random forcing as needed
 #ifdef ENABLE_RANDOM_FORCING
-#define MAX_FORCING_MODE 4 // highest wavenumber to force
+#define MAX_FORCING_MODE 3 // highest wavenumber to force
 #if (SPACE_DIM == 2)
-#define NUM_FORCING_MODES 24 // Gives modes up to k = 2(L/2pi)
+#define NUM_FORCING_MODES 14 // Gives modes up to k = 3(L/2pi)
 #else
-#define NUM_FORCING_MODES 120 // Gives modes up to k = 2(L/2pi)
+#define NUM_FORCING_MODES 57 // Gives modes up to k = 3(L/2pi)
 #endif
 typedef Kokkos::View<Real[NUM_FORCING_MODES][SPACE_DIM][3], MemSpace> ForcingModeView;
 #endif

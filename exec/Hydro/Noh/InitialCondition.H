@@ -7,7 +7,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   using Kokkos::atan2;
   using Kokkos::cos;
   using Kokkos::sin;
-  using Physics::Hydro::SimVar;
+  using ConsVar = typename SimVar<EquationType::Hydro>::ConsVar;
 
   (void)z;
 
@@ -16,9 +16,9 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real theta = atan2(y, x), vx = -V * cos(theta), vy = -V * sin(theta);
   const Real P = 1.e-6;
 
-  state[SimVar::dens] = rho;
-  state[SimVar::momx] = rho * vx;
-  state[SimVar::momy] = rho * vy;
-  state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = P / gamm + 0.5 * rho * (vx * vx + vy * vy);
+  state[ConsVar::dens] = rho;
+  state[ConsVar::momx] = rho * vx;
+  state[ConsVar::momy] = rho * vy;
+  state[ConsVar::momz] = 0.0;
+  state[ConsVar::etot] = P / gamm + 0.5 * rho * (vx * vx + vy * vy);
 }

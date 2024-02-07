@@ -120,7 +120,7 @@ struct ProblemSetup {
       }
       fmt::print("  wenothresh: {:<.4}\n", eosParams.wenoThresh);
 #ifdef ENABLE_RANDOM_FORCING
-      fmt::print("  forcestr: {:<.4}\n", eosParams.forceStr);
+      fmt::print("  forceedot: {:<.4}\n", eosParams.forceEDot);
       fmt::print("  forcetdyn: {:<.4}\n", eosParams.forceTDyn);
       fmt::print("  forcetoff: {:<.4}\n", eosParams.forceTOff);
       fmt::print("  forceratio: {:<.4}\n", eosParams.forceRatio);

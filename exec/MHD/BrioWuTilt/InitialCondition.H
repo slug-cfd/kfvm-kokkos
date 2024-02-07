@@ -4,7 +4,7 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
-  using Physics::MHD_GLM::SimVar;
+  using ConsVar = typename SimVar<EquationType::MHD_GLM>::ConsVar;
 
   // Parallel coordinate
   const Real xp = (2.0 * x + y) / sqrt(5.0);
@@ -19,12 +19,12 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real bx = (2.0 * bPar - bPerp) / sqrt(5.0);
   const Real by = (bPar + 2.0 * bPerp) / sqrt(5.0);
 
-  state[SimVar::dens] = rho;
-  state[SimVar::momx] = 0.0;
-  state[SimVar::momy] = 0.0;
-  state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = p / gamm + 0.5 * (bx * bx + by * by);
-  state[SimVar::magx] = bx;
-  state[SimVar::magy] = by;
-  state[SimVar::magz] = 0.0;
+  state[ConsVar::dens] = rho;
+  state[ConsVar::momx] = 0.0;
+  state[ConsVar::momy] = 0.0;
+  state[ConsVar::momz] = 0.0;
+  state[ConsVar::etot] = p / gamm + 0.5 * (bx * bx + by * by);
+  state[ConsVar::magx] = bx;
+  state[ConsVar::magy] = by;
+  state[ConsVar::magz] = 0.0;
 }

@@ -73,6 +73,24 @@ pdi:
       
     - file: ${filename}
       datasets: *cons_datasets
+      on_event: write_plot_data
+      collision_policy: replace
+      communicator: '$comm'
+      write:
+        time:
+        time_step:
+        xcoord:
+        ycoord:
+        zcoord:
+        gamma:
+        cons_field:
+          - *dens_description
+        weno_field:
+          - *weno_description
+          - *fomx_description
+      
+    - file: ${filename}
+      datasets: *cons_datasets
       on_event: write_ckpt_data
       collision_policy: replace
       communicator: '$comm'

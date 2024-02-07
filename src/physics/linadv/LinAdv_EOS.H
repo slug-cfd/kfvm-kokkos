@@ -14,15 +14,19 @@ namespace Physics {
 
 template <>
 struct EOS<EquationType::LinAdv> {
+  using ConsVar = typename SimVar<EquationType::LinAdv>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::LinAdv>::PrimVec;
+
   KOKKOS_INLINE_FUNCTION
-  static void cons2prim(const Real gam, const LinAdv::ConsVec U, LinAdv::PrimVec V) {
+  static void cons2prim(const Real gam, const ConsVec U, PrimVec V) {
     (void)gam;
     (void)V;
     (void)U;
   }
 
   KOKKOS_INLINE_FUNCTION
-  static void prim2cons(const Real gam, const LinAdv::PrimVec V, LinAdv::ConsVec U) {
+  static void prim2cons(const Real gam, const PrimVec V, ConsVec U) {
     (void)gam;
     (void)V;
     (void)U;
@@ -30,22 +34,19 @@ struct EOS<EquationType::LinAdv> {
 
   // These are not technically correct, but also aren't used
   KOKKOS_INLINE_FUNCTION
-  static Real flowdirx(const LinAdv::ConsVec U) { return 0.0; }
+  static Real flowdirx(const ConsVec U) { return 0.0; }
 
   KOKKOS_INLINE_FUNCTION
-  static Real flowdiry(const LinAdv::ConsVec U) { return 0.0; }
+  static Real flowdiry(const ConsVec U) { return 0.0; }
 
   KOKKOS_INLINE_FUNCTION
-  static Real flowdirz(const LinAdv::ConsVec U) { return 0.0; }
+  static Real flowdirz(const ConsVec U) { return 0.0; }
 
   KOKKOS_INLINE_FUNCTION
-  static Real weno(const LinAdv::ConsVec U, const ParameterStructs &eosParams) {
-    // Weno is all or nothing for now
-    return 1.0;
-  }
+  static Real weno(const ConsVec U, const ParameterStructs &eosParams) { return 0.0; }
 
   KOKKOS_INLINE_FUNCTION
-  static Real positivity(const LinAdv::ConsVec U) {
+  static Real positivity(const ConsVec U) {
     // Positivity unimportant
     (void)U;
     return 1.0;

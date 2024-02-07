@@ -9,7 +9,7 @@ KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
   using Kokkos::sqrt;
-  using Physics::MHD_GLM::SimVar;
+  using ConsVar = typename SimVar<EquationType::MHD_GLM>::ConsVar;
 
   const Real gamm = eosParams.gamma - 1.0;
   const Real Rsq = userParams.R * userParams.R;
@@ -18,15 +18,15 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
 
   const Real rho = 1.0, bx = userParams.bx;
 
-  state[SimVar::dens] = rho;
+  state[ConsVar::dens] = rho;
 
-  state[SimVar::momx] = 0.0;
-  state[SimVar::momy] = 0.0;
-  state[SimVar::momz] = 0.0;
+  state[ConsVar::momx] = 0.0;
+  state[ConsVar::momy] = 0.0;
+  state[ConsVar::momz] = 0.0;
 
-  state[SimVar::magx] = bx;
-  state[SimVar::magy] = 0.0;
-  state[SimVar::magz] = 0.0;
+  state[ConsVar::magx] = bx;
+  state[ConsVar::magy] = 0.0;
+  state[ConsVar::magz] = 0.0;
 
-  state[SimVar::etot] = pG / gamm + 0.5 * bx * bx;
+  state[ConsVar::etot] = pG / gamm + 0.5 * bx * bx;
 }

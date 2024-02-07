@@ -5,129 +5,126 @@
 
 namespace KFVM {
 
+template <EquationType ET>
+struct SimVar {};
+
+template <>
+struct SimVar<EquationType::Hydro> {
+  struct ConsVar {
+    enum var : int { dens = 0, momx, momy, momz, etot };
+  };
+  struct PrimVar {
+    enum var : int { dens = 0, velx, vely, velz, pres };
+  };
+  struct AuxVar {
+    enum var : int { velx = 0, vely, velz, eint, pres };
+  };
+  struct StatVar {
+    enum var : int { ekin = 0, enst };
+  };
+
+  typedef Real ConsVec[5];
+  typedef Real PrimVec[5];
+  typedef Real StatVec[2];
+};
+
+template <>
+struct SimVar<EquationType::NavierStokes> {
+  struct ConsVar {
+    enum var : int { dens = 0, momx, momy, momz, etot };
+  };
+  struct PrimVar {
+    enum var : int { dens = 0, velx, vely, velz, pres, temp };
+  };
+  struct AuxVar {
+    enum var : int { velx = 0, vely, velz, eint, pres };
+  };
+  struct StatVar {
+    enum var : int { ekin = 0, enst };
+  };
+
+  typedef Real ConsVec[5];
+  typedef Real PrimVec[6];
+  typedef Real StatVec[2];
+};
+
+template <>
+struct SimVar<EquationType::MHD_GLM> {
+  struct ConsVar {
+    enum var : int { dens = 0, momx, momy, momz, etot, magx, magy, magz, psi };
+  };
+  struct PrimVar {
+    enum var : int { dens = 0, velx, vely, velz, prsg, magx, magy, magz, psi };
+  };
+  struct AuxVar {
+    enum var : int { velx = 0, vely, velz, eint, prsg, prsb };
+  };
+  struct StatVar {
+    enum var : int { ekin = 0, enst, heli };
+  };
+
+  typedef Real ConsVec[9];
+  typedef Real PrimVec[9];
+  typedef Real StatVec[3];
+};
+
+template <>
+struct SimVar<EquationType::MHD_8W> {
+  struct ConsVar {
+    enum var : int { dens = 0, momx, momy, momz, etot, magx, magy, magz };
+  };
+  struct PrimVar {
+    enum var : int { dens = 0, velx, vely, velz, prsg, magx, magy, magz };
+  };
+  struct AuxVar {
+    enum var : int { velx = 0, vely, velz, eint, prsg, prsb };
+  };
+  struct StatVar {
+    enum var : int { ekin = 0, enst, heli };
+  };
+
+  typedef Real ConsVec[8];
+  typedef Real PrimVec[8];
+  typedef Real StatVec[3];
+};
+
+template <>
+struct SimVar<EquationType::SRHydro> {
+  struct ConsVar {
+    enum var : int { dens = 0, momx, momy, momz, etot };
+  };
+  struct PrimVar {
+    enum var : int { rho = 0, velx, vely, velz, lorz, pres };
+  };
+  struct AuxVar {
+    enum var : int { rho = 0, velx, vely, velz, lorz, pres };
+  };
+  struct StatVar {};
+
+  typedef Real ConsVec[5];
+  typedef Real PrimVec[6];
+  typedef Real StatVec[1];
+};
+
+template <>
+struct SimVar<EquationType::LinAdv> {
+  struct ConsVar {
+    enum var : int { u = 0 };
+  };
+  struct PrimVar {
+    enum var : int { u = 0 };
+  };
+  struct AuxVar {
+    enum var : int { u = 0 };
+  };
+  struct StatVar {};
+
+  typedef Real ConsVec[1];
+  typedef Real PrimVec[1];
+  typedef Real StatVec[1];
+};
+
 namespace Physics {
-
-namespace Hydro {
-
-struct SimVar {
-  enum var { dens = 0, momx, momy, momz, etot };
-};
-struct PrimVar {
-  enum var { dens = 0, velx, vely, velz, pres };
-};
-struct AuxVar {
-  enum var { velx = 0, vely, velz, eint, pres };
-};
-struct StatVar {
-  enum var { ekin = 0, enst };
-};
-
-typedef Real ConsVec[5];
-typedef Real PrimVec[5];
-typedef Real StatVec[2];
-
-} // end namespace Hydro
-
-namespace NavierStokes {
-
-struct SimVar {
-  enum var { dens = 0, momx, momy, momz, etot };
-};
-struct PrimVar {
-  enum var { dens = 0, velx, vely, velz, pres, temp };
-};
-struct AuxVar {
-  enum var { velx = 0, vely, velz, eint, pres };
-};
-struct StatVar {
-  enum var { ekin = 0, enst };
-};
-
-typedef Real ConsVec[5];
-typedef Real PrimVec[6];
-typedef Real StatVec[2];
-
-} // end namespace NavierStokes
-
-namespace MHD_GLM {
-
-struct SimVar {
-  enum var { dens = 0, momx, momy, momz, etot, magx, magy, magz, psi };
-};
-struct PrimVar {
-  enum var { dens = 0, velx, vely, velz, prsg, magx, magy, magz, psi };
-};
-struct AuxVar {
-  enum var { velx = 0, vely, velz, eint, prsg, prsb };
-};
-struct StatVar {
-  enum var { ekin = 0, enst, heli };
-};
-
-typedef Real ConsVec[9];
-typedef Real PrimVec[9];
-typedef Real StatVec[3];
-
-} // end namespace MHD_GLM
-
-namespace MHD_8W {
-
-struct SimVar {
-  enum var { dens = 0, momx, momy, momz, etot, magx, magy, magz };
-};
-struct PrimVar {
-  enum var { dens = 0, velx, vely, velz, prsg, magx, magy, magz };
-};
-struct AuxVar {
-  enum var { velx = 0, vely, velz, eint, prsg, prsb };
-};
-struct StatVar {
-  enum var { ekin = 0, enst, heli };
-};
-
-typedef Real ConsVec[8];
-typedef Real PrimVec[8];
-typedef Real StatVec[3];
-
-} // end namespace MHD_8W
-
-namespace SRHydro {
-
-struct SimVar {
-  enum var { dens = 0, momx, momy, momz, etot };
-};
-struct PrimVar {
-  enum var { rho = 0, velx, vely, velz, lorz, pres };
-};
-struct AuxVar {
-  enum var { rho = 0, velx, vely, velz, lorz, pres };
-};
-struct StatVar {};
-
-typedef Real ConsVec[5];
-typedef Real PrimVec[6];
-typedef Real StatVec[1];
-
-} // end namespace SRHydro
-
-namespace LinAdv {
-
-struct SimVar {
-  enum var { u = 0 };
-};
-struct PrimVar {
-  enum var { u = 0 };
-};
-struct AuxVar {
-  enum var { u = 0 };
-};
-struct StatVar {};
-
-typedef Real ConsVec[1];
-typedef Real PrimVec[1];
-typedef Real StatVec[1];
-
-} // namespace LinAdv
 
 // Array reduction type for integrating flow statistics
 // Adapted from Kokkos documentation here:

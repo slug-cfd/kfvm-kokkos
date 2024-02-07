@@ -14,27 +14,27 @@ Real ivOmega(Real x, Real y, Real xc, Real yc, Real R, Real sig, Real beta) {
 KOKKOS_INLINE_FUNCTION
 void ivAddPert(Real x, Real y, Real xc, Real yc, Real R, Real Om, Real gamma,
                Real Ub[NUM_VARS]) {
-  using Physics::Hydro::SimVar;
+  using ConsVar = typename SimVar<EquationType::Hydro>::ConsVar;
 
-  Real rhoB = Ub[SimVar::dens];
-  Real presB = (gamma - 1.0) * (Ub[SimVar::etot] - (Ub[SimVar::momx] * Ub[SimVar::momx] +
-                                                    Ub[SimVar::momy] * Ub[SimVar::momy]) /
+  Real rhoB = Ub[ConsVar::dens];
+  Real presB = (gamma - 1.0) * (Ub[ConsVar::etot] - (Ub[ConsVar::momx] * Ub[ConsVar::momx] +
+                                                    Ub[ConsVar::momy] * Ub[ConsVar::momy]) /
                                                        (2.0 * rhoB));
-  Ub[SimVar::dens] =
-      pow(Ub[SimVar::dens] + (1.0 - gamma) * Om * Om / 2.0, 1.0 / (gamma - 1.0));
-  Ub[SimVar::momx] = Ub[SimVar::dens] * (Ub[SimVar::momx] / rhoB - (y - yc) * Om / R);
-  Ub[SimVar::momy] = Ub[SimVar::dens] * (Ub[SimVar::momy] / rhoB + (x - xc) * Om / R);
-  Ub[SimVar::etot] =
+  Ub[ConsVar::dens] =
+      pow(Ub[ConsVar::dens] + (1.0 - gamma) * Om * Om / 2.0, 1.0 / (gamma - 1.0));
+  Ub[ConsVar::momx] = Ub[ConsVar::dens] * (Ub[ConsVar::momx] / rhoB - (y - yc) * Om / R);
+  Ub[ConsVar::momy] = Ub[ConsVar::dens] * (Ub[ConsVar::momy] / rhoB + (x - xc) * Om / R);
+  Ub[ConsVar::etot] =
       pow(presB + (1.0 - gamma) * Om * Om / 2.0, gamma / (gamma - 1.0)) /
           (gamma * (gamma - 1.0)) +
-      (Ub[SimVar::momx] * Ub[SimVar::momx] + Ub[SimVar::momy] * Ub[SimVar::momy]) /
-          (2.0 * Ub[SimVar::dens]);
+      (Ub[ConsVar::momx] * Ub[ConsVar::momx] + Ub[ConsVar::momy] * Ub[ConsVar::momy]) /
+          (2.0 * Ub[ConsVar::dens]);
 }
 
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
-  using Physics::Hydro::SimVar;
+  using ConsVar = typename SimVar<EquationType::Hydro>::ConsVar;
 
   (void)z;
 
@@ -44,11 +44,11 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   Real R = 1.0, sig = 1.0, beta = 5.0 * sqrt(2.0) * exp(0.5) / (4.0 * M_PI);
   Real Om = ivOmega(x, y, xc, yc, R, sig, beta);
 
-  state[SimVar::dens] = 1.0;
-  state[SimVar::momx] = 1.0;
-  state[SimVar::momy] = 1.0;
-  state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = 1.0 / gamm + 1.0;
+  state[ConsVar::dens] = 1.0;
+  state[ConsVar::momx] = 1.0;
+  state[ConsVar::momy] = 1.0;
+  state[ConsVar::momz] = 0.0;
+  state[ConsVar::etot] = 1.0 / gamm + 1.0;
 
   ivAddPert(x, y, xc, yc, R, Om, eosParams.gamma, state);
 }

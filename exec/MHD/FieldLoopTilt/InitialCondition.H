@@ -8,7 +8,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
   using Kokkos::fmin;
   using Kokkos::sqrt;
-  using Physics::MHD_GLM::SimVar;
+  using ConsVar = typename SimVar<EquationType::MHD_GLM>::ConsVar;
 
   (void)x;
   (void)y;
@@ -37,12 +37,12 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real by = r < userParams.R ? userParams.A0 * (xx / r) : 0.0;
   const Real bz = r < userParams.R ? -userParams.A0 * (y / r) * sw : 0.0;
 
-  state[SimVar::dens] = 1.0;
-  state[SimVar::momx] = 1.0;
-  state[SimVar::momy] = 1.0;
-  state[SimVar::momz] = 2.0;
-  state[SimVar::etot] = 1.0 / gamm + 3.0 + 0.5 * (bx * bx + by * by + bz * bz);
-  state[SimVar::magx] = bx;
-  state[SimVar::magy] = by;
-  state[SimVar::magz] = bz;
+  state[ConsVar::dens] = 1.0;
+  state[ConsVar::momx] = 1.0;
+  state[ConsVar::momy] = 1.0;
+  state[ConsVar::momz] = 2.0;
+  state[ConsVar::etot] = 1.0 / gamm + 3.0 + 0.5 * (bx * bx + by * by + bz * bz);
+  state[ConsVar::magx] = bx;
+  state[ConsVar::magy] = by;
+  state[ConsVar::magz] = bz;
 }

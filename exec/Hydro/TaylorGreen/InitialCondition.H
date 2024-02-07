@@ -10,7 +10,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
   using Kokkos::cos;
   using Kokkos::sin;
-  using Physics::Hydro::SimVar;
+  using ConsVar = typename SimVar<EquationType::Hydro>::ConsVar;
 
   const Real gamm = eosParams.gamma - 1.0;
   const Real gMasq = eosParams.gamma * userParams.mach * userParams.mach;
@@ -23,9 +23,9 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real p =
       1.0 / gMasq + (cos(2.0 * x) + cos(2.0 * y)) * (cos(2.0 * z) + 2.0) / 16.0;
 
-  state[SimVar::dens] = rho;
-  state[SimVar::momx] = rho * u;
-  state[SimVar::momy] = rho * v;
-  state[SimVar::momz] = rho * w;
-  state[SimVar::etot] = p / gamm + 0.5 * rho * (u * u + v * v + w * w);
+  state[ConsVar::dens] = rho;
+  state[ConsVar::momx] = rho * u;
+  state[ConsVar::momy] = rho * v;
+  state[ConsVar::momz] = rho * w;
+  state[ConsVar::etot] = p / gamm + 0.5 * rho * (u * u + v * v + w * w);
 }

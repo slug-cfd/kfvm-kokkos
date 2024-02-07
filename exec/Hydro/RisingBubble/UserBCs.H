@@ -95,7 +95,7 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
                                       int k, int nH, Real x, Real y, Real z, Real t,
                                       EosParameters eosParams, UserParameters userParams,
                                       Real state[NUM_VARS]) {
-  using KFVM::Physics::Hydro::SimVar;
+  using ConsVar = typename KFVM::SimVar<EquationType::Hydro>::ConsVar;
 
   // Void casts to ignore unused parameter warnings
   (void)U;
@@ -114,18 +114,18 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
 
   const Real p = 100.0 / eosParams.gamma;
 
-  state[SimVar::dens] = userParams.rhoH;
-  state[SimVar::momx] = 0.0;
-  state[SimVar::momy] = 0.0;
-  state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = p / (eosParams.gamma - 1.0);
+  state[ConsVar::dens] = userParams.rhoH;
+  state[ConsVar::momx] = 0.0;
+  state[ConsVar::momy] = 0.0;
+  state[ConsVar::momz] = 0.0;
+  state[ConsVar::etot] = p / (eosParams.gamma - 1.0);
 }
 
 template <class DataViewType>
 KOKKOS_INLINE_FUNCTION void FaceSouth(const DataViewType &U, int i, int k, int nQ, Real x,
                                       Real y, Real z, Real t, EosParameters eosParams,
                                       UserParameters userParams, Real state[NUM_VARS]) {
-  using KFVM::Physics::Hydro::SimVar;
+  using ConsVar = typename KFVM::SimVar<EquationType::Hydro>::ConsVar;
 
   // Void casts to ignore unused parameter warnings
   (void)U;
@@ -142,11 +142,11 @@ KOKKOS_INLINE_FUNCTION void FaceSouth(const DataViewType &U, int i, int k, int n
 
   const Real p = 100.0 / eosParams.gamma;
 
-  state[SimVar::dens] = userParams.rhoH;
-  state[SimVar::momx] = 0.0;
-  state[SimVar::momy] = 0.0;
-  state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = p / (eosParams.gamma - 1.0);
+  state[ConsVar::dens] = userParams.rhoH;
+  state[ConsVar::momx] = 0.0;
+  state[ConsVar::momy] = 0.0;
+  state[ConsVar::momz] = 0.0;
+  state[ConsVar::etot] = p / (eosParams.gamma - 1.0);
 }
 
 // Northern boundary
@@ -155,7 +155,7 @@ KOKKOS_INLINE_FUNCTION void CellNorth(const DataViewType &U, int rad, int nY, in
                                       int k, int nH, Real x, Real y, Real z, Real t,
                                       EosParameters eosParams, UserParameters userParams,
                                       Real state[NUM_VARS]) {
-  using KFVM::Physics::Hydro::SimVar;
+  using ConsVar = typename KFVM::SimVar<EquationType::Hydro>::ConsVar;
 
   // Void casts to ignore unused parameter warnings
   (void)U;
@@ -174,18 +174,18 @@ KOKKOS_INLINE_FUNCTION void CellNorth(const DataViewType &U, int rad, int nY, in
 
   const Real p = 100.0 / eosParams.gamma - userParams.rhoH;
 
-  state[SimVar::dens] = userParams.rhoH;
-  state[SimVar::momx] = 0.0;
-  state[SimVar::momy] = 0.0;
-  state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = p / (eosParams.gamma - 1.0);
+  state[ConsVar::dens] = userParams.rhoH;
+  state[ConsVar::momx] = 0.0;
+  state[ConsVar::momy] = 0.0;
+  state[ConsVar::momz] = 0.0;
+  state[ConsVar::etot] = p / (eosParams.gamma - 1.0);
 }
 
 template <class DataViewType>
 KOKKOS_INLINE_FUNCTION void FaceNorth(const DataViewType &U, int i, int k, int nQ, Real x,
                                       Real y, Real z, Real t, EosParameters eosParams,
                                       UserParameters userParams, Real state[NUM_VARS]) {
-  using KFVM::Physics::Hydro::SimVar;
+  using ConsVar = typename KFVM::SimVar<EquationType::Hydro>::ConsVar;
 
   // Void casts to ignore unused parameter warnings
   (void)U;
@@ -202,11 +202,11 @@ KOKKOS_INLINE_FUNCTION void FaceNorth(const DataViewType &U, int i, int k, int n
 
   const Real p = 100.0 / eosParams.gamma - userParams.rhoH;
 
-  state[SimVar::dens] = userParams.rhoH;
-  state[SimVar::momx] = 0.0;
-  state[SimVar::momy] = 0.0;
-  state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = p / (eosParams.gamma - 1.0);
+  state[ConsVar::dens] = userParams.rhoH;
+  state[ConsVar::momx] = 0.0;
+  state[ConsVar::momy] = 0.0;
+  state[ConsVar::momz] = 0.0;
+  state[ConsVar::etot] = p / (eosParams.gamma - 1.0);
 }
 
 // Bottom boundary

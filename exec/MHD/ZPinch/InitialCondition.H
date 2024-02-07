@@ -7,7 +7,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   using Kokkos::atan2;
   using Kokkos::cos;
   using Kokkos::sin;
-  using Physics::MHD_GLM::SimVar;
+  using ConsVar = typename SimVar<EquationType::MHD_GLM>::ConsVar;
 
   (void)z;
 
@@ -16,12 +16,12 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real theta = atan2(y, x), vx = -V * cos(theta), vy = -V * sin(theta);
   const Real P = 1.e-6, B = 1.0;
 
-  state[SimVar::dens] = rho;
-  state[SimVar::momx] = rho * vx;
-  state[SimVar::momy] = rho * vy;
-  state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = P / gamm + 0.5 * rho * (vx * vx + vy * vy) + 0.5 * B * B;
-  state[SimVar::magx] = 0.0;
-  state[SimVar::magy] = 0.0;
-  state[SimVar::magz] = B;
+  state[ConsVar::dens] = rho;
+  state[ConsVar::momx] = rho * vx;
+  state[ConsVar::momy] = rho * vy;
+  state[ConsVar::momz] = 0.0;
+  state[ConsVar::etot] = P / gamm + 0.5 * rho * (vx * vx + vy * vy) + 0.5 * B * B;
+  state[ConsVar::magx] = 0.0;
+  state[ConsVar::magy] = 0.0;
+  state[ConsVar::magz] = B;
 }

@@ -8,7 +8,7 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
-  using Physics::Hydro::SimVar;
+  using ConsVar = typename SimVar<EquationType::Hydro>::ConsVar;
 
   const Real gamm = eosParams.gamma - 1.0;
   const Real rhoH = userParams.rhoH, rhoL = userParams.rhoL;
@@ -16,9 +16,9 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real rho = rsq < userParams.Rsq ? rhoL : rhoH;
   const Real p = 100.0 / eosParams.gamma - rhoH * y;
 
-  state[SimVar::dens] = rho;
-  state[SimVar::momx] = 0.0;
-  state[SimVar::momy] = 0.0;
-  state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = p / gamm;
+  state[ConsVar::dens] = rho;
+  state[ConsVar::momx] = 0.0;
+  state[ConsVar::momy] = 0.0;
+  state[ConsVar::momz] = 0.0;
+  state[ConsVar::etot] = p / gamm;
 }

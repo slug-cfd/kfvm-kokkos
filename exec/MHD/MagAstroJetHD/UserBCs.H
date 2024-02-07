@@ -93,7 +93,7 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
                                       int k, int nH, Real x, Real y, Real z, Real t,
                                       EosParameters eosParams, UserParameters userParams,
                                       Real state[NUM_VARS]) {
-  using KFVM::Physics::MHD_GLM::SimVar;
+  using ConsVar = typename KFVM::SimVar<EquationType::MHD_GLM>::ConsVar;
   using Kokkos::sqrt;
 
   // Void casts to ignore unused parameter warnings
@@ -118,9 +118,9 @@ KOKKOS_INLINE_FUNCTION void CellSouth(const DataViewType &U, int rad, int nY, in
   const Real rsq = SPACE_DIM == 2 ? x * x : x * x + z * z;
 
   // Always extrapolate B fields
-  const Real bx = 0.0;                         // U(KFVM_D_DECL(i, rad, k), SimVar::magx);
-  const Real by = sqrt(2.0 / userParams.beta); // U(KFVM_D_DECL(i, rad, k), SimVar::magy);
-  const Real bz = 0.0;                         // U(KFVM_D_DECL(i, rad, k), SimVar::magz);
+  const Real bx = 0.0;                         // U(KFVM_D_DECL(i, rad, k), ConsVar::magx);
+  const Real by = sqrt(2.0 / userParams.beta); // U(KFVM_D_DECL(i, rad, k), ConsVar::magy);
+  const Real bz = 0.0;                         // U(KFVM_D_DECL(i, rad, k), ConsVar::magz);
   const Real bpsq = bx * bx + by * by + bz * bz;
 
   // Inflow conditions + B fields
@@ -143,7 +143,7 @@ template <class DataViewType>
 KOKKOS_INLINE_FUNCTION void FaceSouth(const DataViewType &U, int i, int k, int nQ, Real x,
                                       Real y, Real z, Real t, EosParameters eosParams,
                                       UserParameters userParams, Real state[NUM_VARS]) {
-  using KFVM::Physics::MHD_GLM::SimVar;
+  using ConsVar = typename KFVM::SimVar<EquationType::MHD_GLM>::ConsVar;
   using Kokkos::sqrt;
 
   // Void casts to ignore unused parameter warnings
@@ -166,9 +166,9 @@ KOKKOS_INLINE_FUNCTION void FaceSouth(const DataViewType &U, int i, int k, int n
   const Real rsq = SPACE_DIM == 2 ? x * x : x * x + z * z;
 
   // Always extrapolate B fields
-  const Real bx = 0.0;                         // U(KFVM_D_DECL(i, rad, k), SimVar::magx);
-  const Real by = sqrt(2.0 / userParams.beta); // U(KFVM_D_DECL(i, rad, k), SimVar::magy);
-  const Real bz = 0.0;                         // U(KFVM_D_DECL(i, rad, k), SimVar::magz);
+  const Real bx = 0.0;                         // U(KFVM_D_DECL(i, rad, k), ConsVar::magx);
+  const Real by = sqrt(2.0 / userParams.beta); // U(KFVM_D_DECL(i, rad, k), ConsVar::magy);
+  const Real bz = 0.0;                         // U(KFVM_D_DECL(i, rad, k), ConsVar::magz);
   const Real bpsq = bx * bx + by * by + bz * bz;
 
   // Inflow conditions + B fields

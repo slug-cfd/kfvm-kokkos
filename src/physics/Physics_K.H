@@ -71,4 +71,7 @@ struct BCCoeffs {};
 #include "linadv/LinAdv_EOS.H"
 #include "linadv/LinAdv_K.H"
 
+// Common kernels for multiple equation types
+#include "Common_K.H"
+
 #endif

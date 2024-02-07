@@ -27,6 +27,7 @@ struct EosParameters : ParameterStructs {
   Real forceTDyn;  // Time scale of forcing
   Real forceTOff;  // cut off time for forcing
   Real forceRatio; // compressive to solenoidal
+  Real forceEDot;  // energy injection rate
 
   // Entries only needed if random forcing is enabled
 #ifdef ENABLE_RANDOM_FORCING
@@ -35,7 +36,7 @@ struct EosParameters : ParameterStructs {
 
   EosParameters()
       : gamma(1.4), Re(1.0), Pr(0.71), wenoThresh(10.0), ch_glm(0.0), forceStr(0.0),
-        forceTDyn(0.0), forceRatio(1.0)
+        forceTDyn(0.0), forceRatio(1.0), forceEDot(2.0)
 #ifdef ENABLE_RANDOM_FORCING
         ,
         fAmp("ForcingModes")
@@ -76,7 +77,6 @@ struct EosParameters : ParameterStructs {
 
   bool set(const std::string &, const std::string &);
 
-  // Update forcing amplitudes according to OU process
   void updateForcing(const Real, int, int, const MPI_Datatype, MPI_Comm);
 };
 

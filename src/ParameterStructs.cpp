@@ -23,8 +23,8 @@ bool EosParameters::set(const std::string &fld, const std::string &val) {
     Pr = std::stof(val, &pos);
   } else if (fld == "wenothresh") {
     wenoThresh = std::stof(val, &pos);
-  } else if (fld == "forcestr") {
-    forceStr = std::stof(val, &pos);
+  } else if (fld == "forceedot") {
+    forceEDot = std::stof(val, &pos);
   } else if (fld == "forcetdyn") {
     forceTDyn = std::stof(val, &pos);
   } else if (fld == "forcetoff") {
@@ -38,7 +38,6 @@ bool EosParameters::set(const std::string &fld, const std::string &val) {
   return true;
 }
 
-// updates forcing using Ornstein-Uhlenbeck process
 void EosParameters::updateForcing(const Real dt, int rank, int size,
                                   const MPI_Datatype dtype, MPI_Comm comm) {
 #ifdef ENABLE_RANDOM_FORCING
@@ -67,14 +66,11 @@ void EosParameters::updateForcing(const Real dt, int rank, int size,
 #endif
 
       // Get std dev for this k-vector
-      const Real kMag = std::sqrt(k1 * k1 + k2 * k2 + k3 * k3);
-      const Real sig = std::sqrt(std::pow(2.0 * M_PI * kMag, 6) * std::exp(-4.0 * kMag));
+      const Real kMag = std::sqrt(k1 * k1 + k2 * k2 + k3 * k3), sig = kMag * (4.0 - kMag);
 
-      // OU propagate
       for (int d = 0; d < SPACE_DIM; d++) {
-        // Initialized to zero, so this is a fresh draw the first time
-        hf(n, d, 1) = (1.0 - dt * forceTDyn) * hf(n, d, 1) + sig * sn(gen); // real
-        hf(n, d, 2) = (1.0 - dt * forceTDyn) * hf(n, d, 2) + sig * sn(gen); // imag
+        hf(n, d, 1) = sig * sn(gen); // real
+        hf(n, d, 2) = sig * sn(gen); // imag
       }
     }
   }

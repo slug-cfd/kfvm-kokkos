@@ -24,9 +24,11 @@ namespace Physics {
 
 template <>
 class VarConvert<EquationType::LinAdv> {
+  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+
  public:
   KOKKOS_INLINE_FUNCTION
-  VarConvert(const LinAdv::ConsVec ref_, Real gam_) {}
+  VarConvert(const ConsVec ref_, Real gam_) {}
 
   template <class T>
   KOKKOS_INLINE_FUNCTION void cons2LinPrim(T &state) {}
@@ -64,6 +66,8 @@ struct FlowStats<EquationType::LinAdv, UViewType> {
 
 template <RSType rst>
 struct RiemannSolverX_K<EquationType::LinAdv, rst> {
+  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+
   FaceDataView U;
   EosParameters eosParams;
 
@@ -73,8 +77,6 @@ struct RiemannSolverX_K<EquationType::LinAdv, rst> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   Real &maxVel) const {
-    using LinAdv::ConsVec;
-
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
 
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
@@ -100,6 +102,8 @@ struct RiemannSolverX_K<EquationType::LinAdv, rst> {
 
 template <RSType rst>
 struct RiemannSolverY_K<EquationType::LinAdv, rst> {
+  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+
   FaceDataView U;
   EosParameters eosParams;
 
@@ -109,8 +113,6 @@ struct RiemannSolverY_K<EquationType::LinAdv, rst> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   Real &maxVel) const {
-    using LinAdv::ConsVec;
-
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       // pull out states and convert to primitive
@@ -135,6 +137,8 @@ struct RiemannSolverY_K<EquationType::LinAdv, rst> {
 
 template <RSType rst>
 struct RiemannSolverZ_K<EquationType::LinAdv, rst> {
+  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+
   FaceDataView U;
   EosParameters eosParams;
 
@@ -144,8 +148,6 @@ struct RiemannSolverZ_K<EquationType::LinAdv, rst> {
 #if (SPACE_DIM == 3)
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j, const idx_t k, Real &maxVel) const {
-    using LinAdv::ConsVec;
-
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
       // pull out states and convert to primitive
       ConsVec uL, uR, F;
@@ -189,6 +191,8 @@ namespace LinAdv {
 
 template <class UViewType>
 struct SourceTerms_K<EquationType::LinAdv, UViewType> {
+  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+
   SourceDataView source;
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   UViewType U;
@@ -229,7 +233,7 @@ struct SourceTerms_K<EquationType::LinAdv, UViewType> {
         Real y = Numeric::sclAb(yc, geom.dy, ab(nR));
         for (int nS = 0; nS < nzQuad; nS++) {
           Real z = SPACE_DIM == 2 ? zc : Numeric::sclAb(zc, geom.dz, ab(nS));
-          LinAdv::ConsVec state, force;
+          ConsVec state, force;
           // Real state[10],force[10];
           // Extract state and clear force vector
           for (int nV = 0; nV < NUM_VARS; nV++) {
@@ -252,6 +256,9 @@ struct SourceTerms_K<EquationType::LinAdv, UViewType> {
 
 template <class UDataView>
 struct PositivityPreserve_K<EquationType::LinAdv, UDataView> {
+  using ConsVar = typename SimVar<EquationType::LinAdv>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+
   UDataView U;
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   bool haveSources;

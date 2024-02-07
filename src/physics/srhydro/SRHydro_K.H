@@ -25,42 +25,47 @@ namespace Physics {
 
 template <>
 class VarConvert<EquationType::SRHydro> {
+  using ConsVar = typename SimVar<EquationType::SRHydro>::ConsVar;
+  using PrimVar = typename SimVar<EquationType::SRHydro>::PrimVar;
+  using ConsVec = typename SimVar<EquationType::SRHydro>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::SRHydro>::PrimVec;
+
   Real D, Sx, Sy, Sz, etot;
 
  public:
   KOKKOS_INLINE_FUNCTION
-  VarConvert(const SRHydro::ConsVec ref_, Real gam_) {
-    using SRHydro::SimVar;
+  VarConvert(const ConsVec ref_, Real gam_) {
     (void)gam_;
 
-    D = ref_[SimVar::dens];
-    Sx = ref_[SimVar::momx];
-    Sy = ref_[SimVar::momy];
-    Sz = ref_[SimVar::momz];
-    etot = ref_[SimVar::etot];
+    D = ref_[ConsVar::dens];
+    Sx = ref_[ConsVar::momx];
+    Sy = ref_[ConsVar::momy];
+    Sz = ref_[ConsVar::momz];
+    etot = ref_[ConsVar::etot];
   }
 
   template <class T>
   KOKKOS_INLINE_FUNCTION void cons2LinPrim(T &state) {
-    using SRHydro::SimVar;
-
-    state(SimVar::momx) = state(SimVar::momx) / D - state(SimVar::dens) * Sx / (D * D);
-    state(SimVar::momy) = state(SimVar::momy) / D - state(SimVar::dens) * Sy / (D * D);
-    state(SimVar::momz) = state(SimVar::momz) / D - state(SimVar::dens) * Sz / (D * D);
+    state(ConsVar::momx) = state(ConsVar::momx) / D - state(ConsVar::dens) * Sx / (D * D);
+    state(ConsVar::momy) = state(ConsVar::momy) / D - state(ConsVar::dens) * Sy / (D * D);
+    state(ConsVar::momz) = state(ConsVar::momz) / D - state(ConsVar::dens) * Sz / (D * D);
   }
 
   template <class T>
   KOKKOS_INLINE_FUNCTION void linPrim2Cons(T &state) {
-    using SRHydro::SimVar;
-
-    state(SimVar::momx) = state(SimVar::dens) * Sx / D + D * state(SimVar::momx);
-    state(SimVar::momy) = state(SimVar::dens) * Sy / D + D * state(SimVar::momy);
-    state(SimVar::momz) = state(SimVar::dens) * Sz / D + D * state(SimVar::momz);
+    state(ConsVar::momx) = state(ConsVar::dens) * Sx / D + D * state(ConsVar::momx);
+    state(ConsVar::momy) = state(ConsVar::dens) * Sy / D + D * state(ConsVar::momy);
+    state(ConsVar::momz) = state(ConsVar::dens) * Sz / D + D * state(ConsVar::momz);
   }
 };
 
 template <class UViewType>
 struct AuxVars<EquationType::SRHydro, UViewType> {
+  using AuxVar = typename SimVar<EquationType::SRHydro>::AuxVar;
+  using PrimVar = typename SimVar<EquationType::SRHydro>::PrimVar;
+  using ConsVec = typename SimVar<EquationType::SRHydro>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::SRHydro>::PrimVec;
+
   UViewType U;
   AuxDataView V;
   EosParameters eosParams;
@@ -70,11 +75,6 @@ struct AuxVars<EquationType::SRHydro, UViewType> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
-    using SRHydro::AuxVar;
-    using SRHydro::ConsVec;
-    using SRHydro::PrimVar;
-    using SRHydro::PrimVec;
-
     // Try not to assume the order of SimVars
     ConsVec u;
     PrimVec v;
@@ -111,6 +111,9 @@ struct FlowStats<EquationType::SRHydro, UViewType> {
 
 template <RSType rst>
 struct RiemannSolverX_K<EquationType::SRHydro, rst> {
+  using ConsVec = typename SimVar<EquationType::SRHydro>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::SRHydro>::PrimVec;
+
   FaceDataView U;
   EosParameters eosParams;
 
@@ -120,9 +123,6 @@ struct RiemannSolverX_K<EquationType::SRHydro, rst> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   Real &maxVel) const {
-    using SRHydro::ConsVec;
-    using SRHydro::PrimVec;
-
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
 
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
@@ -151,6 +151,9 @@ struct RiemannSolverX_K<EquationType::SRHydro, rst> {
 
 template <RSType rst>
 struct RiemannSolverY_K<EquationType::SRHydro, rst> {
+  using ConsVec = typename SimVar<EquationType::SRHydro>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::SRHydro>::PrimVec;
+
   FaceDataView U;
   EosParameters eosParams;
 
@@ -160,9 +163,6 @@ struct RiemannSolverY_K<EquationType::SRHydro, rst> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   Real &maxVel) const {
-    using SRHydro::ConsVec;
-    using SRHydro::PrimVec;
-
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       // Pull out states and convert to primitive
@@ -190,6 +190,9 @@ struct RiemannSolverY_K<EquationType::SRHydro, rst> {
 
 template <RSType rst>
 struct RiemannSolverZ_K<EquationType::SRHydro, rst> {
+  using ConsVec = typename SimVar<EquationType::SRHydro>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::SRHydro>::PrimVec;
+
   FaceDataView U;
   EosParameters eosParams;
 
@@ -199,9 +202,6 @@ struct RiemannSolverZ_K<EquationType::SRHydro, rst> {
 #if (SPACE_DIM == 3)
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j, const idx_t k, Real &maxVel) const {
-    using SRHydro::ConsVec;
-    using SRHydro::PrimVec;
-
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
       // Pull out states and convert to primitive
       ConsVec uL, uR, F;
@@ -248,6 +248,8 @@ namespace SRHydro {
 
 template <class UViewType>
 struct SourceTerms_K<EquationType::SRHydro, UViewType> {
+  using ConsVec = typename SimVar<EquationType::SRHydro>::ConsVec;
+
   SourceDataView source;
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   UViewType U;
@@ -288,7 +290,7 @@ struct SourceTerms_K<EquationType::SRHydro, UViewType> {
         Real y = Numeric::sclAb(yc, geom.dy, ab(nR));
         for (int nS = 0; nS < nzQuad; nS++) {
           Real z = SPACE_DIM == 2 ? zc : Numeric::sclAb(zc, geom.dz, ab(nS));
-          SRHydro::ConsVec state, force;
+          ConsVec state, force;
           // Extract state and clear force vector
           for (int nV = 0; nV < NUM_VARS; nV++) {
             state[nV] = source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV);
@@ -310,6 +312,9 @@ struct SourceTerms_K<EquationType::SRHydro, UViewType> {
 
 template <class UDataView>
 struct PositivityPreserve_K<EquationType::SRHydro, UDataView> {
+  using ConsVar = typename SimVar<EquationType::SRHydro>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::SRHydro>::ConsVec;
+
   UDataView U;
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   bool haveSources;
@@ -329,8 +334,6 @@ struct PositivityPreserve_K<EquationType::SRHydro, UDataView> {
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
     using Kokkos::fmax;
     using Kokkos::fmin;
-    using SRHydro::ConsVec;
-    using SRHydro::SimVar;
 
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
 
@@ -339,7 +342,7 @@ struct PositivityPreserve_K<EquationType::SRHydro, UDataView> {
     for (int nV = 0; nV < NUM_VARS; nV++) {
       refState[nV] = U(KFVM_D_DECL(i, j, k), nV);
     }
-    Real rDens = refState[SimVar::dens];
+    Real rDens = refState[ConsVar::dens];
     Real edRef = eDiff(refState);
 
     // Find ranges of density and etot
@@ -355,8 +358,8 @@ struct PositivityPreserve_K<EquationType::SRHydro, UDataView> {
           for (int nV = 0; nV < NUM_VARS; nV++) {
             state[nV] = U(KFVM_D_DECL(i + xo, j + yo, k + zo), nV);
           }
-          maxDens = fmax(maxDens, state[SimVar::dens]);
-          minDens = fmin(minDens, state[SimVar::dens]);
+          maxDens = fmax(maxDens, state[ConsVar::dens]);
+          minDens = fmin(minDens, state[ConsVar::dens]);
           minEDiff = fmin(minEDiff, eDiff(state));
 #if (SPACE_DIM == 3)
         }
@@ -370,28 +373,28 @@ struct PositivityPreserve_K<EquationType::SRHydro, UDataView> {
     Real theta = Real(1.0);
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       // West face
-      Real rho = rsX(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
+      Real rho = rsX(KFVM_D_DECL(i, j, k), 1, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // East face
-      rho = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, SimVar::dens);
+      rho = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // South face
-      rho = rsY(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
+      rho = rsY(KFVM_D_DECL(i, j, k), 1, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // North face
-      rho = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, SimVar::dens);
+      rho = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
 #if (SPACE_DIM == 3)
       // Bottom face
-      rho = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
+      rho = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // Top face
-      rho = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, SimVar::dens);
+      rho = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
 #endif
@@ -404,7 +407,7 @@ struct PositivityPreserve_K<EquationType::SRHydro, UDataView> {
         for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
           for (int nS = 0; nS < nzQuad; nS++) {
             Real rho =
-                source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::dens);
+                source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), ConsVar::dens);
             theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
             theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
           }
@@ -556,15 +559,14 @@ struct PositivityPreserve_K<EquationType::SRHydro, UDataView> {
   }
 
   KOKKOS_INLINE_FUNCTION
-  Real eDiff(const SRHydro::ConsVec state) const {
+  Real eDiff(const ConsVec state) const {
     using Kokkos::sqrt;
-    using SRHydro::SimVar;
 
-    const Real sSq = (state[SimVar::momx] * state[SimVar::momx] +
-                      state[SimVar::momy] * state[SimVar::momy] +
-                      state[SimVar::momz] * state[SimVar::momz]);
+    const Real sSq = (state[ConsVar::momx] * state[ConsVar::momx] +
+                      state[ConsVar::momy] * state[ConsVar::momy] +
+                      state[ConsVar::momz] * state[ConsVar::momz]);
 
-    return state[SimVar::etot] - sqrt(state[SimVar::dens] * state[SimVar::dens] + sSq);
+    return state[ConsVar::etot] - sqrt(state[ConsVar::dens] * state[ConsVar::dens] + sSq);
   }
 };
 

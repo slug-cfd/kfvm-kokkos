@@ -26,49 +26,50 @@ namespace Physics {
 
 template <>
 class VarConvert<EquationType::NavierStokes> {
+  using ConsVar = typename SimVar<EquationType::NavierStokes>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::NavierStokes>::ConsVec;
+
   const Real gamm;
   const Real rho, u, v, w, vsq;
 
  public:
   KOKKOS_INLINE_FUNCTION
-  VarConvert(const NavierStokes::ConsVec ref_, Real gam_)
-      : gamm(gam_ - Real(1.0)), rho(ref_[NavierStokes::SimVar::dens]),
-        u(ref_[NavierStokes::SimVar::momx] / rho),
-        v(ref_[NavierStokes::SimVar::momy] / rho),
-        w(ref_[NavierStokes::SimVar::momz] / rho),
+  VarConvert(const ConsVec ref_, Real gam_)
+      : gamm(gam_ - Real(1.0)), rho(ref_[ConsVar::dens]), u(ref_[ConsVar::momx] / rho),
+        v(ref_[ConsVar::momy] / rho), w(ref_[ConsVar::momz] / rho),
         vsq(Real(0.5) * (u * u + v * v + w * w)) {}
 
   template <class T>
   KOKKOS_INLINE_FUNCTION void cons2LinPrim(T &state) {
-    using NavierStokes::SimVar;
-
     // Doing etot first allows state to be overwritten safely
-    state(SimVar::etot) =
-        gamm * (vsq * state(SimVar::dens) - u * state(SimVar::momx) -
-                v * state(SimVar::momy) - w * state(SimVar::momz) + state(SimVar::etot));
+    state(ConsVar::etot) = gamm * (vsq * state(ConsVar::dens) - u * state(ConsVar::momx) -
+                                   v * state(ConsVar::momy) - w * state(ConsVar::momz) +
+                                   state(ConsVar::etot));
 
-    state(SimVar::momx) = (state(SimVar::momx) - u * state(SimVar::dens)) / rho;
-    state(SimVar::momy) = (state(SimVar::momy) - v * state(SimVar::dens)) / rho;
-    state(SimVar::momz) = (state(SimVar::momz) - w * state(SimVar::dens)) / rho;
+    state(ConsVar::momx) = (state(ConsVar::momx) - u * state(ConsVar::dens)) / rho;
+    state(ConsVar::momy) = (state(ConsVar::momy) - v * state(ConsVar::dens)) / rho;
+    state(ConsVar::momz) = (state(ConsVar::momz) - w * state(ConsVar::dens)) / rho;
   }
 
   template <class T>
   KOKKOS_INLINE_FUNCTION void linPrim2Cons(T &state) {
-    using NavierStokes::SimVar;
-
     // Doing etot first allows state to be overwritten safely
-    state(SimVar::etot) = (vsq * state(SimVar::dens) + rho * u * state(SimVar::momx) +
-                           rho * v * state(SimVar::momy) + rho * w * state(SimVar::momz) +
-                           state(SimVar::etot) / gamm);
+    state(ConsVar::etot) = (vsq * state(ConsVar::dens) + rho * u * state(ConsVar::momx) +
+                            rho * v * state(ConsVar::momy) +
+                            rho * w * state(ConsVar::momz) + state(ConsVar::etot) / gamm);
 
-    state(SimVar::momx) = (rho * state(SimVar::momx) + u * state(SimVar::dens));
-    state(SimVar::momy) = (rho * state(SimVar::momy) + v * state(SimVar::dens));
-    state(SimVar::momz) = (rho * state(SimVar::momz) + w * state(SimVar::dens));
+    state(ConsVar::momx) = (rho * state(ConsVar::momx) + u * state(ConsVar::dens));
+    state(ConsVar::momy) = (rho * state(ConsVar::momy) + v * state(ConsVar::dens));
+    state(ConsVar::momz) = (rho * state(ConsVar::momz) + w * state(ConsVar::dens));
   }
 };
 
 template <class UViewType>
 struct AuxVars<EquationType::NavierStokes, UViewType> {
+  using ConsVar = typename SimVar<EquationType::NavierStokes>::ConsVar;
+  using AuxVar = typename SimVar<EquationType::NavierStokes>::AuxVar;
+  using ConsVec = typename SimVar<EquationType::NavierStokes>::ConsVec;
+
   UViewType U;
   AuxDataView V;
   EosParameters eosParams;
@@ -78,10 +79,6 @@ struct AuxVars<EquationType::NavierStokes, UViewType> {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
-    using NavierStokes::AuxVar;
-    using NavierStokes::ConsVec;
-    using NavierStokes::SimVar;
-
     // Try not to assume the order of SimVars
     ConsVec ua;
     for (int nV = 0; nV < NUM_VARS; nV++) {
@@ -90,11 +87,11 @@ struct AuxVars<EquationType::NavierStokes, UViewType> {
 
     // Set velocities
     V(KFVM_D_DECL(i, j, k), AuxVar::velx) =
-        U(KFVM_D_DECL(i, j, k), SimVar::momx) / U(KFVM_D_DECL(i, j, k), SimVar::dens);
+        U(KFVM_D_DECL(i, j, k), ConsVar::momx) / U(KFVM_D_DECL(i, j, k), ConsVar::dens);
     V(KFVM_D_DECL(i, j, k), AuxVar::vely) =
-        U(KFVM_D_DECL(i, j, k), SimVar::momy) / U(KFVM_D_DECL(i, j, k), SimVar::dens);
+        U(KFVM_D_DECL(i, j, k), ConsVar::momy) / U(KFVM_D_DECL(i, j, k), ConsVar::dens);
     V(KFVM_D_DECL(i, j, k), AuxVar::velz) =
-        U(KFVM_D_DECL(i, j, k), SimVar::momz) / U(KFVM_D_DECL(i, j, k), SimVar::dens);
+        U(KFVM_D_DECL(i, j, k), ConsVar::momz) / U(KFVM_D_DECL(i, j, k), ConsVar::dens);
 
     // Internal energy and pressure
     V(KFVM_D_DECL(i, j, k), AuxVar::eint) = EOS<EquationType::NavierStokes>::eint(ua);
@@ -105,6 +102,9 @@ struct AuxVars<EquationType::NavierStokes, UViewType> {
 
 template <class UViewType>
 struct FlowStats<EquationType::NavierStokes, UViewType> {
+  using ConsVar = typename SimVar<EquationType::NavierStokes>::ConsVar;
+  using StatVar = typename SimVar<EquationType::NavierStokes>::StatVar;
+
   UViewType U;
   Geometry geom;
   EosParameters eosParams;
@@ -115,58 +115,56 @@ struct FlowStats<EquationType::NavierStokes, UViewType> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   FlowStatsArray &stat) const {
-    using NavierStokes::SimVar;
-    using NavierStokes::StatVar;
-
     // Compute kinetic energy
     const Real ek =
         0.5 *
-        (U(KFVM_D_DECL(i, j, k), SimVar::momx) * U(KFVM_D_DECL(i, j, k), SimVar::momx) +
-         U(KFVM_D_DECL(i, j, k), SimVar::momy) * U(KFVM_D_DECL(i, j, k), SimVar::momy) +
-         U(KFVM_D_DECL(i, j, k), SimVar::momz) * U(KFVM_D_DECL(i, j, k), SimVar::momz)) /
-        U(KFVM_D_DECL(i, j, k), SimVar::dens);
+        (U(KFVM_D_DECL(i, j, k), ConsVar::momx) * U(KFVM_D_DECL(i, j, k), ConsVar::momx) +
+         U(KFVM_D_DECL(i, j, k), ConsVar::momy) * U(KFVM_D_DECL(i, j, k), ConsVar::momy) +
+         U(KFVM_D_DECL(i, j, k), ConsVar::momz) *
+             U(KFVM_D_DECL(i, j, k), ConsVar::momz)) /
+        U(KFVM_D_DECL(i, j, k), ConsVar::dens);
 
     // Compute velocity gradients
     const Real dyu = 0.5 *
-                     (U(KFVM_D_DECL(i, j + 1, k), SimVar::momx) /
-                          U(KFVM_D_DECL(i, j + 1, k), SimVar::dens) -
-                      U(KFVM_D_DECL(i, j - 1, k), SimVar::momx) /
-                          U(KFVM_D_DECL(i, j - 1, k), SimVar::dens)) /
+                     (U(KFVM_D_DECL(i, j + 1, k), ConsVar::momx) /
+                          U(KFVM_D_DECL(i, j + 1, k), ConsVar::dens) -
+                      U(KFVM_D_DECL(i, j - 1, k), ConsVar::momx) /
+                          U(KFVM_D_DECL(i, j - 1, k), ConsVar::dens)) /
                      geom.dy;
     const Real dxv = 0.5 *
-                     (U(KFVM_D_DECL(i + 1, j, k), SimVar::momy) /
-                          U(KFVM_D_DECL(i + 1, j, k), SimVar::dens) -
-                      U(KFVM_D_DECL(i - 1, j, k), SimVar::momy) /
-                          U(KFVM_D_DECL(i - 1, j, k), SimVar::dens)) /
+                     (U(KFVM_D_DECL(i + 1, j, k), ConsVar::momy) /
+                          U(KFVM_D_DECL(i + 1, j, k), ConsVar::dens) -
+                      U(KFVM_D_DECL(i - 1, j, k), ConsVar::momy) /
+                          U(KFVM_D_DECL(i - 1, j, k), ConsVar::dens)) /
                      geom.dx;
 #if (SPACE_DIM == 2)
     const Real dzu = 0.0, dzv = 0.0, dxw = 0.0, dyw = 0.0;
 #else
     const Real dzu = 0.5 *
-                     (U(i, j, k + 1, SimVar::momx) / U(i, j, k + 1, SimVar::dens) -
-                      U(i, j, k - 1, SimVar::momx) / U(i, j, k - 1, SimVar::dens)) /
+                     (U(i, j, k + 1, ConsVar::momx) / U(i, j, k + 1, ConsVar::dens) -
+                      U(i, j, k - 1, ConsVar::momx) / U(i, j, k - 1, ConsVar::dens)) /
                      geom.dz;
 
     const Real dzv = 0.5 *
-                     (U(i, j, k + 1, SimVar::momy) / U(i, j, k + 1, SimVar::dens) -
-                      U(i, j, k - 1, SimVar::momy) / U(i, j, k - 1, SimVar::dens)) /
+                     (U(i, j, k + 1, ConsVar::momy) / U(i, j, k + 1, ConsVar::dens) -
+                      U(i, j, k - 1, ConsVar::momy) / U(i, j, k - 1, ConsVar::dens)) /
                      geom.dz;
 
     const Real dxw = 0.5 *
-                     (U(i + 1, j, k, SimVar::momz) / U(i + 1, j, k, SimVar::dens) -
-                      U(i - 1, j, k, SimVar::momz) / U(i - 1, j, k, SimVar::dens)) /
+                     (U(i + 1, j, k, ConsVar::momz) / U(i + 1, j, k, ConsVar::dens) -
+                      U(i - 1, j, k, ConsVar::momz) / U(i - 1, j, k, ConsVar::dens)) /
                      geom.dx;
 
     const Real dyw = 0.5 *
-                     (U(i, j + 1, k, SimVar::momz) / U(i, j + 1, k, SimVar::dens) -
-                      U(i, j - 1, k, SimVar::momz) / U(i, j - 1, k, SimVar::dens)) /
+                     (U(i, j + 1, k, ConsVar::momz) / U(i, j + 1, k, ConsVar::dens) -
+                      U(i, j - 1, k, ConsVar::momz) / U(i, j - 1, k, ConsVar::dens)) /
                      geom.dy;
 #endif
 
     // compute vorticity and enstrophy
     const Real omx = dyw - dzv, omy = dzu - dxw, omz = dxv - dyu;
-    const Real et =
-        0.5 * U(KFVM_D_DECL(i, j, k), SimVar::dens) * (omx * omx + omy * omy + omz * omz);
+    const Real et = 0.5 * U(KFVM_D_DECL(i, j, k), ConsVar::dens) *
+                    (omx * omx + omy * omy + omz * omz);
 
     // Add into array for reduction
     const Real ifac = geom.dvol / geom.volume;
@@ -177,6 +175,9 @@ struct FlowStats<EquationType::NavierStokes, UViewType> {
 
 template <RSType rst>
 struct RiemannSolverX_K<EquationType::NavierStokes, rst> {
+  using ConsVec = typename SimVar<EquationType::NavierStokes>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::NavierStokes>::PrimVec;
+
   FaceDataView U;
   EosParameters eosParams;
 
@@ -186,9 +187,6 @@ struct RiemannSolverX_K<EquationType::NavierStokes, rst> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   Real &maxVel) const {
-    using NavierStokes::ConsVec;
-    using NavierStokes::PrimVec;
-
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
 
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
@@ -217,6 +215,9 @@ struct RiemannSolverX_K<EquationType::NavierStokes, rst> {
 
 template <RSType rst>
 struct RiemannSolverY_K<EquationType::NavierStokes, rst> {
+  using ConsVec = typename SimVar<EquationType::NavierStokes>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::NavierStokes>::PrimVec;
+
   FaceDataView U;
   EosParameters eosParams;
 
@@ -226,9 +227,6 @@ struct RiemannSolverY_K<EquationType::NavierStokes, rst> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   Real &maxVel) const {
-    using NavierStokes::ConsVec;
-    using NavierStokes::PrimVec;
-
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       // pull out states and convert to primitive
@@ -256,6 +254,9 @@ struct RiemannSolverY_K<EquationType::NavierStokes, rst> {
 
 template <RSType rst>
 struct RiemannSolverZ_K<EquationType::NavierStokes, rst> {
+  using ConsVec = typename SimVar<EquationType::NavierStokes>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::NavierStokes>::PrimVec;
+
   FaceDataView U;
   EosParameters eosParams;
 
@@ -265,9 +266,6 @@ struct RiemannSolverZ_K<EquationType::NavierStokes, rst> {
 #if (SPACE_DIM == 3)
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j, const idx_t k, Real &maxVel) const {
-    using NavierStokes::ConsVec;
-    using NavierStokes::PrimVec;
-
     for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
       // pull out states and convert to primitive
       ConsVec uL, uR, F;
@@ -310,6 +308,11 @@ struct SpeedEstimate_K<EquationType::NavierStokes> {
 
 template <class UViewType, class RViewType>
 struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
+  using ConsVar = typename SimVar<EquationType::NavierStokes>::ConsVar;
+  using PrimVar = typename SimVar<EquationType::NavierStokes>::PrimVar;
+  using ConsVec = typename SimVar<EquationType::NavierStokes>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::NavierStokes>::PrimVec;
+
   UViewType U;
   RViewType RHS;
   Geometry geom;
@@ -322,11 +325,6 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
 #if (SPACE_DIM == 2)
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
-    using Physics::NavierStokes::ConsVec;
-    using Physics::NavierStokes::PrimVar;
-    using Physics::NavierStokes::PrimVec;
-    using Physics::NavierStokes::SimVar;
-
     const Real rdx = 1.0 / geom.dx, rdy = 1.0 / geom.dy;
     const Real gamma = eosParams.gamma, Re = eosParams.Re, Pr = eosParams.Pr;
 
@@ -399,19 +397,14 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
     const Real ste = rAl * (rdx * (px[3] - mx[3]) + rdy * (py[3] - my[3]));
 
     // Add into RHS
-    RHS(i, j, SimVar::momx) += sru;
-    RHS(i, j, SimVar::momy) += srv;
-    RHS(i, j, SimVar::momz) += srw;
-    RHS(i, j, SimVar::etot) += ste + u[1][1] * sru + v[1][1] * srv + w[1][1] * srw;
+    RHS(i, j, ConsVar::momx) += sru;
+    RHS(i, j, ConsVar::momy) += srv;
+    RHS(i, j, ConsVar::momz) += srw;
+    RHS(i, j, ConsVar::etot) += ste + u[1][1] * sru + v[1][1] * srv + w[1][1] * srw;
   }
 #else
   KOKKOS_INLINE_FUNCTION
   void operator()(const idx_t i, const idx_t j, const idx_t k) const {
-    using Physics::NavierStokes::ConsVec;
-    using Physics::NavierStokes::PrimVar;
-    using Physics::NavierStokes::PrimVec;
-    using Physics::NavierStokes::SimVar;
-
     const Real rdx = 1.0 / geom.dx, rdy = 1.0 / geom.dy, rdz = 1.0 / geom.dz;
     const Real gamma = eosParams.gamma, Re = eosParams.Re, Pr = eosParams.Pr;
 
@@ -522,10 +515,10 @@ struct Viscosity_K<EquationType::NavierStokes, UViewType, RViewType> {
         rAl * (rdx * (px[3] - mx[3]) + rdy * (py[3] - my[3]) + rdz * (pz[3] - mz[3]));
 
     // Add into RHS
-    RHS(i, j, k, SimVar::momx) += sru;
-    RHS(i, j, k, SimVar::momy) += srv;
-    RHS(i, j, k, SimVar::momz) += srw;
-    RHS(i, j, k, SimVar::etot) +=
+    RHS(i, j, k, ConsVar::momx) += sru;
+    RHS(i, j, k, ConsVar::momy) += srv;
+    RHS(i, j, k, ConsVar::momz) += srw;
+    RHS(i, j, k, ConsVar::etot) +=
         ste + u[1][1][1] * sru + v[1][1][1] * srv + w[1][1][1] * srw;
   }
 #endif
@@ -537,6 +530,8 @@ namespace NavierStokes {
 
 template <class UViewType>
 struct SourceTerms_K<EquationType::NavierStokes, UViewType> {
+  using ConsVec = typename SimVar<EquationType::NavierStokes>::ConsVec;
+
   SourceDataView source;
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   UViewType U;
@@ -577,7 +572,7 @@ struct SourceTerms_K<EquationType::NavierStokes, UViewType> {
         Real y = Numeric::sclAb(yc, geom.dy, ab(nR));
         for (int nS = 0; nS < nzQuad; nS++) {
           Real z = SPACE_DIM == 2 ? zc : Numeric::sclAb(zc, geom.dz, ab(nS));
-          NavierStokes::ConsVec state, force;
+          ConsVec state, force;
           // Real state[10],force[10];
           // Extract state and clear force vector
           for (int nV = 0; nV < NUM_VARS; nV++) {
@@ -600,6 +595,9 @@ struct SourceTerms_K<EquationType::NavierStokes, UViewType> {
 
 template <class UDataView>
 struct PositivityPreserve_K<EquationType::NavierStokes, UDataView> {
+  using ConsVar = typename SimVar<EquationType::NavierStokes>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::NavierStokes>::ConsVec;
+
   UDataView U;
   FaceDataView KFVM_D_DECL(rsX, rsY, rsZ);
   bool haveSources;
@@ -619,8 +617,6 @@ struct PositivityPreserve_K<EquationType::NavierStokes, UDataView> {
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k)) const {
     using Kokkos::fmax;
     using Kokkos::fmin;
-    using NavierStokes::ConsVec;
-    using NavierStokes::SimVar;
 
     const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
 
@@ -629,7 +625,7 @@ struct PositivityPreserve_K<EquationType::NavierStokes, UDataView> {
     for (int nV = 0; nV < NUM_VARS; nV++) {
       refState[nV] = U(KFVM_D_DECL(i, j, k), nV);
     }
-    Real rDens = refState[SimVar::dens];
+    Real rDens = refState[ConsVar::dens];
 
     // Find ranges of density, internal energy, and soundspeed
     Real maxDens = -std::numeric_limits<Real>::max();
@@ -645,8 +641,8 @@ struct PositivityPreserve_K<EquationType::NavierStokes, UDataView> {
           for (int nV = 0; nV < NUM_VARS; nV++) {
             state[nV] = U(KFVM_D_DECL(i + xo, j + yo, k + zo), nV);
           }
-          maxDens = fmax(maxDens, state[SimVar::dens]);
-          minDens = fmin(minDens, state[SimVar::dens]);
+          maxDens = fmax(maxDens, state[ConsVar::dens]);
+          minDens = fmin(minDens, state[ConsVar::dens]);
           Real eint = EOS<EquationType::NavierStokes>::eint(state);
           Real sdsp = EOS<EquationType::NavierStokes>::soundspeed(eosParams.gamma, state);
           minEint = fmin(minEint, eint);
@@ -658,19 +654,19 @@ struct PositivityPreserve_K<EquationType::NavierStokes, UDataView> {
     }
 
     // Find size of flattener
-    Real dxU = U(KFVM_D_DECL(i + 1, j, k), SimVar::momx) /
-                   U(KFVM_D_DECL(i + 1, j, k), SimVar::dens) -
-               U(KFVM_D_DECL(i - 1, j, k), SimVar::momx) /
-                   U(KFVM_D_DECL(i - 1, j, k), SimVar::dens);
-    Real dyV = U(KFVM_D_DECL(i, j + 1, k), SimVar::momy) /
-                   U(KFVM_D_DECL(i, j + 1, k), SimVar::dens) -
-               U(KFVM_D_DECL(i, j - 1, k), SimVar::momy) /
-                   U(KFVM_D_DECL(i, j - 1, k), SimVar::dens);
+    Real dxU = U(KFVM_D_DECL(i + 1, j, k), ConsVar::momx) /
+                   U(KFVM_D_DECL(i + 1, j, k), ConsVar::dens) -
+               U(KFVM_D_DECL(i - 1, j, k), ConsVar::momx) /
+                   U(KFVM_D_DECL(i - 1, j, k), ConsVar::dens);
+    Real dyV = U(KFVM_D_DECL(i, j + 1, k), ConsVar::momy) /
+                   U(KFVM_D_DECL(i, j + 1, k), ConsVar::dens) -
+               U(KFVM_D_DECL(i, j - 1, k), ConsVar::momy) /
+                   U(KFVM_D_DECL(i, j - 1, k), ConsVar::dens);
 #if (SPACE_DIM == 3)
-    Real dzW = U(KFVM_D_DECL(i, j, k + 1), SimVar::momz) /
-                   U(KFVM_D_DECL(i, j, k + 1), SimVar::dens) -
-               U(KFVM_D_DECL(i, j, k - 1), SimVar::momz) /
-                   U(KFVM_D_DECL(i, j, k - 1), SimVar::dens);
+    Real dzW = U(KFVM_D_DECL(i, j, k + 1), ConsVar::momz) /
+                   U(KFVM_D_DECL(i, j, k + 1), ConsVar::dens) -
+               U(KFVM_D_DECL(i, j, k - 1), ConsVar::momz) /
+                   U(KFVM_D_DECL(i, j, k - 1), ConsVar::dens);
 #else
     Real dzW = Real(0.0);
 #endif
@@ -691,28 +687,28 @@ struct PositivityPreserve_K<EquationType::NavierStokes, UDataView> {
     Real theta = Real(1.0);
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       // West face
-      Real rho = rsX(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
+      Real rho = rsX(KFVM_D_DECL(i, j, k), 1, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // East face
-      rho = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, SimVar::dens);
+      rho = rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // South face
-      rho = rsY(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
+      rho = rsY(KFVM_D_DECL(i, j, k), 1, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // North face
-      rho = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, SimVar::dens);
+      rho = rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
 #if (SPACE_DIM == 3)
       // Bottom face
-      rho = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, SimVar::dens);
+      rho = rsZ(KFVM_D_DECL(i, j, k), 1, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
       // Top face
-      rho = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, SimVar::dens);
+      rho = rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, ConsVar::dens);
       theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
       theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
 #endif
@@ -725,7 +721,7 @@ struct PositivityPreserve_K<EquationType::NavierStokes, UDataView> {
         for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
           for (int nS = 0; nS < nzQuad; nS++) {
             Real rho =
-                source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), SimVar::dens);
+                source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), ConsVar::dens);
             theta = rho < minDens ? fmin(theta, rDensDiffM / (rDens - rho)) : theta;
             theta = rho > maxDens ? fmin(theta, rDensDiffP / (rho - rDens)) : theta;
           }
@@ -877,12 +873,9 @@ struct PositivityPreserve_K<EquationType::NavierStokes, UDataView> {
   }
 
   KOKKOS_INLINE_FUNCTION
-  Real nsEintPos(const Real emin, const NavierStokes::ConsVec refState,
-                 const NavierStokes::ConsVec state) const {
+  Real nsEintPos(const Real emin, const ConsVec refState, const ConsVec state) const {
     using Kokkos::fabs;
     using Kokkos::fmin;
-    using NavierStokes::ConsVec;
-    using NavierStokes::SimVar;
 
     Real a = 0.0, b = 0.1, c, dea, dec;
     ConsVec stTheta;

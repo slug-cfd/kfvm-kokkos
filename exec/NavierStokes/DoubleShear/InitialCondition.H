@@ -10,7 +10,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
   using Kokkos::sin;
   using Kokkos::tanh;
-  using Physics::Hydro::SimVar;
+  using ConsVar = typename SimVar<EquationType::NavierStokes>::ConsVar;
 
   (void)z;
 
@@ -21,9 +21,9 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real vx = y < 0.5 ? tanh(k * (y - 0.25)) : tanh(k * (0.75 - y));
   const Real vy = delta * sin(2.0 * M_PI * (x + 0.25));
 
-  state[SimVar::dens] = rho;
-  state[SimVar::momx] = rho * vx;
-  state[SimVar::momy] = rho * vy;
-  state[SimVar::momz] = 0.0;
-  state[SimVar::etot] = p / gamm + 0.5 * rho * (vx * vx + vy * vy);
+  state[ConsVar::dens] = rho;
+  state[ConsVar::momx] = rho * vx;
+  state[ConsVar::momy] = rho * vy;
+  state[ConsVar::momz] = 0.0;
+  state[ConsVar::etot] = p / gamm + 0.5 * rho * (vx * vx + vy * vy);
 }

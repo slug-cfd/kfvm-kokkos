@@ -15,36 +15,35 @@ namespace KFVM {
 
 namespace Physics {
 
-KOKKOS_INLINE_FUNCTION
-void hydroFlux(Real gamma, int ord[3], const Hydro::ConsVec U, const Hydro::PrimVec V,
-               Hydro::ConsVec F) {
-  using Hydro::PrimVar;
-  using Hydro::SimVar;
+namespace Hydro {
+using ConsVar = typename SimVar<EquationType::Hydro>::ConsVar;
+using PrimVar = typename SimVar<EquationType::Hydro>::PrimVar;
+using ConsVec = typename SimVar<EquationType::Hydro>::ConsVec;
+using PrimVec = typename SimVar<EquationType::Hydro>::PrimVec;
 
-  F[SimVar::dens] = U[ord[0]];
+KOKKOS_INLINE_FUNCTION
+void hydroFlux(Real gamma, int ord[3], const ConsVec U, const PrimVec V, ConsVec F) {
+  F[ConsVar::dens] = U[ord[0]];
   F[ord[0]] = U[ord[0]] * V[ord[0]] + V[PrimVar::pres];
   F[ord[1]] = U[ord[0]] * V[ord[1]];
   F[ord[2]] = U[ord[0]] * V[ord[2]];
-  F[SimVar::etot] = V[ord[0]] * (U[SimVar::etot] + V[PrimVar::pres]);
+  F[ConsVar::etot] = V[ord[0]] * (U[ConsVar::etot] + V[PrimVar::pres]);
 }
 
 // Wavespeed estimates
 // See Batten et. al. https://doi.org/10.1137/S1064827593260140
 KOKKOS_INLINE_FUNCTION
-void hydroSpeed(Real gamma, int lng, const Hydro::ConsVec uL, const Hydro::ConsVec uR,
-                const Hydro::PrimVec vL, const Hydro::PrimVec vR, Real &sL, Real &sR,
-                Real &M) {
-  using Hydro::PrimVar;
-  using Hydro::SimVar;
+void hydroSpeed(Real gamma, int lng, const ConsVec uL, const ConsVec uR, const PrimVec vL,
+                const PrimVec vR, Real &sL, Real &sR, Real &M) {
   using Kokkos::fmax;
   using Kokkos::fmin;
   using Kokkos::sqrt;
 
   // Roe estimates
-  const Real hL = (uL[SimVar::etot] + vL[PrimVar::pres]) / uL[SimVar::dens],
-             hR = (uR[SimVar::etot] + vR[PrimVar::pres]) / uR[SimVar::dens];
-  const Real uTil = roeAvg(uL[SimVar::dens], uR[SimVar::dens], vL[lng], vR[lng]),
-             hTil = roeAvg(uL[SimVar::dens], uR[SimVar::dens], hL, hR),
+  const Real hL = (uL[ConsVar::etot] + vL[PrimVar::pres]) / uL[ConsVar::dens],
+             hR = (uR[ConsVar::etot] + vR[PrimVar::pres]) / uR[ConsVar::dens];
+  const Real uTil = roeAvg(uL[ConsVar::dens], uR[ConsVar::dens], vL[lng], vR[lng]),
+             hTil = roeAvg(uL[ConsVar::dens], uR[ConsVar::dens], hL, hR),
              aTil = sqrt((gamma - 1.0) * (hTil - 0.5 * uTil * uTil));
 
   // Batten estimate
@@ -59,16 +58,14 @@ void hydroSpeed(Real gamma, int lng, const Hydro::ConsVec uL, const Hydro::ConsV
       sqrt(vR[PrimVar::velx] * vR[PrimVar::velx] + vR[PrimVar::vely] * vR[PrimVar::vely] +
            vR[PrimVar::velz] * vR[PrimVar::velz]);
 
-  sL = fmin(uL[lng] / uL[SimVar::dens] - aL, uTil - aTil);
-  sR = fmax(uR[lng] / uR[SimVar::dens] + aR, uTil + aTil);
+  sL = fmin(uL[lng] / uL[ConsVar::dens] - aL, uTil - aTil);
+  sR = fmax(uR[lng] / uR[ConsVar::dens] + aR, uTil + aTil);
   M = fmax(vnL / aL, vnR / aR);
 }
 
 KOKKOS_INLINE_FUNCTION
-Real hydroHLL(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::ConsVec uR,
-              const Hydro::PrimVec vL, const Hydro::PrimVec vR, Real F[NUM_VARS]) {
-  using Hydro::ConsVec;
-  using Hydro::SimVar;
+Real hydroHLL(Real gamma, int ord[3], const ConsVec uL, const ConsVec uR,
+              const PrimVec vL, const PrimVec vR, Real F[NUM_VARS]) {
   using Kokkos::fabs;
   using Kokkos::fmax;
 
@@ -83,13 +80,13 @@ Real hydroHLL(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Cons
     hydroFlux(gamma, ord, uL, vL, F);
     if (sL <= 0) {
       hydroFlux(gamma, ord, uR, vR, FT);
-      F[SimVar::dens] = hll(sL, sR, F[SimVar::dens], FT[SimVar::dens], uL[SimVar::dens],
-                            uR[SimVar::dens]);
+      F[ConsVar::dens] = hll(sL, sR, F[ConsVar::dens], FT[ConsVar::dens],
+                             uL[ConsVar::dens], uR[ConsVar::dens]);
       F[ord[0]] = hll(sL, sR, F[ord[0]], FT[ord[0]], uL[ord[0]], uR[ord[0]]);
       F[ord[1]] = hll(sL, sR, F[ord[1]], FT[ord[1]], uL[ord[1]], uR[ord[1]]);
       F[ord[2]] = hll(sL, sR, F[ord[2]], FT[ord[2]], uL[ord[2]], uR[ord[2]]);
-      F[SimVar::etot] = hll(sL, sR, F[SimVar::etot], FT[SimVar::etot], uL[SimVar::etot],
-                            uR[SimVar::etot]);
+      F[ConsVar::etot] = hll(sL, sR, F[ConsVar::etot], FT[ConsVar::etot],
+                             uL[ConsVar::etot], uR[ConsVar::etot]);
     }
   } else {
     hydroFlux(gamma, ord, uR, vR, F);
@@ -103,11 +100,8 @@ Real hydroHLL(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Cons
 // and does not incorporate the shear velocity fix for carbuncling
 // see https://doi.org/10.1137/18M119032X
 KOKKOS_INLINE_FUNCTION
-Real hydroHLLC(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::ConsVec uR,
-               const Hydro::PrimVec vL, const Hydro::PrimVec vR, Hydro::ConsVec F) {
-  using Hydro::ConsVec;
-  using Hydro::PrimVar;
-  using Hydro::SimVar;
+Real hydroHLLC(Real gamma, int ord[3], const ConsVec uL, const ConsVec uR,
+               const PrimVec vL, const PrimVec vR, ConsVec F) {
   using Kokkos::fabs;
   using Kokkos::fmax;
   using Kokkos::fmin;
@@ -132,8 +126,8 @@ Real hydroHLLC(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Con
              wJump = vR[ord[2]] - vL[ord[2]];
 
   // Psi terms (weighted speed differences)
-  const Real psiL = uL[SimVar::dens] * (sL - vL[ord[0]]),
-             psiR = uR[SimVar::dens] * (sR - vR[ord[0]]),
+  const Real psiL = uL[ConsVar::dens] * (sL - vL[ord[0]]),
+             psiR = uR[ConsVar::dens] * (sR - vR[ord[0]]),
              psiFac = psiR * psiL / (psiR - psiL);
 
   // Shear fix
@@ -154,18 +148,18 @@ Real hydroHLLC(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Con
     hydroFlux(gamma, ord, uL, vL, F);
   } else if (0 <= sS) {
     hydroFlux(gamma, ord, uL, vL, F);
-    F[SimVar::dens] = sFacL * (sL * uL[SimVar::dens] - F[SimVar::dens]);
+    F[ConsVar::dens] = sFacL * (sL * uL[ConsVar::dens] - F[ConsVar::dens]);
     F[ord[0]] = sFacL * (sL * uL[ord[0]] - F[ord[0]]) + pFacL;
     F[ord[1]] = sFacL * (sL * uL[ord[1]] - F[ord[1]]) + shFacL * vJump;
     F[ord[2]] = sFacL * (sL * uL[ord[2]] - F[ord[2]]) + shFacL * wJump;
-    F[SimVar::etot] = sFacL * (sL * uL[SimVar::etot] - F[SimVar::etot]) + sS * pFacL;
+    F[ConsVar::etot] = sFacL * (sL * uL[ConsVar::etot] - F[ConsVar::etot]) + sS * pFacL;
   } else if (0 < sR) {
     hydroFlux(gamma, ord, uR, vR, F);
-    F[SimVar::dens] = sFacR * (sR * uR[SimVar::dens] - F[SimVar::dens]);
+    F[ConsVar::dens] = sFacR * (sR * uR[ConsVar::dens] - F[ConsVar::dens]);
     F[ord[0]] = sFacR * (sR * uR[ord[0]] - F[ord[0]]) + pFacR;
     F[ord[1]] = sFacR * (sR * uR[ord[1]] - F[ord[1]]) + shFacR * vJump;
     F[ord[2]] = sFacR * (sR * uR[ord[2]] - F[ord[2]]) + shFacR * wJump;
-    F[SimVar::etot] = sFacR * (sR * uR[SimVar::etot] - F[SimVar::etot]) + sS * pFacR;
+    F[ConsVar::etot] = sFacR * (sR * uR[ConsVar::etot] - F[ConsVar::etot]) + sS * pFacR;
   } else {
     hydroFlux(gamma, ord, uR, vR, F);
   }
@@ -173,60 +167,64 @@ Real hydroHLLC(Real gamma, int ord[3], const Hydro::ConsVec uL, const Hydro::Con
   return fmax(fabs(sL), fabs(sR));
 }
 
+} // namespace Hydro
+
 template <RSType rst>
 struct HydroRS {};
 
 template <>
 struct HydroRS<RSType::HLL> {
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_X(const Real gamma, const Hydro::ConsVec uL, const Hydro::ConsVec uR,
-                 const Hydro::PrimVec vL, const Hydro::PrimVec vR, Hydro::ConsVec F) {
-    using Hydro::SimVar;
-    int ord[] = {SimVar::momx, SimVar::momy, SimVar::momz};
-    return hydroHLL(gamma, ord, uL, uR, vL, vR, F);
+  using ConsVar = typename SimVar<EquationType::Hydro>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::Hydro>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::Hydro>::PrimVec;
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_X(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momx, ConsVar::momy, ConsVar::momz};
+    return Hydro::hydroHLL(gamma, ord, uL, uR, vL, vR, F);
   }
 
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_Y(const Real gamma, const Hydro::ConsVec uL, const Hydro::ConsVec uR,
-                 const Hydro::PrimVec vL, const Hydro::PrimVec vR, Hydro::ConsVec F) {
-    using Hydro::SimVar;
-    int ord[] = {SimVar::momy, SimVar::momz, SimVar::momx};
-    return hydroHLL(gamma, ord, uL, uR, vL, vR, F);
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Y(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momy, ConsVar::momz, ConsVar::momx};
+    return Hydro::hydroHLL(gamma, ord, uL, uR, vL, vR, F);
   }
 
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_Z(const Real gamma, const Hydro::ConsVec uL, const Hydro::ConsVec uR,
-                 const Hydro::PrimVec vL, const Hydro::PrimVec vR, Hydro::ConsVec F) {
-    using Hydro::SimVar;
-    int ord[] = {SimVar::momz, SimVar::momx, SimVar::momy};
-    return hydroHLL(gamma, ord, uL, uR, vL, vR, F);
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Z(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momz, ConsVar::momx, ConsVar::momy};
+    return Hydro::hydroHLL(gamma, ord, uL, uR, vL, vR, F);
   }
 };
 
 template <>
 struct HydroRS<RSType::HLLC> {
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_X(const Real gamma, const Hydro::ConsVec uL, const Hydro::ConsVec uR,
-                 const Hydro::PrimVec vL, const Hydro::PrimVec vR, Hydro::ConsVec F) {
-    using Hydro::SimVar;
-    int ord[] = {SimVar::momx, SimVar::momy, SimVar::momz};
-    return hydroHLLC(gamma, ord, uL, uR, vL, vR, F);
+  using ConsVar = typename SimVar<EquationType::Hydro>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::Hydro>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::Hydro>::PrimVec;
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_X(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momx, ConsVar::momy, ConsVar::momz};
+    return Hydro::hydroHLLC(gamma, ord, uL, uR, vL, vR, F);
   }
 
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_Y(const Real gamma, const Hydro::ConsVec uL, const Hydro::ConsVec uR,
-                 const Hydro::PrimVec vL, const Hydro::PrimVec vR, Hydro::ConsVec F) {
-    using Hydro::SimVar;
-    int ord[] = {SimVar::momy, SimVar::momz, SimVar::momx};
-    return hydroHLLC(gamma, ord, uL, uR, vL, vR, F);
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Y(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momy, ConsVar::momz, ConsVar::momx};
+    return Hydro::hydroHLLC(gamma, ord, uL, uR, vL, vR, F);
   }
 
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_Z(const Real gamma, const Hydro::ConsVec uL, const Hydro::ConsVec uR,
-                 const Hydro::PrimVec vL, const Hydro::PrimVec vR, Hydro::ConsVec F) {
-    using Hydro::SimVar;
-    int ord[] = {SimVar::momz, SimVar::momx, SimVar::momy};
-    return hydroHLLC(gamma, ord, uL, uR, vL, vR, F);
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Z(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momz, ConsVar::momx, ConsVar::momy};
+    return Hydro::hydroHLLC(gamma, ord, uL, uR, vL, vR, F);
   }
 };
 

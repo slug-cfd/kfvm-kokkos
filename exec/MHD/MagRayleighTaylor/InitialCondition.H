@@ -11,7 +11,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   using Kokkos::cos;
   using Kokkos::pow;
   using Kokkos::sqrt;
-  using Physics::MHD_GLM::SimVar;
+  using ConsVar = typename SimVar<EquationType::MHD_GLM>::ConsVar;
 
   const Real gamm = eosParams.gamma - 1.0;
   const Real rhoH = userParams.rhoH, rhoL = userParams.rhoL;
@@ -28,15 +28,15 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real v = -0.1 * exp(-25.0 * (x * x + z * z)) / pow(cosh(100.0 * y * y), 2.0);
 #endif
 
-  state[SimVar::dens] = rho;
+  state[ConsVar::dens] = rho;
 
-  state[SimVar::momx] = 0.0;
-  state[SimVar::momy] = rho * v;
-  state[SimVar::momz] = 0.0;
+  state[ConsVar::momx] = 0.0;
+  state[ConsVar::momy] = rho * v;
+  state[ConsVar::momz] = 0.0;
 
-  state[SimVar::magx] = bx;
-  state[SimVar::magy] = 0.0;
-  state[SimVar::magz] = 0.0;
+  state[ConsVar::magx] = bx;
+  state[ConsVar::magy] = 0.0;
+  state[ConsVar::magz] = 0.0;
 
-  state[SimVar::etot] = p / gamm + 0.5 * rho * v * v + 0.5 * bx * bx;
+  state[ConsVar::etot] = p / gamm + 0.5 * rho * v * v + 0.5 * bx * bx;
 }

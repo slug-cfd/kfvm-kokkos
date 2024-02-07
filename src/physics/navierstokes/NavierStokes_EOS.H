@@ -14,103 +14,87 @@ namespace Physics {
 
 template <>
 struct EOS<EquationType::NavierStokes> {
-  KOKKOS_INLINE_FUNCTION
-  static void cons2prim(const Real gamma, const NavierStokes::ConsVec U,
-                        NavierStokes::PrimVec V) {
-    using NavierStokes::PrimVar;
-    using NavierStokes::SimVar;
+  using ConsVar = typename SimVar<EquationType::NavierStokes>::ConsVar;
+  using PrimVar = typename SimVar<EquationType::NavierStokes>::PrimVar;
+  using ConsVec = typename SimVar<EquationType::NavierStokes>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::NavierStokes>::PrimVec;
 
-    V[PrimVar::dens] = U[SimVar::dens];
-    V[PrimVar::velx] = U[SimVar::momx] / U[SimVar::dens];
-    V[PrimVar::vely] = U[SimVar::momy] / U[SimVar::dens];
-    V[PrimVar::velz] = U[SimVar::momz] / U[SimVar::dens];
+  KOKKOS_INLINE_FUNCTION
+  static void cons2prim(const Real gamma, const ConsVec U, PrimVec V) {
+    V[PrimVar::dens] = U[ConsVar::dens];
+    V[PrimVar::velx] = U[ConsVar::momx] / U[ConsVar::dens];
+    V[PrimVar::vely] = U[ConsVar::momy] / U[ConsVar::dens];
+    V[PrimVar::velz] = U[ConsVar::momz] / U[ConsVar::dens];
     V[PrimVar::pres] = pres(gamma, U);
     V[PrimVar::temp] = temp(gamma, U);
   }
 
   KOKKOS_INLINE_FUNCTION
-  static void prim2cons(const Real gamma, const NavierStokes::PrimVec V,
-                        NavierStokes::ConsVec U) {
-    using NavierStokes::PrimVar;
-    using NavierStokes::SimVar;
-
+  static void prim2cons(const Real gamma, const PrimVec V, ConsVec U) {
     const Real pd = (gamma - 1.0);
 
-    U[SimVar::dens] = V[PrimVar::dens];
-    U[SimVar::momx] = V[PrimVar::dens] * V[PrimVar::velx];
-    U[SimVar::momy] = V[PrimVar::dens] * V[PrimVar::vely];
-    U[SimVar::momz] = V[PrimVar::dens] * V[PrimVar::velz];
-    U[SimVar::etot] =
+    U[ConsVar::dens] = V[PrimVar::dens];
+    U[ConsVar::momx] = V[PrimVar::dens] * V[PrimVar::velx];
+    U[ConsVar::momy] = V[PrimVar::dens] * V[PrimVar::vely];
+    U[ConsVar::momz] = V[PrimVar::dens] * V[PrimVar::velz];
+    U[ConsVar::etot] =
         V[PrimVar::pres] / pd + Real(0.5) * (V[PrimVar::velx] * V[PrimVar::velx] +
                                              V[PrimVar::vely] * V[PrimVar::vely] +
                                              V[PrimVar::velz] * V[PrimVar::velz]);
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real ekin(const NavierStokes::ConsVec U) {
-    using NavierStokes::SimVar;
+  static Real ekin(const ConsVec U) {
     return Real(0.5) *
-           (U[SimVar::momx] * U[SimVar::momx] + U[SimVar::momy] * U[SimVar::momy] +
-            U[SimVar::momz] * U[SimVar::momz]) /
-           U[SimVar::dens];
+           (U[ConsVar::momx] * U[ConsVar::momx] + U[ConsVar::momy] * U[ConsVar::momy] +
+            U[ConsVar::momz] * U[ConsVar::momz]) /
+           U[ConsVar::dens];
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real eint(const NavierStokes::ConsVec U) {
-    using NavierStokes::SimVar;
-    return (U[SimVar::etot] - ekin(U));
+  static Real eint(const ConsVec U) { return (U[ConsVar::etot] - ekin(U)); }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real flowdirx(const ConsVec U) {
+    return U[ConsVar::momx] > 0.0 ? 1.0 : (U[ConsVar::momx] < 0.0 ? -1.0 : 0.0);
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real flowdirx(const NavierStokes::ConsVec U) {
-    using NavierStokes::SimVar;
-    return U[SimVar::momx] > 0.0 ? 1.0 : (U[SimVar::momx] < 0.0 ? -1.0 : 0.0);
+  static Real flowdiry(const ConsVec U) {
+    return U[ConsVar::momy] > 0.0 ? 1.0 : (U[ConsVar::momy] < 0.0 ? -1.0 : 0.0);
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real flowdiry(const NavierStokes::ConsVec U) {
-    using NavierStokes::SimVar;
-    return U[SimVar::momy] > 0.0 ? 1.0 : (U[SimVar::momy] < 0.0 ? -1.0 : 0.0);
+  static Real flowdirz(const ConsVec U) {
+    return U[ConsVar::momz] > 0.0 ? 1.0 : (U[ConsVar::momz] < 0.0 ? -1.0 : 0.0);
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real flowdirz(const NavierStokes::ConsVec U) {
-    using NavierStokes::SimVar;
-    return U[SimVar::momz] > 0.0 ? 1.0 : (U[SimVar::momz] < 0.0 ? -1.0 : 0.0);
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  static Real weno(const NavierStokes::ConsVec U, const EosParameters &eosParams) {
+  static Real weno(const ConsVec U, const EosParameters &eosParams) {
     using Kokkos::pow;
-    using NavierStokes::SimVar;
 
-    return pres(eosParams.gamma, U) / pow(U[SimVar::dens], eosParams.gamma);
+    return pres(eosParams.gamma, U) / pow(U[ConsVar::dens], eosParams.gamma);
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real positivity(const NavierStokes::ConsVec U) {
+  static Real positivity(const ConsVec U) {
     using Kokkos::fmin;
-    using NavierStokes::SimVar;
     // Ensure that density and internal energy are positive
-    return fmin(U[SimVar::dens], eint(U));
+    return fmin(U[ConsVar::dens], eint(U));
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real pres(const Real gamma, const NavierStokes::ConsVec U) {
-    return (gamma - 1.0) * eint(U);
+  static Real pres(const Real gamma, const ConsVec U) { return (gamma - 1.0) * eint(U); }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real temp(const Real gamma, const ConsVec U) {
+    return pres(gamma, U) / U[ConsVar::dens];
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real temp(const Real gamma, const NavierStokes::ConsVec U) {
-    using NavierStokes::SimVar;
-    return pres(gamma, U) / U[SimVar::dens];
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  static Real soundspeed(const Real gamma, const NavierStokes::ConsVec U) {
+  static Real soundspeed(const Real gamma, const ConsVec U) {
     using Kokkos::sqrt;
-    using NavierStokes::SimVar;
-    return sqrt(gamma * pres(gamma, U) / U[SimVar::dens]);
+    return sqrt(gamma * pres(gamma, U) / U[ConsVar::dens]);
   }
 };
 

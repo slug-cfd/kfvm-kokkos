@@ -8,7 +8,7 @@
 KOKKOS_INLINE_FUNCTION
 void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
                       UserParameters userParams, Real state[NUM_VARS]) {
-  using Physics::NavierStokes::SimVar;
+  using ConsVar = typename SimVar<EquationType::NavierStokes>::ConsVar;
 
   const Real gamm = eosParams.gamma - 1.0;
   const Real Masq = userParams.mach * userParams.mach;
@@ -19,9 +19,9 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real w = 0.0;
   const Real p = 1.0 / (gamm * eosParams.gamma * Masq);
 
-  state[SimVar::dens] = rho;
-  state[SimVar::momx] = rho * u;
-  state[SimVar::momy] = rho * v;
-  state[SimVar::momz] = rho * w;
-  state[SimVar::etot] = p / gamm + 0.5 * rho * (u * u + v * v + w * w);
+  state[ConsVar::dens] = rho;
+  state[ConsVar::momx] = rho * u;
+  state[ConsVar::momy] = rho * v;
+  state[ConsVar::momz] = rho * w;
+  state[ConsVar::etot] = p / gamm + 0.5 * rho * (u * u + v * v + w * w);
 }

@@ -18,7 +18,7 @@ KOKKOS_INLINE_FUNCTION void CellWest(const DataViewType &U, int rad, int nX, int
   using Kokkos::cos;
   using Kokkos::exp;
   using Kokkos::tanh;
-  using Physics::NavierStokes::SimVar;
+  using ConsVar = typename KFVM::SimVar<EquationType::NavierStokes>::ConsVar;
 
   // Void casts to ignore unused parameter warnings
   (void)U;
@@ -47,11 +47,11 @@ KOKKOS_INLINE_FUNCTION void CellWest(const DataViewType &U, int rad, int nX, int
   const Real w = SPACE_DIM == 2 ? 0.0 : 0.2 * delta;
   const Real p0 = 1.0 / eosParams.gamma, p = p0 + 0.2 * delta;
 
-  state[SimVar::dens] = rho;
-  state[SimVar::momx] = rho * u;
-  state[SimVar::momy] = rho * v;
-  state[SimVar::momz] = rho * w;
-  state[SimVar::etot] = p / gamm + 0.5 * rho * (u * u + v * v + w * w);
+  state[ConsVar::dens] = rho;
+  state[ConsVar::momx] = rho * u;
+  state[ConsVar::momy] = rho * v;
+  state[ConsVar::momz] = rho * w;
+  state[ConsVar::etot] = p / gamm + 0.5 * rho * (u * u + v * v + w * w);
 }
 
 template <class DataViewType>
@@ -88,11 +88,11 @@ KOKKOS_INLINE_FUNCTION void FaceWest(const DataViewType &U, int j, int k, int nQ
   const Real w = SPACE_DIM == 2 ? 0.0 : 0.2 * delta;
   const Real p0 = 1.0 / eosParams.gamma, p = p0 + 0.2 * delta;
 
-  state[SimVar::dens] = rho;
-  state[SimVar::momx] = rho * u;
-  state[SimVar::momy] = rho * v;
-  state[SimVar::momz] = rho * w;
-  state[SimVar::etot] = p / gamm + 0.5 * rho * (u * u + v * v + w * w);
+  state[ConsVar::dens] = rho;
+  state[ConsVar::momx] = rho * u;
+  state[ConsVar::momy] = rho * v;
+  state[ConsVar::momz] = rho * w;
+  state[ConsVar::etot] = p / gamm + 0.5 * rho * (u * u + v * v + w * w);
 }
 
 // Eastern boundary

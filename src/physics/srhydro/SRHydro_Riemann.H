@@ -15,27 +15,29 @@ namespace KFVM {
 
 namespace Physics {
 
-KOKKOS_INLINE_FUNCTION
-void srhydroFlux(const Real gamma, int ord[3], const SRHydro::ConsVec u,
-                 const SRHydro::PrimVec v, SRHydro::ConsVec F) {
-  using SRHydro::PrimVar;
-  using SRHydro::SimVar;
+namespace SRHydro {
+using ConsVar = typename SimVar<EquationType::SRHydro>::ConsVar;
+using PrimVar = typename SimVar<EquationType::SRHydro>::PrimVar;
+using ConsVec = typename SimVar<EquationType::SRHydro>::ConsVec;
+using PrimVec = typename SimVar<EquationType::SRHydro>::PrimVec;
 
-  F[SimVar::dens] = u[SimVar::dens] * v[ord[0]];
+KOKKOS_INLINE_FUNCTION
+void srhydroFlux(const Real gamma, int ord[3], const ConsVec u, const PrimVec v,
+                 ConsVec F) {
+  F[ConsVar::dens] = u[ConsVar::dens] * v[ord[0]];
   F[ord[0]] = u[ord[0]] * v[ord[0]] + v[PrimVar::pres];
   F[ord[1]] = u[ord[1]] * v[ord[0]];
   F[ord[2]] = u[ord[2]] * v[ord[0]];
-  F[SimVar::etot] = u[ord[0]];
+  F[ConsVar::etot] = u[ord[0]];
 }
 
 // Wavespeed estimates
 KOKKOS_INLINE_FUNCTION
-void srhydroSpeed(Real gamma, int lng, const SRHydro::PrimVec vL,
-                  const SRHydro::PrimVec vR, Real &sL, Real &sR) {
+void srhydroSpeed(Real gamma, int lng, const PrimVec vL, const PrimVec vR, Real &sL,
+                  Real &sR) {
   using Kokkos::fmax;
   using Kokkos::fmin;
   using Kokkos::sqrt;
-  using SRHydro::PrimVar;
 
   // Get soundspeeds
   const Real aL = EOS<EquationType::SRHydro>::soundspeed(gamma, vL), aLsq = aL * aL;
@@ -63,14 +65,10 @@ void srhydroSpeed(Real gamma, int lng, const SRHydro::PrimVec vL,
 }
 
 KOKKOS_INLINE_FUNCTION
-Real srhydroLLF(Real gamma, int ord[3], const SRHydro::ConsVec uL,
-                const SRHydro::ConsVec uR, const SRHydro::PrimVec vL,
-                const SRHydro::PrimVec vR, SRHydro::ConsVec F) {
+Real srhydroLLF(Real gamma, int ord[3], const ConsVec uL, const ConsVec uR,
+                const PrimVec vL, const PrimVec vR, ConsVec F) {
   using Kokkos::fabs;
   using Kokkos::fmax;
-  using SRHydro::ConsVec;
-  using SRHydro::PrimVar;
-  using SRHydro::SimVar;
 
   // Wave speed estimates
   Real sL, sR, sMax;
@@ -91,14 +89,10 @@ Real srhydroLLF(Real gamma, int ord[3], const SRHydro::ConsVec uL,
 }
 
 KOKKOS_INLINE_FUNCTION
-Real srhydroHLL(Real gamma, int ord[3], const SRHydro::ConsVec uL,
-                const SRHydro::ConsVec uR, const SRHydro::PrimVec vL,
-                const SRHydro::PrimVec vR, SRHydro::ConsVec F) {
+Real srhydroHLL(Real gamma, int ord[3], const ConsVec uL, const ConsVec uR,
+                const PrimVec vL, const PrimVec vR, ConsVec F) {
   using Kokkos::fabs;
   using Kokkos::fmax;
-  using SRHydro::ConsVec;
-  using SRHydro::PrimVar;
-  using SRHydro::SimVar;
 
   ConsVec FT;
   Real sL, sR;
@@ -111,13 +105,13 @@ Real srhydroHLL(Real gamma, int ord[3], const SRHydro::ConsVec uL,
     srhydroFlux(gamma, ord, uL, vL, F);
     if (sL <= 0) {
       srhydroFlux(gamma, ord, uR, vR, FT);
-      F[SimVar::dens] = hll(sL, sR, F[SimVar::dens], FT[SimVar::dens], uL[SimVar::dens],
-                            uR[SimVar::dens]);
+      F[ConsVar::dens] = hll(sL, sR, F[ConsVar::dens], FT[ConsVar::dens],
+                             uL[ConsVar::dens], uR[ConsVar::dens]);
       F[ord[0]] = hll(sL, sR, F[ord[0]], FT[ord[0]], uL[ord[0]], uR[ord[0]]);
       F[ord[1]] = hll(sL, sR, F[ord[1]], FT[ord[1]], uL[ord[1]], uR[ord[1]]);
       F[ord[2]] = hll(sL, sR, F[ord[2]], FT[ord[2]], uL[ord[2]], uR[ord[2]]);
-      F[SimVar::etot] = hll(sL, sR, F[SimVar::etot], FT[SimVar::etot], uL[SimVar::etot],
-                            uR[SimVar::etot]);
+      F[ConsVar::etot] = hll(sL, sR, F[ConsVar::etot], FT[ConsVar::etot],
+                             uL[ConsVar::etot], uR[ConsVar::etot]);
     }
   } else {
     srhydroFlux(gamma, ord, uR, vR, F);
@@ -126,66 +120,64 @@ Real srhydroHLL(Real gamma, int ord[3], const SRHydro::ConsVec uL,
   return fmax(fabs(sL), fabs(sR));
 }
 
+} // namespace SRHydro
+
 template <RSType rst>
 struct SRHydroRS {};
 
 template <>
 struct SRHydroRS<RSType::LLF> {
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_X(const Real gamma, const SRHydro::ConsVec uL, const SRHydro::ConsVec uR,
-                 const SRHydro::PrimVec vL, const SRHydro::PrimVec vR,
-                 SRHydro::ConsVec F) {
-    using SRHydro::SimVar;
-    int ord[] = {SimVar::momx, SimVar::momy, SimVar::momz};
-    return srhydroLLF(gamma, ord, uL, uR, vL, vR, F);
+  using ConsVar = typename SimVar<EquationType::SRHydro>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::SRHydro>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::SRHydro>::PrimVec;
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_X(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momx, ConsVar::momy, ConsVar::momz};
+    return SRHydro::srhydroLLF(gamma, ord, uL, uR, vL, vR, F);
   }
 
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_Y(const Real gamma, const SRHydro::ConsVec uL, const SRHydro::ConsVec uR,
-                 const SRHydro::PrimVec vL, const SRHydro::PrimVec vR,
-                 SRHydro::ConsVec F) {
-    using SRHydro::SimVar;
-    int ord[] = {SimVar::momy, SimVar::momz, SimVar::momx};
-    return srhydroLLF(gamma, ord, uL, uR, vL, vR, F);
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Y(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momy, ConsVar::momz, ConsVar::momx};
+    return SRHydro::srhydroLLF(gamma, ord, uL, uR, vL, vR, F);
   }
 
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_Z(const Real gamma, const SRHydro::ConsVec uL, const SRHydro::ConsVec uR,
-                 const SRHydro::PrimVec vL, const SRHydro::PrimVec vR,
-                 SRHydro::ConsVec F) {
-    using SRHydro::SimVar;
-    int ord[] = {SimVar::momz, SimVar::momx, SimVar::momy};
-    return srhydroLLF(gamma, ord, uL, uR, vL, vR, F);
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Z(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momz, ConsVar::momx, ConsVar::momy};
+    return SRHydro::srhydroLLF(gamma, ord, uL, uR, vL, vR, F);
   }
 };
 
 template <>
 struct SRHydroRS<RSType::HLL> {
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_X(const Real gamma, const SRHydro::ConsVec uL, const SRHydro::ConsVec uR,
-                 const SRHydro::PrimVec vL, const SRHydro::PrimVec vR,
-                 SRHydro::ConsVec F) {
-    using SRHydro::SimVar;
-    int ord[] = {SimVar::momx, SimVar::momy, SimVar::momz};
-    return srhydroHLL(gamma, ord, uL, uR, vL, vR, F);
+  using ConsVar = typename SimVar<EquationType::SRHydro>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::SRHydro>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::SRHydro>::PrimVec;
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_X(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momx, ConsVar::momy, ConsVar::momz};
+    return SRHydro::srhydroHLL(gamma, ord, uL, uR, vL, vR, F);
   }
 
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_Y(const Real gamma, const SRHydro::ConsVec uL, const SRHydro::ConsVec uR,
-                 const SRHydro::PrimVec vL, const SRHydro::PrimVec vR,
-                 SRHydro::ConsVec F) {
-    using SRHydro::SimVar;
-    int ord[] = {SimVar::momy, SimVar::momz, SimVar::momx};
-    return srhydroHLL(gamma, ord, uL, uR, vL, vR, F);
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Y(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momy, ConsVar::momz, ConsVar::momx};
+    return SRHydro::srhydroHLL(gamma, ord, uL, uR, vL, vR, F);
   }
 
-  KOKKOS_INLINE_FUNCTION static Real
-  RiemannSolve_Z(const Real gamma, const SRHydro::ConsVec uL, const SRHydro::ConsVec uR,
-                 const SRHydro::PrimVec vL, const SRHydro::PrimVec vR,
-                 SRHydro::ConsVec F) {
-    using SRHydro::SimVar;
-    int ord[] = {SimVar::momz, SimVar::momx, SimVar::momy};
-    return srhydroHLL(gamma, ord, uL, uR, vL, vR, F);
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Z(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momz, ConsVar::momx, ConsVar::momy};
+    return SRHydro::srhydroHLL(gamma, ord, uL, uR, vL, vR, F);
   }
 };
 

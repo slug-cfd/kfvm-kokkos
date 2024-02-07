@@ -17,7 +17,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   using Kokkos::exp;
   using Kokkos::pow;
   using Kokkos::tanh;
-  using Physics::MHD_GLM::SimVar;
+  using ConsVar = typename SimVar<EquationType::MHD_GLM>::ConsVar;
 
   const Real gamm = eosParams.gamma - 1.0;
 
@@ -47,15 +47,15 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   // magnetic and gas pressure
   const Real pB = 0.5 * (bx * bx + by * by + bz * bz), pG = pT - pB;
 
-  state[SimVar::dens] = rho;
+  state[ConsVar::dens] = rho;
 
-  state[SimVar::momx] = rho * vx;
-  state[SimVar::momy] = rho * vy;
-  state[SimVar::momz] = rho * vz;
+  state[ConsVar::momx] = rho * vx;
+  state[ConsVar::momy] = rho * vy;
+  state[ConsVar::momz] = rho * vz;
 
-  state[SimVar::magx] = bx;
-  state[SimVar::magy] = by;
-  state[SimVar::magz] = bz;
+  state[ConsVar::magx] = bx;
+  state[ConsVar::magy] = by;
+  state[ConsVar::magz] = bz;
 
-  state[SimVar::etot] = pG / gamm + pB + 0.5 * rho * (vx * vx + vy * vy + vz * vz);
+  state[ConsVar::etot] = pG / gamm + pB + 0.5 * rho * (vx * vx + vy * vy + vz * vz);
 }
