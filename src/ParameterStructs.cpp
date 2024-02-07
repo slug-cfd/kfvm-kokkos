@@ -25,8 +25,6 @@ bool EosParameters::set(const std::string &fld, const std::string &val) {
     wenoThresh = std::stof(val, &pos);
   } else if (fld == "forceedot") {
     forceEDot = std::stof(val, &pos);
-  } else if (fld == "forcetdyn") {
-    forceTDyn = std::stof(val, &pos);
   } else if (fld == "forcetoff") {
     forceTOff = std::stof(val, &pos);
   } else if (fld == "forceratio") {
