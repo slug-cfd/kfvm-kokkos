@@ -1,15 +1,15 @@
 # Set mesh resolution and extent
-mesh:resolution 128 128 128
+mesh:resolution 96 96 96
 mesh:numblocks 1 1 1
 mesh:extent 0.0 1.0 0.0 1.0 0.0 1.0
 
 # Set time information
-time:final 1.5
+time:final 0.5
 time:mindt 1.e-10
-time:cfl 1.25
+time:cfl 0.25
 time:maxsteps 10000
-time:atol 1.e-3
-time:rtol 1.e-3
+time:atol 1.e-2
+time:rtol 1.e-2
 
 # Set stencil options
 stencil:lfac 5
@@ -17,8 +17,8 @@ stencil:lfac 5
 # Set fluid properties
 eos:gamma 1.001
 eos:wenothresh -1.0
-eos:forceedot 2.0
-eos:forcetdyn 0.05
+eos:forceedot 40.0
+eos:forcestr 4.0
 eos:forcetoff 1.5
 eos:forceratio 1.0
 
@@ -30,4 +30,3 @@ io:plotfreq 0.01
 io:ckptfreq 200
 io:statsfreq 5
 io:verbose 1
-

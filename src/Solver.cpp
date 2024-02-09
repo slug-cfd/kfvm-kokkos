@@ -49,6 +49,11 @@ Solver::Solver(ProblemSetup &ps_)
   // Fill IC from user defined function or restart file
   if (!ps.restart) {
     setIC();
+
+    // Apply initial perturbation if desired
+    // no-op if random forcing turned off
+    applyForcing(0.0);
+
     evalAuxiliary();
     if (ps.plotFreq > 0.0) {
       writerPDI.writePlot(U_halo, U_aux, wenoSelector.wenoFlagView, plotNum, time);
@@ -95,12 +100,6 @@ void Solver::Solve() {
   for (; nTS < ps.maxTimeSteps && !lastTimeStep; ++nTS) {
     Print::Single(ps, "Step {}: time = {:<.4} ({:<.4}%)\n", nTS, time,
                   100.0 * time / ps.finalTime);
-
-    // Update the random forcing information if needed
-    // This is a no-op when not needed
-    if (time < ps.eosParams.forceTOff) {
-      applyForcing();
-    }
 
     // Step forward one time step
     TakeStep();
@@ -206,7 +205,7 @@ void Solver::TakeStep() {
 
   // Try step with dt, and repeat as needed
   bool accepted = false, firstUnphys = true;
-  Real maxVel, v;
+  Real maxVel, v, dtPrev = dt;
   for (int nT = 0; nT < ps.rejectionLimit; nT++) {
     maxVel = 0.0;
     Print::SingleV1(ps, "  Attempt {}: dt = {:<.4}\n", nT + 1, dt);
@@ -307,6 +306,7 @@ void Solver::TakeStep() {
       accepted = true;
       time += dt;
       Real dterr = dt * dtfac, dtcfl = ps.cfl * geom.dmin / maxVel;
+      dtPrev = dt;
       dt = std::fmin(dterr, dtcfl); // Limit to max cfl
       errEst = errNew;
 
@@ -339,6 +339,12 @@ void Solver::TakeStep() {
     lastTimeStep = true;
   }
 
+  // Update the random forcing information if needed
+  // This is a no-op when not needed
+  if (time < ps.eosParams.forceTOff && accepted) {
+    applyForcing(dtPrev);
+  }
+
   Kokkos::Profiling::popRegion();
 }
 
@@ -362,12 +368,12 @@ Real Solver::timeStepErrEstComm(Real lEst) {
   return gEst;
 }
 
-void Solver::applyForcing() {
+void Solver::applyForcing(Real tInj) {
 #ifdef ENABLE_RANDOM_FORCING
   Kokkos::Profiling::pushRegion("Solver::applyForcing");
 
   // Update random forcing coefficients
-  ps.eosParams.updateForcing(dt, ps.layoutMPI.rank, ps.layoutMPI.size,
+  ps.eosParams.updateForcing(tInj, ps.layoutMPI.rank, ps.layoutMPI.size,
                              ps.layoutMPI.realType, ps.layoutMPI.commWorld);
 
   auto cellRng = interiorCellRange();
@@ -380,7 +386,13 @@ void Solver::applyForcing() {
       Physics::RandForcingIntegrate_K<eqType, decltype(U)>(U, ps.eosParams, geom),
       Kokkos::Sum<Real>(intA), Kokkos::Sum<Real>(intB));
   Kokkos::fence("Solver::applyForcing(Forcing integrals)");
-  ps.eosParams.forceStr = forceStrComm(intA, intB, dt);
+
+  // Amplitude is special for first step to set IC rms values
+  if (tInj > 0.0) {
+    ps.eosParams.forceStr = forceStrComm(intA, intB, tInj);
+  } else {
+    ps.eosParams.forceStr = forceStrComm(intA);
+  }
 
   // Perturb state with forcing
   Kokkos::parallel_for(
@@ -392,6 +404,7 @@ void Solver::applyForcing() {
 #endif
 }
 
+// tInj given, this is for actual forcing
 Real Solver::forceStrComm(Real intA, Real intB, Real tInj) {
 #ifdef ENABLE_RANDOM_FORCING
   // Reduce to all processes
@@ -399,9 +412,24 @@ Real Solver::forceStrComm(Real intA, Real intB, Real tInj) {
   MPI_Allreduce(&lInts, &gInts, 2, ps.layoutMPI.realType, MPI_SUM,
                 ps.layoutMPI.commWorld);
 
-  // solve for Edot and return
+  // solve for amplitude and return
   const Real A = gInts[0], B = gInts[1], C = -ps.eosParams.forceEDot * tInj / geom.dvol;
   return (-B + std::sqrt(std::fmax(0.0, B * B - 4.0 * A * C))) / (2.0 * A);
+#else
+  return 0.0;
+#endif
+}
+
+// tInj not given, this is for normalizing first perturbation
+Real Solver::forceStrComm(Real intA) {
+#ifdef ENABLE_RANDOM_FORCING
+  // Reduce to all processes
+  Real A;
+  MPI_Allreduce(&intA, &A, 1, ps.layoutMPI.realType, MPI_SUM, ps.layoutMPI.commWorld);
+
+  // Desired IC rms is in forceStr initially
+  // solve for amplitude and return
+  return std::sqrt(ps.eosParams.forceStr * ps.eosParams.forceStr / (2.0 * geom.dvol * A));
 #else
   return 0.0;
 #endif

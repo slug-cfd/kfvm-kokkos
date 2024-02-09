@@ -39,7 +39,6 @@ struct RandForcingIntegrate_K {
     using Kokkos::sin;
 #ifdef ENABLE_RANDOM_FORCING
 
-    const Real str = 2.0; // Extra 2 to enforce conj. symm.
     const Real fr = eosParams.forceRatio, mfr = 1.0 - 2.0 * fr;
 
     // Sum forcing modes and track contributions
@@ -69,17 +68,18 @@ struct RandForcingIntegrate_K {
       // Project and add into total forcing
       const Real ksq = k1 * k1 + k2 * k2 + k3 * k3, iksq = 1.0 / ksq;
 
-      fu += str * ((fr + mfr * iksq * k1 * k1) * fun +
-                   mfr * iksq * (k1 * k2 * fvn + k1 * k3 * fwn));
+      fu += (fr + mfr * iksq * k1 * k1) * fun +
+            mfr * iksq * (k1 * k2 * fvn + k1 * k3 * fwn);
 
-      fv += str * ((fr + mfr * iksq * k2 * k2) * fvn +
-                   mfr * iksq * (k1 * k2 * fun + k2 * k3 * fwn));
+      fv += (fr + mfr * iksq * k2 * k2) * fvn +
+            mfr * iksq * (k1 * k2 * fun + k2 * k3 * fwn);
 
-      fw += str * ((fr + mfr * iksq * k3 * k3) * fwn +
-                   mfr * iksq * (k1 * k3 * fun + k2 * k3 * fvn));
+      fw += (fr + mfr * iksq * k3 * k3) * fwn +
+            mfr * iksq * (k1 * k3 * fun + k2 * k3 * fvn);
     }
 
-    intA += 0.5 * U(KFVM_D_DECL(i, j, k), ConsVar::dens) * (fu * fu + fv * fv + fw * fw);
+    const Real rho = U(KFVM_D_DECL(i, j, k), ConsVar::dens);
+    intA += 0.5 * rho * (fu * fu + fv * fv + fw * fw);
     intB += U(KFVM_D_DECL(i, j, k), ConsVar::momx) * fu +
             U(KFVM_D_DECL(i, j, k), ConsVar::momy) * fv +
             U(KFVM_D_DECL(i, j, k), ConsVar::momz) * fw;
@@ -105,7 +105,7 @@ struct RandForcingApply_K {
     using Kokkos::sin;
 #ifdef ENABLE_RANDOM_FORCING
 
-    const Real str = 2.0 * eosParams.forceStr; // Extra 2 to enforce conj. symm.
+    const Real str = eosParams.forceStr;
     const Real fr = eosParams.forceRatio, mfr = 1.0 - 2.0 * fr;
 
     // Sum forcing modes and track contributions
@@ -146,17 +146,28 @@ struct RandForcingApply_K {
     }
 
     // Energy in the perturbation as from above
-    Real ePert =
-        0.5 * U(KFVM_D_DECL(i, j, k), ConsVar::dens) * (fu * fu + fv * fv + fw * fw);
+    const Real rho = U(KFVM_D_DECL(i, j, k), ConsVar::dens);
+    Real ePert = 0.5 * rho * (fu * fu + fv * fv + fw * fw);
     ePert += U(KFVM_D_DECL(i, j, k), ConsVar::momx) * fu +
              U(KFVM_D_DECL(i, j, k), ConsVar::momy) * fv +
              U(KFVM_D_DECL(i, j, k), ConsVar::momz) * fw;
 
     // Update momenta and total energy
-    U(KFVM_D_DECL(i, j, k), ConsVar::momx) += U(KFVM_D_DECL(i, j, k), ConsVar::dens) * fu;
-    U(KFVM_D_DECL(i, j, k), ConsVar::momy) += U(KFVM_D_DECL(i, j, k), ConsVar::dens) * fv;
-    U(KFVM_D_DECL(i, j, k), ConsVar::momz) += U(KFVM_D_DECL(i, j, k), ConsVar::dens) * fw;
+    U(KFVM_D_DECL(i, j, k), ConsVar::momx) += rho * fu;
+    U(KFVM_D_DECL(i, j, k), ConsVar::momy) += rho * fv;
+    U(KFVM_D_DECL(i, j, k), ConsVar::momz) += rho * fw;
     U(KFVM_D_DECL(i, j, k), ConsVar::etot) += ePert;
+
+    // override ei to force isothermal type behavior
+    // assumes soundspeed is 1.0
+    const Real gam = eosParams.gamma, eiIso = rho / (gam * (gam - 1.0));
+    const Real UA[] = {
+        U(KFVM_D_DECL(i, j, k), ConsVar::dens), U(KFVM_D_DECL(i, j, k), ConsVar::momx),
+        U(KFVM_D_DECL(i, j, k), ConsVar::momy), U(KFVM_D_DECL(i, j, k), ConsVar::momz),
+        U(KFVM_D_DECL(i, j, k), ConsVar::etot)};
+    const Real ei = EOS<eqType>::eint(UA);
+    U(KFVM_D_DECL(i, j, k), ConsVar::etot) += (eiIso - ei);
+
 #endif
   }
 };

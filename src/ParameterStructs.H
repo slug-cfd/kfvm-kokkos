@@ -23,9 +23,10 @@ struct EosParameters : ParameterStructs {
   Real Re, Pr;     // Reynolds, Prandtl numbers for N-S
   Real wenoThresh; // Threshold for weno selector
   Real ch_glm;     // Hyperbolic cleaning speed for GLM
-  Real forceTOff;  // cut off time for forcing
-  Real forceRatio; // compressive to solenoidal
-  Real forceEDot;  // energy injection rate
+  Real forceTOff;  // Cut off time for forcing
+  Real forceRatio; // Compressive to solenoidal
+  Real forceEDot;  // Energy injection rate
+  Real forceStr;   // Forcing amplitude, calculated not set
 
   // Entries only needed if random forcing is enabled
 #ifdef ENABLE_RANDOM_FORCING
@@ -34,7 +35,7 @@ struct EosParameters : ParameterStructs {
 
   EosParameters()
       : gamma(1.4), Re(1.0), Pr(0.71), wenoThresh(10.0), ch_glm(0.0), forceRatio(1.0),
-        forceEDot(2.0)
+        forceEDot(2.0), forceStr(1.0)
 #ifdef ENABLE_RANDOM_FORCING
         ,
         fAmp("ForcingModes")

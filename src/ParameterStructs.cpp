@@ -25,6 +25,8 @@ bool EosParameters::set(const std::string &fld, const std::string &val) {
     wenoThresh = std::stof(val, &pos);
   } else if (fld == "forceedot") {
     forceEDot = std::stof(val, &pos);
+  } else if (fld == "forcestr") {
+    forceStr = std::stof(val, &pos);
   } else if (fld == "forcetoff") {
     forceTOff = std::stof(val, &pos);
   } else if (fld == "forceratio") {
@@ -46,10 +48,7 @@ void EosParameters::updateForcing(const Real dt, int rank, int size,
     // random device and generator
     std::random_device rd{};
     std::mt19937 gen{rd()};
-
-    // Normal distribution with variance dt for dt > 0, SN otherwise
-    const Real rdt = dt > 0.0 ? std::sqrt(dt) : 1.0;
-    std::normal_distribution<Real> sn{0.0, rdt};
+    std::normal_distribution<Real> sn{0.0, 1.0};
 
     // copy down to modify host-side
     Kokkos::deep_copy(hf, fAmp);
@@ -64,7 +63,8 @@ void EosParameters::updateForcing(const Real dt, int rank, int size,
 #endif
 
       // Get std dev for this k-vector
-      const Real kMag = std::sqrt(k1 * k1 + k2 * k2 + k3 * k3), sig = kMag * (4.0 - kMag);
+      const Real kMag = std::sqrt(k1 * k1 + k2 * k2 + k3 * k3);
+      const Real sig = std::sqrt(kMag * (4.0 - kMag));
 
       for (int d = 0; d < SPACE_DIM; d++) {
         hf(n, d, 1) = sig * sn(gen); // real

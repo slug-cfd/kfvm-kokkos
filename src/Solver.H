@@ -114,6 +114,7 @@ class Solver {
   int timeStepStatusComm(int);
   Real timeStepErrEstComm(Real);
   Real forceStrComm(Real, Real, Real);
+  Real forceStrComm(Real);
 
  public:
   Solver(ProblemSetup &);
@@ -131,7 +132,7 @@ class Solver {
   void reconRiemStatesSparseWeno(ConsDataView);
   void reconRiemStatesTiledWeno(ConsDataView);
   Real findFluxes();
-  void applyForcing();
+  void applyForcing(Real);
 
   void setCellBCs(ConsDataView, Real);
   void setFaceBCs(Real);
