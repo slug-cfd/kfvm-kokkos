@@ -18,7 +18,7 @@
 // #define KFVM_EXEC_HOST
 
 constexpr KFVM::KernelType kernelType = KFVM::KernelType::SE;
-constexpr KFVM::EquationType eqType = KFVM::EquationType::MHD_8W;
+constexpr KFVM::EquationType eqType = KFVM::EquationType::MHD_GLM;
 constexpr KFVM::RSType rsType = KFVM::RSType::LLF;
 constexpr KFVM::RKType rkType = KFVM::RKType::SSP4_3_2;
 

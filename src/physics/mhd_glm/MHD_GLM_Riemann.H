@@ -49,12 +49,8 @@ Real mhdGlmSpeed(const Real gamma, int lng, int bord[3], const ConsVec uL,
   const Real cfR = EOS<EquationType::MHD_GLM>::fastMagSonic(gamma, uR, uR[bord[0]]);
 
   // Davis style estimates with ch added in
-  const Real slMs = fmin(vL[lng] - cfL, vR[lng] - cfR);
-  const Real slCh = fmin(vL[lng] - ch, vR[lng] - ch);
-  const Real srMs = fmax(vL[lng] + cfL, vR[lng] + cfR);
-  const Real srCh = fmax(vL[lng] + ch, vR[lng] + ch);
-  sL = fmin(slMs, slCh);
-  sR = fmax(srMs, srCh);
+  const Real sdL = fmin(vL[lng] - fmax(ch, cfL), vR[lng] - fmax(ch, cfR));
+  const Real sdR = fmax(vL[lng] + fmax(ch, cfL), vR[lng] + fmax(ch, cfR));
 
   // PP estimates following Wu and Shu
   const Real rtL = sqrt(uL[ConsVar::dens]), rtR = sqrt(uR[ConsVar::dens]);
@@ -65,8 +61,10 @@ Real mhdGlmSpeed(const Real gamma, int lng, int bord[3], const ConsVec uL,
       sqrt(bDiff[0] * bDiff[0] + bDiff[1] * bDiff[1] + bDiff[2] * bDiff[2]) / rtSum;
   const Real aL = fmin(vL[lng], vSum) - cfL - bnDiff;
   const Real aR = fmin(vR[lng], vSum) + cfR + bnDiff;
-  sL = fmin(sL, aL);
-  sR = fmax(sR, aR);
+
+  // Extremize over both
+  sL = fmin(sdL, aL);
+  sR = fmax(sdR, aR);
 
   return fmax(fabs(sL), fabs(sR));
 }
@@ -205,6 +203,34 @@ Real mhdGlmKEPES(const Real gamma, const Real ch, int vord[3], int bord[3],
   return sMax;
 }
 
+KOKKOS_INLINE_FUNCTION
+Real mhdGlmHLL(const Real gamma, const Real ch, int vord[3], int bord[3],
+               const ConsVec uL, const ConsVec uR, const PrimVec vL, const PrimVec vR,
+               ConsVec F) {
+  using Kokkos::fabs;
+  using Kokkos::fmax;
+
+  // Wave speed estimates
+  Real sL, sR;
+  const Real sMax = mhdGlmSpeed(gamma, vord[0], bord, uL, uR, vL, vR, ch, sL, sR);
+
+  // Find appropriate region and fill in flux vector
+  ConsVec FR;
+  if (sR > 0) {
+    mhdGlmFlux(gamma, ch, vord, bord, uL, vL, F);
+    if (sL <= 0) {
+      mhdGlmFlux(gamma, ch, vord, bord, uR, vR, FR);
+      for (int nV = 0; nV < NUM_VARS; nV++) {
+        F[nV] = hll(sL, sR, F[nV], FR[nV], uL[nV], uR[nV]);
+      }
+    }
+  } else {
+    mhdGlmFlux(gamma, ch, vord, bord, uR, vR, F);
+  }
+
+  return fmax(fabs(sL), fabs(sR));
+}
+
 } // namespace MHD_GLM
 
 template <RSType rst>
@@ -275,6 +301,40 @@ struct MHD_GLM_RS<RSType::LLF> {
     int vord[] = {ConsVar::momz, ConsVar::momx, ConsVar::momy};
     int bord[] = {ConsVar::magz, ConsVar::magx, ConsVar::magy};
     return MHD_GLM::mhdGlmLLF(gamma, ch, vord, bord, uL, uR, vL, vR, F);
+  }
+};
+
+template <>
+struct MHD_GLM_RS<RSType::HLL> {
+  using ConsVar = typename SimVar<EquationType::MHD_GLM>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::MHD_GLM>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::MHD_GLM>::PrimVec;
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_X(const Real gamma, const Real ch,
+                                                    const ConsVec uL, const ConsVec uR,
+                                                    const PrimVec vL, const PrimVec vR,
+                                                    ConsVec F) {
+    int vord[] = {ConsVar::momx, ConsVar::momy, ConsVar::momz};
+    int bord[] = {ConsVar::magx, ConsVar::magy, ConsVar::magz};
+    return MHD_GLM::mhdGlmHLL(gamma, ch, vord, bord, uL, uR, vL, vR, F);
+  }
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Y(const Real gamma, const Real ch,
+                                                    const ConsVec uL, const ConsVec uR,
+                                                    const PrimVec vL, const PrimVec vR,
+                                                    ConsVec F) {
+    int vord[] = {ConsVar::momy, ConsVar::momz, ConsVar::momx};
+    int bord[] = {ConsVar::magy, ConsVar::magz, ConsVar::magx};
+    return MHD_GLM::mhdGlmHLL(gamma, ch, vord, bord, uL, uR, vL, vR, F);
+  }
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Z(const Real gamma, const Real ch,
+                                                    const ConsVec uL, const ConsVec uR,
+                                                    const PrimVec vL, const PrimVec vR,
+                                                    ConsVec F) {
+    int vord[] = {ConsVar::momz, ConsVar::momx, ConsVar::momy};
+    int bord[] = {ConsVar::magz, ConsVar::magx, ConsVar::magy};
+    return MHD_GLM::mhdGlmHLL(gamma, ch, vord, bord, uL, uR, vL, vR, F);
   }
 };
 

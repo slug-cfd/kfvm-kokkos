@@ -33,6 +33,10 @@ Real mhd8wSpeed(const Real gamma, int lng, int bord[3], const ConsVec uL,
   const Real cfL = EOS<EquationType::MHD_8W>::fastMagSonic(gamma, uL, uL[bord[0]]);
   const Real cfR = EOS<EquationType::MHD_8W>::fastMagSonic(gamma, uR, uR[bord[0]]);
 
+  // Davis style estimates with ch added in
+  const Real sdL = fmin(vL[lng] - cfL, vR[lng] - cfR);
+  const Real sdR = fmax(vL[lng] + cfL, vR[lng] + cfR);
+
   // PP estimates following Wu and Shu
   const Real rtL = sqrt(uL[ConsVar::dens]), rtR = sqrt(uR[ConsVar::dens]);
   const Real rtSum = rtL + rtR, vSum = (rtL * vL[lng] + rtR * vR[lng]) / rtSum;
@@ -40,8 +44,12 @@ Real mhd8wSpeed(const Real gamma, int lng, int bord[3], const ConsVec uL,
                         uL[bord[2]] - uR[bord[2]]};
   const Real bnDiff =
       sqrt(bDiff[0] * bDiff[0] + bDiff[1] * bDiff[1] + bDiff[2] * bDiff[2]) / rtSum;
-  sL = fmin(vL[lng], vSum) - cfL - bnDiff;
-  sR = fmin(vR[lng], vSum) + cfR + bnDiff;
+  const Real aL = fmin(vL[lng], vSum) - cfL - bnDiff;
+  const Real aR = fmin(vR[lng], vSum) + cfR + bnDiff;
+
+  // Extremize over both
+  sL = fmin(sdL, aL);
+  sR = fmax(sdR, aR);
 
   return fmax(fabs(sL), fabs(sR));
 }
@@ -88,6 +96,34 @@ Real mhd8wLLF(const Real gamma, int vord[3], int bord[3], const ConsVec uL,
 
   return sMax;
 }
+
+KOKKOS_INLINE_FUNCTION
+Real mhd8wHLL(const Real gamma, int vord[3], int bord[3], const ConsVec uL,
+              const ConsVec uR, const PrimVec vL, const PrimVec vR, ConsVec F) {
+  using Kokkos::fabs;
+  using Kokkos::fmax;
+
+  // Wave speed estimates
+  Real sL, sR;
+  const Real sMax = mhd8wSpeed(gamma, vord[0], bord, uL, uR, vL, vR, sL, sR);
+
+  // Find appropriate region and fill in flux vector
+  ConsVec FR;
+  if (sR > 0) {
+    mhd8wFlux(gamma, vord, bord, uL, vL, F);
+    if (sL <= 0) {
+      mhd8wFlux(gamma, vord, bord, uR, vR, FR);
+      for (int nV = 0; nV < NUM_VARS; nV++) {
+        F[nV] = hll(sL, sR, F[nV], FR[nV], uL[nV], uR[nV]);
+      }
+    }
+  } else {
+    mhd8wFlux(gamma, vord, bord, uR, vR, F);
+  }
+
+  return fmax(fabs(sL), fabs(sR));
+}
+
 } // namespace MHD_8W
 
 template <RSType rst>
@@ -121,6 +157,37 @@ struct MHD_8W_RS<RSType::LLF> {
     int vord[] = {ConsVar::momz, ConsVar::momx, ConsVar::momy};
     int bord[] = {ConsVar::magz, ConsVar::magx, ConsVar::magy};
     return MHD_8W::mhd8wLLF(gamma, vord, bord, uL, uR, vL, vR, F);
+  }
+};
+
+template <>
+struct MHD_8W_RS<RSType::HLL> {
+  using ConsVar = typename SimVar<EquationType::MHD_8W>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::MHD_8W>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::MHD_8W>::PrimVec;
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_X(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int vord[] = {ConsVar::momx, ConsVar::momy, ConsVar::momz};
+    int bord[] = {ConsVar::magx, ConsVar::magy, ConsVar::magz};
+    return MHD_8W::mhd8wHLL(gamma, vord, bord, uL, uR, vL, vR, F);
+  }
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Y(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int vord[] = {ConsVar::momy, ConsVar::momz, ConsVar::momx};
+    int bord[] = {ConsVar::magy, ConsVar::magz, ConsVar::magx};
+    return MHD_8W::mhd8wHLL(gamma, vord, bord, uL, uR, vL, vR, F);
+  }
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Z(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int vord[] = {ConsVar::momz, ConsVar::momx, ConsVar::momy};
+    int bord[] = {ConsVar::magz, ConsVar::magx, ConsVar::magy};
+    return MHD_8W::mhd8wHLL(gamma, vord, bord, uL, uR, vL, vR, F);
   }
 };
 

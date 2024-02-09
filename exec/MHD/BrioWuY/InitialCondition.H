@@ -10,23 +10,23 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real gamm = eosParams.gamma - 1.0;
   const Real rhoL = 1.0, rhoR = 0.125;
   const Real pL = 1.0, pR = 0.1;
-  const Real byL = 1.0, byR = -1.0, bx = 0.75;
+  const Real bxL = 1.0, bxR = -1.0, by = 0.75;
 
   // Background
   state[ConsVar::momx] = 0.0;
   state[ConsVar::momy] = 0.0;
   state[ConsVar::momz] = 0.0;
-  state[ConsVar::magx] = bx;
+  state[ConsVar::magy] = by;
   state[ConsVar::magz] = 0.0;
 
   // Hi/Lo states
-  if (fabs(x) <= 0.5) {
+  if (fabs(y) <= 0.5) {
     state[ConsVar::dens] = rhoL;
-    state[ConsVar::magy] = byL;
-    state[ConsVar::etot] = pL / gamm + 0.5 * (bx * bx + byL * byL);
+    state[ConsVar::magx] = bxL;
+    state[ConsVar::etot] = pL / gamm + 0.5 * (bxL * bxL + by * by);
   } else {
     state[ConsVar::dens] = rhoR;
-    state[ConsVar::magy] = byR;
-    state[ConsVar::etot] = pR / gamm + 0.5 * (bx * bx + byR * byR);
+    state[ConsVar::magx] = bxR;
+    state[ConsVar::etot] = pR / gamm + 0.5 * (bxR * bxR + by * by);
   }
 }
