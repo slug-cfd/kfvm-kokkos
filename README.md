@@ -95,7 +95,7 @@ This code exists to support the owner's PhD work. More detailed documentation wi
 
 Not everything in this code is fully tested, or necessarily in its final state. In particular:
 
-* Special relativistic hydrodynamics are present in the code, but do not yet yield useful results
-* Eight-wave MHD is mostly an afterthought from the GLM implementation, and there is an unfortunate ammount of code duplication there
+* Special relativistic hydrodynamics support is present in the code, but do not yet yield useful results
+* Eight-wave MHD is mostly an afterthought from the GLM implementation, and there is an unfortunate amount of code duplication there
 
 On the other hand, the Euler and Navier-Stokes equations are well supported and mostly stable. GLM based MHD is also nearly stable.

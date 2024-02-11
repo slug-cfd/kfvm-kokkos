@@ -578,16 +578,15 @@ void Solver::reconRiemStatesSparseWeno(ConsDataView sol_halo) {
   auto U = trimCellHalo(sol_halo);
   auto flagRng = Kokkos::RangePolicy<ExecSpace>(0, wenoSelector.wenoFlagMap.capacity());
 
-  Kokkos::parallel_for("Solver::reconstructRiemannStates(sparse weno)", flagRng,
-                       Stencil::KernelWenoRecon_K<decltype(U)>(
-                           U, KFVM_D_DECL(ps.nX, ps.nY, ps.nZ),
-                           KFVM_D_DECL(wenoSelector.tX, wenoSelector.tY, wenoSelector.tZ),
-                           KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir),
-                           sourceTerms, haveSources, wenoSelector.stenWork,
-                           wenoSelector.wenoFlagMap,
-                           KFVM_D_DECL(stencil.lOff, stencil.tOff, stencil.ttOff),
-                           stencil.subIdx, stencil.faceWeights, stencil.cellWeights,
-                           stencil.derivWeights, geom.dmin, ps.eosParams));
+  Kokkos::parallel_for(
+      "Solver::reconstructRiemannStates(sparse weno)", flagRng,
+      Stencil::KernelWenoRecon_K<decltype(U)>(
+          U, KFVM_D_DECL(ps.nX, ps.nY, ps.nZ),
+          KFVM_D_DECL(wenoSelector.tX, wenoSelector.tY, wenoSelector.tZ),
+          KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), sourceTerms,
+          haveSources, wenoSelector.stenWork, wenoSelector.wenoFlagMap,
+          KFVM_D_DECL(stencil.lOff, stencil.tOff, stencil.ttOff), stencil.subIdx,
+          stencil.faceWeights, stencil.cellWeights, stencil.derivWeights, ps.eosParams));
 }
 
 void Solver::reconRiemStatesTiledWeno(ConsDataView sol_halo) {
@@ -614,7 +613,7 @@ void Solver::reconRiemStatesTiledWeno(ConsDataView sol_halo) {
                 KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), sourceTerms,
                 haveSources, wenoSelector.stenWork, wenoSelector.wenoFlagMap,
                 KFVM_D_DECL(stencil.lOff, stencil.tOff, stencil.ttOff), stencil.subIdx,
-                stencil.faceWeights, stencil.cellWeights, stencil.derivWeights, geom.dmin,
+                stencil.faceWeights, stencil.cellWeights, stencil.derivWeights,
                 ps.eosParams));
       }
     }
