@@ -33,34 +33,47 @@ void hydroFlux(Real gamma, int ord[3], const ConsVec U, const PrimVec V, ConsVec
 // Wavespeed estimates
 // See Batten et. al. https://doi.org/10.1137/S1064827593260140
 KOKKOS_INLINE_FUNCTION
-void hydroSpeed(Real gamma, int lng, const ConsVec uL, const ConsVec uR, const PrimVec vL,
-                const PrimVec vR, Real &sL, Real &sR, Real &M) {
+Real hydroSpeed(Real gamma, int ord[3], const ConsVec uL, const ConsVec uR,
+                const PrimVec vL, const PrimVec vR, Real &sL, Real &sR, Real &M) {
+  using Kokkos::fabs;
   using Kokkos::fmax;
   using Kokkos::fmin;
   using Kokkos::sqrt;
 
-  // Roe estimates
-  const Real hL = (uL[ConsVar::etot] + vL[PrimVar::pres]) / uL[ConsVar::dens],
-             hR = (uR[ConsVar::etot] + vR[PrimVar::pres]) / uR[ConsVar::dens];
-  const Real uTil = roeAvg(uL[ConsVar::dens], uR[ConsVar::dens], vL[lng], vR[lng]),
-             hTil = roeAvg(uL[ConsVar::dens], uR[ConsVar::dens], hL, hR),
-             aTil = sqrt((gamma - 1.0) * (hTil - 0.5 * uTil * uTil));
-
-  // Batten estimate
+  // Useful left and right quantities
+  const Real rhoL = uL[ConsVar::dens], rhoR = uR[ConsVar::dens];
+  const Real vsqL = vL[PrimVar::velx] * vL[PrimVar::velx] +
+                    vL[PrimVar::vely] * vL[PrimVar::vely] +
+                    vL[PrimVar::velz] * vL[PrimVar::velz];
+  const Real vsqR = vR[PrimVar::velx] * vR[PrimVar::velx] +
+                    vR[PrimVar::vely] * vR[PrimVar::vely] +
+                    vR[PrimVar::velz] * vR[PrimVar::velz];
+  const Real hL = (uL[ConsVar::etot] + vL[PrimVar::pres]) / rhoL,
+             hR = (uR[ConsVar::etot] + vR[PrimVar::pres]) / rhoR;
   const Real aL = EOS<EquationType::Hydro>::soundspeed(gamma, uL),
              aR = EOS<EquationType::Hydro>::soundspeed(gamma, uR);
 
-  // Velocity magnitudes for Mach estimate
-  const Real vnL =
-      sqrt(vL[PrimVar::velx] * vL[PrimVar::velx] + vL[PrimVar::vely] * vL[PrimVar::vely] +
-           vL[PrimVar::velz] * vL[PrimVar::velz]);
-  const Real vnR =
-      sqrt(vR[PrimVar::velx] * vR[PrimVar::velx] + vR[PrimVar::vely] * vR[PrimVar::vely] +
-           vR[PrimVar::velz] * vR[PrimVar::velz]);
+  // Roe estimates
+  const Real uTil = roeAvg(rhoL, rhoR, vL[ord[0]], vR[ord[0]]),
+             vTil = roeAvg(rhoL, rhoR, vL[ord[1]], vR[ord[1]]),
+             wTil = roeAvg(rhoL, rhoR, vL[ord[2]], vR[ord[2]]),
+             vsqTil = uTil * uTil + vTil * vTil + wTil * wTil,
+             hTil = roeAvg(rhoL, rhoR, hL, hR),
+             aTil = sqrt((gamma - 1.0) * (hTil - 0.5 * vsqTil));
 
-  sL = fmin(uL[lng] / uL[ConsVar::dens] - aL, uTil - aTil);
-  sR = fmax(uR[lng] / uR[ConsVar::dens] + aR, uTil + aTil);
-  M = fmax(vnL / aL, vnR / aR);
+  // Batten estimate
+  sL = fmin(vL[ord[0]] - aL, uTil - aTil);
+  sR = fmax(vR[ord[0]] + aR, uTil + aTil);
+  const Real sMax = fmax(fabs(sL), fabs(sR));
+  if constexpr (rsType == RSType::LLF) {
+    sL = -sMax;
+    sR = sMax;
+  }
+
+  // Mach estimate
+  M = fmax(sqrt(vsqTil) / aTil, fmax(sqrt(vsqL) / aL, sqrt(vsqR) / aR));
+
+  return sMax;
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -68,31 +81,27 @@ Real hydroHLL(Real gamma, int ord[3], const ConsVec uL, const ConsVec uR,
               const PrimVec vL, const PrimVec vR, Real F[NUM_VARS]) {
   using Kokkos::fabs;
   using Kokkos::fmax;
+  using Kokkos::fmin;
 
   ConsVec FT;
-  Real sL, sR, M;
+  Real sL, sR, sMax, M;
 
   // Wave speed estimates
-  hydroSpeed(gamma, ord[0], uL, uR, vL, vR, sL, sR, M);
+  sMax = hydroSpeed(gamma, ord, uL, uR, vL, vR, sL, sR, M);
 
-  // Find appropriate region and fill in flux vector
-  if (sR > 0) {
-    hydroFlux(gamma, ord, uL, vL, F);
-    if (sL <= 0) {
-      hydroFlux(gamma, ord, uR, vR, FT);
-      F[ConsVar::dens] = hll(sL, sR, F[ConsVar::dens], FT[ConsVar::dens],
-                             uL[ConsVar::dens], uR[ConsVar::dens]);
-      F[ord[0]] = hll(sL, sR, F[ord[0]], FT[ord[0]], uL[ord[0]], uR[ord[0]]);
-      F[ord[1]] = hll(sL, sR, F[ord[1]], FT[ord[1]], uL[ord[1]], uR[ord[1]]);
-      F[ord[2]] = hll(sL, sR, F[ord[2]], FT[ord[2]], uL[ord[2]], uR[ord[2]]);
-      F[ConsVar::etot] = hll(sL, sR, F[ConsVar::etot], FT[ConsVar::etot],
-                             uL[ConsVar::etot], uR[ConsVar::etot]);
-    }
-  } else {
-    hydroFlux(gamma, ord, uR, vR, F);
+  // Combine as in Batten to avoid conditionals
+  const Real tR = (fmin(0.0, sR) - fmin(0.0, sL)) / (sR - sL), tL = 1.0 - tR;
+  const Real tD = 0.5 * (sR * fabs(sL) - sL * fabs(sR)) / (sR - sL);
+
+  // L/R fluxes and add together
+  hydroFlux(gamma, ord, uL, vL, F);
+  hydroFlux(gamma, ord, uR, vR, FT);
+
+  for (int nV = 0; nV < NUM_VARS; nV++) {
+    F[nV] = tL * F[nV] + tR * FT[nV] - tD * (uR[nV] - uL[nV]);
   }
 
-  return fmax(fabs(sL), fabs(sR));
+  return sMax;
 }
 
 // This incorporates the low-mach fix from the HLLC+ method
@@ -109,8 +118,8 @@ Real hydroHLLC(Real gamma, int ord[3], const ConsVec uL, const ConsVec uR,
   using Kokkos::sqrt;
 
   // Wave speed estimates
-  Real sL, sR, M;
-  hydroSpeed(gamma, ord[0], uL, uR, vL, vR, sL, sR, M);
+  Real sL, sR, sMax, M;
+  sMax = hydroSpeed(gamma, ord, uL, uR, vL, vR, sL, sR, M);
 
   // Star region speed and pressure
   const Real sS = hllcSStar(vL[PrimVar::dens], vR[PrimVar::dens], vL[PrimVar::pres],
@@ -164,7 +173,7 @@ Real hydroHLLC(Real gamma, int ord[3], const ConsVec uL, const ConsVec uR,
     hydroFlux(gamma, ord, uR, vR, F);
   }
 
-  return fmax(fabs(sL), fabs(sR));
+  return sMax;
 }
 
 } // namespace Hydro
@@ -174,6 +183,35 @@ struct HydroRS {};
 
 template <>
 struct HydroRS<RSType::HLL> {
+  using ConsVar = typename SimVar<EquationType::Hydro>::ConsVar;
+  using ConsVec = typename SimVar<EquationType::Hydro>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::Hydro>::PrimVec;
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_X(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momx, ConsVar::momy, ConsVar::momz};
+    return Hydro::hydroHLL(gamma, ord, uL, uR, vL, vR, F);
+  }
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Y(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momy, ConsVar::momz, ConsVar::momx};
+    return Hydro::hydroHLL(gamma, ord, uL, uR, vL, vR, F);
+  }
+
+  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Z(const Real gamma, const ConsVec uL,
+                                                    const ConsVec uR, const PrimVec vL,
+                                                    const PrimVec vR, ConsVec F) {
+    int ord[] = {ConsVar::momz, ConsVar::momx, ConsVar::momy};
+    return Hydro::hydroHLL(gamma, ord, uL, uR, vL, vR, F);
+  }
+};
+
+// LLF is just HLL with special wavespeed estimate inside, see above
+template <>
+struct HydroRS<RSType::LLF> {
   using ConsVar = typename SimVar<EquationType::Hydro>::ConsVar;
   using ConsVec = typename SimVar<EquationType::Hydro>::ConsVec;
   using PrimVec = typename SimVar<EquationType::Hydro>::PrimVec;

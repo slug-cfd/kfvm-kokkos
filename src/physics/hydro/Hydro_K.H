@@ -595,24 +595,47 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
             U(KFVM_D_DECL(i, j, k - 1), ConsVar::dens); // Naturally zero in 2d
 
     const Real divV = (dxU + dyV + dzW) / 2.0; // Undivided difference
-    const Real kappa1 = 0.3,
-               eta =
-                   fmin(1.0, fmax(0.0, -(kappa1 * minSdSp + divV) / (kappa1 * minSdSp)));
-    const Real kappa2 = kappa1 * (1.0 - eta);
+    Real kappa = 0.3;
+    const Real eta = fmin(1.0, fmax(0.0, -(kappa * minSdSp + divV) / (kappa * minSdSp)));
+    kappa *= (1.0 - eta);
 
     // Extend density and pressure ranges
-    maxDens *= (1.0 + kappa2);
-    minDens *= (1.0 - kappa2);
-    minEint *= (1.0 - kappa2);
-
-    const Real rDensDiffP = maxDens - rDens, rDensDiffM = rDens - minDens;
+    maxDens *= (1.0 + kappa);
+    minDens *= (1.0 - kappa);
+    minEint *= (1.0 - kappa);
 
     // Enforce positive density
-    // Find mixing amount
+    Real thD = eulerDensTheta(KFVM_D_DECL(i, j, k), rDens, maxDens, minDens, nQuad);
+    if (thD > 0.0 && thD < 1.0) {
+      eulerMixState(KFVM_D_DECL(i, j, k), refState, thD, nQuad);
+    } else if (thD < 1.0) { // thD == 0
+      eulerReplaceState(KFVM_D_DECL(i, j, k), refState, nQuad);
+    }
+
+    // Enforce positive internal energy
+    const Real thP = eulerEintTheta(KFVM_D_DECL(i, j, k), refState, minEint, nQuad);
+    if (thP > 0.0 && thP < 1.0) {
+      eulerMixState(KFVM_D_DECL(i, j, k), refState, thP, nQuad);
+    } else if (thP < 1.0) { // thP == 0
+      eulerReplaceState(KFVM_D_DECL(i, j, k), refState, nQuad);
+    }
+
+    // Update flag to most restrictive case
+    wenoFlag(KFVM_D_DECL(i, j, k), 1) = fmin(thD, thP);
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Real eulerDensTheta(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+                      const Real rDens, const Real maxDens, const Real minDens,
+                      const idx_t nQuad) const {
+    using Kokkos::fmin;
+
+    const Real rDensDiffP = maxDens - rDens, rDensDiffM = rDens - minDens;
     Real theta = 1.0;
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
+      Real rho;
       // West face
-      Real rho = rsX(KFVM_D_DECL(i, j, k), 1, nQ, ConsVar::dens);
+      rho = rsX(KFVM_D_DECL(i, j, k), 1, nQ, ConsVar::dens);
       theta = rho > minDens ? theta : fmin(theta, rDensDiffM / (rDens - rho));
       theta = rho < maxDens ? theta : fmin(theta, rDensDiffP / (rho - rDens));
 
@@ -658,50 +681,16 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
       }
     }
 
-    // Apply mixing
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-        rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV) =
-            refState[nV] + theta * (rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV) - refState[nV]);
-        rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, nV) =
-            refState[nV] +
-            theta * (rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, nV) - refState[nV]);
-        rsY(KFVM_D_DECL(i, j, k), 1, nQ, nV) =
-            refState[nV] + theta * (rsY(KFVM_D_DECL(i, j, k), 1, nQ, nV) - refState[nV]);
-        rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, nV) =
-            refState[nV] +
-            theta * (rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, nV) - refState[nV]);
-#if (SPACE_DIM == 3)
-        rsZ(KFVM_D_DECL(i, j, k), 1, nQ, nV) =
-            refState[nV] + theta * (rsZ(KFVM_D_DECL(i, j, k), 1, nQ, nV) - refState[nV]);
-        rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, nV) =
-            refState[nV] +
-            theta * (rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, nV) - refState[nV]);
-#endif
-      }
-    }
-    if (haveSources) {
-      int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
-      for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
-        for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
-          for (int nS = 0; nS < nzQuad; nS++) {
-            for (idx_t nV = 0; nV < NUM_VARS; nV++) {
-              source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV) =
-                  refState[nV] +
-                  theta * (source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV) -
-                           refState[nV]);
-            }
-          }
-        }
-      }
-    }
+    return theta;
+  }
 
-    // Stash theta before overwriting it
-    wenoFlag(KFVM_D_DECL(i, j, k), 1) = theta;
+  KOKKOS_INLINE_FUNCTION
+  Real eulerEintTheta(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+                      const Hydro::ConsVec refState, const Real minEint,
+                      const idx_t nQuad) const {
+    using Kokkos::fmin;
 
-    // Enforce positive internal energy
-    // Find mixing amount
-    theta = 1.0;
+    Real theta = 1.0;
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       ConsVec state;
       Real ei;
@@ -768,10 +757,13 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
       }
     }
 
-    // Update flag to most restrictive case
-    wenoFlag(KFVM_D_DECL(i, j, k), 1) = fmin(theta, wenoFlag(KFVM_D_DECL(i, j, k), 1));
+    return theta;
+  }
 
-    // Apply mixing
+  KOKKOS_INLINE_FUNCTION
+  void eulerMixState(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+                     const Hydro::ConsVec refState, const Real theta,
+                     const idx_t nQuad) const {
     for (idx_t nQ = 0; nQ < nQuad; nQ++) {
       for (idx_t nV = 0; nV < NUM_VARS; nV++) {
         rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV) =
@@ -811,31 +803,58 @@ struct PositivityPreserve_K<EquationType::Hydro, UDataView> {
   }
 
   KOKKOS_INLINE_FUNCTION
+  void eulerReplaceState(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
+                         const Hydro::ConsVec refState, const idx_t nQuad) const {
+    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
+      for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+        rsX(KFVM_D_DECL(i, j, k), 1, nQ, nV) = refState[nV];
+        rsX(KFVM_D_DECL(i + 1, j, k), 0, nQ, nV) = refState[nV];
+        rsY(KFVM_D_DECL(i, j, k), 1, nQ, nV) = refState[nV];
+        rsY(KFVM_D_DECL(i, j + 1, k), 0, nQ, nV) = refState[nV];
+#if (SPACE_DIM == 3)
+        rsZ(KFVM_D_DECL(i, j, k), 1, nQ, nV) = refState[nV];
+        rsZ(KFVM_D_DECL(i, j, k + 1), 0, nQ, nV) = refState[nV];
+#endif
+      }
+    }
+    if (haveSources) {
+      int nzQuad = SPACE_DIM == 2 ? 1 : NUM_QUAD_PTS;
+      for (int nQ = 0; nQ < NUM_QUAD_PTS; nQ++) {
+        for (int nR = 0; nR < NUM_QUAD_PTS; nR++) {
+          for (int nS = 0; nS < nzQuad; nS++) {
+            for (idx_t nV = 0; nV < NUM_VARS; nV++) {
+              source(KFVM_D_DECL(i, j, k), KFVM_D_DECL(nQ, nR, nS), nV) = refState[nV];
+            }
+          }
+        }
+      }
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION
   Real eulerEintPos(const Real emin, const Hydro::ConsVec refState,
                     const Hydro::ConsVec state) const {
     using Kokkos::fabs;
     using Kokkos::fmin;
 
     Real a = 0.0, b = 1.0, c;
-    Real dec = EOS<EquationType::Hydro>::eint(state) - emin;
     ConsVec stTheta;
 
-    // Bisect on theta for 20 iterations regardless
-    for (int nIter = 0; nIter < 20; nIter++) {
-      const Real deb = dec; // dec is fval at b on entry
-
+    // Bisect on theta for 10 iterations regardless
+    for (int nIter = 0; nIter < 10; nIter++) {
       // Midpoint and midpoint fval
       c = 0.5 * (a + b);
       for (int nV = 0; nV < NUM_VARS; nV++) {
         stTheta[nV] = refState[nV] + c * (state[nV] - refState[nV]);
       }
-      dec = EOS<EquationType::Hydro>::eint(stTheta) - emin;
 
-      if (dec * deb < 0.0) {
-        // Sign change in upper half, walk a forward
+      // eint difference at c-state
+      const Real dec = EOS<EquationType::Hydro>::eint(stTheta) - emin;
+
+      // Walk forward if c-state is valid, fall back otherwise
+      if (dec > 0.0) {
         a = c;
       } else {
-        // default to lower half
         b = c;
       }
     }

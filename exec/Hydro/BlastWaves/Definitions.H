@@ -1,9 +1,9 @@
 #ifndef DEFINITIONS_H_
 #define DEFINITIONS_H_
 
+#include "../../../src/numeric/RKTypes.H"
 #include "../../../src/physics/EquationTypes.H"
 #include "../../../src/physics/RSTypes.H"
-#include "../../../src/numeric/RKTypes.H"
 #include "../../../src/stencil/KernelTypes.H"
 
 // Space dimension of problem
