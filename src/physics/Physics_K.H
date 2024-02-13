@@ -28,12 +28,16 @@ template <EquationType ET, class UViewType, class RViewType>
 struct Viscosity_K {};
 template <EquationType ET, class UViewType>
 struct SourceTerms_K {};
-template <EquationType ET, class UViewType>
-struct PositivityPreserve_K {};
 template <EquationType ET>
 struct EOS {};
 template <EquationType ET>
 struct BCCoeffs {};
+
+// Forward declare ones that have both generic and specialized versions
+template <EquationType ET, class UViewType>
+struct PositivityPreserve_K;
+template <EquationType ET, class UViewType>
+struct RandForcingIntegrate_K;
 
 } // end namespace Physics
 

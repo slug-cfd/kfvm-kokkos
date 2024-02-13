@@ -1,7 +1,7 @@
 # Set mesh resolution and extent
-mesh:resolution 1000 4
+mesh:resolution 512 4
 mesh:numblocks 1 1
-mesh:extent 0.0 1.0 0.0 0.004
+mesh:extent 0.0 1.0 0.0 0.00078125
 
 # Set time information
 time:final 0.1
@@ -21,7 +21,7 @@ eos:wenothresh -1.0
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
-io:basename BrioWu
+io:basename BrioWuLLF
 io:plotfreq 0.01
 io:ckptfreq 1000
 io:verbose 1

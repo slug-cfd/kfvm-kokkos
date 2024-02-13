@@ -461,7 +461,7 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
             KFVM_D_DECL(faceVals.xDir, faceVals.yDir, faceVals.zDir), ps.eosParams),
         Kokkos::Max<Real>(maxLam), Kokkos::Max<Real>(maxVel));
     Kokkos::fence("Solver::evalRHS(GLM reduction)");
-    ps.eosParams.ch_glm = 0.0; // glmSpeedComm(maxLam, maxVel);
+    ps.eosParams.ch_glm = glmSpeedComm(maxLam, maxVel);
   }
 
   // Fill in source terms

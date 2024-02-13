@@ -10,10 +10,10 @@
 #define SPACE_DIM 2
 
 // Stencil radius (2-4)
-#define STENCIL_RADIUS 3
+#define STENCIL_RADIUS 2
 
 // Number of Gauss-Legendre points on faces (1-5)
-#define NUM_QUAD_PTS 3
+#define NUM_QUAD_PTS 2
 
 // #define KFVM_EXEC_HOST
 
