@@ -27,28 +27,16 @@ if __name__ == '__main__':
     # value is list of [<data dir>,<phis>,<dispersion>,<dissipation>,<linestyle>]
 
     # 2d runs
-    # data = {r'$R = 2, \ell = 5$, No Weno':['data/NoWeno/ell5/R2_NX257_NY8/ckpt',[],[],[],'-r'],
-    #         r'$R = 2, \ell = 5$, Weno':['data/Weno/ell5/R2_NX257_NY8/ckpt',[],[],[],'--r'],
-    #         r'$R = 2, \ell = 10$, No Weno':['data/NoWeno/ell10/R2_NX257_NY8/ckpt',[],[],[],'-g'],
-    #         r'$R = 2, \ell = 10$, Weno':['data/Weno/ell10/R2_NX257_NY8/ckpt',[],[],[],'--g'],
-    #         r'$R = 3, \ell = 5$, No Weno':['data/NoWeno/ell5/R3_NX257_NY8/ckpt',[],[],[],'-b'],
-    #         r'$R = 3, \ell = 5$, Weno':['data/Weno/ell5/R3_NX257_NY8/ckpt',[],[],[],'--b'],
-    #         r'$R = 3, \ell = 10$, No Weno':['data/NoWeno/ell10/R3_NX257_NY8/ckpt',[],[],[],'-c'],
-    #         r'$R = 3, \ell = 10$, Weno':['data/Weno/ell10/R3_NX257_NY8/ckpt',[],[],[],'--c']}
     data = {r'$R = 2, \ell = 5$, No Weno':['data/NoWeno/ell5/R2_NX257_NY8/ckpt',[],[],[],'-r'],
             r'$R = 2, \ell = 5$, Weno':['data/Weno/ell5/R2_NX257_NY8/ckpt',[],[],[],'--r'],
             r'$R = 3, \ell = 5$, No Weno':['data/NoWeno/ell5/R3_NX257_NY8/ckpt',[],[],[],'-b'],
             r'$R = 3, \ell = 5$, Weno':['data/Weno/ell5/R3_NX257_NY8/ckpt',[],[],[],'--b']}
 
     # 3d runs
-    # data = {r'$R = 2, \ell = 5$, No Weno':['data/NoWeno/ell5/R2_NX256_NY8_NZ8/ckpt',[],[],[],'-r'],
-    #         r'$R = 2, \ell = 5$, Weno':['data/Weno/ell5/R2_NX256_NY8_NZ8/ckpt',[],[],[],'--r'],
-    #         r'$R = 2, \ell = 10$, No Weno':['data/NoWeno/ell10/R2_NX256_NY8_NZ8/ckpt',[],[],[],'-g'],
-    #         r'$R = 2, \ell = 10$, Weno':['data/Weno/ell10/R2_NX256_NY8_NZ8/ckpt',[],[],[],'--g'],
-    #         r'$R = 3, \ell = 5$, No Weno':['data/NoWeno/ell5/R3_NX256_NY8_NZ8/ckpt',[],[],[],'-b'],
-    #         r'$R = 3, \ell = 5$, Weno':['data/Weno/ell5/R3_NX256_NY8_NZ8/ckpt',[],[],[],'--b'],
-    #         r'$R = 3, \ell = 10$, No Weno':['data/NoWeno/ell10/R3_NX256_NY8_NZ8/ckpt',[],[],[],'-c'],
-    #         r'$R = 3, \ell = 10$, Weno':['data/Weno/ell10/R3_NX256_NY8_NZ8/ckpt',[],[],[],'--c']}
+    # data = {r'$R = 2, \ell = 5$, No Weno':['data/NoWeno/ell5/R2_NX257_NY4_NZ4/ckpt',[],[],[],'-r'],
+    #         r'$R = 2, \ell = 5$, Weno':['data/Weno/ell5/R2_NX257_NY4_NZ4/ckpt',[],[],[],'--r'],
+    #         r'$R = 3, \ell = 5$, No Weno':['data/NoWeno/ell5/R3_NX257_NY4_NZ4/ckpt',[],[],[],'-b'],
+    #         r'$R = 3, \ell = 5$, Weno':['data/Weno/ell5/R3_NX257_NY4_NZ4/ckpt',[],[],[],'--b']}
     
     phis = []
 

@@ -1,7 +1,7 @@
 # Set mesh resolution and extent
-mesh:resolution 257 8 8
+mesh:resolution 257 4 4
 mesh:numblocks 1 1 1
-mesh:extent 0.0 1.0 0.0 1.0 0.0 0.03125
+mesh:extent 0.0 1.0 0.0 0.0155642023 0.0 0.0155642023 
 
 # Set time information
 time:final 1.e-8
@@ -16,11 +16,11 @@ stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 0.0
-eos:wenothresh -1.0
+eos:wenothresh 1.0
 
 # Output settings
 io:pdiconf ../../../user/pdi_linadv_xdmf.yml
-io:datadir data/Weno/ell5
+io:datadir data/NoWeno/ell5
 io:basename DispRelFQ
 io:ckptfreq 1
 io:verbose 2

@@ -16,7 +16,6 @@
 #include "../SimVar.H"
 #include "Definitions.H"
 #include "LinAdv_EOS.H"
-#include "LinAdv_Riemann.H"
 
 namespace KFVM {
 
@@ -62,112 +61,6 @@ struct FlowStats<EquationType::LinAdv, UViewType> {
   KOKKOS_INLINE_FUNCTION
   void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
                   FlowStatsArray &stat) const {}
-};
-
-template <RSType rst>
-struct RiemannSolverX_K<EquationType::LinAdv, rst> {
-  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
-
-  FaceDataView U;
-  EosParameters eosParams;
-
-  RiemannSolverX_K(const FaceDataView &U_, const EosParameters &eosParams_)
-      : U(U_), eosParams(eosParams_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
-                  Real &maxVel) const {
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // pull out states and convert to primitive
-      ConsVec uL, uR, F;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
-        uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
-      }
-
-      // Calculate flux
-      Real vq = LinAdvRS<rst>::RiemannSolve_X(eosParams.gamma, uL, uR, F);
-      maxVel = vq > maxVel ? vq : maxVel;
-
-      // Overwrite states with flux
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        U(KFVM_D_DECL(i, j, k), 0, nQ, nV) = F[nV];
-        U(KFVM_D_DECL(i, j, k), 1, nQ, nV) = F[nV];
-      }
-    }
-  }
-};
-
-template <RSType rst>
-struct RiemannSolverY_K<EquationType::LinAdv, rst> {
-  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
-
-  FaceDataView U;
-  EosParameters eosParams;
-
-  RiemannSolverY_K(const FaceDataView &U_, const EosParameters &eosParams_)
-      : U(U_), eosParams(eosParams_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
-                  Real &maxVel) const {
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // pull out states and convert to primitive
-      ConsVec uL, uR, F;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
-        uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
-      }
-
-      // Calculate flux
-      Real vq = LinAdvRS<rst>::RiemannSolve_Y(eosParams.gamma, uL, uR, F);
-      maxVel = vq > maxVel ? vq : maxVel;
-
-      // Overwrite states with flux
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        U(KFVM_D_DECL(i, j, k), 0, nQ, nV) = F[nV];
-        U(KFVM_D_DECL(i, j, k), 1, nQ, nV) = F[nV];
-      }
-    }
-  }
-};
-
-template <RSType rst>
-struct RiemannSolverZ_K<EquationType::LinAdv, rst> {
-  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
-
-  FaceDataView U;
-  EosParameters eosParams;
-
-  RiemannSolverZ_K(const FaceDataView &U_, const EosParameters &eosParams_)
-      : U(U_), eosParams(eosParams_) {}
-
-#if (SPACE_DIM == 3)
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const idx_t i, const idx_t j, const idx_t k, Real &maxVel) const {
-    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
-      // pull out states and convert to primitive
-      ConsVec uL, uR, F;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
-        uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
-      }
-
-      // Calculate flux
-      Real vq = LinAdvRS<rst>::RiemannSolve_Z(eosParams.gamma, uL, uR, F);
-      maxVel = vq > maxVel ? vq : maxVel;
-
-      // Overwrite states with flux
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        U(i, j, k, 0, nQ, nV) = F[nV];
-        U(i, j, k, 1, nQ, nV) = F[nV];
-      }
-    }
-  }
-#endif
 };
 
 template <>

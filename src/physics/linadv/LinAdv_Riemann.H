@@ -15,54 +15,77 @@ namespace KFVM {
 
 namespace Physics {
 
-namespace LinAdv {
-using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+template <>
+struct RSPhys<EquationType::LinAdv> {
+  using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::LinAdv>::PrimVec;
 
-KOKKOS_INLINE_FUNCTION
-Real linadvExact(Real gamma, int dir, const ConsVec uL, const ConsVec uR,
-                 Real F[NUM_VARS]) {
-  using Kokkos::cos;
-  using Kokkos::fabs;
-  using Kokkos::sin;
+  KOKKOS_INLINE_FUNCTION
+  static void flux(const EosParameters &eosParams, const int ord[3], const ConsVec U,
+                   const PrimVec V, ConsVec F) {
+    using Kokkos::cos;
+    using Kokkos::sin;
 
-  // Velocity on face
-  const Real vx = cos(gamma), vy = sin(gamma);
+    // Velocity on face
+    const Real vx = cos(eosParams.gamma), vy = sin(eosParams.gamma);
 
-  if (dir == 0) {
-    F[0] = vx > 0.0 ? vx * uL[0] : vx * uR[0];
-    return fabs(vx);
-  } else if (dir == 1) {
-    F[0] = vy > 0.0 ? vy * uL[0] : vy * uR[0];
-    return fabs(vy);
-  } else {
-    F[0] = 0.0;
+    if (ord[0] == 0) {
+      F[0] = vx * U[0];
+    } else if (ord[0] == 1) {
+      F[0] = vy * U[0];
+    } else {
+      F[0] = 0.0;
+    }
   }
 
-  return 0.0;
-}
+  KOKKOS_INLINE_FUNCTION
+  static Real speeds(const EosParameters &eosParams, const int ord[3], const ConsVec uL,
+                     const ConsVec uR, const PrimVec vL, const PrimVec vR, Real &sL,
+                     Real &sR) {
+    using Kokkos::cos;
+    using Kokkos::fabs;
+    using Kokkos::sin;
 
-} // namespace LinAdv
+    if (ord[0] == 0) {
+      sL = cos(eosParams.gamma);
+    } else if (ord[0] == 1) {
+      sL = sin(eosParams.gamma);
+    } else {
+      sL = 0.0;
+    }
 
-template <RSType rst>
-struct LinAdvRS {};
+    sR = sL;
+
+    return fabs(sL);
+  }
+};
 
 template <>
-struct LinAdvRS<RSType::EXACT> {
+struct RiemannSolver<EquationType::LinAdv, RSType::EXACT> {
   using ConsVec = typename SimVar<EquationType::LinAdv>::ConsVec;
+  using PrimVec = typename SimVar<EquationType::LinAdv>::PrimVec;
 
-  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_X(const Real gamma, const ConsVec uL,
-                                                    const ConsVec uR, ConsVec F) {
-    return LinAdv::linadvExact(gamma, 0, uL, uR, F);
-  }
+  KOKKOS_INLINE_FUNCTION
+  static Real solve(const EosParameters &eosParams, const int dir, const ConsVec uL,
+                    const ConsVec uR, const PrimVec vL, const PrimVec vR, ConsVec F) {
+    using Kokkos::cos;
+    using Kokkos::fabs;
+    using Kokkos::sin;
 
-  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Y(const Real gamma, const ConsVec uL,
-                                                    const ConsVec uR, ConsVec F) {
-    return LinAdv::linadvExact(gamma, 1, uL, uR, F);
-  }
+    // Velocity on face
+    const Real vx = cos(eosParams.gamma), vy = sin(eosParams.gamma);
 
-  KOKKOS_INLINE_FUNCTION static Real RiemannSolve_Z(const Real gamma, const ConsVec uL,
-                                                    const ConsVec uR, ConsVec F) {
-    return LinAdv::linadvExact(gamma, 2, uL, uR, F);
+    if (dir == 0) {
+      F[0] = vx > 0.0 ? vx * uL[0] : vx * uR[0];
+      return fabs(vx);
+    } else if (dir == 1) {
+      F[0] = vy > 0.0 ? vy * uL[0] : vy * uR[0];
+      return fabs(vy);
+    } else {
+      F[0] = 0.0;
+    }
+
+    return 0.0;
   }
 };
 

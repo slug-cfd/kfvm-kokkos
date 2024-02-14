@@ -26,7 +26,6 @@ struct EOS<EquationType::NavierStokes> {
     V[PrimVar::vely] = U[ConsVar::momy] / U[ConsVar::dens];
     V[PrimVar::velz] = U[ConsVar::momz] / U[ConsVar::dens];
     V[PrimVar::pres] = pres(gamma, U);
-    V[PrimVar::temp] = temp(gamma, U);
   }
 
   KOKKOS_INLINE_FUNCTION

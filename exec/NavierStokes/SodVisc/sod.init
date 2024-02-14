@@ -1,29 +1,29 @@
 # Set mesh resolution and extent
-mesh:resolution 256 32 8
+mesh:resolution 100 4 4
 mesh:numblocks 1 1 1
-mesh:extent 0.0 1.0 0.0 0.125 0.0 0.03125
+mesh:extent 0.0 1.0 0.0 0.04 0.0 0.04
 
 # Set time information
 time:final 0.2
 time:mindt 1.e-10
-time:cfl 1.5
+time:cfl 1.25
 time:maxsteps 1000
 time:atol 1.e-4
-time:rtol 1.e-3
+time:rtol 1.e-4
 
 # Set stencil options
 stencil:lfac 5
 
 # Set fluid properties
 eos:gamma 1.4
-eos:wenothresh -1.0
-eos:reynolds 1000.0
-eos:prandtl 0.7
+eos:wenothresh 1.0
+eos:reynolds 10000.0
+eos:prandtl 0.71
 
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename SodX
-io:plotfreq 0.05
-io:ckptfreq 20
+io:basename SodVisc
+io:plotfreq 0.01
+io:ckptfreq 200
 io:verbose 1

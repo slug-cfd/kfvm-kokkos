@@ -21,7 +21,7 @@ eos:wenothresh -1.0
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename Sod
+io:basename SodCombo
 io:plotfreq 0.01
 io:ckptfreq 20
 io:verbose 1

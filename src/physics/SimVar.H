@@ -30,11 +30,13 @@ struct SimVar<EquationType::Hydro> {
 
 template <>
 struct SimVar<EquationType::NavierStokes> {
+  // Ensure that consvar and primvar match hydro to re-use
+  // Riemann solvers
   struct ConsVar {
     enum var : int { dens = 0, momx, momy, momz, etot };
   };
   struct PrimVar {
-    enum var : int { dens = 0, velx, vely, velz, pres, temp };
+    enum var : int { dens = 0, velx, vely, velz, pres };
   };
   struct AuxVar {
     enum var : int { velx = 0, vely, velz, eint, pres };
@@ -44,7 +46,7 @@ struct SimVar<EquationType::NavierStokes> {
   };
 
   typedef Real ConsVec[5];
-  typedef Real PrimVec[6];
+  typedef Real PrimVec[5];
   typedef Real StatVec[2];
 };
 

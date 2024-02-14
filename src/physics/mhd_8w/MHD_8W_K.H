@@ -15,7 +15,6 @@
 #include "../SimVar.H"
 #include "Definitions.H"
 #include "MHD_8W_EOS.H"
-#include "MHD_8W_Riemann.H"
 #include "Numeric.H"
 
 namespace KFVM {
@@ -209,123 +208,6 @@ struct FlowStats<EquationType::MHD_8W, UViewType> {
     stat.data[StatVar::enst] += ifac * et;
     stat.data[StatVar::heli] += ifac * bCrossCb;
   }
-};
-
-template <RSType rst>
-struct RiemannSolverX_K<EquationType::MHD_8W, rst> {
-  using ConsVec = typename SimVar<EquationType::MHD_8W>::ConsVec;
-  using PrimVec = typename SimVar<EquationType::MHD_8W>::PrimVec;
-
-  FaceDataView U;
-  EosParameters eosParams;
-
-  RiemannSolverX_K(const FaceDataView &U_, const EosParameters &eosParams_)
-      : U(U_), eosParams(eosParams_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
-                  Real &maxVel) const {
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // Pull out states and convert to primitive
-      ConsVec uL, uR, F;
-      PrimVec vL, vR;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
-        uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
-      }
-      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uR, vR);
-
-      // Calculate flux
-      Real vq = MHD_8W_RS<rst>::RiemannSolve_X(eosParams.gamma, uL, uR, vL, vR, F);
-      maxVel = vq > maxVel ? vq : maxVel;
-
-      // Overwrite states with flux
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        U(KFVM_D_DECL(i, j, k), 0, nQ, nV) = F[nV];
-        U(KFVM_D_DECL(i, j, k), 1, nQ, nV) = F[nV];
-      }
-    }
-  }
-};
-
-template <RSType rst>
-struct RiemannSolverY_K<EquationType::MHD_8W, rst> {
-  using ConsVec = typename SimVar<EquationType::MHD_8W>::ConsVec;
-  using PrimVec = typename SimVar<EquationType::MHD_8W>::PrimVec;
-
-  FaceDataView U;
-  EosParameters eosParams;
-
-  RiemannSolverY_K(const FaceDataView &U_, const EosParameters &eosParams_)
-      : U(U_), eosParams(eosParams_) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(KFVM_D_DECL(const idx_t i, const idx_t j, const idx_t k),
-                  Real &maxVel) const {
-    const idx_t nQuad = SPACE_DIM == 2 ? NUM_QUAD_PTS : NUM_QUAD_PTS * NUM_QUAD_PTS;
-    for (idx_t nQ = 0; nQ < nQuad; nQ++) {
-      // Pull out states and convert to primitive
-      ConsVec uL, uR, F;
-      PrimVec vL, vR;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
-        uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
-      }
-      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uR, vR);
-
-      // Calculate flux
-      Real vq = MHD_8W_RS<rst>::RiemannSolve_Y(eosParams.gamma, uL, uR, vL, vR, F);
-      maxVel = vq > maxVel ? vq : maxVel;
-
-      // Overwrite states with flux
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        U(KFVM_D_DECL(i, j, k), 0, nQ, nV) = F[nV];
-        U(KFVM_D_DECL(i, j, k), 1, nQ, nV) = F[nV];
-      }
-    }
-  }
-};
-
-template <RSType rst>
-struct RiemannSolverZ_K<EquationType::MHD_8W, rst> {
-  using ConsVec = typename SimVar<EquationType::MHD_8W>::ConsVec;
-  using PrimVec = typename SimVar<EquationType::MHD_8W>::PrimVec;
-
-  FaceDataView U;
-  EosParameters eosParams;
-
-  RiemannSolverZ_K(const FaceDataView &U_, const EosParameters &eosParams_)
-      : U(U_), eosParams(eosParams_) {}
-
-#if (SPACE_DIM == 3)
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const idx_t i, const idx_t j, const idx_t k, Real &maxVel) const {
-    for (idx_t nQ = 0; nQ < NUM_QUAD_PTS * NUM_QUAD_PTS; nQ++) {
-      // Pull out states and convert to primitive
-      ConsVec uL, uR, F;
-      PrimVec vL, vR;
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        uL[nV] = U(KFVM_D_DECL(i, j, k), 0, nQ, nV);
-        uR[nV] = U(KFVM_D_DECL(i, j, k), 1, nQ, nV);
-      }
-      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uL, vL);
-      EOS<EquationType::MHD_8W>::cons2prim(eosParams.gamma, uR, vR);
-
-      // Calculate flux
-      Real vq = MHD_8W_RS<rst>::RiemannSolve_Z(eosParams.gamma, uL, uR, vL, vR, F);
-      maxVel = vq > maxVel ? vq : maxVel;
-
-      // Overwrite states with flux
-      for (int nV = 0; nV < NUM_VARS; nV++) {
-        U(i, j, k, 0, nQ, nV) = F[nV];
-        U(i, j, k, 1, nQ, nV) = F[nV];
-      }
-    }
-  }
-#endif
 };
 
 template <>

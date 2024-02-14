@@ -9,6 +9,8 @@
 #include "../EquationTypes.H"
 #include "../SimVar.H"
 
+#define KFVM_MAX_SR_ITER 200
+
 namespace KFVM {
 
 namespace Physics {
@@ -27,10 +29,10 @@ struct EOS<EquationType::SRHydro> {
   // some calling methods to use loose approximations
   // when appropriate
   KOKKOS_INLINE_FUNCTION
-  static void cons2prim(const Real gam, const int maxIt, const ConsVec U, PrimVec V) {
+  static void cons2prim(const Real gam, const ConsVec U, PrimVec V) {
     // Single expensive solve can be done for pressure,
     // do it first and pass result to other EOS routines
-    const Real p = pres(gam, maxIt, U);
+    const Real p = pres(gam, U);
 
     // Get remaining quantities cheaply
     const Real W = lorenz(p, U);
@@ -83,8 +85,7 @@ struct EOS<EquationType::SRHydro> {
 
   // More stable scheme, algo (2.3)
   KOKKOS_INLINE_FUNCTION
-  static Real presStable(const Real gam, const int maxIt, const Real rtol,
-                         const ConsVec U, Real p) {
+  static Real presStable(const Real gam, const Real rtol, const ConsVec U, Real p) {
     using Kokkos::fabs;
     using Kokkos::fmax;
     using Kokkos::sqrt;
@@ -97,7 +98,7 @@ struct EOS<EquationType::SRHydro> {
     const Real Ssq =
         (U[ConsVar::momx] * U[ConsVar::momx] + U[ConsVar::momy] * U[ConsVar::momy] +
          U[ConsVar::momz] * U[ConsVar::momz]);
-    for (int n = 0; n < maxIt; n++) {
+    for (int n = 0; n < KFVM_MAX_SR_ITER; n++) {
       // Recurring quantities
       const Real EP = E + p;
       const Real rt = sqrt(EP * EP - Ssq);
@@ -118,7 +119,7 @@ struct EOS<EquationType::SRHydro> {
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real pres(const Real gam, const int maxIt, const ConsVec U) {
+  static Real pres(const Real gam, const ConsVec U) {
     using Kokkos::fabs;
     using Kokkos::fmax;
     using Kokkos::sqrt;
@@ -139,7 +140,7 @@ struct EOS<EquationType::SRHydro> {
     const Real ESsq = Esq - Ssq;
     // Immediately swap to stable version
     if (Dsq / ESsq < eps2) {
-      return presStable(gam, maxIt, rtol, U, p);
+      return presStable(gam, rtol, U, p);
     }
 
     // Do fast version unless lorenz factor is bad
@@ -151,12 +152,12 @@ struct EOS<EquationType::SRHydro> {
     const Real c2 =
         Esq * (gam * gam - Real(6.0) * gm) + Real(2.0) * Ssq * gm - Dsq * gm * gm;
     const Real c3 = -Real(2.0) * U[ConsVar::etot] * gm2;
-    for (int n = 0; n < maxIt; n++) {
+    for (int n = 0; n < KFVM_MAX_SR_ITER; n++) {
       // Test lorenz factor
       // revert to stable if needed
       const Real W = lorenz(p, U);
       if (W < Real(1.0) + eps1) {
-        return presStable(gam, maxIt, rtol, U, p);
+        return presStable(gam, rtol, U, p);
       }
 
       // Evaluate pressure polynomial and derivative

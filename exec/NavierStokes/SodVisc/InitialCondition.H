@@ -9,8 +9,7 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   (void)y;
   (void)z;
 
-  const Real gamm = eosParams.gamma - 1.0, Masq = eosParams.Ma * eosParams.Ma;
-  const Real pd = eosParams.gamma * gamm * Masq;
+  const Real gamm = eosParams.gamma - 1.0;
 
   const Real ax = Kokkos::fabs(x);
 
@@ -18,5 +17,5 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   state[ConsVar::momx] = 0.0;
   state[ConsVar::momy] = 0.0;
   state[ConsVar::momz] = 0.0;
-  state[ConsVar::etot] = (ax < 0.5 ? 1.0 : 0.1) / pd;
+  state[ConsVar::etot] = (ax < 0.5 ? 1.0 : 0.1) / gamm;
 }

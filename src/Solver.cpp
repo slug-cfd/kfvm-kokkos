@@ -483,29 +483,26 @@ Real Solver::evalRHS(ConsDataView sol_halo, Real t) {
   auto fluxRng_EW =
       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<SPACE_DIM>, Kokkos::IndexType<idx_t>>(
           {KFVM_D_DECL(0, 0, 0)}, {KFVM_D_DECL(ps.nX + 1, ps.nY, ps.nZ)});
-  Kokkos::parallel_reduce(
-      "RiemannSolver::EW", fluxRng_EW,
-      Physics::RiemannSolverX_K<eqType, rsType>(faceVals.xDir, ps.eosParams),
-      Kokkos::Max<Real>(vEW));
+  Kokkos::parallel_reduce("RiemannSolver::EW", fluxRng_EW,
+                          Physics::RiemannSolverX_K<rsType>(faceVals.xDir, ps.eosParams),
+                          Kokkos::Max<Real>(vEW));
 
   // North/South faces
   auto fluxRng_NS =
       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<SPACE_DIM>, Kokkos::IndexType<idx_t>>(
           {KFVM_D_DECL(0, 0, 0)}, {KFVM_D_DECL(ps.nX, ps.nY + 1, ps.nZ)});
-  Kokkos::parallel_reduce(
-      "RiemannSolver::NS", fluxRng_NS,
-      Physics::RiemannSolverY_K<eqType, rsType>(faceVals.yDir, ps.eosParams),
-      Kokkos::Max<Real>(vNS));
+  Kokkos::parallel_reduce("RiemannSolver::NS", fluxRng_NS,
+                          Physics::RiemannSolverY_K<rsType>(faceVals.yDir, ps.eosParams),
+                          Kokkos::Max<Real>(vNS));
 
 #if (SPACE_DIM == 3)
   // Top/Bottom faces
   auto fluxRng_TB =
       Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<SPACE_DIM>, Kokkos::IndexType<idx_t>>(
           {0, 0, 0}, {ps.nX, ps.nY, ps.nZ + 1});
-  Kokkos::parallel_reduce(
-      "RiemannSolver::TB", fluxRng_TB,
-      Physics::RiemannSolverZ_K<eqType, rsType>(faceVals.zDir, ps.eosParams),
-      Kokkos::Max<Real>(vTB));
+  Kokkos::parallel_reduce("RiemannSolver::TB", fluxRng_TB,
+                          Physics::RiemannSolverZ_K<rsType>(faceVals.zDir, ps.eosParams),
+                          Kokkos::Max<Real>(vTB));
 #endif
 
   // Reduce max velocities from each direction

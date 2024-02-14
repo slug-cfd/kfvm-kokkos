@@ -2,12 +2,10 @@
 // must take (x,y,z) coordinates regardless of space dimension
 
 KOKKOS_INLINE_FUNCTION
-void InitialCondition(Real x,Real y,Real z,
-		      EosParameters eosParams,
-		      UserParameters userParams,
-		      Real state[NUM_VARS])
+void InitialCondition(Real x,Real y,Real z, EosParameters eosParams,
+		      UserParameters userParams, Real state[NUM_VARS])
 {
-  using Physics::NavierStokes::SimVar;
+  using ConsVar = typename SimVar<eqType>::ConsVar;
   
   (void)x;
   (void)y;
