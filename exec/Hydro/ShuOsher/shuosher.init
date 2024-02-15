@@ -1,15 +1,15 @@
 # Set mesh resolution and extent
-mesh:resolution 4000 4 4
+mesh:resolution 1000 4 4
 mesh:numblocks 1 1 1
-mesh:extent 0.0 9.0 0.0 0.009 0.0 0.009
+mesh:extent 0.0 9.0 0.0 0.036 0.0 0.036
 
 # Set time information
 time:final 1.8
 time:mindt 1.e-10
-time:cfl 0.75
-time:maxsteps 10000
-time:atol 1.e-4
-time:rtol 1.e-4
+time:cfl 1.25
+time:maxsteps 20000
+time:atol 1.e-3
+time:rtol 1.e-3
 
 # Set stencil options
 stencil:lfac 5

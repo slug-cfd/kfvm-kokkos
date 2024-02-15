@@ -556,16 +556,13 @@ struct KernelWenoRecon_K {
   KOKKOS_INLINE_FUNCTION
   void createOmegas(Real omega[Stencil::Core::SI.nSub][NUM_VARS],
                     const Real gamma[Stencil::Core::SI.nSub]) const {
-    using Kokkos::pow;
-
-    const int p = 2;
-    const Real eps = 1.0e-40;
+    const Real eps = 1.e-40;
 
     for (int nV = 0; nV < NUM_VARS; nV++) {
       // Form WENO-JS style weights
       Real tot = 0.0;
       for (int nS = 0; nS < nSub; nS++) {
-        omega[nS][nV] = gamma[nS] / (pow(omega[nS][nV], p) + eps);
+        omega[nS][nV] = gamma[nS] / (omega[nS][nV] * omega[nS][nV] + eps);
         tot += omega[nS][nV];
       }
 

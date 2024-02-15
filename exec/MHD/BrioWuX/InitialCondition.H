@@ -10,7 +10,8 @@ void InitialCondition(Real x, Real y, Real z, EosParameters eosParams,
   const Real gamm = eosParams.gamma - 1.0;
   const Real rhoL = 1.0, rhoR = 0.125;
   const Real pL = 1.0, pR = 0.1;
-  const Real byL = 1.0, byR = -1.0, bx = 0.75;
+  const Real bx = userParams.bn;
+  const Real byL = userParams.bt, byR = -userParams.bt;
 
   // Background
   state[ConsVar::momx] = 0.0;

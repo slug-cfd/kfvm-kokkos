@@ -1,12 +1,12 @@
 # Set mesh resolution and extent
-mesh:resolution 10000 4 4
+mesh:resolution 1000 4 4
 mesh:numblocks 1 1 1
-mesh:extent -1.0 1.5 0.0 0.001 0.0 0.001
+mesh:extent -1.0 1.5 0.0 0.01 0.0 0.01
 
 # Set time information
 time:final 0.4
 time:mindt 1.e-10
-time:cfl 0.5
+time:cfl 1.25
 time:maxsteps 50000
 time:atol 1.e-4
 time:rtol 1.e-4
@@ -21,10 +21,10 @@ eos:wenothresh -1.0
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
-io:basename Torrilhon_P1
+io:basename Torrilhon_P0
 io:plotfreq 0.04
 io:ckptfreq 200
 io:verbose 1
 
 # User defined parameters
-user:probtype 1
+user:probtype 0

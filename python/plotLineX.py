@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import h5py
+import os
 
 # Return hdf5 dictionary corresponding to a single file
 def dataFromFile(fStr):
@@ -12,28 +13,37 @@ def dataFromFile(fStr):
         data[k] = f[k][()]
     # Convert from face locations to cell centers in x
     data['x'] = 0.5*(data['xcoord'][:-1] + data['xcoord'][1:])
+
+    # add in extra fields as useful
+    data['vel'] = np.sqrt(data['velx']**2 + data['vely']**2 + data['velz']**2)
+    if 'pres' in f.keys():
+        data['mach'] = data['vel']*np.sqrt(data['vel']/(data['gamma']*data['pres']))
+    else if 'prsg' in f.keys():
+        data['mach'] = data['vel']*np.sqrt(data['vel']/(data['gamma']*data['prsg']))
     f.close()
     return data
 
 if __name__ == '__main__':
-    # First argument is the data file
-    fStr = sys.argv[1]
-    data = dataFromFile(fStr)
+    # parse as many data files as possible
+    data = {}
+    for fn in range(1,len(sys.argv)):
+        fStr = sys.argv[fn]
+        if os.path.exists(fStr):
+            name = f'File {fn}'
+            data[name] = dataFromFile(fStr)
+        else:
+            break
 
-    # second arg is the field to plot
-    fld = sys.argv[2]
+    # last arg is the field to plot
+    fld = sys.argv[-1]
 
     yidx = 0
     zidx = 0
 
-    # third argument is optionally the y index to cut through
-    if len(sys.argv) > 3:
-        yidx = int(sys.argv[3])
-
-    # fourth argument is optionally the z index to cut through
-    if len(sys.argv) > 4:
-        zidx = int(sys.argv[4])
-
     # Plot it.
-    plt.plot(data['x'],data[fld][zidx,yidx,:],'-k')
+    names = []
+    for n,d in data.items():
+        names.append(n)
+        plt.plot(d['x'],d[fld][zidx,yidx,:])
+    plt.legend(names)
     plt.show()

@@ -408,10 +408,10 @@ void Stencil::findWeights(double lfac) {
       // Note that first entry in derivSet is skipped since it is just a point value
       RVs.recVecs<decltype(dWts), KFVM_D_DECL(NDeriv, NDeriv, NDeriv)>(
           core.derivSet.deg[nI + 1], KFVM_D_DECL(0.0, 0.0, 0.0), dWts);
-      double scl = std::pow(geom.dx, 2 * core.derivSet.deg[nI + 1][0]);
-      scl *= std::pow(geom.dy, 2 * core.derivSet.deg[nI + 1][1]);
+      double scl = std::pow(geom.dx, core.derivSet.deg[nI + 1][0]);
+      scl *= std::pow(geom.dy, core.derivSet.deg[nI + 1][1]);
 #if (SPACE_DIM == 3)
-      scl *= std::pow(geom.dz, 2 * core.derivSet.deg[nI + 1][2]);
+      scl *= std::pow(geom.dz, core.derivSet.deg[nI + 1][2]);
 #endif
       for (idx_t nC = 0; nC < subSize; nC++) {
         dWts(nC) *= scl;
@@ -480,17 +480,15 @@ void Stencil::findWeights(double lfac) {
       // Note that first entry in derivSet is skipped since it is just a point value
       RVs.recVecs<decltype(dWts), KFVM_D_DECL(NDeriv, NDeriv, NDeriv)>(
           core.derivSet.deg[nI + 1], KFVM_D_DECL(0.0, 0.0, 0.0), dWts);
-      double scl = std::pow(geom.dx, 2 * core.derivSet.deg[nI + 1][0]);
-      scl *= std::pow(geom.dy, 2 * core.derivSet.deg[nI + 1][1]);
+      double scl = std::pow(geom.dx, core.derivSet.deg[nI + 1][0]);
+      scl *= std::pow(geom.dy, core.derivSet.deg[nI + 1][1]);
 #if (SPACE_DIM == 3)
-      scl *= std::pow(geom.dz, 2 * core.derivSet.deg[nI + 1][2]);
+      scl *= std::pow(geom.dz, core.derivSet.deg[nI + 1][2]);
 #endif
       for (idx_t nC = 0; nC < subSize; nC++) {
         dWts(nC) *= scl;
       }
     }
-    // testPV(Kokkos::subview(h_deriv, nS, Kokkos::ALL, Kokkos::ALL), Core::SI.nIndic,
-    //        KFVM_D_DECL(xw, yw, zw));
 
     // Use west substencil to fill east substencil
     {
