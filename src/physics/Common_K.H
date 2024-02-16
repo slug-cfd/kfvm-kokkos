@@ -62,6 +62,121 @@ struct RiemannSolver {
   }
 };
 
+// Matrix-free approximate Osher-Solomon solver
+// Uses OS-Cheb4 scheme from https://doi.org/10.1016/j.amc.2015.06.104
+template <EquationType ET>
+struct RiemannSolver<ET, RSType::AOS> {
+  using ConsVar = typename SimVar<ET>::ConsVar;
+  using ConsVec = typename SimVar<ET>::ConsVec;
+  using PrimVec = typename SimVar<ET>::PrimVec;
+
+  KOKKOS_INLINE_FUNCTION
+  static Real solve(const EosParameters &eosParams, const int dir, const ConsVec uL,
+                    const ConsVec uR, const PrimVec vL, const PrimVec vR, ConsVec F) {
+
+    // set field orderings to collapse to 1d solver
+    const int ord[] = {dir, (dir + 1) % 3, (dir + 2) % 3};
+
+    // L/R fluxes and add together
+    ConsVec FR;
+    RSPhys<ET>::flux(eosParams, ord, uL, vL, F);
+    RSPhys<ET>::flux(eosParams, ord, uR, vR, FR);
+
+    // Diffusion term
+    ConsVec D;
+    const Real sMax = aosDiffusion(eosParams, ord, uL, uR, D);
+
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      F[nV] = 0.5 * (F[nV] + FR[nV] - D[nV]);
+    }
+
+    return sMax;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real aosDiffusion(const EosParameters &eosParams, const int ord[3],
+                           const ConsVec uL, const ConsVec uR, ConsVec D) {
+    using Kokkos::fmax;
+    using Kokkos::sqrt;
+
+    // Gauss-Legendre rule, copied from Numeric.H, shifted from (-0.5,0.5) to (0,1)
+    const Real ab[] = {0.5, 0.5 - 0.7745966692414833770358530 / 2.0,
+                       0.5 + 0.7745966692414833770358530 / 2.0};
+    const Real wt[] = {0.8888888888888888888888888 / 2.0,
+                       0.5555555555555555555555555 / 2.0,
+                       0.5555555555555555555555555 / 2.0};
+
+    // Coefficients in Chebyschev polynomial
+    // a0 is shifted up to enforce stability
+    const Real a0 = 2.0 / M_PI + 0.046247442822796482964;
+    const Real a2 = 4.0 / (3.0 * M_PI), a4 = -4.0 / (15.0 * M_PI);
+
+    // Set difference and zero out diffusion
+    ConsVec dw;
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      dw[nV] = uR[nV] - uL[nV];
+      D[nV] = 0.0;
+    }
+
+    // Loop over quad points and accumulate into D
+    Real sMax = 0.0; // Running maximum wavespeed
+    for (int q = 0; q < 3; q++) {
+      // State along path
+      Real eps = 0.0;
+      ConsVec wk;
+      for (int nV = 0; nV < NUM_VARS; nV++) {
+        wk[nV] = uL[nV] + ab[q] * dw[nV];
+        eps += wk[nV] * wk[nV];
+      }
+      eps = 1.e-6 * sqrt(eps); // 10^(-6) times norm of wk
+
+      // speed estimate at state wk
+      const Real s = RSPhys<ET>::speed(eosParams, ord, wk);
+      sMax = fmax(sMax, s);
+
+      // quadratic term
+      ConsVec W2;
+      fdAsquared(eosParams, ord, eps, wk, dw, W2);
+      for (int nV = 0; nV < NUM_VARS; nV++) {
+        W2[nV] = 2.0 * W2[nV] / (s * s) - dw[nV];
+      }
+
+      // Quartic term and add together
+      ConsVec W4;
+      fdAsquared(eosParams, ord, eps, wk, W2, W4);
+      for (int nV = 0; nV < NUM_VARS; nV++) {
+        W4[nV] = 4.0 * W4[nV] / (s * s) - 2.0 * W2[nV] - dw[nV];
+        D[nV] += s * wt[q] * (a0 * dw[nV] + a2 * W2[nV] + a4 * W4[nV]);
+      }
+    }
+
+    return sMax;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static void fdAsquared(const EosParameters &eosParams, const int ord[3], const Real eps,
+                         const ConsVec w, const ConsVec v, ConsVec W) {
+    // Intermediate state in fd approximation (used twice)
+    ConsVec wv;
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      wv[nV] = w[nV] + eps * v[nV];
+    }
+
+    // Fluxes in fd approximation
+    ConsVec Fw, Fwv, FwFw;
+    RSPhys<ET>::flux(eosParams, ord, w, Fw);
+    RSPhys<ET>::flux(eosParams, ord, wv, Fwv);
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      wv[nV] = w[nV] + Fwv[nV] - Fw[nV];
+    }
+    RSPhys<ET>::flux(eosParams, ord, wv, FwFw);
+
+    for (int nV = 0; nV < NUM_VARS; nV++) {
+      W[nV] = (FwFw[nV] - Fw[nV]) / eps;
+    }
+  }
+};
+
 // Application of a Riemann solver always looks the same
 template <RSType RST>
 struct RiemannSolverX_K {
@@ -546,7 +661,6 @@ struct RandForcingIntegrate_K {
     using Kokkos::sin;
 #ifdef ENABLE_RANDOM_FORCING
 
-    const Real str = 2.0; // Extra 2 to enforce conj. symm.
     const Real fr = eosParams.forceRatio, mfr = 1.0 - 2.0 * fr;
 
     // Sum forcing modes and track contributions
@@ -576,17 +690,18 @@ struct RandForcingIntegrate_K {
       // Project and add into total forcing
       const Real ksq = k1 * k1 + k2 * k2 + k3 * k3, iksq = 1.0 / ksq;
 
-      fu += str * ((fr + mfr * iksq * k1 * k1) * fun +
-                   mfr * iksq * (k1 * k2 * fvn + k1 * k3 * fwn));
+      fu += (fr + mfr * iksq * k1 * k1) * fun +
+            mfr * iksq * (k1 * k2 * fvn + k1 * k3 * fwn);
 
-      fv += str * ((fr + mfr * iksq * k2 * k2) * fvn +
-                   mfr * iksq * (k1 * k2 * fun + k2 * k3 * fwn));
+      fv += (fr + mfr * iksq * k2 * k2) * fvn +
+            mfr * iksq * (k1 * k2 * fun + k2 * k3 * fwn);
 
-      fw += str * ((fr + mfr * iksq * k3 * k3) * fwn +
-                   mfr * iksq * (k1 * k3 * fun + k2 * k3 * fvn));
+      fw += (fr + mfr * iksq * k3 * k3) * fwn +
+            mfr * iksq * (k1 * k3 * fun + k2 * k3 * fvn);
     }
 
-    intA += 0.5 * U(KFVM_D_DECL(i, j, k), ConsVar::dens) * (fu * fu + fv * fv + fw * fw);
+    const Real rho = U(KFVM_D_DECL(i, j, k), ConsVar::dens);
+    intA += 0.5 * rho * (fu * fu + fv * fv + fw * fw);
     intB += U(KFVM_D_DECL(i, j, k), ConsVar::momx) * fu +
             U(KFVM_D_DECL(i, j, k), ConsVar::momy) * fv +
             U(KFVM_D_DECL(i, j, k), ConsVar::momz) * fw;
@@ -612,7 +727,7 @@ struct RandForcingApply_K {
     using Kokkos::sin;
 #ifdef ENABLE_RANDOM_FORCING
 
-    const Real str = 2.0 * eosParams.forceStr; // Extra 2 to enforce conj. symm.
+    const Real str = eosParams.forceStr;
     const Real fr = eosParams.forceRatio, mfr = 1.0 - 2.0 * fr;
 
     // Sum forcing modes and track contributions
@@ -653,16 +768,16 @@ struct RandForcingApply_K {
     }
 
     // Energy in the perturbation as from above
-    Real ePert =
-        0.5 * U(KFVM_D_DECL(i, j, k), ConsVar::dens) * (fu * fu + fv * fv + fw * fw);
+    const Real rho = U(KFVM_D_DECL(i, j, k), ConsVar::dens);
+    Real ePert = 0.5 * rho * (fu * fu + fv * fv + fw * fw);
     ePert += U(KFVM_D_DECL(i, j, k), ConsVar::momx) * fu +
              U(KFVM_D_DECL(i, j, k), ConsVar::momy) * fv +
              U(KFVM_D_DECL(i, j, k), ConsVar::momz) * fw;
 
     // Update momenta and total energy
-    U(KFVM_D_DECL(i, j, k), ConsVar::momx) += U(KFVM_D_DECL(i, j, k), ConsVar::dens) * fu;
-    U(KFVM_D_DECL(i, j, k), ConsVar::momy) += U(KFVM_D_DECL(i, j, k), ConsVar::dens) * fv;
-    U(KFVM_D_DECL(i, j, k), ConsVar::momz) += U(KFVM_D_DECL(i, j, k), ConsVar::dens) * fw;
+    U(KFVM_D_DECL(i, j, k), ConsVar::momx) += rho * fu;
+    U(KFVM_D_DECL(i, j, k), ConsVar::momy) += rho * fv;
+    U(KFVM_D_DECL(i, j, k), ConsVar::momz) += rho * fw;
     U(KFVM_D_DECL(i, j, k), ConsVar::etot) += ePert;
 #endif
   }

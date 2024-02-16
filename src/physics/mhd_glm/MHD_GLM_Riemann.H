@@ -52,6 +52,14 @@ struct RSPhys<EquationType::MHD_GLM> {
   }
 
   KOKKOS_INLINE_FUNCTION
+  static void flux(const EosParameters &eosParams, const int ord[3], const ConsVec U,
+                   ConsVec F) {
+    PrimVec V;
+    EOS<EquationType::MHD_GLM>::cons2prim(eosParams.gamma, U, V);
+    flux(eosParams, ord, U, V, F);
+  }
+
+  KOKKOS_INLINE_FUNCTION
   static Real speeds(const EosParameters &eosParams, const int ord[3], const ConsVec uL,
                      const ConsVec uR, const PrimVec vL, const PrimVec vR, Real &sL,
                      Real &sR) {
@@ -88,6 +96,22 @@ struct RSPhys<EquationType::MHD_GLM> {
     sR = fmax(sdR, aR);
 
     return fmax(fabs(sL), fabs(sR));
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real speed(const EosParameters &eosParams, const int ord[3], const ConsVec u) {
+    using Kokkos::fabs;
+    using Kokkos::fmax;
+    using Kokkos::fmin;
+    using Kokkos::sqrt;
+
+    const int vlng = ConsVar::momx + ord[0];
+    const int blng = ConsVar::magx + ord[0];
+
+    const Real gamma = eosParams.gamma, ch = eosParams.ch_glm;
+    const Real cf = EOS<EquationType::MHD_GLM>::fastMagSonic(gamma, u, u[blng]);
+
+    return fabs(u[vlng] / u[ConsVar::dens]) + fmax(cf, ch);
   }
 };
 

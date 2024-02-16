@@ -18,7 +18,7 @@ def dataFromFile(fStr):
     data['vel'] = np.sqrt(data['velx']**2 + data['vely']**2 + data['velz']**2)
     if 'pres' in f.keys():
         data['mach'] = data['vel']*np.sqrt(data['vel']/(data['gamma']*data['pres']))
-    else if 'prsg' in f.keys():
+    elif 'prsg' in f.keys():
         data['mach'] = data['vel']*np.sqrt(data['vel']/(data['gamma']*data['prsg']))
     f.close()
     return data

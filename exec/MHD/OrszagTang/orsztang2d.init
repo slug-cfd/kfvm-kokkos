@@ -21,7 +21,7 @@ eos:wenothresh 1.0
 # Output settings
 io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
-io:basename OrszagTangLLF
+io:basename OrszagTang
 io:plotfreq 0.5
 io:ckptfreq 200
 io:verbose 1

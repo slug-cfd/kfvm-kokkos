@@ -36,6 +36,14 @@ struct RSPhys<EquationType::Hydro> {
     F[ConsVar::etot] = V[vord[0]] * (U[ConsVar::etot] + V[PrimVar::pres]);
   }
 
+  KOKKOS_INLINE_FUNCTION
+  static void flux(const EosParameters &eosParams, const int ord[3], const ConsVec U,
+                   ConsVec F) {
+    PrimVec V;
+    EOS<EquationType::Hydro>::cons2prim(eosParams.gamma, U, V);
+    flux(eosParams, ord, U, V, F);
+  }
+
   // Wavespeed estimates
   // See Batten et. al. https://doi.org/10.1137/S1064827593260140
   KOKKOS_INLINE_FUNCTION
@@ -70,6 +78,15 @@ struct RSPhys<EquationType::Hydro> {
     sR = fmax(vR[vord[0]] + aR, uTil + aTil);
 
     return fmax(fabs(sL), fabs(sR));
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real speed(const EosParameters &eosParams, const int ord[3], const ConsVec u) {
+    const int vlng = ConsVar::momx + ord[0];
+
+    const Real a = EOS<EquationType::Hydro>::soundspeed(eosParams.gamma, u);
+
+    return fabs(u[vlng] / u[ConsVar::dens]) + a;
   }
 };
 

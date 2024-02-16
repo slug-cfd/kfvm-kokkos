@@ -3,7 +3,7 @@
 
 namespace KFVM {
 
-enum RSType { LLF, HLL, HLLC, MHD_GLM_KEPES, EXACT, NUM_RS_TYPES };
+enum RSType { LLF, HLL, HLLC, AOS, MHD_GLM_KEPES, EXACT, NUM_RS_TYPES };
 
 } // end namespace KFVM
 

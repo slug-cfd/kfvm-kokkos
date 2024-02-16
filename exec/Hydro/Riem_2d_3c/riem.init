@@ -21,7 +21,7 @@ eos:wenothresh 1.0
 # Output settings
 io:pdiconf ../../../user/pdi_euler_xdmf.yml
 io:datadir data
-io:basename RiemHLLC
+io:basename Riem
 io:plotfreq 0.04
 io:ckptfreq 1000
 io:verbose 1

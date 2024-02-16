@@ -1,5 +1,5 @@
 # Set mesh resolution and extent
-mesh:resolution 1024 1024
+mesh:resolution 512 512
 mesh:numblocks 1 1
 mesh:extent -0.5 0.5 -0.5 0.5
 
@@ -19,9 +19,9 @@ eos:gamma 1.4
 eos:wenothresh 1.0
 
 # Output settings
-io:pdiconf ../../../user/pdi_mhd_8w_xdmf.yml
+io:pdiconf ../../../user/pdi_mhd_glm_xdmf.yml
 io:datadir data
-io:basename Rotor8W
+io:basename Rotor
 io:plotfreq 0.01
 io:ckptfreq 200
 io:verbose 1
