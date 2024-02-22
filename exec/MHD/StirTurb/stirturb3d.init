@@ -17,8 +17,8 @@ stencil:lfac 5
 # Set fluid properties
 eos:gamma 1.001
 eos:wenothresh -1.0
-eos:forceedot 2.0
-eos:forcetdyn 0.05
+eos:forceedot 40.0
+eos:forcestr 4.0
 eos:forcetoff 1.5
 eos:forceratio 1.0
 
