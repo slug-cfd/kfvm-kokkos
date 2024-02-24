@@ -11,6 +11,6 @@ add_executable(kfvm.ex main.cpp ${USER_DIR}/ProblemSetup.cpp Solver.cpp Boundary
 
 target_include_directories(kfvm.ex PUBLIC ${USER_DIR})
 
-target_link_libraries(kfvm.ex numeric stencil io Kokkos::kokkoskernels Kokkos::kokkos PDI::PDI_C LAPACK::LAPACK MPI::MPI_CXX fmt::fmt)
+target_link_libraries(kfvm.ex numeric stencil io Kokkos::kokkoskernels Kokkos::kokkos PDI::PDI_C LAPACK::LAPACK MPI::MPI_CXX fmt::fmt CUDA::cuda_driver)
 
 target_compile_options(kfvm.ex PRIVATE -Wno-deprecated-gpu-targets)

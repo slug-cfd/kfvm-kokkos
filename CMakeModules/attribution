@@ -1,8 +1,0 @@
-Attributions for different Find<THING>.cmake files
-
-## NetCDF ##
-FindNetCDF.cmake comes from the VTK source repository here:
-
-https://github.com/Kitware/VTK/blob/master/CMake/FindNetCDF.cmake
-
-The corresponding license is VTK_license.txt in this directory
